@@ -1,29 +1,27 @@
-=========
+================
 scottbrian-utils
-=========
+================
 
 With **@time_box**, you can decorate a function to be sandwiched between start
 time and end time messages like this:
 
 >>> from scottbrian_utils.time_hdr import time_box
->>> import time
 
 >>> @time_box
-... def aFunc2() -> None:
+... def func2() -> None:
 ...      print('2 * 3 =', 2*3)
-...      time.sleep(1)
 
->>> aFunc2()
+>>> func2()
 <BLANKLINE>
-***********************************************
-* Starting aFunc2 on Mon Jun 29 2020 18:22:50 *
-***********************************************
+**********************************************
+* Starting func2 on Mon Jun 29 2020 18:22:50 *
+**********************************************
 2 * 3 = 6
 <BLANKLINE>
-*********************************************
-* Ending aFunc2 on Mon Jun 29 2020 18:22:51 *
-* Elapsed time: 0:00:01.001204              *
-*********************************************
+********************************************
+* Ending func2 on Mon Jun 29 2020 18:22:51 *
+* Elapsed time: 0:00:00.001204             *
+********************************************
 
 .. image:: https://img.shields.io/badge/security-bandit-yellow.svg
     :target: https://github.com/PyCQA/bandit
@@ -36,13 +34,13 @@ time and end time messages like this:
 
 The flower_box.py module contains:
 
-1. print_flower_boxmsg function - takes one of more lines of text as input
+1. print_flower_box_msg function - takes one of more lines of text as input
    and prints them inside a flower box (asterisks) as a visual aid for finding
    the text on the console or in a log.
    
 The time_hdr.py module contains:
 
-1. StartStopHeader class - has two functions that will repectively print
+1. StartStopHeader class - has two functions that will respectively print
    a starting time message in a flower box, and an ending time and elapsed
    wall clock time message in a flower box.
 2. time_box decorator - wraps a function and uses the StartStopHeader to
@@ -93,22 +91,20 @@ wrap a function with time_box
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 >>> from scottbrian_utils.time_hdr import time_box
->>> import time
 
 >>> @time_box
-... def aFunc2():
+... def func2():
 ...      print('2 * 3 =', 2*3)
-...      time.sleep(1)
 
->>> aFunc2()
-***********************************************
-* Starting aFunc2 on Tue May 12 2020 20:35:06 *
-***********************************************
+>>> func2()
+**********************************************
+* Starting func2 on Tue May 12 2020 20:35:06 *
+**********************************************
 2 * 3 = 6
-*********************************************
-* Ending aFunc2 on Tue May 12 2020 20:35:07 *
-* Elapsed time: 0:00:01.000196              *
-*********************************************
+********************************************
+* Ending func2 on Tue May 12 2020 20:35:07 *
+* Elapsed time: 0:00:00.000196             *
+********************************************
 
 Development setup
 =================

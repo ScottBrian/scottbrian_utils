@@ -20,24 +20,22 @@ time and end time messages like this:
 :Example: decorate a function with time_box
 
 >>> from scottbrian_utils.time_hdr import time_box
->>> import time
 
 >>> @time_box
-... def aFunc2() -> None:
+... def func2() -> None:
 ...      print('2 * 3 =', 2*3)
-...      time.sleep(1)
 
->>> aFunc2()
+>>> func2()
 <BLANKLINE>
-***********************************************
-* Starting aFunc2 on Mon Jun 29 2020 18:22:50 *
-***********************************************
+**********************************************
+* Starting func2 on Mon Jun 29 2020 18:22:50 *
+**********************************************
 2 * 3 = 6
 <BLANKLINE>
-*********************************************
-* Ending aFunc2 on Mon Jun 29 2020 18:22:51 *
-* Elapsed time: 0:00:01.001204              *
-*********************************************
+********************************************
+* Ending func2 on Mon Jun 29 2020 18:22:51 *
+* Elapsed time: 0:00:00.001204             *
+********************************************
 
 
 The time_hdr module contains two items:
@@ -56,7 +54,7 @@ import functools
 import sys
 from datetime import datetime
 from typing import Any, Callable, cast, Dict, NewType, Optional, \
-                   TextIO, Tuple, TypeVar, Union
+    TextIO, Tuple, TypeVar, Union
 
 from typing import overload
 
@@ -139,8 +137,8 @@ class StartStopHeader():
             file = sys.stdout
 
         self.end_DT = datetime.now()
-        msg1 = 'Ending ' + self.func_name + ' on '\
-            + self.end_DT.strftime(dt_format)
+        msg1 = 'Ending ' + self.func_name + ' on ' \
+               + self.end_DT.strftime(dt_format)
         msg2 = 'Elapsed time: ' + str(self.end_DT - self.start_DT)
         print_flower_box_msg([msg1, msg2], end=end, file=file,
                              flush=flush)
@@ -177,26 +175,24 @@ class StartStopHeader():
         :Example: Using StartStopHeader with start and end messages.
 
         >>> from scottbrian_utils.time_hdr import StartStopHeader
-        >>> import time
 
-        >>> def aFunc1() -> None:
+        >>> def func3() -> None:
         ...      print('2 + 2 =', 2+2)
-        ...      time.sleep(2)
 
-        >>> hdr = StartStopHeader('aFunc1')
+        >>> hdr = StartStopHeader('func3')
         >>> hdr.print_start_msg()
         <BLANKLINE>
-        ***********************************************
-        * Starting aFunc1 on Mon Jun 29 2020 18:22:48 *
-        ***********************************************
-        >>> aFunc1()
+        **********************************************
+        * Starting func3 on Mon Jun 29 2020 18:22:48 *
+        **********************************************
+        >>> func3()
         2 + 2 = 4
         >>> hdr.print_end_msg()
         <BLANKLINE>
-        *********************************************
-        * Ending aFunc1 on Mon Jun 29 2020 18:22:50 *
-        * Elapsed time: 0:00:02.001842              *
-        *********************************************
+        ********************************************
+        * Ending func3 on Mon Jun 29 2020 18:22:50 *
+        * Elapsed time: 0:00:00.001842             *
+        ********************************************
 
         """
 
@@ -213,8 +209,8 @@ class StartStopHeader():
             file = sys.stdout
 
         self.start_DT = datetime.now()
-        msg = 'Starting ' + self.func_name + ' on '\
-            + self.start_DT.strftime(dt_format)
+        msg = 'Starting ' + self.func_name + ' on ' \
+              + self.start_DT.strftime(dt_format)
         print_flower_box_msg([msg], end=end, file=file, flush=flush)
 
 
@@ -296,29 +292,29 @@ Returns:
 >>> _tbe = False
 
 >>> @time_box(time_box_enabled=_tbe)
-... def aFunc4a() -> None:
+... def func4a() -> None:
 ...      print('this is sample text for _tbe = False static example')
 
->>> aFunc4a()  # aFunc4a is not wrapped by time box
+>>> func4a()  # func4a is not wrapped by time box
 this is sample text for _tbe = False static example
 
 >>> _tbe = True
 
 >>> @time_box(time_box_enabled=_tbe)
-... def aFunc4b() -> None:
+... def func4b() -> None:
 ...      print('this is sample text for _tbe = True static example')
 
->>> aFunc4b()  # aFunc4b is wrapped by time box
+>>> func4b()  # func4b is wrapped by time box
 <BLANKLINE>
-************************************************
-* Starting aFunc4b on Mon Jun 29 2020 18:22:51 *
-************************************************
+***********************************************
+* Starting func4b on Mon Jun 29 2020 18:22:51 *
+***********************************************
 this is sample text for _tbe = True static example
 <BLANKLINE>
-**********************************************
-* Ending aFunc4b on Mon Jun 29 2020 18:22:51 *
-* Elapsed time: 0:00:00.000133               *
-**********************************************
+*********************************************
+* Ending func4b on Mon Jun 29 2020 18:22:51 *
+* Elapsed time: 0:00:00.000133              *
+*********************************************
 
 
 :Example: dynamically wrapping function with time_box:
@@ -329,23 +325,23 @@ this is sample text for _tbe = True static example
 >>> def tbe() -> bool: return _tbe
 
 >>> @time_box(time_box_enabled=tbe)
-... def aFunc5() -> None:
+... def func5() -> None:
 ...      print('this is sample text for the tbe dynamic example')
 
->>> aFunc5()  # aFunc5 is wrapped by time box
+>>> func5()  # func5 is wrapped by time box
 <BLANKLINE>
-***********************************************
-* Starting aFunc5 on Mon Jun 29 2020 18:22:51 *
-***********************************************
+**********************************************
+* Starting func5 on Mon Jun 29 2020 18:22:51 *
+**********************************************
 this is sample text for the tbe dynamic example
 <BLANKLINE>
-*********************************************
-* Ending aFunc5 on Mon Jun 29 2020 18:22:51 *
-* Elapsed time: 0:00:00.000130              *
-*********************************************
+********************************************
+* Ending func5 on Mon Jun 29 2020 18:22:51 *
+* Elapsed time: 0:00:00.000130             *
+********************************************
 
 >>> _tbe = False
->>> aFunc5()  # aFunc5 is not wrapped by time_box
+>>> func5()  # func5 is not wrapped by time_box
 this is sample text for the tbe dynamic example
 
 
@@ -355,20 +351,20 @@ this is sample text for the tbe dynamic example
 
 >>> aDatetime_format: DT_Format = '%m/%d/%y %H:%M:%S'
 >>> @time_box(dt_format=aDatetime_format)
-... def aFunc6() -> None:
+... def func6() -> None:
 ...     print('this is sample text for the datetime format example')
 
->>> aFunc6()
+>>> func6()
 <BLANKLINE>
-****************************************
-* Starting aFunc6 on 06/30/20 17:07:48 *
-****************************************
+***************************************
+* Starting func6 on 06/30/20 17:07:48 *
+***************************************
 this is sample text for the datetime format example
 <BLANKLINE>
-**************************************
-* Ending aFunc6 on 06/30/20 17:07:48 *
-* Elapsed time: 0:00:00.000073       *
-**************************************
+*************************************
+* Ending func6 on 06/30/20 17:07:48 *
+* Elapsed time: 0:00:00.000073      *
+*************************************
 
     """
 
@@ -427,19 +423,7 @@ this is sample text for the datetime format example
     #     for the inner wrapper function which does some more smoke and
     #     mirrors to ensure the introspection will work as expected.
     # ========================================================================
-# ============================================================================
-#  This is the what appears in stderr:
-#
-#  ***********************************************
-#  * Starting aFunc3 on Mon Jun 29 2020 18:22:51 *
-#  ***********************************************
-#  this text printed to stdout, not stderr
 
-#  *********************************************
-#  * Ending aFunc3 on Mon Jun 29 2020 18:22:51 *
-#  * Elapsed time: 0:00:00.000131              *
-#  *********************************************
-# ============================================================================
     # ========================================================================
     #  note: the following code that sets file to sys.stdout is needed to
     #  allow the test cases to use the pytest capsys built-in fixture.
@@ -456,8 +440,8 @@ this is sample text for the datetime format example
 
     if wrapped is None:
         return cast(F, functools.partial(time_box, dt_format=dt_format,
-                    end=end, file=file, flush=flush,
-                    time_box_enabled=time_box_enabled))
+                                         end=end, file=file, flush=flush,
+                                         time_box_enabled=time_box_enabled))
 
     @decorator(enabled=time_box_enabled)
     def wrapper(wrapped: F, instance: Optional[Any],
@@ -472,4 +456,5 @@ this is sample text for the datetime format example
                              end=end, file=file, flush=flush)
 
         return ret_value
+
     return cast(F, wrapper(wrapped))

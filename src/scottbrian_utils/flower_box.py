@@ -12,7 +12,7 @@
 flower_box
 ==========
 
-With **print_flower_box_msg** you can print mesages in a flower_box like this:
+With **print_flower_box_msg** you can print messages in a flower_box like this:
 
 :Example: print a one line message in a flower box
 
@@ -42,8 +42,7 @@ Args:
         parameter. The default is \'\\\\n'.
 
     file: Specifies the argument to use on the print statement
-        *file* parameter. The default is
-        sys.stdout (via None).
+        *file* parameter. The default is sys.stdout (via None).
 
     flush: Specifies the argument to use on the print statement
         *flush* parameter. The default is False.
@@ -80,7 +79,7 @@ Returns:
     if file is None:
         file = sys.stdout
 
-    if isinstance(msgs, str):  # single messsage
+    if isinstance(msgs, str):  # single message
         msgs = [msgs]  # convert to list
 
     max_msglen: int = len(max(msgs, key=len)) + 4  # 4 for front/end asterisks
