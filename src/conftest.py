@@ -54,10 +54,10 @@ class DateTimeOutputChecker(OutputChecker):
                 + new_got[DT_idx_got_stop:]
 
         # handle ending case
-        if (('Ending aFunc' in want)
-           and ('Ending aFunc' in new_got)):
-            DT_idx_want_start = want.find('Ending aFunc')
-            DT_idx_got_start = new_got.find('Ending aFunc')
+        if (('Ending' in want)
+           and ('Ending' in new_got)):
+            DT_idx_want_start = want.find('Ending')
+            DT_idx_got_start = new_got.find('Ending')
             DT_idx_want_stop = want.find('*', DT_idx_want_start)
             DT_idx_got_stop = new_got.find('*', DT_idx_got_start)
 

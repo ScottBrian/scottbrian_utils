@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-sbt_pre_post_sphinx is called before sphinx is called, and again after
+sbt_pre_post_sphinx_bak.py is called before sphinx is called, and again after
 sphinx has completed. The pre call comments out the overloaded functions in
 time_hdr to prevent sphinx from trying to document the overloaded
 functions which ends up looking bad. The post call restores the overload
@@ -8,7 +10,7 @@ that appears for the default value for the end parameter shown in the
 function signatures.Sphinx builds the doc with the end parameter shown as:
 end = '\\n'
 
-The sbt_pre_post_sphinx code will set it to: end = '\n'
+The sbt_pre_post_sphinx_bak.py code will set it to: end = '\n'
 
 """
 import sys
