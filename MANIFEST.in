@@ -9,6 +9,6 @@ recursive-include docs *.rst
 recursive-include docs Makefile
 recursive-include src *.py
 recursive-include tests *.py
-recursive-include wrapt *.py
-recursive-include wrapt *.pyi
+recursive-include type_stubs *.py
+recursive-include type_stubs *.pyi
 

@@ -16,63 +16,49 @@ The sbt_pre_post_sphinx_bak.py code will set it to: end = '\n'
 import sys
 
 
-def handle_overloaded_functions() -> None:
-    path_to_file = 'src/scottbrian_utils/time_hdr.py'
-    with open(path_to_file, 'r') as file:
-        file_lines = file.readlines()
+def hide_overloaded_functions(path_to_file) -> None:
+    with open(path_to_file, 'r') as file:  # open for read
+        file_lines = file.readlines()  # giant list
 
-    action = None
     overload_detected = False
     for idx, file_line in enumerate(file_lines):
         if '@overload' in file_line:
-            action = sys.argv[1]
             overload_detected = True
-            if (((file_line[0] == '#') and (action == '--pre'))
-                    or ((file_line[0] == '@') and (action == '--post'))
-            ):
+            if file_line[0] == '#':
                 return  # already done - don't do again, don't write file
 
-        if overload_detected and \
-                ('def time_box(wrapped: Optional[F]' in file_line):
-            break  # we are at end of section to hide or unhide
-
-        if action == '--pre':
+        if overload_detected:
+            if 'def time_box(wrapped: Optional[F]' in file_line:
+                break  # we are at end of section to hide
             file_lines[idx] = '# ' + file_lines[idx]  # comment out
-        elif action == '--post':
-            file_lines[idx] = file_lines[idx][2:]  # uncomment
 
-    with open(path_to_file, 'w') as file:
+    with open(path_to_file, 'w') as file:  # open for write
         file.writelines(file_lines)
 
 
-def remove_slash() -> None:
-    path_to_file = 'docs/build/index.html'
-    with open(path_to_file, 'r') as file:
+def remove_slash(path_to_file) -> None:
+    with open(path_to_file, 'r') as file:  # open for read
         file_lines = file.readlines()
 
-    # print(file_lines)
     search_text_items = ['&quot;' + repr('\\n') + '&quot', repr('\\n')]
     for search_text in search_text_items:
         for idx, file_line in enumerate(file_lines):
             if search_text in file_line:
-                # fidx = file_line.find(search_text)
-                # print('found it in file_line', idx, 'at index:', fidx)
-                # print('before:')
-                # print(file_lines[idx])
                 file_lines[idx] = file_lines[idx].replace(search_text,
                                                           repr('\n'))
-                # print('after:')
-                # print(file_lines[idx])
-    # print(file_lines)
 
     with open(path_to_file, 'w') as file:
         file.writelines(file_lines)
 
 
 def main() -> None:
-    handle_overloaded_functions()
+    if sys.argv[1] == '--pre':
+        # sys.argv[2] has file path to time_hdr.py that has overload
+        # statements to hide
+        hide_overloaded_functions(sys.argv[2])
     if sys.argv[1] == '--post':
-        remove_slash()
+        # sys.argv[2] has file path to index.html that needs slashes removed
+        remove_slash(sys.argv[2])
 
 
 if __name__ == '__main__':

@@ -60,12 +60,12 @@ from typing import overload
 
 from scottbrian_utils.flower_box import print_flower_box_msg
 
-from wrapt.decorators import decorator
+from wrapt.decorators import decorator  # type: ignore
 
 DT_Format = NewType('DT_Format', str)
 
 
-class StartStopHeader():
+class StartStopHeader:
     """Class StartStopHeader supports the time_box decorator by providing:
 
         1) a place to store the start time and end time
@@ -116,7 +116,7 @@ class StartStopHeader():
                 sys.stdout (via None).
 
             flush: Specifies the argument to use on the print statement
-                *flush* parameterfor the end time messsage. The default is
+                *flush* parameter for the end time message. The default is
                 False.
 
         Returns:
@@ -349,7 +349,7 @@ this is sample text for the tbe dynamic example
 
 >>> from scottbrian_utils.time_hdr import time_box
 
->>> aDatetime_format: DT_Format = '%m/%d/%y %H:%M:%S'
+>>> aDatetime_format: DT_Format = DT_Format('%m/%d/%y %H:%M:%S')
 >>> @time_box(dt_format=aDatetime_format)
 ... def func6() -> None:
 ...     print('this is sample text for the datetime format example')
@@ -367,8 +367,6 @@ this is sample text for the datetime format example
 *************************************
 
     """
-
-    from scottbrian_utils.time_hdr import StartStopHeader as StartStopHeader
 
     # ========================================================================
     #  The following code covers cases where time_box is used with or without
@@ -416,7 +414,7 @@ this is sample text for the datetime format example
     #     whether aFunc was specified, and if not returns a call to
     #     functools.partial which is the function that accepts the aFunc
     #     specification and then calls time_box with aFunc as the first
-    #     agument with the end='\n\n' as the second argument as we now have
+    #     argument with the end='\n\n' as the second argument as we now have
     #     something that time_box can decorate.
     #
     #     One other complication is that we are also using the wrapt.decorator
@@ -443,7 +441,7 @@ this is sample text for the datetime format example
                                          end=end, file=file, flush=flush,
                                          time_box_enabled=time_box_enabled))
 
-    @decorator(enabled=time_box_enabled)
+    @decorator(enabled=time_box_enabled)  # type: ignore
     def wrapper(wrapped: F, instance: Optional[Any],
                 args: Tuple[Any, ...],
                 kwargs: Dict[str, Any]) -> Any:
