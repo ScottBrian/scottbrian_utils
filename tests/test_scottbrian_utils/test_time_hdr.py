@@ -13,12 +13,11 @@ import pytest
 import sys
 
 from typing import Any, Callable, cast, Tuple, Union
+from typing_extensions import Final
 
 from scottbrian_utils.time_hdr import StartStopHeader as StartStopHeader
 from scottbrian_utils.time_hdr import time_box as time_box
 from scottbrian_utils.time_hdr import DT_Format as DT_Format
-
-_ = sys.stdout
 
 
 class ErrorTstTimeHdr(Exception):
@@ -31,17 +30,17 @@ class InvalidRouteNum(ErrorTstTimeHdr):
 
 
 dt_format_arg_list = ['0',
-                      ('%H:%M'),
-                      ('%H:%M:%S'),
-                      ('%m/%d %H:%M:%S'),
-                      ('%b %d %H:%M:%S'),
-                      ('%m/%d/%y %H:%M:%S'),
-                      ('%m/%d/%Y %H:%M:%S'),
-                      ('%b %d %Y %H:%M:%S'),
-                      ('%a %b %d %Y %H:%M:%S'),
-                      ('%a %b %d %H:%M:%S.%f'),
-                      ('%A %b %d %H:%M:%S.%f'),
-                      ('%A %B %d %H:%M:%S.%f')
+                      '%H:%M',
+                      '%H:%M:%S',
+                      '%m/%d %H:%M:%S',
+                      '%b %d %H:%M:%S',
+                      '%m/%d/%y %H:%M:%S',
+                      '%m/%d/%Y %H:%M:%S',
+                      '%b %d %Y %H:%M:%S',
+                      '%a %b %d %Y %H:%M:%S',
+                      '%a %b %d %H:%M:%S.%f',
+                      '%A %b %d %H:%M:%S.%f',
+                      '%A %B %d %H:%M:%S.%f'
                       ]
 
 
@@ -101,7 +100,7 @@ def enabled_arg(request: Any) -> str:
     return cast(str, request.param)
 
 
-class TestStartStopHeader():
+class TestStartStopHeader:
 
     @pytest.fixture(scope='class')  # type: ignore
     def hdr(self) -> "StartStopHeader":
@@ -114,7 +113,7 @@ class TestStartStopHeader():
                              flush_arg: str) -> None:
 
         route_num, expected_dt_format, end, file, \
-            flush, enabled_TF = TestTimeBox.get_arg_flags(
+            flush, enabled_tf = TestTimeBox.get_arg_flags(
                       dt_format=dt_format_arg,
                       end=end_arg,
                       file=file_arg,
@@ -164,9 +163,9 @@ class TestStartStopHeader():
         else:
             captured = capsys.readouterr().err
 
-        start_DT = hdr.start_DT
-        formatted_DT = start_DT.strftime(expected_dt_format)
-        msg = '* Starting TestName on ' + formatted_DT + ' *'
+        start_dt = hdr.start_DT
+        formatted_dt = start_dt.strftime(expected_dt_format)
+        msg = '* Starting TestName on ' + formatted_dt + ' *'
         flowers = '*' * len(msg)
         expected = '\n' + flowers + end + msg + end + flowers + end
         assert captured == expected
@@ -178,7 +177,7 @@ class TestStartStopHeader():
                            flush_arg: str) -> None:
 
         route_num, expected_dt_format, end, file, \
-            flush, enabled_TF = TestTimeBox.get_arg_flags(
+            flush, enabled_tf = TestTimeBox.get_arg_flags(
                       dt_format=dt_format_arg,
                       end=end_arg,
                       file=file_arg,
@@ -228,61 +227,66 @@ class TestStartStopHeader():
         else:
             captured = capsys.readouterr().err
 
-        start_DT = hdr.start_DT
-        end_DT = hdr.end_DT
-        formatted_delta = str(end_DT - start_DT)
-        formatted_DT = end_DT.strftime(expected_dt_format)
-        msg1 = '* Ending TestName on ' + formatted_DT
-        msg2 = '* Elapsed time: ' + formatted_delta
-        flower_len = max(len(msg1), len(msg2)) + 2
-        flowers = '*' * flower_len
+        start_dt = hdr.start_DT
+        end_dt = hdr.end_DT
+        formatted_delta = str(end_dt - start_dt)
+        formatted_dt = end_dt.strftime(expected_dt_format)
+        msg1: str = '* Ending TestName on ' + formatted_dt
+        msg2: str = '* Elapsed time: ' + formatted_delta
+
+        assert captured == TestStartStopHeader.get_flower_box(msg1, msg2, end)
+
+    @staticmethod
+    def get_flower_box(msg1: str, msg2: str, end: str) -> str:
+        flower_len: int = max(len(msg1), len(msg2)) + 2
+        flowers: str = '*' * flower_len
         msg1 += ' ' * (flower_len - len(msg1) - 1) + '*'
         msg2 += ' ' * (flower_len - len(msg2) - 1) + '*'
-        expected = '\n' + flowers + end + msg1 + end + msg2 + end +\
-                   flowers + end
-        assert captured == expected
+        expected: str = '\n' + flowers + end + msg1 + end + msg2 + end + \
+                        flowers + end
+        return expected
 
 
-class TestTimeBox():
+class TestTimeBox:
 
-    DT1 = 0b00010000
-    END1 = 0b00001000
-    FILE1 = 0b00000100
-    FLUSH1 = 0b00000010
-    ENAB1 = 0b00000001
+    DT1: Final = 0b00010000
+    END1: Final = 0b00001000
+    FILE1: Final = 0b00000100
+    FLUSH1: Final = 0b00000010
+    ENAB1: Final = 0b00000001
 
-    DT0_END0_FILE0_FLUSH0_ENAB0 = 0b00000000
-    DT0_END0_FILE0_FLUSH0_ENAB1 = 0b00000001
-    DT0_END0_FILE0_FLUSH1_ENAB0 = 0b00000010
-    DT0_END0_FILE0_FLUSH1_ENAB1 = 0b00000011
-    DT0_END0_FILE1_FLUSH0_ENAB0 = 0b00000100
-    DT0_END0_FILE1_FLUSH0_ENAB1 = 0b00000101
-    DT0_END0_FILE1_FLUSH1_ENAB0 = 0b00000110
-    DT0_END0_FILE1_FLUSH1_ENAB1 = 0b00000111
-    DT0_END1_FILE0_FLUSH0_ENAB0 = 0b00001000
-    DT0_END1_FILE0_FLUSH0_ENAB1 = 0b00001001
-    DT0_END1_FILE0_FLUSH1_ENAB0 = 0b00001010
-    DT0_END1_FILE0_FLUSH1_ENAB1 = 0b00001011
-    DT0_END1_FILE1_FLUSH0_ENAB0 = 0b00001100
-    DT0_END1_FILE1_FLUSH0_ENAB1 = 0b00001101
-    DT0_END1_FILE1_FLUSH1_ENAB0 = 0b00001110
-    DT0_END1_FILE1_FLUSH1_ENAB1 = 0b00001111
-    DT1_END0_FILE0_FLUSH0_ENAB0 = 0b00010000
-    DT1_END0_FILE0_FLUSH0_ENAB1 = 0b00010001
-    DT1_END0_FILE0_FLUSH1_ENAB0 = 0b00010010
-    DT1_END0_FILE0_FLUSH1_ENAB1 = 0b00010011
-    DT1_END0_FILE1_FLUSH0_ENAB0 = 0b00010100
-    DT1_END0_FILE1_FLUSH0_ENAB1 = 0b00010101
-    DT1_END0_FILE1_FLUSH1_ENAB0 = 0b00010110
-    DT1_END0_FILE1_FLUSH1_ENAB1 = 0b00010111
-    DT1_END1_FILE0_FLUSH0_ENAB0 = 0b00011000
-    DT1_END1_FILE0_FLUSH0_ENAB1 = 0b00011001
-    DT1_END1_FILE0_FLUSH1_ENAB0 = 0b00011010
-    DT1_END1_FILE0_FLUSH1_ENAB1 = 0b00011011
-    DT1_END1_FILE1_FLUSH0_ENAB0 = 0b00011100
-    DT1_END1_FILE1_FLUSH0_ENAB1 = 0b00011101
-    DT1_END1_FILE1_FLUSH1_ENAB0 = 0b00011110
-    DT1_END1_FILE1_FLUSH1_ENAB1 = 0b00011111
+    DT0_END0_FILE0_FLUSH0_ENAB0: Final = 0b00000000
+    DT0_END0_FILE0_FLUSH0_ENAB1: Final = 0b00000001
+    DT0_END0_FILE0_FLUSH1_ENAB0: Final = 0b00000010
+    DT0_END0_FILE0_FLUSH1_ENAB1: Final = 0b00000011
+    DT0_END0_FILE1_FLUSH0_ENAB0: Final = 0b00000100
+    DT0_END0_FILE1_FLUSH0_ENAB1: Final = 0b00000101
+    DT0_END0_FILE1_FLUSH1_ENAB0: Final = 0b00000110
+    DT0_END0_FILE1_FLUSH1_ENAB1: Final = 0b00000111
+    DT0_END1_FILE0_FLUSH0_ENAB0: Final = 0b00001000
+    DT0_END1_FILE0_FLUSH0_ENAB1: Final = 0b00001001
+    DT0_END1_FILE0_FLUSH1_ENAB0: Final = 0b00001010
+    DT0_END1_FILE0_FLUSH1_ENAB1: Final = 0b00001011
+    DT0_END1_FILE1_FLUSH0_ENAB0: Final = 0b00001100
+    DT0_END1_FILE1_FLUSH0_ENAB1: Final = 0b00001101
+    DT0_END1_FILE1_FLUSH1_ENAB0: Final = 0b00001110
+    DT0_END1_FILE1_FLUSH1_ENAB1: Final = 0b00001111
+    DT1_END0_FILE0_FLUSH0_ENAB0: Final = 0b00010000
+    DT1_END0_FILE0_FLUSH0_ENAB1: Final = 0b00010001
+    DT1_END0_FILE0_FLUSH1_ENAB0: Final = 0b00010010
+    DT1_END0_FILE0_FLUSH1_ENAB1: Final = 0b00010011
+    DT1_END0_FILE1_FLUSH0_ENAB0: Final = 0b00010100
+    DT1_END0_FILE1_FLUSH0_ENAB1: Final = 0b00010101
+    DT1_END0_FILE1_FLUSH1_ENAB0: Final = 0b00010110
+    DT1_END0_FILE1_FLUSH1_ENAB1: Final = 0b00010111
+    DT1_END1_FILE0_FLUSH0_ENAB0: Final = 0b00011000
+    DT1_END1_FILE0_FLUSH0_ENAB1: Final = 0b00011001
+    DT1_END1_FILE0_FLUSH1_ENAB0: Final = 0b00011010
+    DT1_END1_FILE0_FLUSH1_ENAB1: Final = 0b00011011
+    DT1_END1_FILE1_FLUSH0_ENAB0: Final = 0b00011100
+    DT1_END1_FILE1_FLUSH0_ENAB1: Final = 0b00011101
+    DT1_END1_FILE1_FLUSH1_ENAB0: Final = 0b00011110
+    DT1_END1_FILE1_FLUSH1_ENAB1: Final = 0b00011111
 
     @staticmethod
     def get_arg_flags(*,
@@ -318,51 +322,51 @@ class TestTimeBox():
             if flush == 'True':
                 expected_flush = True
 
-        expected_enabled_TF = True
+        expected_enabled_tf = True
         if enabled != '0':
             route_num = route_num | TestTimeBox.ENAB1
             if (enabled == 'static_false') or (enabled == 'dynamic_false'):
-                expected_enabled_TF = False
+                expected_enabled_tf = False
 
         return (route_num, expected_dt_format, expected_end, expected_file,
-                expected_flush, expected_enabled_TF)
+                expected_flush, expected_enabled_tf)
 
     @staticmethod
     def get_expected_msg(*,
-                         expected_aFunc_msg: str,
+                         expected_func_msg: str,
                          actual: str,
                          expected_dt_format: DT_Format =
                          DT_Format('%a %b %d %Y %H:%M:%S'),
                          # StartStopHeader.default_dt_format,
                          expected_end: str = '\n',
-                         expected_enabled_TF: bool = True) -> str:
+                         expected_enabled_tf: bool = True) -> str:
         """Helper function to build the expected message to compare
         with the actual message captured with capsys
         """
 
-        if expected_enabled_TF is False:
-            if expected_aFunc_msg == '':
+        if expected_enabled_tf is False:
+            if expected_func_msg == '':
                 return ''
             else:
-                return expected_aFunc_msg + '\n'
+                return expected_func_msg + '\n'
 
-        start_DT = datetime.now()
-        end_DT = datetime.now() + timedelta(microseconds=42)
-        formatted_delta = str(end_DT - start_DT)
+        start_dt = datetime.now()
+        end_dt = datetime.now() + timedelta(microseconds=42)
+        formatted_delta = str(end_dt - start_dt)
         formatted_delta_len = len(formatted_delta)
 
-        formatted_DT = start_DT.strftime(expected_dt_format)
-        formatted_DT_len = len(formatted_DT)
+        formatted_dt = start_dt.strftime(expected_dt_format)
+        formatted_dt_len = len(formatted_dt)
 
-        start_time_marks = '#' * formatted_DT_len
+        start_time_marks = '#' * formatted_dt_len
 
         start_time_len = len(start_time_marks)
-        end_time_marks = '%' * formatted_DT_len
+        end_time_marks = '%' * formatted_dt_len
         end_time_len = len(end_time_marks)
         elapsed_time_marks = '$' * formatted_delta_len
         elapsed_time_len = len(elapsed_time_marks)
         # build expected0
-        msg0 = '* Starting aFunc on ' + start_time_marks
+        msg0 = '* Starting func on ' + start_time_marks
 
         flower_len = len(msg0) + len(' *')
         flowers = '*' * flower_len
@@ -373,22 +377,16 @@ class TestTimeBox():
             + flowers + expected_end
 
         # build expected1
-        msg1 = '* Ending aFunc on ' + end_time_marks
+        msg1 = '* Ending func on ' + end_time_marks
         msg2 = '* Elapsed time: ' + elapsed_time_marks
 
-        flower_len = max(len(msg1), len(msg2)) + 2
-        flowers = '*' * flower_len
+        expected1 = TestStartStopHeader.get_flower_box(msg1, msg2,
+                                                       expected_end)
 
-        msg1 += ' ' * (flower_len - len(msg1) - 1) + '*'
-        msg2 += ' ' * (flower_len - len(msg2) - 1) + '*'
-
-        expected1 = '\n' + flowers + expected_end + msg1 + expected_end \
-            + msg2 + expected_end + flowers + expected_end
-
-        if expected_aFunc_msg == '':
+        if expected_func_msg == '':
             expected = expected0 + expected1
         else:
-            expected = expected0 + expected_aFunc_msg + '\n' + expected1
+            expected = expected0 + expected_func_msg + '\n' + expected1
 
         # find positions of the start, end, and elapsed times
         start_time_index = expected.index(start_time_marks)
@@ -433,61 +431,32 @@ class TestTimeBox():
                             enabled_arg: str
                             ) -> None:
 
-        # aFunc: Union[Callable[[int, str], int],
+        # func: Union[Callable[[int, str], int],
         #              Callable[[int, str], None],
         #              Callable[[], int],
         #              Callable[[], None]]
 
-        aFunc: Callable[..., Any]
+        a_func: Callable[..., Any]
 
         expected_return_value: Union[int, None]
 
-        # route_num = 0
-        # if dt_format_arg != '0':
-        #     route_num += 2**4
-        #     expected_dt_format = DT_Format(dt_format_arg)
-        # else:
-        #     expected_dt_format = DT_Format(StartStopHeader.default_dt_format)
-
-        # if end_arg != '0':
-        #     route_num += 2**3
-        #     expected_end_arg = end_arg
-        # else:
-        #     expected_end_arg = '\n'
-
-        # if file_arg != '0':
-        #     route_num += 2**2
-        #     if file_arg == 'None':
-        #         expected_file_arg = 'sys.stdout'
-        #     else:
-        #         expected_file_arg = file_arg
-        # else:
-        #     expected_file_arg = 'sys.stdout'
-
-        # # Note: we can specify flush but we can not verify whether it works
-        # flush = False
-        # if flush_arg != '0':
-        #     route_num += 2**1
-        #     if flush_arg == 'True':
-        #         flush = True
-
         route_num, expected_dt_format, expected_end_arg, expected_file_arg, \
-            flush, enabled_TF = TestTimeBox.get_arg_flags(
+            flush, enabled_tf = TestTimeBox.get_arg_flags(
                       dt_format=dt_format_arg,
                       end=end_arg,
                       file=file_arg,
                       flush=flush_arg,
                       enabled=enabled_arg)
 
-        enabled_spec: Union[bool, Callable[..., bool]] = enabled_TF
-        def enabled_func() -> bool: return enabled_TF
+        enabled_spec: Union[bool, Callable[..., bool]] = enabled_tf
+        def enabled_func() -> bool: return enabled_tf
 
         if (enabled_arg == 'dynamic_true') or (enabled_arg == 'dynamic_false'):
             enabled_spec = enabled_func
 
         if style_num == 1:
             for func_style in range(1, 5):
-                aFunc = TestTimeBox.build_style1_func(
+                a_func = TestTimeBox.build_style1_func(
                     route_num,
                     dt_format=DT_Format(dt_format_arg),
                     end=end_arg,
@@ -498,30 +467,30 @@ class TestTimeBox():
                     )
 
                 if func_style == 1:
-                    aFunc_msg = 'The answer is: ' + str(route_num)
+                    func_msg = 'The answer is: ' + str(route_num)
                     expected_return_value = route_num * style_num
-                    actual_return_value = aFunc(route_num,
-                                                aFunc_msg)
+                    actual_return_value = a_func(route_num,
+                                                 func_msg)
                 elif func_style == 2:
-                    aFunc_msg = 'The answer is: ' + str(route_num)
+                    func_msg = 'The answer is: ' + str(route_num)
                     expected_return_value = None
-                    actual_return_value = aFunc(route_num, aFunc_msg)
+                    actual_return_value = a_func(route_num, func_msg)
                 elif func_style == 3:
-                    aFunc_msg = ''
+                    func_msg = ''
                     expected_return_value = 42
-                    actual_return_value = aFunc()
+                    actual_return_value = a_func()
                 else:  # func_style == 4:
-                    aFunc_msg = ''
+                    func_msg = ''
                     expected_return_value = None
-                    actual_return_value = aFunc()
+                    actual_return_value = a_func()
 
                 TestTimeBox.check_results(
                     capsys=capsys,
-                    aFunc_msg=aFunc_msg,
+                    func_msg=func_msg,
                     expected_dt_format=expected_dt_format,
                     expected_end=expected_end_arg,
                     expected_file=expected_file_arg,
-                    expected_enabled_TF=enabled_TF,
+                    expected_enabled_tf=enabled_tf,
                     expected_return_value=expected_return_value,
                     actual_return_value=actual_return_value
                     )
@@ -530,7 +499,7 @@ class TestTimeBox():
             return
 
         elif style_num == 2:
-            aFunc = TestTimeBox.build_style2_func(
+            a_func = TestTimeBox.build_style2_func(
                 route_num,
                 dt_format=DT_Format(dt_format_arg),
                 end=end_arg,
@@ -539,7 +508,7 @@ class TestTimeBox():
                 enabled=enabled_spec
                 )
         else:  # style_num = 3
-            aFunc = TestTimeBox.build_style3_func(
+            a_func = TestTimeBox.build_style3_func(
                 route_num,
                 dt_format=DT_Format(dt_format_arg),
                 end=end_arg,
@@ -548,27 +517,27 @@ class TestTimeBox():
                 enabled=enabled_spec
                 )
 
-        aFunc_msg = 'The answer is: ' + str(route_num)
+        func_msg = 'The answer is: ' + str(route_num)
         expected_return_value = route_num * style_num
-        actual_return_value = aFunc(route_num, aFunc_msg)
+        actual_return_value = a_func(route_num, func_msg)
         TestTimeBox.check_results(
             capsys=capsys,
-            aFunc_msg=aFunc_msg,
+            func_msg=func_msg,
             expected_dt_format=expected_dt_format,
             expected_end=expected_end_arg,
             expected_file=expected_file_arg,
-            expected_enabled_TF=enabled_TF,
+            expected_enabled_tf=enabled_tf,
             expected_return_value=expected_return_value,
             actual_return_value=actual_return_value
             )
 
     @staticmethod
     def check_results(capsys: Any,
-                      aFunc_msg: str,
+                      func_msg: str,
                       expected_dt_format: DT_Format,
                       expected_end: str,
                       expected_file: str,
-                      expected_enabled_TF: bool,
+                      expected_enabled_tf: bool,
                       expected_return_value: Union[int, None],
                       actual_return_value: Union[int, None]
                       ) -> None:
@@ -577,18 +546,18 @@ class TestTimeBox():
             actual = capsys.readouterr().out
         else:
             actual = capsys.readouterr().err
-            aFunc_msg = ''
+            func_msg = ''
 
         expected = TestTimeBox.get_expected_msg(
-            expected_aFunc_msg=aFunc_msg,
+            expected_func_msg=func_msg,
             actual=actual,
             expected_dt_format=expected_dt_format,
             expected_end=expected_end,
-            expected_enabled_TF=expected_enabled_TF)
+            expected_enabled_tf=expected_enabled_tf)
 
         assert actual == expected
 
-        # check that aFunc returns the correct value
+        # check that func returns the correct value
 
         message = "Expected return value: {0}, Actual return value: {1}"\
             .format(expected_return_value, actual_return_value)
@@ -604,7 +573,7 @@ class TestTimeBox():
                           f_style: int
                           ) -> Callable[..., Any]:
 
-        # aFunc: Union[Callable[[int, str], int],
+        # func: Union[Callable[[int, str], int],
         #              Callable[[int, str], None],
         #              Callable[[], int],
         #              Callable[[], None]]
@@ -612,283 +581,283 @@ class TestTimeBox():
         if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
             if f_style == 1:
                 @time_box
-                def aFunc(aInt: int, aStr: str) -> int:
-                    print(aStr)
-                    return aInt * 1
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
             elif f_style == 2:
                 @time_box
-                def aFunc(aInt: int, aStr: str) -> None:
-                    print(aStr)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
             elif f_style == 3:
                 @time_box
-                def aFunc() -> int:
+                def func() -> int:
                     return 42
             else:  # f_style == 4:
                 @time_box
-                def aFunc() -> None:
+                def func() -> None:
                     pass
         elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB1:
             if f_style == 1:
                 @time_box(time_box_enabled=enabled)
-                def aFunc(aInt: int, aStr: str) -> int:
-                    print(aStr)
-                    return aInt * 1
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
             elif f_style == 2:
                 @time_box(time_box_enabled=enabled)
-                def aFunc(aInt: int, aStr: str) -> None:
-                    print(aStr)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
             elif f_style == 3:
                 @time_box(time_box_enabled=enabled)
-                def aFunc() -> int:
+                def func() -> int:
                     return 42
             else:  # f_style == 4:
                 @time_box(time_box_enabled=enabled)
-                def aFunc() -> None:
+                def func() -> None:
                     pass
         elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB0:
             if f_style == 1:
                 @time_box(flush=flush)
-                def aFunc(aInt: int, aStr: str) -> int:
-                    print(aStr)
-                    return aInt * 1
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
             elif f_style == 2:
                 @time_box(flush=flush)
-                def aFunc(aInt: int, aStr: str) -> None:
-                    print(aStr)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
             elif f_style == 3:
                 @time_box(flush=flush)
-                def aFunc() -> int:
+                def func() -> int:
                     return 42
             else:  # f_style == 4:
                 @time_box(flush=flush)
-                def aFunc() -> None:
+                def func() -> None:
                     pass
         elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB1:
             if f_style == 1:
                 @time_box(flush=flush, time_box_enabled=enabled)
-                def aFunc(aInt: int, aStr: str) -> int:
-                    print(aStr)
-                    return aInt * 1
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
             elif f_style == 2:
                 @time_box(flush=flush, time_box_enabled=enabled)
-                def aFunc(aInt: int, aStr: str) -> None:
-                    print(aStr)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
             elif f_style == 3:
                 @time_box(flush=flush, time_box_enabled=enabled)
-                def aFunc() -> int:
+                def func() -> int:
                     return 42
             else:  # f_style == 4:
                 @time_box(flush=flush, time_box_enabled=enabled)
-                def aFunc() -> None:
+                def func() -> None:
                     pass
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB0:
             if f_style == 1:
                 @time_box(file=eval(file))
-                def aFunc(aInt: int, aStr: str) -> int:
-                    print(aStr)
-                    return aInt * 1
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
             elif f_style == 2:
                 @time_box(file=eval(file))
-                def aFunc(aInt: int, aStr: str) -> None:
-                    print(aStr)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
             elif f_style == 3:
                 @time_box(file=eval(file))
-                def aFunc() -> int:
+                def func() -> int:
                     return 42
             else:  # f_style == 4:
                 @time_box(file=eval(file))
-                def aFunc() -> None:
+                def func() -> None:
                     pass
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB1:
             if f_style == 1:
                 @time_box(file=eval(file), time_box_enabled=enabled)
-                def aFunc(aInt: int, aStr: str) -> int:
-                    print(aStr)
-                    return aInt * 1
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
             elif f_style == 2:
                 @time_box(file=eval(file), time_box_enabled=enabled)
-                def aFunc(aInt: int, aStr: str) -> None:
-                    print(aStr)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
             elif f_style == 3:
                 @time_box(file=eval(file), time_box_enabled=enabled)
-                def aFunc() -> int:
+                def func() -> int:
                     return 42
             else:  # f_style == 4:
                 @time_box(file=eval(file), time_box_enabled=enabled)
-                def aFunc() -> None:
+                def func() -> None:
                     pass
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB0:
             if f_style == 1:
                 @time_box(file=eval(file), flush=flush)
-                def aFunc(aInt: int, aStr: str) -> int:
-                    print(aStr)
-                    return aInt * 1
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
             elif f_style == 2:
                 @time_box(file=eval(file), flush=flush)
-                def aFunc(aInt: int, aStr: str) -> None:
-                    print(aStr)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
             elif f_style == 3:
                 @time_box(file=eval(file), flush=flush)
-                def aFunc() -> int:
+                def func() -> int:
                     return 42
             else:  # f_style == 4:
                 @time_box(file=eval(file), flush=flush)
-                def aFunc() -> None:
+                def func() -> None:
                     pass
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB1:
             if f_style == 1:
                 @time_box(file=eval(file), flush=flush,
                           time_box_enabled=enabled)
-                def aFunc(aInt: int, aStr: str) -> int:
-                    print(aStr)
-                    return aInt * 1
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
             elif f_style == 2:
                 @time_box(file=eval(file), flush=flush,
                           time_box_enabled=enabled)
-                def aFunc(aInt: int, aStr: str) -> None:
-                    print(aStr)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
             elif f_style == 3:
                 @time_box(file=eval(file), flush=flush,
                           time_box_enabled=enabled)
-                def aFunc() -> int:
+                def func() -> int:
                     return 42
             else:  # f_style == 4:
                 @time_box(file=eval(file), flush=flush,
                           time_box_enabled=enabled)
-                def aFunc() -> None:
+                def func() -> None:
                     pass
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB0:
             @time_box(end=end)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB1:
             @time_box(end=end, time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB0:
             @time_box(end=end, flush=flush)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB1:
             @time_box(end=end, flush=flush, time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB0:
             @time_box(end=end, file=eval(file))
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB1:
             @time_box(end=end, file=eval(file), time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB0:
             @time_box(end=end, file=eval(file), flush=flush)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB1:
             @time_box(end=end, file=eval(file), flush=flush,
                       time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB0:
             @time_box(dt_format=dt_format)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB1:
             @time_box(dt_format=dt_format, time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB0:
             @time_box(dt_format=dt_format, flush=flush)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB1:
             @time_box(dt_format=dt_format, flush=flush,
                       time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB0:
             @time_box(dt_format=dt_format, file=eval(file))
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB1:
             @time_box(dt_format=dt_format, file=eval(file),
                       time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB0:
             @time_box(dt_format=dt_format, file=eval(file), flush=flush)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB1:
             @time_box(dt_format=dt_format, file=eval(file), flush=flush,
                       time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB0:
             @time_box(dt_format=dt_format, end=end)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB1:
             @time_box(dt_format=dt_format, end=end, time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB0:
             @time_box(dt_format=dt_format, end=end, flush=flush)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB1:
             @time_box(dt_format=dt_format, end=end, flush=flush,
                       time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB0:
             @time_box(dt_format=dt_format, end=end, file=eval(file))
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB1:
             @time_box(dt_format=dt_format, end=end, file=eval(file),
                       time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB0:
             @time_box(dt_format=dt_format, end=end, file=eval(file),
                       flush=flush)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB1:
             @time_box(dt_format=dt_format, end=end, file=eval(file),
                       flush=flush, time_box_enabled=enabled)
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 1
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
         else:
             raise InvalidRouteNum('route_num was not recognized')
 
-        return aFunc
+        return func
 
     @staticmethod
     def build_style2_func(route_num: int,
@@ -900,185 +869,185 @@ class TestTimeBox():
                           ) -> Callable[[int, str], int]:
 
         if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func)
         elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, flush=flush)
         elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, flush=flush, time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, flush=flush, time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, file=eval(file))
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, file=eval(file))
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, file=eval(file), time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, file=eval(file), time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, file=eval(file), flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, file=eval(file), flush=flush)
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, file=eval(file), flush=flush,
-                             time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, file=eval(file), flush=flush,
+                            time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, end=end)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, end=end)
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, end=end, time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, end=end, time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, end=end, flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, end=end, flush=flush)
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, end=end, flush=flush,
-                             time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, end=end, flush=flush,
+                            time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, end=end, file=eval(file))
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, end=end, file=eval(file))
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, end=end, file=eval(file),
-                             time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, end=end, file=eval(file),
+                            time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, end=end, file=eval(file), flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, end=end, file=eval(file), flush=flush)
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, end=end, file=eval(file), flush=flush,
-                             time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, end=end, file=eval(file), flush=flush,
+                            time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format)
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format,
-                             time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format,
+                            time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, flush=flush)
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, flush=flush,
-                             time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, flush=flush,
+                            time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, file=eval(file))
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, file=eval(file))
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, file=eval(file),
-                             time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, file=eval(file),
+                            time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, file=eval(file),
-                             flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, file=eval(file),
+                            flush=flush)
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, file=eval(file),
-                             flush=flush, time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, file=eval(file),
+                            flush=flush, time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, end=end)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, end=end)
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, end=end,
-                             time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, end=end,
+                            time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, end=end, flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, end=end, flush=flush)
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, end=end, flush=flush,
-                             time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, end=end, flush=flush,
+                            time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, end=end,
-                             file=eval(file))
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, end=end,
+                            file=eval(file))
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, end=end,
-                             file=eval(file), time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, end=end,
+                            file=eval(file), time_box_enabled=enabled)
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, end=end,
-                             file=eval(file), flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, end=end,
+                            file=eval(file), flush=flush)
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 2
-            aFunc = time_box(aFunc, dt_format=dt_format, end=end,
-                             file=eval(file), flush=flush,
-                             time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+            func = time_box(func, dt_format=dt_format, end=end,
+                            file=eval(file), flush=flush,
+                            time_box_enabled=enabled)
         else:
             raise InvalidRouteNum('route_num was not recognized')
 
-        return aFunc
+        return func
 
     @staticmethod
     def build_style3_func(route_num: int,
@@ -1090,290 +1059,278 @@ class TestTimeBox():
                           ) -> Callable[[int, str], int]:
 
         if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box()(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box()(func)
         elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(flush=flush)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(flush=flush)(func)
         elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(flush=flush, time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(flush=flush, time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(file=eval(file))(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(file=eval(file))(func)
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(file=eval(file), time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(file=eval(file), time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(file=eval(file), flush=flush)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(file=eval(file), flush=flush)(func)
         elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(file=eval(file), flush=flush,
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(file=eval(file), flush=flush,
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(end=end)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(end=end)(func)
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(end=end, time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(end=end, time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(end=end, flush=flush)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(end=end, flush=flush)(func)
         elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(end=end, flush=flush,
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(end=end, flush=flush,
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(end=end, file=eval(file))(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(end=end, file=eval(file))(func)
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(end=end, file=eval(file),
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(end=end, file=eval(file),
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(end=end, file=eval(file), flush=flush)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(end=end, file=eval(file), flush=flush)(func)
         elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(end=end, file=eval(file), flush=flush,
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(end=end, file=eval(file), flush=flush,
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format)(func)
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format,
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format,
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, flush=flush)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, flush=flush)(func)
         elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, flush=flush,
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, flush=flush,
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, file=eval(file))(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, file=eval(file))(func)
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, file=eval(file),
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, file=eval(file),
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, file=eval(file),
-                             flush=flush)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, file=eval(file),
+                            flush=flush)(func)
         elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, file=eval(file), flush=flush,
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, file=eval(file), flush=flush,
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, end=end)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, end=end)(func)
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, end=end,
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, end=end,
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, end=end,
-                             flush=flush)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, end=end,
+                            flush=flush)(func)
         elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, end=end, flush=flush,
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, end=end, flush=flush,
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, end=end,
-                             file=eval(file))(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, end=end,
+                            file=eval(file))(func)
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, end=end, file=eval(file),
-                             time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, end=end, file=eval(file),
+                            time_box_enabled=enabled)(func)
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB0:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, end=end, file=eval(file),
-                             flush=flush)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, end=end, file=eval(file),
+                            flush=flush)(func)
         elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB1:
-            def aFunc(aInt: int, aStr: str) -> int:
-                print(aStr)
-                return aInt * 3
-            aFunc = time_box(dt_format=dt_format, end=end, file=eval(file),
-                             flush=flush, time_box_enabled=enabled)(aFunc)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+            func = time_box(dt_format=dt_format, end=end, file=eval(file),
+                            flush=flush, time_box_enabled=enabled)(func)
         else:
             raise InvalidRouteNum('route_num was not recognized')
 
-        return aFunc
+        return func
 
 
-class TestTimeBoxDocstrings():
+class TestTimeBoxDocstrings:
     def test_timebox_with_example_1(self) -> None:
+        print()
         print('#' * 50)
         print('Example for StartStopHeader:')
         print()
-        from scottbrian_utils.time_hdr import StartStopHeader
-        import time
-        import sys
 
-        def aFunc1() -> None:
+        def func1() -> None:
             print('2 + 2 =', 2+2)
-            time.sleep(2)
 
-        hdr = StartStopHeader('aFunc1')
+        hdr = StartStopHeader('func1')
         hdr.print_start_msg(file=sys.stdout)
 
-        aFunc1()
+        func1()
 
         hdr.print_end_msg(file=sys.stdout)
 
     def test_timebox_with_example_2(self) -> None:
+        print()
         print('#' * 50)
         print('Example for time_box decorator:')
         print()
-        from scottbrian_utils.time_hdr import time_box
-        import time
-        import sys
 
         @time_box(file=sys.stdout)
-        def aFunc2() -> None:
+        def func2() -> None:
             print('2 * 3 =', 2*3)
-            time.sleep(1)
 
-        aFunc2()
+        func2()
 
     def test_timebox_with_example_3(self) -> None:
+        print()
         print('#' * 50)
         print('Example of printing to stderr:')
         print()
-        from scottbrian_utils.time_hdr import time_box
-        import sys
 
         @time_box(file=sys.stderr)
-        def aFunc3() -> None:
+        def func3() -> None:
             print('this text printed to stdout, not stderr')
 
-        aFunc3()
+        func3()
 
     def test_timebox_with_example_4(self) -> None:
+        print()
         print('#' * 50)
         print('Example of statically wrapping function with time_box:')
         print()
 
-        from scottbrian_utils.time_hdr import time_box
-        import sys
-
         _tbe = False
 
         @time_box(time_box_enabled=_tbe, file=sys.stdout)
-        def aFunc4a() -> None:
+        def func4a() -> None:
             print('this is sample text for _tbe = False static example')
 
-        aFunc4a()  # aFunc4a is not wrapped by time box
+        func4a()  # func4a is not wrapped by time box
 
         _tbe = True
 
         @time_box(time_box_enabled=_tbe, file=sys.stdout)
-        def aFunc4b() -> None:
+        def func4b() -> None:
             print('this is sample text for _tbe = True static example')
 
-        aFunc4b()  # aFunc4b is wrapped by time box
+        func4b()  # func4b is wrapped by time box
 
     def test_timebox_with_example_5(self) -> None:
+        print()
         print('#' * 50)
         print('Example of dynamically wrapping function with time_box:')
         print()
-
-        from scottbrian_utils.time_hdr import time_box
-        import sys
 
         _tbe = True
         def tbe() -> bool: return _tbe
 
         @time_box(time_box_enabled=tbe, file=sys.stdout)
-        def aFunc5() -> None:
+        def func5() -> None:
             print('this is sample text for the tbe dynamic example')
 
-        aFunc5()  # aFunc5 is wrapped by time box
+        func5()  # func5 is wrapped by time box
 
         _tbe = False
-        aFunc5()  # aFunc5 is not wrapped by time_box
+        func5()  # func5 is not wrapped by time_box
 
     def test_timebox_with_example_6(self) -> None:
+        print()
         print('#' * 50)
         print('Example of using different datetime format:')
         print()
 
-        from scottbrian_utils.time_hdr import time_box
+        a_datetime_format: DT_Format = cast(DT_Format, '%m/%d/%y %H:%M:%S')
 
-        aDatetime_format: DT_Format = cast(DT_Format, '%m/%d/%y %H:%M:%S')
-
-        @time_box(dt_format=aDatetime_format)
-        def aFunc6() -> None:
+        @time_box(dt_format=a_datetime_format)
+        def func6() -> None:
             print('this is sample text for the datetime format example')
 
-        aFunc6()
+        func6()

@@ -82,13 +82,13 @@ Returns:
     if isinstance(msgs, str):  # single message
         msgs = [msgs]  # convert to list
 
-    max_msglen: int = len(max(msgs, key=len)) + 4  # 4 for front/end asterisks
+    max_msg_len: int = len(max(msgs, key=len)) + 4  # 4 for front/end asterisks
 
     # ensure a new line so that our flower box is properly aligned
     print('', file=file)
 
-    print('*' * max_msglen, end=end, file=file, flush=flush)
+    print('*' * max_msg_len, end=end, file=file, flush=flush)
     for msg in msgs:
-        msg = '* ' + msg + ' ' * (max_msglen - len(msg) - 4) + ' *'
+        msg = '* ' + msg + ' ' * (max_msg_len - len(msg) - 4) + ' *'
         print(msg, end=end, file=file, flush=flush)
-    print('*' * max_msglen, end=end, file=file, flush=flush)
+    print('*' * max_msg_len, end=end, file=file, flush=flush)

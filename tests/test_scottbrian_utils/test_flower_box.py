@@ -23,10 +23,10 @@ def file_num(request: Any) -> int:
     return cast(int, request.param)
 
 
-class TestFlowerBox():
+class TestFlowerBox:
     # build case list for tests
     # first tuple item is the msg or msg list passed on the flower box call
-    # second tuple item is the expected result capured in sysout
+    # second tuple item is the expected result captured in sys.sysout
     # note: first few single messages are passed first as single strings, and
     # then as single item lists
     case_list = [('', '\n'

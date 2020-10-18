@@ -17,7 +17,7 @@ setup(
       version='1.0.0',
       author='Scott Tuttle',
       author_email='sbtuttle@outlook.com',
-      description='Print header/trailure utilities',
+      description='Print header/trailer utilities',
       long_description=long_description,
       long_description_content_type='text/x-rst',
       url='https://github.com/ScottBrian/scottbrian_utils.git',
@@ -34,7 +34,7 @@ setup(
       python_requires='>=3.6',
       packages=find_packages('src'),
       package_dir={'': 'src'},
-      install_requires=['wrapt'],
+      install_requires=['typing-extensions', 'wrapt'],
       package_data={"scottbrian_utils": ["__init__.pyi", "py.typed"]},
       zip_safe=False
      )

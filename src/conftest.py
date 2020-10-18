@@ -11,15 +11,12 @@ from unittest import mock
 
 import pytest
 
-# import sys
-
 
 class DateTimeOutputChecker(OutputChecker):
     """ This class is used to intercept the output of the doctest examples
     and change the datetime fields so they match the expected datetimes that
     are documented in the time_hdr.py module examples.
     """
-    num_entered = 0
 
     def check_output(self, want: str, got: str, optionFlags: int) -> bool:
         """
@@ -39,7 +36,6 @@ class DateTimeOutputChecker(OutputChecker):
         """
 
         new_got = got
-        DateTimeOutputChecker.num_entered += 1
 
         # handle starting case
         if (('Starting' in want)
@@ -76,15 +72,6 @@ class DateTimeOutputChecker(OutputChecker):
             new_got = new_got[0:DT_idx_got_start] \
                 + want[DT_idx_want_start:DT_idx_want_stop] \
                 + new_got[DT_idx_got_stop:]
-
-        # print('DateTimeOutputChecker.num_entered:',
-        #       DateTimeOutputChecker.num_entered, file=sys.stderr)
-        # print('sbt want:', file=sys.stderr)
-        # print(want, file=sys.stderr)
-        # print('sbt got:', file=sys.stderr)
-        # print(got, file=sys.stderr)
-        # print('sbt new_got:', file=sys.stderr)
-        # print(new_got, file=sys.stderr)
 
         return OutputChecker.check_output(self, want, new_got, optionFlags)
 

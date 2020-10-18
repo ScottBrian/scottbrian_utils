@@ -21,9 +21,6 @@ sys.path.insert(0,
                 os.path.abspath(
                     '/home/Tiger/PythonProjects/scottbrian_utils/.tox/docs'
                     '/lib/python3.8/site-packages/scottbrian_utils'))
-# sys.path.insert(0,
-#                 os.path.abspath(
-#                     '/home/Tiger/PythonProjects/scottbrian_utils/src/scottbrian_utils'))
 
 # -- Project information -----------------------------------------------------
 

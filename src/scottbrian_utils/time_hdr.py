@@ -247,8 +247,8 @@ def time_box(wrapped: Optional[F] = None, *,
     """Decorator to wrap a function in start time and end time messages.
 
 The time_box decorator can be invoked with or without arguments, and the
-function being wrapped can optionally take arguments and optionally
-return a value. The wrapt.decorator is used to preserve the wrapped
+function being wrapped2 can optionally take arguments and optionally
+return a value. The wrapt.decorator is used to preserve the wrapped2
 function introspection capabilities, and functools.partial is used to
 handle the case where decorator arguments are specified. The examples
 further below will help demonstrate the various ways in which the
@@ -281,8 +281,8 @@ Args:
 
 Returns:
     A callable function that issues a starting time message, calls
-    the wrapped function, issues the ending time message, and finally
-    returns the return value from the wrapped function, if one.
+    the wrapped2 function, issues the ending time message, and finally
+    returns the return value from the wrapped2 function, if one.
 
 
 :Example: statically wrapping function with time_box
@@ -295,7 +295,7 @@ Returns:
 ... def func4a() -> None:
 ...      print('this is sample text for _tbe = False static example')
 
->>> func4a()  # func4a is not wrapped by time box
+>>> func4a()  # func4a is not wrapped2 by time box
 this is sample text for _tbe = False static example
 
 >>> _tbe = True
@@ -304,7 +304,7 @@ this is sample text for _tbe = False static example
 ... def func4b() -> None:
 ...      print('this is sample text for _tbe = True static example')
 
->>> func4b()  # func4b is wrapped by time box
+>>> func4b()  # func4b is wrapped2 by time box
 <BLANKLINE>
 ***********************************************
 * Starting func4b on Mon Jun 29 2020 18:22:51 *
@@ -328,7 +328,7 @@ this is sample text for _tbe = True static example
 ... def func5() -> None:
 ...      print('this is sample text for the tbe dynamic example')
 
->>> func5()  # func5 is wrapped by time box
+>>> func5()  # func5 is wrapped2 by time box
 <BLANKLINE>
 **********************************************
 * Starting func5 on Mon Jun 29 2020 18:22:51 *
@@ -341,7 +341,7 @@ this is sample text for the tbe dynamic example
 ********************************************
 
 >>> _tbe = False
->>> func5()  # func5 is not wrapped by time_box
+>>> func5()  # func5 is not wrapped2 by time_box
 this is sample text for the tbe dynamic example
 
 
@@ -442,13 +442,13 @@ this is sample text for the datetime format example
                                          time_box_enabled=time_box_enabled))
 
     @decorator(enabled=time_box_enabled)  # type: ignore
-    def wrapper(wrapped: F, instance: Optional[Any],
+    def wrapper(func_to_wrap: F, instance: Optional[Any],
                 args: Tuple[Any, ...],
                 kwargs: Dict[str, Any]) -> Any:
-        header = StartStopHeader(wrapped.__name__)
+        header = StartStopHeader(func_to_wrap.__name__)
         header.print_start_msg(dt_format=dt_format,
                                end=end, file=file, flush=flush)
-        ret_value = wrapped(*args, **kwargs)
+        ret_value = func_to_wrap(*args, **kwargs)
 
         header.print_end_msg(dt_format=dt_format,
                              end=end, file=file, flush=flush)

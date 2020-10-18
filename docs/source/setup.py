@@ -8,7 +8,7 @@ setup(
     version='1.0.0',
     packages=['adjust_sphinx'],
     entry_points={
-    'console_scripts': [
-        'adjust_sphinx=adjust_sphinx.adjust_sphinx:main',
-    ],
-})
+        'console_scripts': [
+            'adjust_sphinx=adjust_sphinx.adjust_sphinx:main',
+        ],
+    })
