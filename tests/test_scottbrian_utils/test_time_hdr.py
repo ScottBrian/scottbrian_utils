@@ -1,12 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Apr 22 15:48:21 2020
-
-@author: Scott Tuttle
-
-"""
-
+"""test_time_hdr.py module."""
 
 from datetime import datetime, timedelta
 import pytest
@@ -26,6 +18,7 @@ class ErrorTstTimeHdr(Exception):
 
 
 class InvalidRouteNum(ErrorTstTimeHdr):
+    """InvalidRouteNum exception class."""
     pass
 
 
@@ -46,7 +39,7 @@ dt_format_arg_list = ['0',
 
 @pytest.fixture(params=dt_format_arg_list)  # type: ignore
 def dt_format_arg(request: Any) -> str:
-    """Using different time formats"""
+    """Using different time formats."""
     return cast(str, request.param)
 
 
@@ -55,7 +48,7 @@ style_num_list = [1, 2, 3]
 
 @pytest.fixture(params=style_num_list)  # type: ignore
 def style_num(request: Any) -> int:
-    """Using different time_box styles"""
+    """Using different time_box styles."""
     return cast(int, request.param)
 
 
@@ -64,7 +57,7 @@ end_arg_list = ['0', '\n', '\n\n']
 
 @pytest.fixture(params=end_arg_list)  # type: ignore
 def end_arg(request: Any) -> str:
-    """Choose single or double space """
+    """Choose single or double space."""
     return cast(str, request.param)
 
 
@@ -73,7 +66,7 @@ file_arg_list = ['0', 'None', 'sys.stdout', 'sys.stderr']
 
 @pytest.fixture(params=file_arg_list)  # type: ignore
 def file_arg(request: Any) -> str:
-    """Using different file arg"""
+    """Using different file arg."""
     return cast(str, request.param)
 
 
@@ -82,7 +75,7 @@ flush_arg_list = ['0', 'True', 'False']
 
 @pytest.fixture(params=flush_arg_list)  # type: ignore
 def flush_arg(request: Any) -> str:
-    """False: do not flush print stream, True: flush print stream """
+    """False: do not flush print stream, True: flush print stream."""
     return cast(str, request.param)
 
 
@@ -96,14 +89,16 @@ enabled_arg_list = ['0',
 
 @pytest.fixture(params=enabled_arg_list)  # type: ignore
 def enabled_arg(request: Any) -> str:
-    """determines how to specify time_box_enabled """
+    """Determines how to specify time_box_enabled."""
     return cast(str, request.param)
 
 
 class TestStartStopHeader:
+    """TestStartStopHeader class."""
 
     @pytest.fixture(scope='class')  # type: ignore
     def hdr(self) -> "StartStopHeader":
+        """Method hdr."""
         return StartStopHeader('TestName')
 
     def test_print_start_msg(self, hdr: "StartStopHeader", capsys: Any,
@@ -111,7 +106,7 @@ class TestStartStopHeader:
                              end_arg: str,
                              file_arg: str,
                              flush_arg: str) -> None:
-
+        """test_print_start_msg method."""
         route_num, expected_dt_format, end, file, \
             flush, enabled_tf = TestTimeBox.get_arg_flags(
                       dt_format=dt_format_arg,
@@ -175,7 +170,7 @@ class TestStartStopHeader:
                            end_arg: str,
                            file_arg: str,
                            flush_arg: str) -> None:
-
+        """Method test_print_end_msg."""
         route_num, expected_dt_format, end, file, \
             flush, enabled_tf = TestTimeBox.get_arg_flags(
                       dt_format=dt_format_arg,
@@ -238,6 +233,7 @@ class TestStartStopHeader:
 
     @staticmethod
     def get_flower_box(msg1: str, msg2: str, end: str) -> str:
+        """Method get_flower_box."""
         flower_len: int = max(len(msg1), len(msg2)) + 2
         flowers: str = '*' * flower_len
         msg1 += ' ' * (flower_len - len(msg1) - 1) + '*'
@@ -248,7 +244,7 @@ class TestStartStopHeader:
 
 
 class TestTimeBox:
-
+    """Class TestTimeBox."""
     DT1: Final = 0b00010000
     END1: Final = 0b00001000
     FILE1: Final = 0b00000100
@@ -296,7 +292,7 @@ class TestTimeBox:
                       flush: str,
                       enabled: str
                       ) -> Tuple[int, DT_Format, str, str, bool, bool]:
-
+        """Static method get_arg_flags."""
         route_num = TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0
 
         expected_dt_format = DT_Format(StartStopHeader.default_dt_format)
@@ -340,10 +336,11 @@ class TestTimeBox:
                          # StartStopHeader.default_dt_format,
                          expected_end: str = '\n',
                          expected_enabled_tf: bool = True) -> str:
-        """Helper function to build the expected message to compare
-        with the actual message captured with capsys
-        """
+        """Static method get_expected_msg.
 
+        Helper function to build the expected message to compare
+        with the actual message captured with capsys.
+        """
         if expected_enabled_tf is False:
             if expected_func_msg == '':
                 return ''
@@ -430,7 +427,7 @@ class TestTimeBox:
                             flush_arg: str,
                             enabled_arg: str
                             ) -> None:
-
+        """Method test_timebox_router."""
         # func: Union[Callable[[int, str], int],
         #              Callable[[int, str], None],
         #              Callable[[], int],
@@ -541,7 +538,7 @@ class TestTimeBox:
                       expected_return_value: Union[int, None],
                       actual_return_value: Union[int, None]
                       ) -> None:
-
+        """Static method check_results."""
         if expected_file == 'sys.stdout':
             actual = capsys.readouterr().out
         else:
@@ -572,7 +569,7 @@ class TestTimeBox:
                           enabled: Union[bool, Callable[..., bool]],
                           f_style: int
                           ) -> Callable[..., Any]:
-
+        """Static method build_style1_func."""
         # func: Union[Callable[[int, str], int],
         #              Callable[[int, str], None],
         #              Callable[[], int],
@@ -867,7 +864,7 @@ class TestTimeBox:
                           flush: bool,
                           enabled: Union[bool, Callable[..., bool]]
                           ) -> Callable[[int, str], int]:
-
+        """Static method build_style2_func."""
         if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
             def func(a_int: int, a_str: str) -> int:
                 print(a_str)
@@ -1057,7 +1054,7 @@ class TestTimeBox:
                           flush: bool,
                           enabled: Union[bool, Callable[..., bool]]
                           ) -> Callable[[int, str], int]:
-
+        """Static method build_style3_func."""
         if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
             def func(a_int: int, a_str: str) -> int:
                 print(a_str)
@@ -1241,7 +1238,9 @@ class TestTimeBox:
 
 
 class TestTimeBoxDocstrings:
+    """Class TestTimeBoxDocstrings."""
     def test_timebox_with_example_1(self) -> None:
+        """Method test_timebox_with_example_1."""
         print()
         print('#' * 50)
         print('Example for StartStopHeader:')
@@ -1258,6 +1257,7 @@ class TestTimeBoxDocstrings:
         hdr.print_end_msg(file=sys.stdout)
 
     def test_timebox_with_example_2(self) -> None:
+        """Method test_timebox_with_example_2."""
         print()
         print('#' * 50)
         print('Example for time_box decorator:')
@@ -1270,6 +1270,7 @@ class TestTimeBoxDocstrings:
         func2()
 
     def test_timebox_with_example_3(self) -> None:
+        """Method test_timebox_with_example_3."""
         print()
         print('#' * 50)
         print('Example of printing to stderr:')
@@ -1282,6 +1283,7 @@ class TestTimeBoxDocstrings:
         func3()
 
     def test_timebox_with_example_4(self) -> None:
+        """Method test_timebox_with_example_4."""
         print()
         print('#' * 50)
         print('Example of statically wrapping function with time_box:')
@@ -1304,6 +1306,7 @@ class TestTimeBoxDocstrings:
         func4b()  # func4b is wrapped by time box
 
     def test_timebox_with_example_5(self) -> None:
+        """Method test_timebox_with_example_5."""
         print()
         print('#' * 50)
         print('Example of dynamically wrapping function with time_box:')
@@ -1322,6 +1325,7 @@ class TestTimeBoxDocstrings:
         func5()  # func5 is not wrapped by time_box
 
     def test_timebox_with_example_6(self) -> None:
+        """Method test_timebox_with_example_6."""
         print()
         print('#' * 50)
         print('Example of using different datetime format:')

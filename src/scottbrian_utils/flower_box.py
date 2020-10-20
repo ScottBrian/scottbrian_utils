@@ -1,13 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""flower_box.py module.
 
-# =============================================================================
-# Created on Mon Mar 16 23:30:55 2020
-#
-# @author: Scott Tuttle
-# =============================================================================
-
-"""
 ==========
 flower_box
 ==========
@@ -33,48 +25,47 @@ def print_flower_box_msg(msgs: Union[str, List[str]], *,
                          end: str = '\n',
                          file: Optional[TextIO] = None,
                          flush: bool = False) -> None:
-    """Print a single or multi-line message inside a flower box (asterisks).
+    r"""Print a single or multi-line message inside a flower box (asterisks).
 
-Args:
-    msgs: single message or list of messages to print
+    Args:
+        msgs: single message or list of messages to print
 
-    end: Specifies the argument to use on the print statement *end*
-        parameter. The default is \'\\\\n'.
+        end: Specifies the argument to use on the print statement *end*
+            parameter. The default is '\\n'.
 
-    file: Specifies the argument to use on the print statement
-        *file* parameter. The default is sys.stdout (via None).
+        file: Specifies the argument to use on the print statement
+            *file* parameter. The default is sys.stdout (via None).
 
-    flush: Specifies the argument to use on the print statement
-        *flush* parameter. The default is False.
+        flush: Specifies the argument to use on the print statement
+            *flush* parameter. The default is False.
 
-Returns:
-    None
+    Returns:
+        None
 
 
-:Example: print a two line message in a flower box
+    :Example: print a two line message in a flower box
 
->>> from scottbrian_utils.flower_box import print_flower_box_msg
+    >>> from scottbrian_utils.flower_box import print_flower_box_msg
 
->>> msg_list = ['This is my first line test message', '   and my second line']
->>> print_flower_box_msg(msg_list)
-<BLANKLINE>
-**************************************
-* This is my first line test message *
-*    and my second line              *
-**************************************
+    >>> msg_list = ['This is my first line test message', 'and my second line']
+    >>> print_flower_box_msg(msg_list)
+    <BLANKLINE>
+    **************************************
+    * This is my first line test message *
+    * and my second line                 *
+    **************************************
 
     """
-
-# =============================================================================
-#     Note: the following code that sets file to sys.stdout is needed to allow
-#     the test cases to use the pytest capsys built-in fixture. Having
-#     sys.stdout as the default parameter in the function definition does
-#     not work because capsys changes sys.stdout after the test case gets
-#     control, meaning the print statements in StartStopHeader code are not
-#     captured. This is also appears to be the case for doctest.
-#     So, we simply use None as the default and set file to sys.stdout here
-#     which works fine.
-# =============================================================================
+    # =========================================================================
+    # Note: the following code that sets file to sys.stdout is needed to allow
+    # the test cases to use the pytest capsys built-in fixture. Having
+    # sys.stdout as the default parameter in the function definition does
+    # not work because capsys changes sys.stdout after the test case gets
+    # control, meaning the print statements in StartStopHeader code are not
+    # captured. This is also appears to be the case for doctest.
+    # So, we simply use None as the default and set file to sys.stdout here
+    # which works fine.
+    # =========================================================================
 
     if file is None:
         file = sys.stdout

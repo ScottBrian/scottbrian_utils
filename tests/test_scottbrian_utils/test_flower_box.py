@@ -1,29 +1,23 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Mar 16 23:49:49 2020
-
-@author: Scott Tuttle
-"""
+"""flower_box.py module."""
 
 import pytest
 import sys
-
+from typing import Any, cast, List
 
 from scottbrian_utils.flower_box import print_flower_box_msg \
     as print_flower_box_msg
-from typing import Any, cast, List
 
 file_num_list = [0, 1, 2, 3]
 
 
 @pytest.fixture(params=file_num_list)  # type: ignore
 def file_num(request: Any) -> int:
-    """Using different file arg"""
+    """Using different file arg."""
     return cast(int, request.param)
 
 
 class TestFlowerBox:
+    """TestFlowerBox class."""
     # build case list for tests
     # first tuple item is the msg or msg list passed on the flower box call
     # second tuple item is the expected result captured in sys.sysout
@@ -179,6 +173,7 @@ class TestFlowerBox:
     def test_flower_box(self, capsys: Any, msg_list: List[str],
                         expected_result: str,
                         file_num: int) -> None:
+        """test_flower_box method."""
         if file_num == 0:
             print_flower_box_msg(msg_list)
             captured = capsys.readouterr().out
