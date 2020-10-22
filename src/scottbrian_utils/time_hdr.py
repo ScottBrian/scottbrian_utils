@@ -1,14 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-
-# =============================================================================
-# Created on Wed Apr 22 15:09:41 2020
-#
-# @author: Scott Tuttle
-# =============================================================================
-
-
 """Module time_hdr.
 
 ========
@@ -68,9 +57,9 @@ DT_Format = NewType('DT_Format', str)
 
 
 class StartStopHeader:
-    """Class StartStopHeader.
+    """Supports the time_box decorator.
 
-     Supports the time_box decorator by providing:
+     Provides:
 
         1) a place to store the start time and end time
         2) method print_start_msg to print the start header with the start time
@@ -86,11 +75,9 @@ class StartStopHeader:
     def __init__(self, func_name: str) -> None:
         """Store the input func_name and set the start and end times to None.
 
-        :param func_name: The name of the function to appear in the start and
-            stop messages
-
-        :returns: None
-
+        Args:
+            func_name: The name of the function to appear in the start and
+                         stop messages
         """
         self.func_name = func_name
         self.start_DT: datetime = datetime.max
@@ -107,23 +94,17 @@ class StartStopHeader:
         time - see the *print_start_msg* method).
 
         Args:
-            dt_format: Specifies the datetime format to use in the end
-                time message. The default is StartStopHeader.default_dt_format.
-
+            dt_format: Specifies the datetime format to use in the end time
+                         message. The default is
+                         StartStopHeader.default_dt_format.
             end: Specifies the argument to use on the print statement *end*
-                parameter for the end time message. The default is '\\n'.
-
+                   parameter for the end time message. The default is '\\n'.
             file: Specifies the argument to use on the print statement
-                *file* parameter for the end time message. The default is
-                sys.stdout (via None).
-
+                    *file* parameter for the end time message. The default is
+                    sys.stdout (via None).
             flush: Specifies the argument to use on the print statement
-                *flush* parameter for the end time message. The default is
-                False.
-
-        Returns:
-            None
-
+                     *flush* parameter for the end time message. The default is
+                     False.
         """
         #  note: the following code that sets file to sys.stdout is needed to
         #  allow the test cases to use the pytest capsys built-in fixture.
@@ -156,22 +137,16 @@ class StartStopHeader:
 
         Args:
             dt_format: Specifies the datetime format to use in the start
-                time message. The default is StartStopHeader.default_dt_format.
-
+                         time message. The default is
+                         StartStopHeader.default_dt_format.
             end: Specifies the argument to use on the print statement *end*
-                parameter for the start time message. The default is '\\n'.
-
+                   parameter for the start time message. The default is '\\n'.
             file: Specifies the argument to use on the print statement
-                *file* parameter for the start time message. The default is
-                sys.stdout (via None).
-
+                    *file* parameter for the start time message. The default is
+                    sys.stdout (via None).
             flush: Specifies the argument to use on the print statement
-                *flush* parameterfor the start time messsage. The default is
-                False.
-
-        Returns:
-            None
-
+                     *flush* parameterfor the start time messsage. The
+                     default is False.
 
         :Example: Using StartStopHeader with start and end messages.
 
@@ -225,7 +200,46 @@ def time_box(wrapped: F, *,
              flush: bool = False,
              time_box_enabled: Union[bool, Callable[..., bool]] = True
              ) -> F:
-    """Overloaded time_box function."""
+    r"""Overloaded time_box function.
+
+    This overloaded function is needed strictly for mypy type checking.
+
+    Note that there is a *wrapped* parameter for this overloaded
+    function. This is the case where the time_box is called directly
+    without using the pie decorator style. For example:
+    def func(): pass
+    func = time_box(func, dt_format = my_dt_format)
+
+    What happens is the time_box call returns with a callable function that
+    is the wrapped function. This new function is assigned to *func*. When
+    *func* is called, the decorator function issues a starting time
+    message, calls the wrapped function (i.e., *func* in this case), issues
+    the ending time message, and finally returns the return value from the
+    wrapped function, if one.
+
+    Args:
+        wrapped: Any callable function that accepts optional positional
+                   and/or optional keyword arguments, and optionally returns a
+                   value. The default is None, which will be the case when
+                   the pie decorator version is used with any of the following
+                   arguments specified.
+        dt_format: Specifies the datetime format to use in the start
+                     time message. The default is
+                     StartStopHeader.default_dt_format.
+        end: Specifies the argument to use on the print statement *end*
+               parameter for the start time and end time messages issued by the
+               StartStopHeader methods . The default is '\\n'.
+        file: Specifies the argument to use on the print statement
+                *file* parameter for the start time and end time messages
+                issued by the StartStopHeader methods . The default is
+                sys.stdout (via None).
+        flush: Specifies the argument to use on the print statement
+                 *flush* parameter for the start time and end time messages
+                 issued by the StartStopHeader methods . The default is False.
+        time_box_enabled: Specifies whether the start and end messages
+                            should be issued (True) or not (False). The
+                            default is True.
+    """
     ...
 
 
@@ -237,7 +251,46 @@ def time_box(*,
              flush: bool = False,
              time_box_enabled: Union[bool, Callable[..., bool]] = True
              ) -> Callable[[F], F]:
-    """Overloaded time_box function."""
+    r"""Overloaded time_box function.
+
+    This overloaded function is needed strictly for mypy type checking.
+
+    Note that there is no *wrapped* parameter for this overloaded
+    function. This is the case where the time_box decorator call is coded as,
+    for example:
+    @time_box(dt_format = my_dt_format)
+    def func(): pass
+
+    This results in the equivalent of:
+    def func(): pass
+    func = time_box(dt_format = my_dt_format)(func)
+
+    What happens is the time_box call returns with a callable function that
+    specifies as input a callable, and this returned function is immediately
+    called with *func* as the arument. This then results in the assignment
+    of *func* to the decorator function that issues a starting time
+    message, calls the wrapped function (i.e., *func* in this case), issues
+    the ending time message, and finally returns the return value from the
+    wrapped function, if one.
+
+    Args:
+        dt_format: Specifies the datetime format to use in the start
+                     time message. The default is
+                     StartStopHeader.default_dt_format.
+        end: Specifies the argument to use on the print statement *end*
+               parameter for the start time and end time messages issued by the
+               StartStopHeader methods . The default is '\\n'.
+        file: Specifies the argument to use on the print statement
+                *file* parameter for the start time and end time messages
+                issued by the StartStopHeader methods . The default is
+                sys.stdout (via None).
+        flush: Specifies the argument to use on the print statement
+                 *flush* parameter for the start time and end time messages
+                 issued by the StartStopHeader methods . The default is False.
+        time_box_enabled: Specifies whether the start and end messages
+                            should be issued (True) or not (False). The
+                            default is True.
+    """
     ...
 
 
@@ -251,8 +304,8 @@ def time_box(wrapped: Optional[F] = None, *,
     r"""Decorator to wrap a function in start time and end time messages.
 
     The time_box decorator can be invoked with or without arguments, and the
-    function being wrapped2 can optionally take arguments and optionally
-    return a value. The wrapt.decorator is used to preserve the wrapped2
+    function being wrapped can optionally take arguments and optionally
+    return a value. The wrapt.decorator is used to preserve the wrapped
     function introspection capabilities, and functools.partial is used to
     handle the case where decorator arguments are specified. The examples
     further below will help demonstrate the various ways in which the
@@ -260,33 +313,31 @@ def time_box(wrapped: Optional[F] = None, *,
 
     Args:
         wrapped: Any callable function that accepts optional positional
-            and/or optional keyword arguments, and optionally returns a value.
-            The default is None, which will be the case when the pie decorator
-            version is used with any of the following arguments specified.
-
+                   and/or optional keyword arguments, and optionally returns a
+                   value. The default is None, which will be the case when
+                   the pie decorator version is used with any of the following
+                   arguments specified.
         dt_format: Specifies the datetime format to use in the start
-            time message. The default is StartStopHeader.default_dt_format.
-
+                     time message. The default is
+                     StartStopHeader.default_dt_format.
         end: Specifies the argument to use on the print statement *end*
-            parameter for the start time and end time messages issued by the
-            StartStopHeader methods . The default is '\\n'.
-
+               parameter for the start time and end time messages issued by the
+               StartStopHeader methods . The default is '\\n'.
         file: Specifies the argument to use on the print statement
-            *file* parameter for the start time and end time messages issued by
-            the StartStopHeader methods . The default is
-            sys.stdout (via None).
-
+                *file* parameter for the start time and end time messages
+                issued by the StartStopHeader methods . The default is
+                sys.stdout (via None).
         flush: Specifies the argument to use on the print statement
-            *flush* parameterfor the start time and end time messages issued by
-            the StartStopHeader methods . The default is False.
-
+                 *flush* parameterfor the start time and end time messages
+                 issued by the StartStopHeader methods . The default is False.
         time_box_enabled: Specifies whether the start and end messages
-            should be issued (True) or not (False). The default is True.
+                            should be issued (True) or not (False). The
+                            default is True.
 
     Returns:
         A callable function that issues a starting time message, calls
-        the wrapped2 function, issues the ending time message, and finally
-        returns the return value from the wrapped2 function, if one.
+        the wrapped function, issues the ending time message, and finally
+        returns the return value from the wrapped function, if one.
 
 
     :Example: statically wrapping function with time_box
@@ -299,7 +350,7 @@ def time_box(wrapped: Optional[F] = None, *,
     ... def func4a() -> None:
     ...      print('this is sample text for _tbe = False static example')
 
-    >>> func4a()  # func4a is not wrapped2 by time box
+    >>> func4a()  # func4a is not wrapped by time box
     this is sample text for _tbe = False static example
 
     >>> _tbe = True
@@ -308,7 +359,7 @@ def time_box(wrapped: Optional[F] = None, *,
     ... def func4b() -> None:
     ...      print('this is sample text for _tbe = True static example')
 
-    >>> func4b()  # func4b is wrapped2 by time box
+    >>> func4b()  # func4b is wrapped by time box
     <BLANKLINE>
     ***********************************************
     * Starting func4b on Mon Jun 29 2020 18:22:51 *
@@ -332,7 +383,7 @@ def time_box(wrapped: Optional[F] = None, *,
     ... def func5() -> None:
     ...      print('this is sample text for the tbe dynamic example')
 
-    >>> func5()  # func5 is wrapped2 by time box
+    >>> func5()  # func5 is wrapped by time box
     <BLANKLINE>
     **********************************************
     * Starting func5 on Mon Jun 29 2020 18:22:51 *
@@ -345,7 +396,7 @@ def time_box(wrapped: Optional[F] = None, *,
     ********************************************
 
     >>> _tbe = False
-    >>> func5()  # func5 is not wrapped2 by time_box
+    >>> func5()  # func5 is not wrapped by time_box
     this is sample text for the tbe dynamic example
 
 

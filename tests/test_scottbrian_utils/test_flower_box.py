@@ -12,7 +12,14 @@ file_num_list = [0, 1, 2, 3]
 
 @pytest.fixture(params=file_num_list)  # type: ignore
 def file_num(request: Any) -> int:
-    """Using different file arg."""
+    """Using different file arg.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
     return cast(int, request.param)
 
 
@@ -173,7 +180,14 @@ class TestFlowerBox:
     def test_flower_box(self, capsys: Any, msg_list: List[str],
                         expected_result: str,
                         file_num: int) -> None:
-        """test_flower_box method."""
+        """test_flower_box method.
+
+        Args:
+            capsys: the capture stdout and stdserr fixture
+            msg_list: the list of messages to issue
+            expected_result: the expected result to compare against capsys
+            file_num: specifies whether to use stdout of stderr
+        """
         if file_num == 0:
             print_flower_box_msg(msg_list)
             captured = capsys.readouterr().out

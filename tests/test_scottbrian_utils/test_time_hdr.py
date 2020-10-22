@@ -39,7 +39,14 @@ dt_format_arg_list = ['0',
 
 @pytest.fixture(params=dt_format_arg_list)  # type: ignore
 def dt_format_arg(request: Any) -> str:
-    """Using different time formats."""
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
     return cast(str, request.param)
 
 
@@ -48,7 +55,14 @@ style_num_list = [1, 2, 3]
 
 @pytest.fixture(params=style_num_list)  # type: ignore
 def style_num(request: Any) -> int:
-    """Using different time_box styles."""
+    """Using different time_box styles.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
     return cast(int, request.param)
 
 
@@ -57,7 +71,14 @@ end_arg_list = ['0', '\n', '\n\n']
 
 @pytest.fixture(params=end_arg_list)  # type: ignore
 def end_arg(request: Any) -> str:
-    """Choose single or double space."""
+    """Choose single or double space.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
     return cast(str, request.param)
 
 
@@ -66,7 +87,14 @@ file_arg_list = ['0', 'None', 'sys.stdout', 'sys.stderr']
 
 @pytest.fixture(params=file_arg_list)  # type: ignore
 def file_arg(request: Any) -> str:
-    """Using different file arg."""
+    """Using different file arg.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
     return cast(str, request.param)
 
 
@@ -75,7 +103,14 @@ flush_arg_list = ['0', 'True', 'False']
 
 @pytest.fixture(params=flush_arg_list)  # type: ignore
 def flush_arg(request: Any) -> str:
-    """False: do not flush print stream, True: flush print stream."""
+    """False: do not flush print stream, True: flush print stream.
+
+     Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
     return cast(str, request.param)
 
 
@@ -89,7 +124,14 @@ enabled_arg_list = ['0',
 
 @pytest.fixture(params=enabled_arg_list)  # type: ignore
 def enabled_arg(request: Any) -> str:
-    """Determines how to specify time_box_enabled."""
+    """Determines how to specify time_box_enabled.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
     return cast(str, request.param)
 
 
@@ -98,7 +140,11 @@ class TestStartStopHeader:
 
     @pytest.fixture(scope='class')  # type: ignore
     def hdr(self) -> "StartStopHeader":
-        """Method hdr."""
+        """Method hdr.
+
+        Returns:
+            StartStopHeader instance
+        """
         return StartStopHeader('TestName')
 
     def test_print_start_msg(self, hdr: "StartStopHeader", capsys: Any,
@@ -106,7 +152,16 @@ class TestStartStopHeader:
                              end_arg: str,
                              file_arg: str,
                              flush_arg: str) -> None:
-        """test_print_start_msg method."""
+        """test_print_start_msg method.
+
+        Args:
+            hdr: instance of StartStopHeader
+            capsys: instance of the capture sys fixture
+            dt_format_arg: specifies dt_format_arg fixture
+            end_arg: specifies end_arg fixture
+            file_arg: specifies file_arg fixture
+            flush_arg: specifies the flush_arg fixture
+        """
         route_num, expected_dt_format, end, file, \
             flush, enabled_tf = TestTimeBox.get_arg_flags(
                       dt_format=dt_format_arg,
@@ -170,7 +225,16 @@ class TestStartStopHeader:
                            end_arg: str,
                            file_arg: str,
                            flush_arg: str) -> None:
-        """Method test_print_end_msg."""
+        """Method test_print_end_msg.
+
+        Args:
+            hdr: instance of StartStopHeader
+            capsys: instance of the capture sys fixture
+            dt_format_arg: specifies dt_format_arg fixture
+            end_arg: specifies end_arg fixture
+            file_arg: specifies file_arg fixture
+            flush_arg: specifies the flush_arg fixture
+        """
         route_num, expected_dt_format, end, file, \
             flush, enabled_tf = TestTimeBox.get_arg_flags(
                       dt_format=dt_format_arg,
@@ -233,7 +297,16 @@ class TestStartStopHeader:
 
     @staticmethod
     def get_flower_box(msg1: str, msg2: str, end: str) -> str:
-        """Method get_flower_box."""
+        """Method get_flower_box.
+
+        Args:
+            msg1: first message to issue
+            msg2: second message to issue
+            end: specifies the end arg to use on the print statement
+
+        Returns:
+            The flower box with the messages inside
+        """
         flower_len: int = max(len(msg1), len(msg2)) + 2
         flowers: str = '*' * flower_len
         msg1 += ' ' * (flower_len - len(msg1) - 1) + '*'
@@ -292,7 +365,18 @@ class TestTimeBox:
                       flush: str,
                       enabled: str
                       ) -> Tuple[int, DT_Format, str, str, bool, bool]:
-        """Static method get_arg_flags."""
+        """Static method get_arg_flags.
+
+        Args:
+            dt_format: 0 or the dt_format arg to use
+            end: 0 or the end arg to use
+            file: 0 or the file arg to use (stdout or stderr)
+            flush: 0 or the flush arg to use
+            enabled: 0 or the enabled arg to use
+
+        Returns:
+              the expected results based on the args
+        """
         route_num = TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0
 
         expected_dt_format = DT_Format(StartStopHeader.default_dt_format)
@@ -340,6 +424,17 @@ class TestTimeBox:
 
         Helper function to build the expected message to compare
         with the actual message captured with capsys.
+
+        Args:
+            expected_func_msg: message issued by wrapped function
+            actual: the message captured by capsys
+            expected_dt_format: dt_format to use to build expected message
+            expected_end: end arg to use to build expected message
+            expected_enabled_tf: expected enabled arg to use to build expected
+                                   message
+
+        Returns:
+            the expected message that is built based on the input args
         """
         if expected_enabled_tf is False:
             if expected_func_msg == '':
@@ -427,7 +522,17 @@ class TestTimeBox:
                             flush_arg: str,
                             enabled_arg: str
                             ) -> None:
-        """Method test_timebox_router."""
+        """Method test_timebox_router.
+
+        Args:
+            capsys: instance of the capture sysout fixture
+            style_num: style from fixture
+            dt_format_arg: dt_format to use from fixture
+            end_arg: end arg from fixture for the print invocation
+            file_arg: file arg from fixture
+            flush_arg: flush arg from fixture to use on print statement
+            enabled_arg: specifies whether decorator is enabled
+        """
         # func: Union[Callable[[int, str], int],
         #              Callable[[int, str], None],
         #              Callable[[], int],
@@ -538,7 +643,18 @@ class TestTimeBox:
                       expected_return_value: Union[int, None],
                       actual_return_value: Union[int, None]
                       ) -> None:
-        """Static method check_results."""
+        """Static method check_results.
+
+        Args:
+            capsys: instance of the capture sysout fixture
+            func_msg: message issued by wrapped function
+            expected_dt_format: dt_format that is used
+            expected_end: end arg for the print invocation
+            expected_file: sys.stdout or sys.stderr
+            expected_enabled_tf: specifies whether decorator is enabled
+            expected_return_value: the expected func return value
+            actual_return_value: the actual func return value
+        """
         if expected_file == 'sys.stdout':
             actual = capsys.readouterr().out
         else:
@@ -569,7 +685,23 @@ class TestTimeBox:
                           enabled: Union[bool, Callable[..., bool]],
                           f_style: int
                           ) -> Callable[..., Any]:
-        """Static method build_style1_func."""
+        """Static method build_style1_func.
+
+        Args:
+            route_num: specifies how to build the decorator
+            dt_format: dt format to use
+            end: end to use
+            file: specifies sys.stdout or sys.stderr for print statement
+            flush: specifies flush to use on print statement
+            enabled: specifies whether the decorator is enabled
+            f_style: type of call to build
+
+        Returns:
+              callable decorated function
+
+        Raises:
+              InvalidRouteNum: 'route_num was not recognized'
+        """
         # func: Union[Callable[[int, str], int],
         #              Callable[[int, str], None],
         #              Callable[[], int],
@@ -864,7 +996,22 @@ class TestTimeBox:
                           flush: bool,
                           enabled: Union[bool, Callable[..., bool]]
                           ) -> Callable[[int, str], int]:
-        """Static method build_style2_func."""
+        """Static method build_style2_func.
+
+        Args:
+            route_num: specifies how to build the decorator
+            dt_format: dt format to use
+            end: end to use
+            file: specifies sys.stdout or sys.stderr for print statement
+            flush: specifies flush to use on print statement
+            enabled: specifies whether the decorator is enabled
+
+        Returns:
+              callable decorated function
+
+        Raises:
+              InvalidRouteNum: 'route_num was not recognized'
+        """
         if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
             def func(a_int: int, a_str: str) -> int:
                 print(a_str)
@@ -1054,7 +1201,22 @@ class TestTimeBox:
                           flush: bool,
                           enabled: Union[bool, Callable[..., bool]]
                           ) -> Callable[[int, str], int]:
-        """Static method build_style3_func."""
+        """Static method build_style3_func.
+
+        Args:
+            route_num: specifies how to build the decorator
+            dt_format: dt format to use
+            end: end to use
+            file: specifies sys.stdout or sys.stderr for print statement
+            flush: specifies flush to use on print statement
+            enabled: specifies whether the decorator is enabled
+
+        Returns:
+              callable decorated function
+
+        Raises:
+              InvalidRouteNum: 'route_num was not recognized'
+        """
         if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
             def func(a_int: int, a_str: str) -> int:
                 print(a_str)

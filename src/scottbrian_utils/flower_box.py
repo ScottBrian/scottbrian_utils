@@ -29,19 +29,12 @@ def print_flower_box_msg(msgs: Union[str, List[str]], *,
 
     Args:
         msgs: single message or list of messages to print
-
         end: Specifies the argument to use on the print statement *end*
-            parameter. The default is '\\n'.
-
+               parameter. The default is '\\n'.
         file: Specifies the argument to use on the print statement
-            *file* parameter. The default is sys.stdout (via None).
-
+                *file* parameter. The default is sys.stdout (via None).
         flush: Specifies the argument to use on the print statement
-            *flush* parameter. The default is False.
-
-    Returns:
-        None
-
+                 *flush* parameter. The default is False.
 
     :Example: print a two line message in a flower box
 
