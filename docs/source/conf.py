@@ -14,13 +14,12 @@
 
 import os
 import sys
+
+src_dir = os.path.split(os.path.split(os.getcwd())[0])[0]
 sys.path.insert(0,
-                os.path.abspath(
-                    '/home/Tiger/PythonProjects/scottbrian_utils/src'))
+                os.path.normpath(os.path.join(src_dir, 'src')))
 sys.path.insert(0,
-                os.path.abspath(
-                    '/home/Tiger/PythonProjects/scottbrian_utils/.tox/docs'
-                    '/lib/python3.8/site-packages/scottbrian_utils'))
+                os.path.abspath(os.path.join(src_dir, 'src/scottbrian_utils')))
 
 # -- Project information -----------------------------------------------------
 
