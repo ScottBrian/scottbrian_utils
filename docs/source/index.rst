@@ -16,7 +16,6 @@
 
 .. automodule:: time_hdr
    :members:
-   :no-undoc-members:
 
 Indices and tables
 ==================
