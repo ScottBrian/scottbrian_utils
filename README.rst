@@ -2,6 +2,9 @@
 scottbrian-utils
 ================
 
+Intro
+=====
+
 With **@time_box**, you can decorate a function to be sandwiched between start
 time and end time messages like this:
 
@@ -55,7 +58,7 @@ Installation
 
 Linux:
 
-``pip install scottbrian_utils``
+``pip install scottbrian-utils``
 
 
 Usage examples:
@@ -84,8 +87,8 @@ print a two line message in a flower box
 *    and my second line              *
 **************************************
 
-time_box decorator example:
----------------------------
+time_box decorator example
+--------------------------
 
 wrap a function with time_box
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

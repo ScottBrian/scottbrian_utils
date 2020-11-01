@@ -36,7 +36,7 @@ The time_hdr module contains two items:
     2) a time_box decorator that wraps a function and uses the StartStopHeader
        to print the starting and ending time messages.
 
-time_box imports functools, sys, datetime, and wrapt
+time_box imports functools, sys, datetime, wrapt, and types from typing
 
 """
 
