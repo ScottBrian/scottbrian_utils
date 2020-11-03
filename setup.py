@@ -16,7 +16,6 @@ setup(
       name='scottbrian_utils',
       version='1.0.0',
       author='Scott Tuttle',
-      author_email='sbtuttle@outlook.com',
       description='Print header/trailer utilities',
       long_description=long_description,
       long_description_content_type='text/x-rst',
