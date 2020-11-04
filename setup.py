@@ -25,7 +25,6 @@ setup(
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: 3.8',
-          'Licence :: OSI Approved :: MIT Licence',
           'Operating System :: POSIX :: Linux'
                   ],
       project_urls={
