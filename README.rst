@@ -120,6 +120,12 @@ Release History
 * 1.0.0
     * Initial release
 
+* 1.0.1
+    * Added doc link to setup.py
+    * Added version number to __init__.py
+    * Added code in setup.py to get version number from __init__.py
+    * Added licence to setup.py classifiers
+
 Meta
 ====
 
