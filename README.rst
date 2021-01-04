@@ -5,6 +5,26 @@ scottbrian-utils
 Intro
 =====
 
+This is a collection of generally useful function for use with any application.
+
+1. The FileCatalog item allows you to map file names to their paths.
+2. The @time_box decorator allows you to print start, stop, and execution times.
+3. The print_flower_box_msg function allows you to print text in a flower box (i.e., surrounded by asterisks).
+
+With the FileCatalog item, you can code your application with generic file names and retrieve their paths at run time
+from a FileCatalog instance which contains the full paths. This allows you to have a different set of files for the same
+application, such as one set for production and another set for testing. Here's as example:
+
+>>> from scottbrian_utils.file_catalog import FileCatalog
+>>> prod_catalog = FileCatalog(('file1', '/run/media/prod_files/file1.csv'))
+>>> print(prod_catalog.get_path('file1'))
+/run/media/prod_files/file1.csv
+
+>>> test_cat = FileCatalog(('file1', '/run/media/test_files/test_file1.csv'))
+>>> print(test_cat.get_path('file1'))
+/run/media/test_files/test_file1.csv
+
+
 With **@time_box**, you can decorate a function to be sandwiched between start
 time and end time messages like this:
 
@@ -125,6 +145,9 @@ Release History
     * Added version number to __init__.py
     * Added code in setup.py to get version number from __init__.py
     * Added licence to setup.py classifiers
+
+* 1.1.0
+    * Added FileCatalog
 
 Meta
 ====

@@ -10,6 +10,8 @@
    :maxdepth: 4
    :caption: API Reference:
 
+   file_catalog <file_catalog_link>
+
    flower_box <flower_box_link>
 
    time_hdr <time_hdr_link>
