@@ -26,17 +26,15 @@ The file_catalog module contains:
     1) FileCatalog class with add_paths, del_paths,  and get_path methods
     2) FileSpec type alias that you can use for type hints in your code
     3) Error exception classes:
+
        a. FileNameNotFound
        b. FileSpecIncorrect
        c. IllegalAddAttempt
        d. IllegalDelAtempt
 
-file_catalog requires pandas and typing
-
 """
 
-import pandas as pd  # type: ignore
-from typing import List, Tuple, Type, TYPE_CHECKING, Union
+from typing import Dict, List, Tuple, Type, TYPE_CHECKING, Union
 
 FileSpec = Tuple[str, str]
 
@@ -74,6 +72,7 @@ class FileCatalog:
     one set of files is used for normal processing and another set is used for
     testing purposes.
     """
+
     def __init__(self,
                  file_specs: Union[None, FileSpec, List[FileSpec]] = None
                  ) -> None:
@@ -93,8 +92,7 @@ class FileCatalog:
         /run/media/file2.pdf
 
         """
-        self.catalog = pd.DataFrame(columns=['file_name', 'full_path'])
-        self.catalog = self.catalog.set_index(['file_name']).sort_index()
+        self.catalog: Dict[str, str] = {}
         if file_specs is not None:
             if isinstance(file_specs, tuple):  # single file_spec
                 file_specs = [file_specs]  # convert to list
@@ -144,14 +142,11 @@ class FileCatalog:
         num_start_entries = 2
         parms = ''
 
-        for i in range(num_entries):
+        for i, item in enumerate(self.catalog.items()):
             # we will do only a few entries at the top, then an ellipse,
             # and finish with the last entry
             if (i < num_start_entries) or (i == num_entries-1):
-                cat_index = "'" + self.catalog.index.values[i] + "'"
-                cat_path = "'" + self.catalog.iloc[i].full_path + "'"
-                parms = parms + indent_spaces + '(' + cat_index \
-                    + ', ' + cat_path + '),\n'
+                parms = parms + indent_spaces + str(item) + ',\n'
 
             # put in the ellipse
             if (i == num_start_entries) and (i != num_entries-1):
@@ -194,13 +189,12 @@ class FileCatalog:
 
         """
         try:
-            return str(self.catalog.loc[file_name].full_path)
+            return str(self.catalog[file_name])
         except KeyError:
             raise FileNameNotFound('Catalog does not have an entry for',
                                    'file name', file_name)
 
-    def add_paths(self, file_specs: Union[FileSpec, List[FileSpec]]) -> \
-            None:
+    def add_paths(self, file_specs: Union[FileSpec, List[FileSpec]]) -> None:
         """Add one or more paths to the catalog.
 
         Args:
@@ -253,8 +247,8 @@ class FileCatalog:
                 raise FileSpecIncorrect(
                     'Specified file_spec', file_spec, ' for Catalog is not'
                                                       ' a tuple(str, str)')
-            if file_spec[0] in self.catalog.index:
-                existing_path = self.catalog.loc[file_spec[0]].full_path
+            if file_spec[0] in self.catalog:
+                existing_path = self.catalog[file_spec[0]]
                 if file_spec[1] != existing_path:
                     raise IllegalAddAttempt(
                         'Attempting to add file name', file_spec[0],
@@ -263,13 +257,7 @@ class FileCatalog:
             else:  # entry does not yet exist
                 file_specs_to_add.append(file_spec)
         if file_specs_to_add:  # if we found some to add
-            df = pd.DataFrame([*file_specs_to_add],
-                              columns=['file_name', 'full_path'])
-
-            df = df.set_index(['file_name'])
-
-            # add in the new entries to the catalog and sort
-            self.catalog = self.catalog.append(df).sort_index()
+            self.catalog.update(file_specs_to_add)
 
     def del_paths(self,
                   file_specs: Union[FileSpec, List[FileSpec]]) -> None:
@@ -332,8 +320,8 @@ class FileCatalog:
                     'Specified file_spec', file_spec, ' for Catalog is not'
                                                       ' a tuple(str, str)')
 
-            if file_spec[0] in self.catalog.index:
-                existing_path = self.catalog.loc[file_spec[0]].full_path
+            if file_spec[0] in self.catalog:
+                existing_path = self.catalog[file_spec[0]]
                 if file_spec[1] != existing_path:
                     raise IllegalDelAttempt(
                         'Attempting to delete file name', file_spec[0],
@@ -344,5 +332,5 @@ class FileCatalog:
                 del_index.append(file_spec[0])
 
         # remove the requested entries
-        if del_index:
-            self.catalog.drop(index=del_index, inplace=True)
+        for key in del_index:
+            del self.catalog[key]
