@@ -240,7 +240,6 @@ def time_box(wrapped: F, *,
                             should be issued (True) or not (False). The
                             default is True.
     """
-    ...
 
 
 @overload

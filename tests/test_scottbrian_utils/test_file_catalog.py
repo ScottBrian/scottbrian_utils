@@ -56,43 +56,49 @@ class TestFileCatalog:
 
     def test_file_catalog_with_empty_file_specs(self) -> None:
         """test_file_catalog with empty file_specs."""
-        with pytest.raises(cat.FileSpecIncorrect):
-            _ = cat.FileCatalog(())  # type: ignore
+        # with pytest.raises(cat.FileSpecIncorrect):
+        #     _ = cat.FileCatalog(())  # type: ignore
 
-        with pytest.raises(cat.FileSpecIncorrect):
-            _ = cat.FileCatalog([])
+        # with pytest.raises(cat.FileSpecIncorrect):
+        #     _ = cat.FileCatalog([])
 
-        with pytest.raises(cat.FileSpecIncorrect):
+        with pytest.raises(ValueError):
             _ = cat.FileCatalog([()])  # type: ignore
 
-        with pytest.raises(cat.FileSpecIncorrect):
+        with pytest.raises(ValueError):
             _ = cat.FileCatalog('file1')  # type: ignore
 
-        with pytest.raises(cat.FileSpecIncorrect):
+        with pytest.raises(ValueError):
             _ = cat.FileCatalog(('file1'))  # type: ignore
 
-        with pytest.raises(cat.FileSpecIncorrect):
+        with pytest.raises(ValueError):
+            _ = cat.FileCatalog(('file1', 'path1'))  # type: ignore
+
+        with pytest.raises(ValueError):
             _ = cat.FileCatalog(['file1'])  # type: ignore
 
-        with pytest.raises(cat.FileSpecIncorrect):
+        with pytest.raises(ValueError):
             _ = cat.FileCatalog([('file1')])  # type: ignore
 
-        with pytest.raises(cat.FileSpecIncorrect):
+        with pytest.raises(ValueError):
+            _ = cat.FileCatalog([('file1',)])  # type: ignore
+
+        with pytest.raises(TypeError):
             _ = cat.FileCatalog([(42)])  # type: ignore
 
         with pytest.raises(cat.FileSpecIncorrect):
             _ = cat.FileCatalog([(42, 24)])  # type: ignore
 
-        with pytest.raises(cat.FileSpecIncorrect):
-            _ = cat.FileCatalog([(42, 'path1')])  # type: ignore
+        # with pytest.raises(cat.FileSpecIncorrect):
+        #     _ = cat.FileCatalog([(42, 'path1')])  # type: ignore
 
         with pytest.raises(cat.FileSpecIncorrect):
             _ = cat.FileCatalog([('file1', 42)])  # type: ignore
 
-        with pytest.raises(cat.FileSpecIncorrect):
+        with pytest.raises(ValueError):
             _ = cat.FileCatalog([[('file1', 'path1')]])  # type: ignore
 
-        with pytest.raises(cat.FileSpecIncorrect):
+        with pytest.raises(ValueError):
             _ = cat.FileCatalog([(('file1', 'path1'),)])  # type: ignore
 
     def test_file_catalog_with_single_file_specs(self,
@@ -106,39 +112,24 @@ class TestFileCatalog:
         file_1 = 'file1'
         path_1 = '/run/media/file1.csv'
 
-        for i in range(9):
+        for i in range(5):
             if i == 0:
-                a_catalog = cat.FileCatalog(('file1', '/run/media/file1.csv'))
-
-            elif i == 1:
                 a_catalog = cat.FileCatalog([('file1',
                                               '/run/media/file1.csv')])
-
-            elif i == 2:
-                a_catalog = cat.FileCatalog((file_1, path_1))
-
-            elif i == 3:
+            elif i == 1:
                 a_catalog = cat.FileCatalog([(file_1, path_1)])
 
-            elif i == 4:
-                file_spec4 = ('file1', '/run/media/file1.csv')
-                a_catalog = cat.FileCatalog(file_spec4)
-
-            elif i == 5:
+            elif i == 2:
                 file_spec5 = ('file1', '/run/media/file1.csv')
                 a_catalog = cat.FileCatalog([file_spec5])
 
-            elif i == 6:
+            elif i == 3:
                 file_spec6 = (file_1, path_1)
-                a_catalog = cat.FileCatalog(file_spec6)
+                a_catalog = cat.FileCatalog([file_spec6])
 
-            elif i == 7:
-                file_spec7 = (file_1, path_1)
-                a_catalog = cat.FileCatalog([file_spec7])
-
-            else:  # i == 8:
-                file_spec8 = [(file_1, path_1)]
-                a_catalog = cat.FileCatalog(file_spec8)
+            else:  # i == 4
+                file_spec7 = [(file_1, path_1)]
+                a_catalog = cat.FileCatalog(file_spec7)
 
             assert len(a_catalog) == 1
 
@@ -182,7 +173,7 @@ class TestFileCatalog:
                     with pytest.raises(cat.FileNameNotFound):
                         _ = a_catalog.get_path(file_name)
 
-                    a_catalog.add_paths(file_spec)
+                    a_catalog.add_paths([file_spec])
                     assert a_catalog.get_path(file_name) == full_path
                     assert len(a_catalog) == k+1
 
@@ -243,7 +234,7 @@ class TestFileCatalog:
             assert a_catalog.get_path(file_name) == full_path
 
             # try to add same entry again
-            a_catalog.add_paths((file_name, full_path))
+            a_catalog.add_paths([(file_name, full_path)])
             assert len(a_catalog) == len(file_specs)
             assert a_catalog.get_path(file_name) == full_path
 
@@ -252,7 +243,7 @@ class TestFileCatalog:
             # should get the exception with same file name but different path
 
             with pytest.raises(cat.IllegalAddAttempt):
-                a_catalog.add_paths((file_name, diff_path))
+                a_catalog.add_paths([(file_name, diff_path)])
 
             # ensure we still have expected results
             assert len(a_catalog) == len(file_specs)
@@ -320,12 +311,12 @@ class TestFileCatalog:
             full_path = file_spec[1]
 
             for i in range(2):
-                a_catalog.add_paths(file_spec)
+                a_catalog.add_paths([file_spec])
                 assert a_catalog.get_path(file_name) == full_path
                 assert len(a_catalog) == 1
 
                 if i == 0:
-                    a_catalog.del_paths(file_spec)  # delete specific path
+                    a_catalog.del_paths([file_spec])  # delete specific path
                 else:
                     a_catalog.del_paths(file_specs)  # delete them all
 
@@ -339,7 +330,7 @@ class TestFileCatalog:
                 assert len(a_catalog) == len(file_specs)
 
                 if i == 0:
-                    a_catalog.del_paths(file_spec)  # delete specific path
+                    a_catalog.del_paths([file_spec])  # delete specific path
                     assert len(a_catalog) == len(file_specs) - 1
                     with pytest.raises(cat.FileNameNotFound):
                         _ = a_catalog.get_path(file_name)
@@ -380,7 +371,7 @@ class TestFileCatalog:
             # should get del exception with same file name but different path
 
             with pytest.raises(cat.IllegalDelAttempt):
-                a_catalog.del_paths((file_name, diff_path))
+                a_catalog.del_paths([(file_name, diff_path)])
 
             # ensure we still have expected results
             assert len(a_catalog) == len(file_specs)

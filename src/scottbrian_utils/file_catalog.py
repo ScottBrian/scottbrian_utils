@@ -13,11 +13,11 @@ application.
 :Example: instantiate production and test catalogs for one file
 
 >>> from scottbrian_utils.file_catalog import FileCatalog
->>> prod_catalog = FileCatalog(('file1', '/run/media/prod_files/file1.csv'))
+>>> prod_catalog = FileCatalog([('file1', '/run/media/prod_files/file1.csv')])
 >>> print(prod_catalog.get_path('file1'))
 /run/media/prod_files/file1.csv
 
->>> test_cat = FileCatalog(('file1', '/run/media/test_files/test_file1.csv'))
+>>> test_cat = FileCatalog([('file1', '/run/media/test_files/test_file1.csv')])
 >>> print(test_cat.get_path('file1'))
 /run/media/test_files/test_file1.csv
 
@@ -34,7 +34,7 @@ The file_catalog module contains:
 
 """
 
-from typing import Dict, List, Tuple, Type, TYPE_CHECKING, Union
+from typing import Dict, List, Tuple, Type, TYPE_CHECKING, Optional
 
 FileSpec = Tuple[str, str]
 
@@ -74,7 +74,8 @@ class FileCatalog:
     """
 
     def __init__(self,
-                 file_specs: Union[None, FileSpec, List[FileSpec]] = None
+                 # file_specs: Union[None, FileSpec, List[FileSpec]] = None
+                 file_specs: Optional[List[FileSpec]] = None
                  ) -> None:
         """Store the input file specs to a data frame.
 
@@ -94,8 +95,6 @@ class FileCatalog:
         """
         self.catalog: Dict[str, str] = {}
         if file_specs is not None:
-            if isinstance(file_specs, tuple):  # single file_spec
-                file_specs = [file_specs]  # convert to list
             self.add_paths(file_specs)
 
     def __len__(self) -> int:
@@ -194,7 +193,7 @@ class FileCatalog:
             raise FileNameNotFound('Catalog does not have an entry for',
                                    'file name', file_name)
 
-    def add_paths(self, file_specs: Union[FileSpec, List[FileSpec]]) -> None:
+    def add_paths(self, file_specs: List[FileSpec]) -> None:
         """Add one or more paths to the catalog.
 
         Args:
@@ -203,7 +202,7 @@ class FileCatalog:
                           item is the full path to the file
 
         Raises:
-            FileSpecIncorrect: The input file_specs is not correct
+            FileSpecIncorrect: The input path is not a string
             IllegalAddAttempt: Entry already exists with different path
 
         The entries to be added are specified in the file_specs argument.
@@ -221,7 +220,7 @@ class FileCatalog:
 
         >>> from scottbrian_utils.file_catalog import FileCatalog
         >>> a_catalog = FileCatalog()
-        >>> a_catalog.add_paths(('file1', '/run/media/file1.csv'))
+        >>> a_catalog.add_paths([('file1', '/run/media/file1.csv')])
         >>> print(a_catalog)
         FileCatalog(('file1', '/run/media/file1.csv'))
         >>> a_catalog.add_paths([('file2', '/run/media/file2.csv'),
@@ -231,36 +230,20 @@ class FileCatalog:
                      ('file2', '/run/media/file2.csv'),
                      ('file3', 'path3')])
         """
-        if isinstance(file_specs, tuple):  # single file_spec
-            file_specs = [file_specs]  # convert to list
-
-        if len(file_specs) == 0:
-            raise FileSpecIncorrect(
-                'Specified file_specs', file_specs, ' is empty')
-
-        file_specs_to_add = []
-        for file_spec in file_specs:
-            if not (isinstance(file_spec, tuple)
-                    and len(file_spec) == 2
-                    and isinstance(file_spec[0], str)
-                    and isinstance(file_spec[1], str)):
-                raise FileSpecIncorrect(
-                    'Specified file_spec', file_spec, ' for Catalog is not'
-                                                      ' a tuple(str, str)')
-            if file_spec[0] in self.catalog:
-                existing_path = self.catalog[file_spec[0]]
-                if file_spec[1] != existing_path:
-                    raise IllegalAddAttempt(
-                        'Attempting to add file name', file_spec[0],
-                        ' with path', file_spec[1], 'to existing entry with '
-                        'path', existing_path)
-            else:  # entry does not yet exist
-                file_specs_to_add.append(file_spec)
-        if file_specs_to_add:  # if we found some to add
-            self.catalog.update(file_specs_to_add)
+        dict_to_add = dict(file_specs)
+        for file_name, path in dict_to_add.items():
+            if not isinstance(path, str):
+                raise FileSpecIncorrect('Specified path', path, 'not str')
+            if ((file_name in self.catalog) and
+                    (self.catalog[file_name] != path)):
+                raise IllegalAddAttempt(
+                    'Attempting to add file name', file_name,
+                    ' with path', path, 'to existing entry with '
+                    'path', self.catalog[file_name])
+        self.catalog.update(dict_to_add)
 
     def del_paths(self,
-                  file_specs: Union[FileSpec, List[FileSpec]]) -> None:
+                  file_specs: List[FileSpec]) -> None:
         """Delete one or more paths from the catalog.
 
         Args:
@@ -269,7 +252,7 @@ class FileCatalog:
                           item is the full path to the file
 
         Raises:
-            FileSpecIncorrect: The input file_specs is not correct
+            FileSpecIncorrect: The input path is not a string
             IllegalDelAttempt: Attempt to delete entry with different path
 
         The entries to be deleted are specified in the file_specs argument.
@@ -303,34 +286,22 @@ class FileCatalog:
                      ('file4', 'path4')])
 
         """
-        if isinstance(file_specs, tuple):  # single file_spec
-            file_specs = [file_specs]  # convert to list
-
-        if len(file_specs) == 0:
-            raise FileSpecIncorrect(
-                'Specified file_specs', file_specs, ' is empty')
-
+        dict_to_del = dict(file_specs)
         del_index = []
-        for file_spec in file_specs:
-            if not (isinstance(file_spec, tuple)
-                    and len(file_spec) == 2
-                    and isinstance(file_spec[0], str)
-                    and isinstance(file_spec[1], str)):
-                raise FileSpecIncorrect(
-                    'Specified file_spec', file_spec, ' for Catalog is not'
-                                                      ' a tuple(str, str)')
 
-            if file_spec[0] in self.catalog:
-                existing_path = self.catalog[file_spec[0]]
-                if file_spec[1] != existing_path:
+        for file_name, path in dict_to_del.items():
+            if not isinstance(path, str):
+                raise FileSpecIncorrect('Specified path', path, 'not str')
+
+            if file_name in self.catalog:
+                if self.catalog[file_name] != path:
                     raise IllegalDelAttempt(
-                        'Attempting to delete file name', file_spec[0],
-                        ' with path', file_spec[1], 'from existing entry '
-                        'with path', existing_path)
-
+                        'Attempting to delete file name', file_name,
+                        ' with path', path, 'from to existing entry with path',
+                        self.catalog[file_name])
                 # if here then no exception and we can delete this path
-                del_index.append(file_spec[0])
+                del_index.append(file_name)
 
         # remove the requested entries
-        for key in del_index:
-            del self.catalog[key]
+        for file_name in del_index:
+            del self.catalog[file_name]
