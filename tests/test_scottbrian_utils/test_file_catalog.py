@@ -2,35 +2,49 @@
 
 # standard library imports
 import pytest
-from typing import Any, List
+from typing import Any, cast, List, Tuple
 
 # third party imports
 
 # local imports
 import scottbrian_utils.file_catalog as cat
 
+# build case list for tests
+# first tuple item is the file name and second tuple item is the
+# full file path
+file_specs_list = [[('file1', '/run/media/file1.csv')],
+                   [('file1', '/run/media/file1.csv'),
+                    ('file2', '/run/media/file2.csv')],
+                   [('file1', '/run/media/file1.csv'),
+                    ('file2', '/run/media/file2.csv'),
+                    ('file3', '/run/media/file3.csv')],
+                   [('file1', '/run/media/file1.csv'),
+                    ('file2', '/run/media/file2.csv'),
+                    ('file3', '/run/media/file3.csv'),
+                    ('file4', '/run/media/file4.csv')],
+                   [('file1', '/run/media/file1.csv'),
+                    ('file2', '/run/media/file2.csv'),
+                    ('file3', '/run/media/file3.csv'),
+                    ('file4', '/run/media/file4.csv'),
+                    ('file5', '/run/media/file5.csv')]
+                   ]
+
+
+@pytest.fixture(params=file_specs_list)  # type: ignore
+def file_specs(request: Any) -> List[Tuple[str, str]]:
+    """Pytest fixture for different file_specs args.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(List[Tuple[str, str]], request.param)
+
 
 class TestFileCatalog:
     """TestFileCatalog class."""
-    # build case list for tests
-    # first tuple item is the file name and second tuple item is the
-    # full file path
-    case_list = [[('file1', '/run/media/file1.csv')],
-                 [('file1', '/run/media/file1.csv'),
-                  ('file2', '/run/media/file2.csv')],
-                 [('file1', '/run/media/file1.csv'),
-                  ('file2', '/run/media/file2.csv'),
-                  ('file3', '/run/media/file3.csv')],
-                 [('file1', '/run/media/file1.csv'),
-                  ('file2', '/run/media/file2.csv'),
-                  ('file3', '/run/media/file3.csv'),
-                  ('file4', '/run/media/file4.csv')],
-                 [('file1', '/run/media/file1.csv'),
-                  ('file2', '/run/media/file2.csv'),
-                  ('file3', '/run/media/file3.csv'),
-                  ('file4', '/run/media/file4.csv'),
-                  ('file5', '/run/media/file5.csv')]
-                 ]
 
     def test_file_catalog_with_no_file_specs(self,
                                              capsys: Any) -> None:
@@ -112,7 +126,7 @@ class TestFileCatalog:
         file_1 = 'file1'
         path_1 = '/run/media/file1.csv'
 
-        for i in range(5):
+        for i in range(9):
             if i == 0:
                 a_catalog = cat.FileCatalog([('file1',
                                               '/run/media/file1.csv')])
@@ -120,16 +134,30 @@ class TestFileCatalog:
                 a_catalog = cat.FileCatalog([(file_1, path_1)])
 
             elif i == 2:
-                file_spec5 = ('file1', '/run/media/file1.csv')
-                a_catalog = cat.FileCatalog([file_spec5])
+                file_spec2 = ('file1', '/run/media/file1.csv')
+                a_catalog = cat.FileCatalog([file_spec2])
 
             elif i == 3:
-                file_spec6 = (file_1, path_1)
-                a_catalog = cat.FileCatalog([file_spec6])
+                file_spec3 = (file_1, path_1)
+                a_catalog = cat.FileCatalog([file_spec3])
 
-            else:  # i == 4
-                file_spec7 = [(file_1, path_1)]
+            elif i == 4:
+                file_spec4 = [(file_1, path_1)]
+                a_catalog = cat.FileCatalog(file_spec4)
+
+            elif i == 5:
+                a_catalog = cat.FileCatalog({'file1': '/run/media/file1.csv'})
+
+            elif i == 6:
+                a_catalog = cat.FileCatalog({file_1: path_1})
+
+            elif i == 7:
+                file_spec7 = {'file1': '/run/media/file1.csv'}
                 a_catalog = cat.FileCatalog(file_spec7)
+
+            else:  # i == 8:
+                file_spec8 = {file_1: path_1}
+                a_catalog = cat.FileCatalog(file_spec8)
 
             assert len(a_catalog) == 1
 
@@ -141,16 +169,14 @@ class TestFileCatalog:
             print(a_catalog)  # test of __repr__
             captured = capsys.readouterr().out
 
-            expected = "FileCatalog(('file1', '/run/media/file1.csv'))\n"
+            expected = "FileCatalog([('file1', '/run/media/file1.csv')])\n"
 
             assert captured == expected
 
-    @pytest.mark.parametrize('file_specs',  # type: ignore
-                             case_list)
-    def test_file_catalog_with_list_of_file_specs(
-            self,
-            capsys: Any,
-            file_specs: List[cat.FileSpec]) -> None:
+    def test_catalog_with_list_of_file_specs(self,
+                                             capsys: Any,
+                                             file_specs: cat.FileSpec
+                                             ) -> None:
         """test_file_catalog with lists of file_specs.
 
         Args:
@@ -170,10 +196,12 @@ class TestFileCatalog:
                     assert len(a_catalog) == k
                     file_name = file_spec[0]
                     full_path = file_spec[1]
+
                     with pytest.raises(cat.FileNameNotFound):
                         _ = a_catalog.get_path(file_name)
 
-                    a_catalog.add_paths([file_spec])
+                    a_file_spec = (file_name, full_path)
+                    a_catalog.add_paths([a_file_spec])
                     assert a_catalog.get_path(file_name) == full_path
                     assert len(a_catalog) == k+1
 
@@ -195,20 +223,17 @@ class TestFileCatalog:
 
             parms = parms[:-2]  # remove final comma and new_line
 
-            if len(file_specs) > 1:
-                parms = '[' + parms + ']'  # brackets when more than one entry
+            parms = '[' + parms + ']'  # brackets
 
             expected = 'FileCatalog(' + parms + ')\n'
             print(a_catalog)  # test of __repr__
             captured = capsys.readouterr().out
             assert captured == expected
 
-    @pytest.mark.parametrize('file_specs',  # type: ignore
-                             case_list)
     def test_file_catalog_add_paths_exceptions(
             self,
             capsys: Any,
-            file_specs: List[cat.FileSpec]) -> None:
+            file_specs: cat.FileSpec) -> None:
         """test_file_catalog add_paths exceptions.
 
         Args:
@@ -263,12 +288,10 @@ class TestFileCatalog:
             assert len(a_catalog) == len(file_specs)
             assert a_catalog.get_path(file_name) == full_path
 
-    @pytest.mark.parametrize('file_specs',  # type: ignore
-                             case_list)
     def test_file_catalog_del_paths_with_list_of_file_specs(
             self,
             capsys: Any,
-            file_specs: List[cat.FileSpec]) -> None:
+            file_specs: cat.FileSpec) -> None:
         """test_file_catalog delete paths with lists of file_specs.
 
         Args:
@@ -310,13 +333,15 @@ class TestFileCatalog:
             file_name = file_spec[0]
             full_path = file_spec[1]
 
+            a_file_spec: Tuple[str, str] = (file_name, full_path)
+
             for i in range(2):
-                a_catalog.add_paths([file_spec])
+                a_catalog.add_paths([a_file_spec])
                 assert a_catalog.get_path(file_name) == full_path
                 assert len(a_catalog) == 1
 
                 if i == 0:
-                    a_catalog.del_paths([file_spec])  # delete specific path
+                    a_catalog.del_paths([a_file_spec])  # delete specific path
                 else:
                     a_catalog.del_paths(file_specs)  # delete them all
 
@@ -330,7 +355,7 @@ class TestFileCatalog:
                 assert len(a_catalog) == len(file_specs)
 
                 if i == 0:
-                    a_catalog.del_paths([file_spec])  # delete specific path
+                    a_catalog.del_paths([a_file_spec])  # delete specific path
                     assert len(a_catalog) == len(file_specs) - 1
                     with pytest.raises(cat.FileNameNotFound):
                         _ = a_catalog.get_path(file_name)
@@ -340,12 +365,10 @@ class TestFileCatalog:
                     with pytest.raises(cat.FileNameNotFound):
                         _ = a_catalog.get_path(file_name)
 
-    @pytest.mark.parametrize('file_specs',  # type: ignore
-                             case_list)
     def test_file_catalog_del_paths_exceptions(
             self,
             capsys: Any,
-            file_specs: List[cat.FileSpec]) -> None:
+            file_specs: cat.FileSpec) -> None:
         """test_file_catalog add_paths exceptions.
 
         Args:
@@ -365,6 +388,16 @@ class TestFileCatalog:
 
             # we should always find the entries we added earlier
             assert a_catalog.get_path(file_name) == full_path
+
+            # should get FileSpecIncorrect with good file_name but bad path
+
+            with pytest.raises(cat.FileSpecIncorrect):
+                a_catalog.del_paths([(file_name, 42)])  # type: ignore
+
+            # should get FileSpecIncorrect with unknown file_name but bad path
+
+            with pytest.raises(cat.FileSpecIncorrect):
+                a_catalog.del_paths([('unknown', 42)])  # type: ignore
 
             diff_path = 'different/path'
 

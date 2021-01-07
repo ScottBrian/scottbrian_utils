@@ -290,7 +290,6 @@ def time_box(*,
                             should be issued (True) or not (False). The
                             default is True.
     """
-    ...
 
 
 def time_box(wrapped: Optional[F] = None, *,

@@ -34,9 +34,9 @@ The file_catalog module contains:
 
 """
 
-from typing import Dict, List, Tuple, Type, TYPE_CHECKING, Optional
+from typing import Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
 
-FileSpec = Tuple[str, str]
+FileSpec = Union[List[Tuple[str, str]], Dict[str, str]]
 
 
 class FileCatalogError(Exception):
@@ -75,7 +75,7 @@ class FileCatalog:
 
     def __init__(self,
                  # file_specs: Union[None, FileSpec, List[FileSpec]] = None
-                 file_specs: Optional[List[FileSpec]] = None
+                 file_specs: Optional[FileSpec] = None
                  ) -> None:
         """Store the input file specs to a data frame.
 
@@ -155,10 +155,7 @@ class FileCatalog:
             indent_spaces = ' ' * (len(classname) + len('(['))
 
         if parms:  # if we have entries, strip the final comma and newline
-            parms = parms[:-2]
-
-        if num_entries > 1:  # if more than one entry, add brackets
-            parms = '[' + parms + ']'
+            parms = '[' + parms[:-2] + ']'
 
         return f'{classname}({parms})'
 
@@ -193,7 +190,7 @@ class FileCatalog:
             raise FileNameNotFound('Catalog does not have an entry for',
                                    'file name', file_name)
 
-    def add_paths(self, file_specs: List[FileSpec]) -> None:
+    def add_paths(self, file_specs: FileSpec) -> None:
         """Add one or more paths to the catalog.
 
         Args:
@@ -243,7 +240,7 @@ class FileCatalog:
         self.catalog.update(dict_to_add)
 
     def del_paths(self,
-                  file_specs: List[FileSpec]) -> None:
+                  file_specs: FileSpec) -> None:
         """Delete one or more paths from the catalog.
 
         Args:
