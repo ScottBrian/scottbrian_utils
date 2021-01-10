@@ -4,27 +4,46 @@
 file_catalog
 ============
 
-With **file_catalog**, you can set up a mapping of file names to
-their full path strings. This make it easy to use in an application where the
-full paths might be different for various runs, such as between production and
-test. This way, you can keep different catalogs for different runs of the
-application.
+With **file_catalog**, you can set up a mapping of file names to their paths.
+An application can then use the catalog to retrieve the paths based on
+the file name. By keeping different catalogs with the same file names but
+different paths, different runs of the application can use each of the
+different catalogs as appropriate. For example, one catalog could be used
+for testing purposes and another for normal production.
 
 :Example: instantiate production and test catalogs for one file
 
 >>> from scottbrian_utils.file_catalog import FileCatalog
->>> prod_catalog = FileCatalog([('file1', '/run/media/prod_files/file1.csv')])
->>> print(prod_catalog.get_path('file1'))
-/run/media/prod_files/file1.csv
+>>> prod_cat = FileCatalog({'file1': Path('/prod_files/file1.csv')})
+>>> print(prod_cat.get_path('file1'))
+/prod_files/file1.csv
 
->>> test_cat = FileCatalog([('file1', '/run/media/test_files/test_file1.csv')])
+>>> test_cat = FileCatalog({'file1': Path('/test_files/test_file1.csv')})
 >>> print(test_cat.get_path('file1'))
-/run/media/test_files/test_file1.csv
+/test_files/test_file1.csv
+
+Note that you can use any file name you want as long as it is a string - it
+does not have to be any part of the path
+
+:Example: instantiate a catalog for two files with:
+>>> a_cat = FileCatalog({'sales': Path('/home/T/files/file1.csv'),
+...                      'inventory': Path('/home/T/files/file2.csv')})
+>>> print(a_cat)
+FileCatalog({'sales': Path('/home/T/files/file1.csv'),
+             'inventory': Path('/home/T/files/file2.csv')})
+
+>>> print(a_cat.get_path('inventory'))
+/home/T/files/file2.csv
+
+>>> from os import fspath
+>>> print(fspath(a_cat.get_path('sales')))
+/home/T/files/file1.csv
+
 
 The file_catalog module contains:
 
     1) FileCatalog class with add_paths, del_paths,  and get_path methods
-    2) FileSpec type alias that you can use for type hints in your code
+    2) FileSpec, FileSpecs type aliases that you can use for type hints
     3) Error exception classes:
 
        a. FileNameNotFound
@@ -33,10 +52,10 @@ The file_catalog module contains:
        d. IllegalDelAtempt
 
 """
+from pathlib import Path
+from typing import Dict, List, Optional, Type, TYPE_CHECKING
 
-from typing import Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
-
-FileSpec = Union[List[Tuple[str, str]], Dict[str, str]]
+FileSpecs = Dict[str, Path]
 
 
 class FileCatalogError(Exception):
@@ -65,7 +84,7 @@ class FileNameNotFound(FileCatalogError):
 
 
 class FileCatalog:
-    """Provides a mapping of file names and full paths.
+    """Provides a mapping of file names to paths.
 
     This is useful for cases where an application is to be used in various
     environments with files that are in different places. Another use is where
@@ -74,26 +93,25 @@ class FileCatalog:
     """
 
     def __init__(self,
-                 # file_specs: Union[None, FileSpec, List[FileSpec]] = None
-                 file_specs: Optional[FileSpec] = None
+                 file_specs: Optional[FileSpecs] = None
                  ) -> None:
         """Store the input file specs to a data frame.
 
         Args:
-            file_specs: A set of tuples with each tuple having two items.
-                          The first item is the file name, and the second
-                          item is the full path to the file
+            file_specs: A dictionary of one or more entries. The key is the
+                          file name and the value is the path. The file name
+                          must be a sting and the path must be a pathlib Path.
 
         :Example: instantiate a catalog with two files
 
         >>> from scottbrian_utils.file_catalog import FileCatalog
-        >>> a_catalog = FileCatalog([('file1', '/run/media/file1.csv'),
-        ...                          ('file2', '/run/media/file2.pdf')])
-        >>> print(a_catalog.get_path('file2'))
+        >>> a_catalog = FileCatalog({'file_1': Path('/run/media/file1.csv'),
+        ...                          'file_2': Path('/run/media/file2.pdf')})
+        >>> print(a_catalog.get_path('file_2'))
         /run/media/file2.pdf
 
         """
-        self.catalog: Dict[str, str] = {}
+        self.catalog: Dict[str, Path] = {}
         if file_specs is not None:
             self.add_paths(file_specs)
 
@@ -106,9 +124,9 @@ class FileCatalog:
         :Example: instantiate a catalog with three files
 
         >>> from scottbrian_utils.file_catalog import FileCatalog
-        >>> a_catalog = FileCatalog([('file1', '/run/media/file1.csv'),
-        ...                          ('file2', '/run/media/file2.pdf'),
-        ...                          ('file5', '/run/media/file5.csv')])
+        >>> a_catalog = FileCatalog({'file1': Path('/run/media/file1.csv'),
+        ...                          'file2': Path('/run/media/file2.pdf'),
+        ...                          'file5': Path('/run/media/file5.csv')})
         >>> len(a_catalog)
         3
 
@@ -124,13 +142,13 @@ class FileCatalog:
         :Example: instantiate a catalog with three files and print it
 
         >>> from scottbrian_utils.file_catalog import FileCatalog
-        >>> a_catalog = FileCatalog([('file1', '/run/media/file1.csv'),
-        ...                          ('file2', '/run/media/file2.pdf'),
-        ...                          ('file5', '/run/media/file5.csv')])
+        >>> a_catalog = FileCatalog({'file1': Path('/run/media/file1.csv'),
+        ...                          'file2': Path('/run/media/file2.pdf'),
+        ...                          'file5': Path('/run/media/file5.csv')})
         >>> print(a_catalog)
-        FileCatalog([('file1', '/run/media/file1.csv'),
-        ...          ('file2', '/run/media/file2.pdf'),
-        ...          ('file5', '/run/media/file5.csv')])
+        FileCatalog({'file1': Path('/run/media/file1.csv'),
+                     'file2': Path('/run/media/file2.pdf'),
+                     'file5': Path('/run/media/file5.csv')})
 
         """
         if TYPE_CHECKING:
@@ -141,32 +159,36 @@ class FileCatalog:
         num_start_entries = 2
         parms = ''
 
-        for i, item in enumerate(self.catalog.items()):
+        for i, (file_name, path) in enumerate(self.catalog.items()):
             # we will do only a few entries at the top, then an ellipse,
             # and finish with the last entry
-            if (i < num_start_entries) or (i == num_entries-1):
-                parms = parms + indent_spaces + str(item) + ',\n'
+            if (num_entries <= 4) \
+                    or (i < num_start_entries) \
+                    or (i == num_entries-1):
+                parms = parms + indent_spaces + "'" + file_name \
+                         + "': " + "Path(" + "'" + str(path) + "'),\n"
 
             # put in the ellipse
-            if (i == num_start_entries) and (i != num_entries-1):
-                parms = parms + indent_spaces + '...\n'
+            if num_entries > 4:
+                if (i == num_start_entries) and (i != num_entries-1):
+                    parms = parms + indent_spaces + '...\n'
 
             # for entries after the first, we need to indent
-            indent_spaces = ' ' * (len(classname) + len('(['))
+            indent_spaces = ' ' * (len(classname) + len('({'))
 
         if parms:  # if we have entries, strip the final comma and newline
-            parms = '[' + parms[:-2] + ']'
+            parms = '{' + parms[:-2] + '}'
 
         return f'{classname}({parms})'
 
-    def get_path(self, file_name: str) -> str:
+    def get_path(self, file_name: str) -> Path:
         """Obtain a path given a file name.
 
         Args:
             file_name: The name of the file whose path is needed
 
         Returns:
-            A string that is the full path for the input file name
+            A pathlib Path object for the input file name
 
         Raises:
             FileNameNotFound: The input file name is not in the catalog
@@ -174,29 +196,30 @@ class FileCatalog:
         :Example: instantiate a catalog with two files and get their paths
 
         >>> from scottbrian_utils.file_catalog import FileCatalog
-        >>> a_catalog = FileCatalog([('file1', '/run/media/file1.csv'),
-        ...                          ('file2', '/run/media/file2.pdf')])
+        >>> a_catalog = FileCatalog({'file1': Path('/run/media/file1.csv'),
+        ...                          'file2': Path('/run/media/file2.pdf')})
         >>> path1 = a_catalog.get_path('file1')
         >>> print(path1)
         /run/media/file1.csv
 
-        >>> a_catalog.get_path('file2')
+        >>> from os import fspath
+        >>> fspath(a_catalog.get_path('file2'))
         '/run/media/file2.pdf'
 
         """
         try:
-            return str(self.catalog[file_name])
+            return self.catalog[file_name]
         except KeyError:
-            raise FileNameNotFound('Catalog does not have an entry for',
-                                   'file name', file_name)
+            raise FileNameNotFound('Catalog does not have an entry for'
+                                   'file name:', file_name)
 
-    def add_paths(self, file_specs: FileSpec) -> None:
+    def add_paths(self, file_specs: FileSpecs) -> None:
         """Add one or more paths to the catalog.
 
         Args:
-            file_specs: A set of tuples with each tuple having two items.
-                          The first item is the file name, and the second
-                          item is the full path to the file
+            file_specs: A dictionary of one or more entries. The key is the
+                          file name and the value is the path. The file name
+                          must be a sting and the path must be a pathlib Path.
 
         Raises:
             FileSpecIncorrect: The input path is not a string
@@ -205,10 +228,10 @@ class FileCatalog:
         The entries to be added are specified in the file_specs argument.
         For each file_spec, the specified file name is used to determine
         whether the entry already exists in the catalog. If the entry
-        already exists, the specified full path is compared against the
+        already exists, the specified path is compared against the
         found entry. If they do not match, an IllegalAddAttempt exception is
         raised and no entries for the add_paths request will be added.
-        Otherwise, if the full path matches, there is no need to add it again
+        Otherwise, if the path matches, there is no need to add it again
         so processing continues with the next file_spec. If no errors are
         detected for any of the file_specs, any file names that do not yet
         exist in the catalog are added.
@@ -216,37 +239,44 @@ class FileCatalog:
         :Example: add some paths to the catalog
 
         >>> from scottbrian_utils.file_catalog import FileCatalog
+        >>> from pathlib import Path
         >>> a_catalog = FileCatalog()
-        >>> a_catalog.add_paths([('file1', '/run/media/file1.csv')])
+        >>> a_catalog.add_paths({'file1': Path('/run/media/file1.csv')})
         >>> print(a_catalog)
-        FileCatalog(('file1', '/run/media/file1.csv'))
-        >>> a_catalog.add_paths([('file2', '/run/media/file2.csv'),
-        ...                      ('file3', 'path3')])
+        FileCatalog({'file1': Path('/run/media/file1.csv')})
+        >>> a_catalog.add_paths({'file2': Path('/run/media/file2.csv'),
+        ...                      'file3': Path('path3')})
         >>> print(a_catalog)
-        FileCatalog([('file1', '/run/media/file1.csv'),
-                     ('file2', '/run/media/file2.csv'),
-                     ('file3', 'path3')])
+        FileCatalog({'file1': Path('/run/media/file1.csv'),
+                     'file2': Path('/run/media/file2.csv'),
+                     'file3': Path('path3')})
+
         """
-        dict_to_add = dict(file_specs)
-        for file_name, path in dict_to_add.items():
-            if not isinstance(path, str):
-                raise FileSpecIncorrect('Specified path', path, 'not str')
+        if not isinstance(file_specs, dict):
+            raise FileSpecIncorrect('Specified file_specs', file_specs,
+                                    'is not a dictionary')
+        for file_name, path in file_specs.items():
+            if not isinstance(file_name, str):
+                raise FileSpecIncorrect('Specified file name', file_name,
+                                        'is not a string')
+            if not isinstance(path, Path):
+                raise FileSpecIncorrect('Specified path', path, 'not Path')
             if ((file_name in self.catalog) and
                     (self.catalog[file_name] != path)):
                 raise IllegalAddAttempt(
                     'Attempting to add file name', file_name,
                     ' with path', path, 'to existing entry with '
                     'path', self.catalog[file_name])
-        self.catalog.update(dict_to_add)
+        self.catalog.update(file_specs)
 
     def del_paths(self,
-                  file_specs: FileSpec) -> None:
+                  file_specs: FileSpecs) -> None:
         """Delete one or more paths from the catalog.
 
         Args:
-            file_specs: A set of tuples with each tuple having two items.
-                          The first item is the file name, and the second
-                          item is the full path to the file
+            file_specs: A dictionary of one or more entries. The key is the
+                          file name and the value is the path. The file name
+                          must be a sting and the path must be a pathlib Path.
 
         Raises:
             FileSpecIncorrect: The input path is not a string
@@ -255,41 +285,45 @@ class FileCatalog:
         The entries to be deleted are specified in the file_specs argument.
         For each file_spec, the specified file name is used to find the
         entry in the catalog. If not found, processing continues with the
-        next file_spec. Otherwise, if the entry is found, the specified full
-        path from the file_spec is compared against the full path in the
+        next file_spec. Otherwise, if the entry is found, the specified
+        path from the file_spec is compared against the path in the
         found entry. If not equal, an IllegalDelAttempt exception is raised
         and no entries for the del_paths request will be deleted. Otherwise,
-        if the full path matches, the entry will be deleted provided no
+        if the path matches, the entry will be deleted provided no
         errors are detected for any of the preceeding or remaining file_specs.
 
         :Example: add and then delete paths from the catalog
 
         >>> from scottbrian_utils.file_catalog import FileCatalog
         >>> a_catalog = FileCatalog()
-        >>> a_catalog.add_paths([('file1', '/run/media/file1.csv'),
-        ...                      ('file2', '/run/media/file2.csv'),
-        ...                      ('file3', 'path3'),
-        ...                      ('file4', 'path4')])
+        >>> a_catalog.add_paths({'file1': Path('/run/media/file1.csv'),
+        ...                      'file2': Path('/run/media/file2.csv'),
+        ...                      'file3': Path('path3'),
+        ...                      'file4': Path('path4')})
         >>> print(a_catalog)
-        FileCatalog([('file1', '/run/media/file1.csv'),
-                     ('file2', '/run/media/file2.csv'),
-                     ...
-                     ('file4', 'path4')])
+        FileCatalog({'file1': Path('/run/media/file1.csv'),
+                     'file2': Path('/run/media/file2.csv'),
+                     'file3': Path('path3'),
+                     'file4': Path('path4')})
 
-        >>> a_catalog.del_paths([('file1', '/run/media/file1.csv'),
-        ...                      ('file3', 'path3')])
+        >>> a_catalog.del_paths({'file1': Path('/run/media/file1.csv'),
+        ...                      'file3': Path('path3')})
         >>> print(a_catalog)
-        FileCatalog([('file2', '/run/media/file2.csv'),
-                     ('file4', 'path4')])
+        FileCatalog({'file2': Path('/run/media/file2.csv'),
+                     'file4': Path('path4')})
 
         """
-        dict_to_del = dict(file_specs)
-        del_index = []
-
-        for file_name, path in dict_to_del.items():
-            if not isinstance(path, str):
-                raise FileSpecIncorrect('Specified path', path, 'not str')
-
+        if not isinstance(file_specs, dict):
+            raise FileSpecIncorrect('Specified file_specs', file_specs,
+                                    'is not a dictionary')
+        del_index: List[str] = []
+        for file_name, path in file_specs.items():
+            if not isinstance(file_name, str):
+                raise FileSpecIncorrect('Specified file file name ',
+                                        file_name, 'is not a string')
+            if not isinstance(path, Path):
+                raise FileSpecIncorrect('Specified path', path,
+                                        'is not a pathlib Path')
             if file_name in self.catalog:
                 if self.catalog[file_name] != path:
                     raise IllegalDelAttempt(
