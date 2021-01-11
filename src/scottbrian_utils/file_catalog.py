@@ -26,6 +26,7 @@ Note that you can use any file name you want as long as it is a string - it
 does not have to be any part of the path
 
 :Example: instantiate a catalog for two files with:
+
 >>> a_cat = FileCatalog({'sales': Path('/home/T/files/file1.csv'),
 ...                      'inventory': Path('/home/T/files/file2.csv')})
 >>> print(a_cat)
@@ -52,6 +53,7 @@ The file_catalog module contains:
        d. IllegalDelAtempt
 
 """
+import csv
 from pathlib import Path
 from typing import Dict, List, Optional, Type, TYPE_CHECKING
 
@@ -336,3 +338,40 @@ class FileCatalog:
         # remove the requested entries
         for file_name in del_index:
             del self.catalog[file_name]
+
+    def save_catalog(self, saved_cat_path: Path) -> None:
+        """Save catalog as a csv file.
+
+        Args:
+            saved_cat_path: The path to where the catalog is to be saved
+
+
+        """
+        # save catalog
+        fieldnames = self.catalog.keys()
+
+        with open(saved_cat_path, 'w', newline='') as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerow(self.catalog)
+
+    @classmethod
+    def load_catalog(cls, saved_cat_path: Path) -> "FileCatalog":
+        """Load catalog from a csv file.
+
+        Args:
+            saved_cat_path: The path to where the catalog is to be loaded from
+
+        Returns:
+            A FileCatalog instance
+
+        """
+        new_catalog: Dict[str, Path] = {}
+        with open(saved_cat_path, newline='') as csv_file:
+            reader = csv.DictReader(csv_file)
+            for row in reader:
+                catalog = row
+
+        for file_name, path in catalog.items():
+            new_catalog[file_name] = Path(path)
+        return cls(new_catalog)

@@ -410,3 +410,35 @@ class TestFileCatalog:
             # ensure we still have expected results
             assert len(a_catalog) == len(file_specs)
             assert a_catalog.get_path(file_name) == path
+
+    def test_save_and_load_file_catalog(
+            self,
+            tmp_path: Path,
+            capsys: Any,
+            file_specs: cat.FileSpecs) -> None:
+        """test_file_catalog add_paths exceptions.
+
+        Args:
+            tmp_path: instance of the temporary path fixture
+            capsys: instance of the capture sys fixture
+            file_specs: the list of file names and paths to use
+
+        """
+        catalog = cat.FileCatalog(file_specs)
+        assert len(catalog) == len(file_specs)
+        for file_name, path in file_specs.items():
+            assert catalog.get_path(file_name) == path
+
+        # set up temp file
+        temp_cat_dir = tmp_path / 'sub'
+        temp_cat_dir.mkdir()
+        saved_cat_path = temp_cat_dir / 'saved_cat.csv'
+
+        # save catalog to temp file
+        catalog.save_catalog(saved_cat_path)
+
+        # load catalog from temp file
+        loaded_catalog = cat.FileCatalog.load_catalog(saved_cat_path)
+        assert len(loaded_catalog) == len(file_specs)
+        for file_name, path in file_specs.items():
+            assert loaded_catalog.get_path(file_name) == path
