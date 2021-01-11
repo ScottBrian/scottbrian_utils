@@ -382,6 +382,19 @@ class TestFileCatalog:
         a_catalog = cat.FileCatalog(file_specs)
         assert len(a_catalog) == len(file_specs)
 
+        # try to delete with non-dict
+        delete_list_of_tuples = list(file_specs.items())
+        with pytest.raises(cat.FileSpecIncorrect):
+            a_catalog.del_paths(delete_list_of_tuples)  # type: ignore
+
+        # try to delete with non-str file name
+        with pytest.raises(cat.FileSpecIncorrect):
+            a_catalog.del_paths({42: Path('path_dir/path1')})  # type: ignore
+
+        # try to delete with non-path path
+        with pytest.raises(cat.FileSpecIncorrect):
+            a_catalog.del_paths({'file1': 'path_dir/path1'})  # type: ignore
+
         for (file_name, path) in file_specs.items():
             # the number of entries should remain the same throughout tests
             assert len(a_catalog) == len(file_specs)

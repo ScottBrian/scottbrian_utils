@@ -43,7 +43,8 @@ FileCatalog({'sales': Path('/home/T/files/file1.csv'),
 
 The file_catalog module contains:
 
-    1) FileCatalog class with add_paths, del_paths,  and get_path methods
+    1) FileCatalog class with add_paths, del_paths,  get_path, save_catalog,
+       and load_catalog methods
     2) FileSpec, FileSpecs type aliases that you can use for type hints
     3) Error exception classes:
 
@@ -321,7 +322,7 @@ class FileCatalog:
         del_index: List[str] = []
         for file_name, path in file_specs.items():
             if not isinstance(file_name, str):
-                raise FileSpecIncorrect('Specified file file name ',
+                raise FileSpecIncorrect('Specified file name ',
                                         file_name, 'is not a string')
             if not isinstance(path, Path):
                 raise FileSpecIncorrect('Specified path', path,
@@ -360,7 +361,7 @@ class FileCatalog:
         """Load catalog from a csv file.
 
         Args:
-            saved_cat_path: The path to where the catalog is to be loaded from
+            saved_cat_path: The path from where the catalog is to be loaded
 
         Returns:
             A FileCatalog instance
