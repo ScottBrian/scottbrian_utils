@@ -137,10 +137,10 @@ class FileCatalog:
         return len(self.catalog)
 
     def __repr__(self) -> str:
-        """Return a representation if the class.
+        """Return a representation of the class.
 
         Returns:
-            The representation as how the class is instantoiated
+            The representation as how the class is instantiated
 
         :Example: instantiate a catalog with three files and print it
 

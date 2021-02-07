@@ -213,9 +213,9 @@ def time_box(wrapped: F, *,
     What happens is the time_box call returns with a callable function that
     is the wrapped function. This new function is assigned to *func*. When
     *func* is called, the decorator function issues a starting time
-    message, calls the wrapped function (i.e., *func* in this case), issues
-    the ending time message, and finally returns the return value from the
-    wrapped function, if one.
+    message, calls the wrapped function (i.e., the original *func*), issues
+    the ending time message, and returns any return values that the wrapped
+    function returns.
 
     Args:
         wrapped: Any callable function that accepts optional positional
@@ -266,11 +266,11 @@ def time_box(*,
 
     What happens is the time_box call returns with a callable function that
     specifies as input a callable, and this returned function is immediately
-    called with *func* as the arument. This then results in the assignment
+    called with *func* as the argument. This then results in the assignment
     of *func* to the decorator function that issues a starting time
-    message, calls the wrapped function (i.e., *func* in this case), issues
-    the ending time message, and finally returns the return value from the
-    wrapped function, if one.
+    message, calls the wrapped function (i.e., the original *func*), issues
+    the ending time message, and returns any return values that the wrapped
+    function returns.
 
     Args:
         dt_format: Specifies the datetime format to use in the start
@@ -334,8 +334,8 @@ def time_box(wrapped: Optional[F] = None, *,
 
     Returns:
         A callable function that issues a starting time message, calls
-        the wrapped function, issues the ending time message, and finally
-        returns the return value from the wrapped function, if one.
+        the wrapped function, issues the ending time message, and returns any
+        return values that the wrapped function returns.
 
 
     :Example: statically wrapping function with time_box

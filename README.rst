@@ -10,6 +10,8 @@ This is a collection of generally useful functions for use with any application.
 1. The FileCatalog item allows you to map file names to their paths.
 2. The @time_box decorator allows you to print start, stop, and execution times.
 3. The print_flower_box_msg function allows you to print text in a flower box (i.e., surrounded by asterisks).
+4. The diag_msg function allows you to print a message with the time and caller sequence added for you
+
 
 With the FileCatalog item, you can code your application with file names and retrieve their paths at run time
 from a catalog. This allows you to use different catalogs for the same set of files, such as one catalog for production
