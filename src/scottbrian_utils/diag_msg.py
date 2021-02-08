@@ -30,6 +30,7 @@ diag_msg_caller_depth = 3
 
 
 class CallerInfo(NamedTuple):
+    """Structure for the caller info used in diag_msg."""
     mod_name: str
     cls_name: str
     func_name: str
