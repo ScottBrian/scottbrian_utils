@@ -1,5 +1,35 @@
 """conftest.py module for testing."""
-# import pytest
+import pytest
+from typing import Any, cast
+
+dt_format_arg_list = ['0',
+                      '%H:%M',
+                      '%H:%M:%S',
+                      '%m/%d %H:%M:%S',
+                      '%b %d %H:%M:%S',
+                      '%m/%d/%y %H:%M:%S',
+                      '%m/%d/%Y %H:%M:%S',
+                      '%b %d %Y %H:%M:%S',
+                      '%a %b %d %Y %H:%M:%S',
+                      '%a %b %d %H:%M:%S.%f',
+                      '%A %b %d %H:%M:%S.%f',
+                      '%A %B %d %H:%M:%S.%f'
+                      ]
+
+
+@pytest.fixture(params=dt_format_arg_list)  # type: ignore
+def dt_format_arg(request: Any) -> str:
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(str, request.param)
+
+
 # from scottbrian_algo1.diag_msg import DiagMsg
 # # from threading import Thread  #, Event
 # from datetime import datetime

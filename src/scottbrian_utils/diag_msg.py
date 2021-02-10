@@ -148,18 +148,20 @@ def get_formatted_call_sequence(latest: int = 0,
 
 def diag_msg(*args: Any,
              depth: int = diag_msg_caller_depth,
+             dt_format: str = diag_msg_datetime_fmt,
              **kwargs: Any) -> None:
     """Print diagnostic message.
 
     Args:
         args: the text to print as part of the diagnostic message
         depth:  specifies how many callers to include in the call sequence
+        dt_format: datetime format to use
         kwargs: keyword args to pass along to the print statement
 
     """
     # we specify 2 frames back since we don't want our call in the sequence
     caller_sequence = get_formatted_call_sequence(1, depth)
 
-    str_time = datetime.now().strftime(diag_msg_datetime_fmt)
+    str_time = datetime.now().strftime(dt_format)
 
     print(f'{str_time} {caller_sequence}', *args, **kwargs)
