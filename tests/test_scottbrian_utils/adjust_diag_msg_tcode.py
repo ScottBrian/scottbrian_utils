@@ -29,6 +29,7 @@ def adjust_line_nums() -> None:
     search_text6 = '.get_caller_info_'
     search_text7 = '.test_get_caller_info_'
     search_text8 = '.diag_msg_depth_'
+    search_text9 = 'get_call_seq_depth_'
 
     phase = 1
     l_count = 0
@@ -61,7 +62,8 @@ def adjust_line_nums() -> None:
                     search_text5 in file_line or
                     search_text6 in file_line or
                     search_text7 in file_line or
-                    search_text8 in file_line):
+                    search_text8 in file_line or
+                    search_text9 in file_line):
                 new_text = 'line_num=' + str(idx+1)
                 # print('\nBefore:')
                 # for j in range(s_idx, min(s_idx+7, len(file_lines))):

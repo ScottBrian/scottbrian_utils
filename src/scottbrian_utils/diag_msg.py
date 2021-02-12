@@ -27,6 +27,7 @@ from typing import Any, NamedTuple
 # diag_msg_datetime_fmt = "%b %d %H:%M:%S.%f"
 diag_msg_datetime_fmt = "%H:%M:%S.%f"
 diag_msg_caller_depth = 3
+get_formatted_call_seq_depth = 3
 
 
 class CallerInfo(NamedTuple):
@@ -94,7 +95,8 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
 
 
 def get_formatted_call_sequence(latest: int = 0,
-                                depth: int = diag_msg_caller_depth) -> str:
+                                depth: int = get_formatted_call_seq_depth
+                                ) -> str:
     """Return a formatted string showing the callers.
 
     Args:
@@ -104,16 +106,16 @@ def get_formatted_call_sequence(latest: int = 0,
 
     Returns:
           Formatted string showing for each caller the module name and
-          possibly a function name or a class name/method_name pair, and the
-          source code line number. There are a few different scenarios that
-          will result in how the information is presented:
-          1) the call came from the module running as a script:
-              module_name:lineno
-          2) the call came from a function defined in the module
-              module_name::function_name:lineno
-          3) the call came from a method in a class defined in the module
-              module_name::class_name.method_name:lineno
-          Multiply calls in the sequence will be delimited with the string:
+            possibly a function name or a class name/method_name pair, and the
+            source code line number. There are a few different scenarios that
+            will result in how the information is presented:
+            1) the call came from the module running as a script:
+               module_name:lineno
+            2) the call came from a function defined in the module
+               module_name::function_name:lineno
+            3) the call came from a method in a class defined in the module
+               module_name::class_name.method_name:lineno
+            Multiply calls in the sequence will be delimited with the string:
               ' -> '
               For example:
               mod1::fun1:123 -> mod1::fun2:145 -> mod2::class1.method1:234
