@@ -13,6 +13,40 @@ so the code in this module was created to do the adjustment.
 
 """
 
+def fixup_capsys() -> None:
+    """Routine to adjust the line_num values."""
+    path_to_file = 'test_diag_msg.py'
+
+    with open(path_to_file, 'r') as file:  # open for read
+        file_lines = file.readlines()
+
+    search_text1 = 'captured = capsys.readouterr().out'
+    search_text2 = 'get_caller_info('
+    search_text3 = 'get_formatted_call_sequence('
+    search_text4 = 'diag_msg('
+    search_text5 = 'func_get_caller_info_'
+    search_text6 = '.get_caller_info_'
+    search_text7 = '.test_get_caller_info_'
+    search_text8 = '.diag_msg_depth_'
+    search_text9 = 'get_call_seq_depth_'
+
+    phase = 1
+    l_count = 0
+    old_text = ''
+    s_idx = 0
+    for idx, file_line in enumerate(file_lines):
+        if search_text1 in file_line:
+            print('\nBefore:')
+            for j in range(idx-4, min(idx+7, len(file_lines))):
+                print(repr(file_lines[j]))
+            file_lines[idx] = '\n'
+            print('\nAfter:')
+            for j in range(idx - 4, min(idx + 7, len(file_lines))):
+                print(repr(file_lines[j]))
+
+
+    with open(path_to_file, 'w') as file:
+        file.writelines(file_lines)
 
 def adjust_line_nums() -> None:
     """Routine to adjust the line_num values."""
@@ -39,6 +73,8 @@ def adjust_line_nums() -> None:
         if phase == 1:
             l_idx = file_line.find(search_text1)
             if l_idx > 0:
+                if 'line_num=line_num' in file_line:
+                    continue
                 phase = 2
                 l_count = 0
                 s_idx = idx
@@ -53,7 +89,7 @@ def adjust_line_nums() -> None:
                     break
         if phase == 2:
             l_count += 1
-            if l_count > 7 or search_text1 in file_lines[idx]:
+            if l_count > 8 or search_text1 in file_lines[idx]:
                 print('*** error: did not find target')
                 break
             if (search_text2 in file_line or
@@ -82,6 +118,7 @@ def adjust_line_nums() -> None:
 def main() -> None:
     """Main routine that gets control when this module is run as a script."""
     adjust_line_nums()
+    # fixup_capsys()
 
 
 if __name__ == '__main__':

@@ -167,3 +167,42 @@ def diag_msg(*args: Any,
     str_time = datetime.now().strftime(dt_format)
 
     print(f'{str_time} {caller_sequence}', *args, **kwargs)
+
+def tell_me(file_arg):
+    if file_arg == sys.stdout:
+        print('std out is the arg')
+
+    if file_arg == sys.stderr:
+        print('std err is the arg')
+
+    if file_arg.name == '<stderr>':
+        print('name is std err')
+
+    if file_arg.name == '<stdout>':
+        print('name is std out')
+
+if __name__ == '__main__':
+    import sys
+    text = ['three', 'items', 'for you']
+    dt_format = '%H:%M:%S.%f'
+    depth = 2
+    file_arg = 'sys.stderr'
+    # print('file_arg:')
+    # print(file_arg.name)
+    # DiagMsgArgs(arg_bits=7, dt_format_arg='%H:%M', depth_arg=2,
+    #             msg_arg=['three', 'items', 'for you'], file_arg='sys.stdout')
+    diag_msg(*text, depth=2, file=eval(file_arg))
+
+    if eval(file_arg) == sys.stdout:
+        print('std out is the arg')
+
+    if eval(file_arg) == sys.stderr:
+        print('std err is the arg')
+
+    # if file_arg.name == '<stderr>':
+    #     print('name is std err')
+    #
+    # if file_arg.name == '<stdout>':
+    #     print('name is std out')
+
+    # tell_me(file_arg)

@@ -2,7 +2,7 @@
 import pytest
 from typing import Any, cast
 
-dt_format_arg_list = ['0',
+dt_format_arg_list = [None,
                       '%H:%M',
                       '%H:%M:%S',
                       '%m/%d %H:%M:%S',
