@@ -76,17 +76,19 @@ class DateTimeOutputChecker(OutputChecker):
             start_of_msg_got = got.find('this is a diagnostic message')
             new_got = want[0:start_of_msg_want] + new_got[start_of_msg_got:]
 
-        if 'diagnostic info' in want:
-            start_of_msg_want = want.find('diagnostic info')
-            start_of_msg_got = got.find('diagnostic info')
-            new_got = want[0:start_of_msg_want] + new_got[start_of_msg_got:]
+        # if 'diagnostic info' in want:
+        #     start_of_msg_want = want.find('diagnostic info')
+        #     start_of_msg_got = got.find('diagnostic info')
+        #     new_got = want[0:start_of_msg_want] + new_got[start_of_msg_got:]
 
         if 'CallerInfo' in want:
             start_cls_want = want.find('cls_name=')
             start_cls_got = got.find('cls_name=')
             new_got = want[0:start_cls_want] + new_got[start_cls_got:]
 
-        if 'get_formatted_call_sequence' in new_got:
+        gfcs_suffix = 'get_formatted_call_sequence['
+        dm_suffix = 'diag_msg['
+        if gfcs_suffix in got or dm_suffix in got:
             brkt1_num = '0'
             brkt2_num = '0'
             brkt3_num = '0'
@@ -103,12 +105,11 @@ class DateTimeOutputChecker(OutputChecker):
                         r_brkt3 = got.find(']', brkt3)
                         brkt3_num = got[brkt3+1:r_brkt3]
 
-            old1 = '<doctest scottbrian_utils.diag_msg.' \
-                   'get_formatted_call_sequence[' + brkt1_num + ']>'
-            old2 = '<doctest scottbrian_utils.diag_msg.' \
-                   'get_formatted_call_sequence[' + brkt2_num + ']>'
-            old3 = '<doctest scottbrian_utils.diag_msg.' \
-                   'get_formatted_call_sequence[' + brkt3_num + ']>'
+            prefix = '<doctest scottbrian_utils.diag_msg.'
+            suffix = gfcs_suffix if gfcs_suffix in got else dm_suffix
+            old1 = prefix + suffix + brkt1_num + ']>'
+            old2 = prefix + suffix + brkt2_num + ']>'
+            old3 = prefix + suffix + brkt3_num + ']>'
 
             new_text = '<input>'
             if old1 in new_got:
@@ -117,6 +118,12 @@ class DateTimeOutputChecker(OutputChecker):
                 new_got = new_got.replace(old2, new_text)
             if old3 in new_got:
                 new_got = new_got.replace(old3, new_text)
+
+            # handle time stamp
+            if dm_suffix in got:  # if diag_msg
+                lt_sign_idx = want.find('<')
+                if lt_sign_idx > 0:
+                    new_got = want[0:lt_sign_idx] + new_got[lt_sign_idx:]
 
         return OutputChecker.check_output(self, want, new_got, optionFlags)
 

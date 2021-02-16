@@ -33,7 +33,7 @@ get_formatted_call_seq_depth = 3
 
 
 class CallerInfo(NamedTuple):
-    """Structure for the caller info used in diag_msg."""
+    """NamedTuple for the caller info used in diag_msg."""
     mod_name: str
     cls_name: str
     func_name: str
@@ -101,12 +101,13 @@ def get_formatted_call_sequence(latest: int = 0,
         depth: specifies how many callers to include in the call sequence
 
     Returns:
-          Formatted string showing for each caller the module name, possibly
-            a function name or a class name/method_name pair, and the
-            source code line number. There are three basic scenarios:
-            A call from a script will appear as: mod_name:lineno
-            A call from a function will appear as: mod_name::func_name:lineno
-            A call from a class method: mod_name::cls_name.func_name:lineno
+        Formatted string showing for each caller the module name, possibly
+        a function name or a class name/method_name pair, and the
+        source code line number. There are three basic scenarios:
+
+        * A call from a script will appear as: mod_name:lineno
+        * A call from a function will appear as: mod_name::func_name:lineno
+        * A call from a class method: mod_name::cls_name.func_name:lineno
 
     This function is useful if, for example, you want to include the call
     sequence in a log.
@@ -129,8 +130,9 @@ def get_formatted_call_sequence(latest: int = 0,
     <input>::f1:4 -> <input>::f2:3 -> <input>::f3:4
 
     Note that when coded in a module, you will get the module name in the
-    sequence instead of <input>, and the linee numbers will be relative from
-    the start of the module instead of from each of the function def sections.
+    sequence instead of <input>, and the line numbers will be relative from
+    the start of the module instead of from each of the function definition
+    sections.
 
     :Example: get call sequence for last two callers
 
@@ -182,7 +184,6 @@ def get_formatted_call_sequence(latest: int = 0,
     <input>:1 -> <input>::Cls1.f1:4
 
     """
-
     caller_sequence = ''  # init to null
     arrow = ''  # start with no arrow for first iteration
     for caller_depth in range(latest+1, latest+1+depth):
@@ -223,7 +224,7 @@ def diag_msg(*args: Any,
         dt_format: datetime format to use
         kwargs: keyword args to pass along to the print statement
 
-    :Example: print a diagnostic message from a method, show two call sequence
+    :Example: print a diagnostic message from a method with a seq depth of 2
 
     >>> from scottbrian_utils.diag_msg import diag_msg
     >>> class Cls1:
@@ -232,7 +233,17 @@ def diag_msg(*args: Any,
     ...         # limit to two calls
     ...         diag_msg('diagnostic info', x, depth=2)
     >>> Cls1.f1(42)
-    16:20:05.909260 <input>:1 -> <input>::Cls1.f1:4 diagnostic info 42
+    16:20:05.909260 <input>:1 -> <input>::Cls1.f1:5 diagnostic info 42
+
+    :Example: print a diagnostic message with different datetime format
+
+    >>> from scottbrian_utils.diag_msg import diag_msg
+    >>> class Cls1:
+    ...     def f1(self, x):
+    ...         # use different datetime format
+    ...         diag_msg('diagnostic info', x, dt_format='%a %b-%d %H:%M:%S')
+    >>> Cls1().f1(24)
+    Tue Feb-16 10:38:32 <input>::Cls1.f1:4 diagnostic info 24
 
     """
     # we specify 2 frames back since we don't want our call in the sequence

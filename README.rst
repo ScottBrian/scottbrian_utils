@@ -7,10 +7,20 @@ Intro
 
 This is a collection of generally useful functions for use with any application.
 
-1. The FileCatalog item allows you to map file names to their paths.
-2. The @time_box decorator allows you to print start, stop, and execution times.
-3. The print_flower_box_msg function allows you to print text in a flower box (i.e., surrounded by asterisks).
-4. The diag_msg function allows you to print a message with the time and caller sequence added for you
+1. The diag_msg function allows you to print a message with the time and caller sequence added for you.
+2. The FileCatalog item allows you to map file names to their paths.
+3. The @time_box decorator allows you to print start, stop, and execution times.
+4. The print_flower_box_msg function allows you to print text in a flower box (i.e., surrounded by asterisks).
+
+
+With **diag_msg** you can print messages with the time and caller info as a
+diagnostic aid like this:
+
+:Example: print a diagnostic message
+
+>>> from scottbrian_utils.diag_msg import diag_msg
+>>> diag_msg('this is a diagnostic message')
+16:20:05.909260 <input>:1 this is a diagnostic message
 
 
 With the FileCatalog item, you can code your application with file names and retrieve their paths at run time
@@ -47,6 +57,8 @@ time and end time messages like this:
 * Ending func2 on Mon Jun 29 2020 18:22:51 *
 * Elapsed time: 0:00:00.001204             *
 ********************************************
+
+
 
 .. image:: https://img.shields.io/badge/security-bandit-yellow.svg
     :target: https://github.com/PyCQA/bandit
