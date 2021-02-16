@@ -10,10 +10,12 @@ diagnotic aid like this:
 :Example: print a diagnostic message
 
 >>> from scottbrian_utils.diag_msg import diag_msg
->>> diag_msg('This is my diagnostic message')
-<BLANKLINE>
-01/21/2020 18:27:33.123456 diag_msg.py:13 This is my diagnostic message
+>>> diag_msg('this is a diagnostic message')
+16:20:05.909260 <input>:1 this is a diagnostic message
 
+Note that all of the examples are done as if entered in a python session from
+the console. As such, the module name will show as <input>. When coded in a
+module, however, you will see the module name instead of <input>.
 
 """
 from datetime import datetime
@@ -26,7 +28,7 @@ from typing import Any, NamedTuple
 
 # diag_msg_datetime_fmt = "%b %d %H:%M:%S.%f"
 diag_msg_datetime_fmt = "%H:%M:%S.%f"
-diag_msg_caller_depth = 3
+diag_msg_caller_depth = 1
 get_formatted_call_seq_depth = 3
 
 
@@ -48,6 +50,16 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
     Returns:
         The caller module name, class name (or null), function name (or null),
         and the line number within the module source
+
+    :Example: get caller info for current frame
+
+    >>> from scottbrian_utils.diag_msg import get_caller_info
+    >>> import inspect
+    >>> def f1():
+    ...     frame = inspect.currentframe()
+    ...     return get_caller_info(frame)
+    >>> f1()
+    CallerInfo(mod_name='<input>', cls_name='', func_name='f1', line_num=3)
 
     """
     code = frame.f_code
@@ -74,22 +86,6 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
                     break
             except (AttributeError, KeyError):
                 pass
-            # try:
-            #     assert obj.__dict__[func_name].__code__ is code
-            # except (AssertionError, KeyError):
-            #     pass
-            # else:  # obj is the class that defines our method
-            #     cls_name = obj_name
-            #     break
-            #
-            # # second try is for static or class method
-            # try:
-            #     assert obj.__dict__[func_name].__func__.__code__ is code
-            # except (AssertionError, KeyError):
-            #     pass
-            # else:
-            #     cls_name = obj_name
-            #     break
 
     return CallerInfo(mod_name, cls_name, func_name, frame.f_lineno)
 
@@ -105,21 +101,88 @@ def get_formatted_call_sequence(latest: int = 0,
         depth: specifies how many callers to include in the call sequence
 
     Returns:
-          Formatted string showing for each caller the module name and
-            possibly a function name or a class name/method_name pair, and the
-            source code line number. There are a few different scenarios that
-            will result in how the information is presented:
-            1) the call came from the module running as a script:
-               module_name:lineno
-            2) the call came from a function defined in the module
-               module_name::function_name:lineno
-            3) the call came from a method in a class defined in the module
-               module_name::class_name.method_name:lineno
-            Multiply calls in the sequence will be delimited with the string:
-              ' -> '
-              For example:
-              mod1::fun1:123 -> mod1::fun2:145 -> mod2::class1.method1:234
+          Formatted string showing for each caller the module name, possibly
+            a function name or a class name/method_name pair, and the
+            source code line number. There are three basic scenarios:
+            A call from a script will appear as: mod_name:lineno
+            A call from a function will appear as: mod_name::func_name:lineno
+            A call from a class method: mod_name::cls_name.func_name:lineno
+
+    This function is useful if, for example, you want to include the call
+    sequence in a log.
+
+    :Example: get call sequence for three callers
+
+    >>> from scottbrian_utils.diag_msg import get_formatted_call_sequence
+    >>> def f1():
+    ...     # f1 now on stack
+    ...     # call f2
+    ...     f2()
+    >>> def f2():
+    ...     # call f3
+    ...     f3()
+    >>> def f3():
+    ...     # f3 now latest entry in call sequence
+    ...     # default is to get three most recent calls
+    ...     print(get_formatted_call_sequence())
+    >>> f1()
+    <input>::f1:4 -> <input>::f2:3 -> <input>::f3:4
+
+    Note that when coded in a module, you will get the module name in the
+    sequence instead of <input>, and the linee numbers will be relative from
+    the start of the module instead of from each of the function def sections.
+
+    :Example: get call sequence for last two callers
+
+    >>> from scottbrian_utils.diag_msg import get_formatted_call_sequence
+    >>> def f1():
+    ...     # f1 now on stack
+    ...     # call f2
+    ...     f2()
+    >>> def f2():
+    ...     # call f3
+    ...     f3()
+    >>> def f3():
+    ...     # f3 now latest entry in call sequence
+    ...     # specify depth to get two most recent calls
+    ...     call_seq = get_formatted_call_sequence(depth=2)
+    ...     print(call_seq)
+    >>> f1()
+    <input>::f2:3 -> <input>::f3:4
+
+    :Example: get call sequence for two callers, one caller back
+
+    >>> from scottbrian_utils.diag_msg import get_formatted_call_sequence
+    >>> def f1():
+    ...     # f1 now on stack
+    ...     # call f2
+    ...     f2()
+    >>> def f2():
+    ...     # call f3
+    ...     f3()
+    >>> def f3():
+    ...     # f3 now latest entry in call sequence
+    ...     # specify latest to go back 1 and thus ignore f3
+    ...     # specify depth to get two calls from latest going back
+    ...     call_seq = get_formatted_call_sequence(latest=1, depth=2)
+    ...     print(call_seq)
+    >>> f1()
+    <input>::f1:4 -> <input>::f2:3
+
+    :Example: get sequence for script call to class method
+
+    >>> from scottbrian_utils.diag_msg import get_formatted_call_sequence
+    >>> class Cls1:
+    ...     def f1(self):
+    ...         # limit to two calls
+    ...         call_seq = get_formatted_call_sequence(depth=2)
+    ...         print(call_seq)
+    >>> a_cls1 = Cls1()
+    >>> a_cls1.f1()
+    <input>:1 -> <input>::Cls1.f1:4
+
     """
+
     caller_sequence = ''  # init to null
     arrow = ''  # start with no arrow for first iteration
     for caller_depth in range(latest+1, latest+1+depth):
@@ -160,6 +223,17 @@ def diag_msg(*args: Any,
         dt_format: datetime format to use
         kwargs: keyword args to pass along to the print statement
 
+    :Example: print a diagnostic message from a method, show two call sequence
+
+    >>> from scottbrian_utils.diag_msg import diag_msg
+    >>> class Cls1:
+    ...     @classmethod
+    ...     def f1(cls, x):
+    ...         # limit to two calls
+    ...         diag_msg('diagnostic info', x, depth=2)
+    >>> Cls1.f1(42)
+    16:20:05.909260 <input>:1 -> <input>::Cls1.f1:4 diagnostic info 42
+
     """
     # we specify 2 frames back since we don't want our call in the sequence
     caller_sequence = get_formatted_call_sequence(1, depth)
@@ -167,42 +241,3 @@ def diag_msg(*args: Any,
     str_time = datetime.now().strftime(dt_format)
 
     print(f'{str_time} {caller_sequence}', *args, **kwargs)
-
-def tell_me(file_arg):
-    if file_arg == sys.stdout:
-        print('std out is the arg')
-
-    if file_arg == sys.stderr:
-        print('std err is the arg')
-
-    if file_arg.name == '<stderr>':
-        print('name is std err')
-
-    if file_arg.name == '<stdout>':
-        print('name is std out')
-
-if __name__ == '__main__':
-    import sys
-    text = ['three', 'items', 'for you']
-    dt_format = '%H:%M:%S.%f'
-    depth = 2
-    file_arg = 'sys.stderr'
-    # print('file_arg:')
-    # print(file_arg.name)
-    # DiagMsgArgs(arg_bits=7, dt_format_arg='%H:%M', depth_arg=2,
-    #             msg_arg=['three', 'items', 'for you'], file_arg='sys.stdout')
-    diag_msg(*text, depth=2, file=eval(file_arg))
-
-    if eval(file_arg) == sys.stdout:
-        print('std out is the arg')
-
-    if eval(file_arg) == sys.stderr:
-        print('std err is the arg')
-
-    # if file_arg.name == '<stderr>':
-    #     print('name is std err')
-    #
-    # if file_arg.name == '<stdout>':
-    #     print('name is std out')
-
-    # tell_me(file_arg)

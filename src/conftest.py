@@ -13,30 +13,28 @@ import pytest
 
 
 class DateTimeOutputChecker(OutputChecker):
-    """ This class is used to intercept the output of the doctest examples
-    and change the datetime fields so they match the expected datetimes that
-    are documented in the time_hdr.py module examples.
+    """This class is used to intercept the output of the doctest examples.
+
+    The datetime fields are changed so they match the expected datetimes that
+    are documented in the module examples.
     """
 
     def check_output(self, want: str, got: str, optionFlags: int) -> bool:
+        """Method to fix up the doctest examples.
+
+        Args:
+            want: the expected output specified in the example
+            got: the output collected by doctest when the example is run
+            optionFlags : provides some customization options - see doctest
+                            documentation for details
+
+        Returns:
+            True if the example want matches the got, False if not
+
         """
-        :param want : the expected output described in the time_hdr module
-            example
-        :type func_name: str
-
-        :param got : the output collected by doctest when the example is run
-        :type func_name: str
-
-        :param optionFlags : provides some customization options - see doctest
-            documentation for details
-        :type func_name: int
-
-        :returns: True if the example want matches the got, False if not
-        :rtype: bool
-        """
-
         new_got = got
-
+        # print(want)
+        # print(got)
         # handle starting case
         if (('Starting' in want)
            and ('Starting' in new_got)):
@@ -72,6 +70,53 @@ class DateTimeOutputChecker(OutputChecker):
             new_got = new_got[0:DT_idx_got_start] \
                 + want[DT_idx_want_start:DT_idx_want_stop] \
                 + new_got[DT_idx_got_stop:]
+
+        if 'this is a diagnostic message' in want:
+            start_of_msg_want = want.find('this is a diagnostic message')
+            start_of_msg_got = got.find('this is a diagnostic message')
+            new_got = want[0:start_of_msg_want] + new_got[start_of_msg_got:]
+
+        if 'diagnostic info' in want:
+            start_of_msg_want = want.find('diagnostic info')
+            start_of_msg_got = got.find('diagnostic info')
+            new_got = want[0:start_of_msg_want] + new_got[start_of_msg_got:]
+
+        if 'CallerInfo' in want:
+            start_cls_want = want.find('cls_name=')
+            start_cls_got = got.find('cls_name=')
+            new_got = want[0:start_cls_want] + new_got[start_cls_got:]
+
+        if 'get_formatted_call_sequence' in new_got:
+            brkt1_num = '0'
+            brkt2_num = '0'
+            brkt3_num = '0'
+            brkt1 = got.find('[')
+            if brkt1 > 0:
+                r_brkt1 = got.find(']', brkt1)
+                brkt1_num = got[brkt1+1:r_brkt1]
+                brkt2 = got.find('[', brkt1+1)
+                if brkt2 > 0:
+                    r_brkt2 = got.find(']', brkt2)
+                    brkt2_num = got[brkt2+1:r_brkt2]
+                    brkt3 = got.find('[', brkt2 + 1)
+                    if brkt3 > 0:
+                        r_brkt3 = got.find(']', brkt3)
+                        brkt3_num = got[brkt3+1:r_brkt3]
+
+            old1 = '<doctest scottbrian_utils.diag_msg.' \
+                   'get_formatted_call_sequence[' + brkt1_num + ']>'
+            old2 = '<doctest scottbrian_utils.diag_msg.' \
+                   'get_formatted_call_sequence[' + brkt2_num + ']>'
+            old3 = '<doctest scottbrian_utils.diag_msg.' \
+                   'get_formatted_call_sequence[' + brkt3_num + ']>'
+
+            new_text = '<input>'
+            if old1 in new_got:
+                new_got = new_got.replace(old1, new_text)
+            if old2 in new_got:
+                new_got = new_got.replace(old2, new_text)
+            if old3 in new_got:
+                new_got = new_got.replace(old3, new_text)
 
         return OutputChecker.check_output(self, want, new_got, optionFlags)
 

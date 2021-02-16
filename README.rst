@@ -151,6 +151,9 @@ Release History
 * 1.1.0
     * Added FileCatalog
 
+* 1.2.0
+    * Added diag_msg
+
 Meta
 ====
 
