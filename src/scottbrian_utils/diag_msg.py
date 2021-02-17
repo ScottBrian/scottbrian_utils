@@ -4,8 +4,10 @@
 diag_msg
 ========
 
-With **diag_msg** you can print messages with the time and caller info as a
-diagnotic aid like this:
+With **diag_msg** you can print messages with the time and caller info added
+automatically. The default time format is H:M:S.f. The caller info includes
+the module name, class name (or null), method name (or null), and the line
+number relative to the start of the module.
 
 :Example: print a diagnostic message
 

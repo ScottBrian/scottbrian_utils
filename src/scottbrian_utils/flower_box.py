@@ -17,24 +17,16 @@ With **print_flower_box_msg** you can print messages in a flower_box like this:
 
 """
 
-import sys
-from typing import List, Optional, TextIO, Union
+from typing import Any, List, Union
 
 
-def print_flower_box_msg(msgs: Union[str, List[str]], *,
-                         end: str = '\n',
-                         file: Optional[TextIO] = None,
-                         flush: bool = False) -> None:
+def print_flower_box_msg(msgs: Union[str, List[str]], **kwargs: Any) -> None:
     r"""Print a single or multi-line message inside a flower box (asterisks).
 
     Args:
         msgs: single message or list of messages to print
-        end: Specifies the argument to use on the print statement *end*
-               parameter. The default is '\\n'.
-        file: Specifies the argument to use on the print statement
-                *file* parameter. The default is sys.stdout (via None).
-        flush: Specifies the argument to use on the print statement
-                 *flush* parameter. The default is False.
+        kwargs: Specifies the print arguments to use on the print statement,
+                  such as file, flush, or end.
 
     :Example: print a two line message in a flower box
 
@@ -60,19 +52,14 @@ def print_flower_box_msg(msgs: Union[str, List[str]], *,
     # which works fine.
     # =========================================================================
 
-    if file is None:
-        file = sys.stdout
-
     if isinstance(msgs, str):  # single message
         msgs = [msgs]  # convert to list
 
     max_msg_len: int = len(max(msgs, key=len)) + 4  # 4 for front/end asterisks
 
-    # ensure a new line so that our flower box is properly aligned
-    print('', file=file)
-
-    print('*' * max_msg_len, end=end, file=file, flush=flush)
+    # start with a new line so that our flower box is properly aligned
+    print('\n' + '*' * max_msg_len, **kwargs)
     for msg in msgs:
         msg = '* ' + msg + ' ' * (max_msg_len - len(msg) - 4) + ' *'
-        print(msg, end=end, file=file, flush=flush)
-    print('*' * max_msg_len, end=end, file=file, flush=flush)
+        print(msg, **kwargs)
+    print('*' * max_msg_len, **kwargs)

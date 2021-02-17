@@ -51,6 +51,7 @@ def use_update_stack() -> None:
     with open(path_to_file, 'w') as file:
         file.writelines(file_lines)
 
+
 def add_add() -> None:
     """Routine to adjust the line_num values."""
     path_to_file = 'test_diag_msg.py'
@@ -84,6 +85,7 @@ def add_add() -> None:
 
     # with open(path_to_file, 'w') as file:
     #     file.writelines(file_lines)
+
 
 def adjust_line_nums() -> None:
     """Routine to adjust the line_num values."""
@@ -148,7 +150,7 @@ def adjust_line_nums() -> None:
                     search_text7 in file_line or
                     search_text8 in file_line or
                     search_text9 in file_line):
-                new_text = 'line_num=' + str(idx+1)  # 0 based file, 1 based code
+                new_text = 'line_num=' + str(idx+1)  # 0 based file
                 # find end of statement
                 l_paren_count = 0
                 r_paren_count = 0
@@ -157,13 +159,15 @@ def adjust_line_nums() -> None:
                     # find left parens on current line
                     l_paren_idx = 1
                     while l_paren_idx > 0:
-                        l_paren_idx = file_lines[idx+j].find('(', l_paren_idx+1)
+                        l_paren_idx = file_lines[idx+j].find('(',
+                                                             l_paren_idx+1)
                         if l_paren_idx > 0:
                             l_paren_count += 1
                     # find right parens on current line
                     r_paren_idx = 1
                     while r_paren_idx > 0:
-                        r_paren_idx = file_lines[idx+j].find(')', r_paren_idx+1)
+                        r_paren_idx = file_lines[idx+j].find(')',
+                                                             r_paren_idx+1)
                         if r_paren_idx > 0:
                             r_paren_count += 1
                     if l_paren_count == r_paren_count:

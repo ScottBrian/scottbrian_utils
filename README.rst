@@ -13,10 +13,9 @@ This is a collection of generally useful functions for use with any application.
 4. The print_flower_box_msg function allows you to print text in a flower box (i.e., surrounded by asterisks).
 
 
-With **diag_msg** you can print messages with the time and caller info as a
-diagnostic aid like this:
+With **diag_msg** you can print messages with the time and caller info added automatically.
 
-:Example: print a diagnostic message
+:Example: print a diagnostic message (<input> appears as the module name when run from the console)
 
 >>> from scottbrian_utils.diag_msg import diag_msg
 >>> diag_msg('this is a diagnostic message')
