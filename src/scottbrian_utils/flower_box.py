@@ -20,13 +20,14 @@ With **print_flower_box_msg** you can print messages in a flower_box like this:
 from typing import Any, List, Union
 
 
-def print_flower_box_msg(msgs: Union[str, List[str]], **kwargs: Any) -> None:
-    r"""Print a single or multi-line message inside a flower box (asterisks).
+def print_flower_box_msg(msgs: Union[str, List[str]],
+                         **kwargs: Any) -> None:
+    """Print a single or multi-line message inside a flower box (asterisks).
 
     Args:
         msgs: single message or list of messages to print
-        kwargs: Specifies the print arguments to use on the print statement,
-                  such as file, flush, or end.
+        kwargs: Specifies the print arguments to use on the print
+                  statement, such as *end*, *file*, or *flush*.
 
     :Example: print a two line message in a flower box
 
@@ -41,17 +42,6 @@ def print_flower_box_msg(msgs: Union[str, List[str]], **kwargs: Any) -> None:
     **************************************
 
     """
-    # =========================================================================
-    # Note: the following code that sets file to sys.stdout is needed to allow
-    # the test cases to use the pytest capsys built-in fixture. Having
-    # sys.stdout as the default parameter in the function definition does
-    # not work because capsys changes sys.stdout after the test case gets
-    # control, meaning the print statements in StartStopHeader code are not
-    # captured. This is also appears to be the case for doctest.
-    # So, we simply use None as the default and set file to sys.stdout here
-    # which works fine.
-    # =========================================================================
-
     if isinstance(msgs, str):  # single message
         msgs = [msgs]  # convert to list
 

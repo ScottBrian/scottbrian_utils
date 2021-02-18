@@ -41,10 +41,9 @@ time_box imports functools, sys, datetime, wrapt, and types from typing
 """
 
 import functools
-import sys
 from datetime import datetime
 from typing import Any, Callable, cast, Dict, NewType, Optional, \
-    TextIO, Tuple, TypeVar, Union
+    Tuple, TypeVar, Union
 
 from typing import overload
 
@@ -84,10 +83,8 @@ class StartStopHeader:
         self.end_DT: datetime = datetime.min
 
     def print_end_msg(self, dt_format: DT_Format = default_dt_format,
-                      end: str = '\n',
-                      file: Optional[TextIO] = None,
-                      flush: bool = False) -> None:
-        r"""Issue end time message in a flower box.
+                      **kwargs: Any) -> None:
+        """Issue end time message in a flower box.
 
         The end message includes the current datetime and elapsed time
         (calculated as the difference between the end time and the saved start
@@ -97,39 +94,18 @@ class StartStopHeader:
             dt_format: Specifies the datetime format to use in the end time
                          message. The default is
                          StartStopHeader.default_dt_format.
-            end: Specifies the argument to use on the print statement *end*
-                   parameter for the end time message. The default is '\\n'.
-            file: Specifies the argument to use on the print statement
-                    *file* parameter for the end time message. The default is
-                    sys.stdout (via None).
-            flush: Specifies the argument to use on the print statement
-                     *flush* parameter for the end time message. The default is
-                     False.
+            kwargs: Specifies the print arguments to use on the print
+                      statement, such as *end*, *file*, or *flush*.
         """
-        #  note: the following code that sets file to sys.stdout is needed to
-        #  allow the test cases to use the pytest capsys built-in fixture.
-        #  Having sys.stdout as the default parameter in the function
-        #  definition does not work because capsys changes sys.stdout after
-        #  the test case gets control, meaning the print statements in
-        #  StartStopHeader code are not captured. This is also appears to be
-        #  the case for doctest. So, we simply use None as the default and set
-        #  file to sys.stdout here below which works fine.
-
-        if file is None:
-            file = sys.stdout
-
         self.end_DT = datetime.now()
         msg1 = 'Ending ' + self.func_name + ' on ' \
                + self.end_DT.strftime(dt_format)
         msg2 = 'Elapsed time: ' + str(self.end_DT - self.start_DT)
-        print_flower_box_msg([msg1, msg2], end=end, file=file,
-                             flush=flush)
+        print_flower_box_msg([msg1, msg2], **kwargs)
 
     def print_start_msg(self, dt_format: DT_Format = default_dt_format,
-                        end: str = '\n',
-                        file: Optional[TextIO] = None,
-                        flush: bool = False) -> None:
-        r"""Issue start time message in a flower box.
+                        **kwargs: Any) -> None:
+        """Issue start time message in a flower box.
 
         The start message includes the current datetime which is also saved to
         be used later to calculate the elapsed time for the *print_end_msg*
@@ -139,14 +115,8 @@ class StartStopHeader:
             dt_format: Specifies the datetime format to use in the start
                          time message. The default is
                          StartStopHeader.default_dt_format.
-            end: Specifies the argument to use on the print statement *end*
-                   parameter for the start time message. The default is '\\n'.
-            file: Specifies the argument to use on the print statement
-                    *file* parameter for the start time message. The default is
-                    sys.stdout (via None).
-            flush: Specifies the argument to use on the print statement
-                     *flush* parameterfor the start time messsage. The
-                     default is False.
+            kwargs: Specifies the print arguments to use on the print
+                      statement, such as *end*, *file*, or *flush*.
 
         :Example: Using StartStopHeader with start and end messages.
 
@@ -171,22 +141,10 @@ class StartStopHeader:
         ********************************************
 
         """
-        #  note: the following code that sets file to sys.stdout is needed to
-        #  allow the test cases to use the pytest capsys built-in fixture.
-        #  Having sys.stdout as the default parameter in the function
-        #  definition does not work because capsys changes sys.stdout after
-        #  the test case gets control, meaning the print statements in
-        # StartStopHeader code are not captured. This is also appears to be
-        # the case for doctest. So, we simply use None as the default and set
-        # file to sys.stdout here below which works fine.
-
-        if file is None:
-            file = sys.stdout
-
         self.start_DT = datetime.now()
         msg = 'Starting ' + self.func_name + ' on ' \
               + self.start_DT.strftime(dt_format)
-        print_flower_box_msg([msg], end=end, file=file, flush=flush)
+        print_flower_box_msg([msg], **kwargs)
 
 
 F = TypeVar('F', bound=Callable[..., Any])
@@ -195,11 +153,8 @@ F = TypeVar('F', bound=Callable[..., Any])
 @overload
 def time_box(wrapped: F, *,
              dt_format: DT_Format = StartStopHeader.default_dt_format,
-             end: str = '\n',
-             file: Optional[TextIO] = None,
-             flush: bool = False,
-             time_box_enabled: Union[bool, Callable[..., bool]] = True
-             ) -> F:
+             time_box_enabled: Union[bool, Callable[..., bool]] = True,
+             **kwargs: Any) -> F:
     r"""Overloaded time_box function.
 
     This overloaded function is needed strictly for mypy type checking.
@@ -226,31 +181,20 @@ def time_box(wrapped: F, *,
         dt_format: Specifies the datetime format to use in the start
                      time message. The default is
                      StartStopHeader.default_dt_format.
-        end: Specifies the argument to use on the print statement *end*
-               parameter for the start time and end time messages issued by the
-               StartStopHeader methods . The default is '\\n'.
-        file: Specifies the argument to use on the print statement
-                *file* parameter for the start time and end time messages
-                issued by the StartStopHeader methods . The default is
-                sys.stdout (via None).
-        flush: Specifies the argument to use on the print statement
-                 *flush* parameter for the start time and end time messages
-                 issued by the StartStopHeader methods . The default is False.
         time_box_enabled: Specifies whether the start and end messages
                             should be issued (True) or not (False). The
                             default is True.
+        kwargs: Specifies the print arguments to use on the print
+                      statement, such as *end*, *file*, or *flush*.
     """
 
 
 @overload
 def time_box(*,
              dt_format: DT_Format = StartStopHeader.default_dt_format,
-             end: str = '\n',
-             file: Optional[TextIO] = None,
-             flush: bool = False,
-             time_box_enabled: Union[bool, Callable[..., bool]] = True
-             ) -> Callable[[F], F]:
-    r"""Overloaded time_box function.
+             time_box_enabled: Union[bool, Callable[..., bool]] = True,
+             **kwargs: Any) -> Callable[[F], F]:
+    """Overloaded time_box function.
 
     This overloaded function is needed strictly for mypy type checking.
 
@@ -276,30 +220,19 @@ def time_box(*,
         dt_format: Specifies the datetime format to use in the start
                      time message. The default is
                      StartStopHeader.default_dt_format.
-        end: Specifies the argument to use on the print statement *end*
-               parameter for the start time and end time messages issued by the
-               StartStopHeader methods . The default is '\\n'.
-        file: Specifies the argument to use on the print statement
-                *file* parameter for the start time and end time messages
-                issued by the StartStopHeader methods . The default is
-                sys.stdout (via None).
-        flush: Specifies the argument to use on the print statement
-                 *flush* parameter for the start time and end time messages
-                 issued by the StartStopHeader methods . The default is False.
         time_box_enabled: Specifies whether the start and end messages
                             should be issued (True) or not (False). The
                             default is True.
+        kwargs: Specifies the print arguments to use on the print
+                      statement, such as *end*, *file*, or *flush*.
     """
 
 
 def time_box(wrapped: Optional[F] = None, *,
              dt_format: DT_Format = StartStopHeader.default_dt_format,
-             end: str = '\n',
-             file: Optional[TextIO] = None,
-             flush: bool = False,
-             time_box_enabled: Union[bool, Callable[..., bool]] = True
-             ) -> F:
-    r"""Decorator to wrap a function in start time and end time messages.
+             time_box_enabled: Union[bool, Callable[..., bool]] = True,
+             **kwargs: Any) -> F:
+    """Decorator to wrap a function in start time and end time messages.
 
     The time_box decorator can be invoked with or without arguments, and the
     function being wrapped can optionally take arguments and optionally
@@ -318,19 +251,11 @@ def time_box(wrapped: Optional[F] = None, *,
         dt_format: Specifies the datetime format to use in the start
                      time message. The default is
                      StartStopHeader.default_dt_format.
-        end: Specifies the argument to use on the print statement *end*
-               parameter for the start time and end time messages issued by the
-               StartStopHeader methods . The default is '\\n'.
-        file: Specifies the argument to use on the print statement
-                *file* parameter for the start time and end time messages
-                issued by the StartStopHeader methods . The default is
-                sys.stdout (via None).
-        flush: Specifies the argument to use on the print statement
-                 *flush* parameterfor the start time and end time messages
-                 issued by the StartStopHeader methods . The default is False.
         time_box_enabled: Specifies whether the start and end messages
                             should be issued (True) or not (False). The
                             default is True.
+        kwargs: Specifies the print arguments to use on the print
+                      statement, such as *end*, *file*, or *flush*.
 
     Returns:
         A callable function that issues a starting time message, calls
@@ -423,8 +348,7 @@ def time_box(wrapped: Optional[F] = None, *,
     # ========================================================================
     #  The following code covers cases where time_box is used with or without
     #  parameters, and where the decorated function has or does not have
-    #
-    #     parameters.
+    #  parameters.
     #
     #     Here's an example of time_box without args:
     #         @time_box
@@ -436,8 +360,8 @@ def time_box(wrapped: Optional[F] = None, *,
     #             print('42')
     #         aFunc = time_box(aFunc)
     #
-    #     In fact, the above direct call can be coded as shown without using
-    #     the pie style.
+    #     In fact, the above direct call can be coded as shown instead of using
+    #     the pie decorator style.
     #
     #     Here's an example of time_box with args:
     #         @time_box(end='\n\n')
@@ -471,39 +395,24 @@ def time_box(wrapped: Optional[F] = None, *,
     #
     #     One other complication is that we are also using the wrapt.decorator
     #     for the inner wrapper function which does some more smoke and
-    #     mirrors to ensure the introspection will work as expected.
+    #     mirrors to ensure introspection will work as expected.
     # ========================================================================
-
-    # ========================================================================
-    #  note: the following code that sets file to sys.stdout is needed to
-    #  allow the test cases to use the pytest capsys built-in fixture.
-    #  Having sys.stdout as the default parameter in the function
-    #  definition does not work because capsys changes sys.stdout after
-    #  the test case gets control, meaning the print statements in
-    #  time_box code are not captured. This is also appears to be
-    #  the case for doctest. So, we simply use None as the default and set
-    #  file to sys.stdout here below which works fine.
-    # ========================================================================
-
-    if file is None:
-        file = sys.stdout
 
     if wrapped is None:
         return cast(F, functools.partial(time_box, dt_format=dt_format,
-                                         end=end, file=file, flush=flush,
-                                         time_box_enabled=time_box_enabled))
+                                         time_box_enabled=time_box_enabled,
+                                         **kwargs))
 
     @decorator(enabled=time_box_enabled)  # type: ignore
     def wrapper(func_to_wrap: F, instance: Optional[Any],
                 args: Tuple[Any, ...],
-                kwargs: Dict[str, Any]) -> Any:
+                kwargs2: Dict[str, Any]) -> Any:
         header = StartStopHeader(func_to_wrap.__name__)
-        header.print_start_msg(dt_format=dt_format,
-                               end=end, file=file, flush=flush)
-        ret_value = func_to_wrap(*args, **kwargs)
+        header.print_start_msg(dt_format=dt_format, **kwargs)
 
-        header.print_end_msg(dt_format=dt_format,
-                             end=end, file=file, flush=flush)
+        ret_value = func_to_wrap(*args, **kwargs2)
+
+        header.print_end_msg(dt_format=dt_format, **kwargs)
 
         return ret_value
 

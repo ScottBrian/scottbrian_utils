@@ -22,7 +22,7 @@ With **diag_msg** you can print messages with the time and caller info added aut
 16:20:05.909260 <input>:1 this is a diagnostic message
 
 
-With the FileCatalog item, you can code your application with file names and retrieve their paths at run time
+With **FileCatalog**, you can code your application with file names and retrieve their paths at run time
 from a catalog. This allows you to use different catalogs for the same set of files, such as one catalog for production
 and another for testing. Here's as example:
 
@@ -68,24 +68,6 @@ time and end time messages like this:
     :alt: Documentation Status
 
 
-The flower_box.py module contains:
-
-1. print_flower_box_msg function - takes one of more lines of text as input
-   and prints them inside a flower box (asterisks) as a visual aid for finding
-   the text on the console or in a log.
-   
-The time_hdr.py module contains:
-
-1. StartStopHeader class - has two functions that will respectively print
-   a starting time message in a flower box, and an ending time and elapsed
-   wall clock time message in a flower box.
-2. time_box decorator - wraps a function and uses the StartStopHeader to
-   print the starting and ending time headers.
-
-
-
-
-
 Installation
 ============
 
@@ -93,54 +75,6 @@ Linux:
 
 ``pip install scottbrian-utils``
 
-
-Usage examples:
-===============
-
-flower_box example
-------------------
-
-print a single line message in a flower box
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
->>> from scottbrian_utils.flower_box import print_flower_box_msg
->>> print_flower_box_msg('This is my test message')
-***************************
-* This is my test message *
-***************************
-
-print a two line message in a flower box
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
->>> from scottbrian_utils.flower_box import print_flower_box_msg
->>> msg_list = ['This is my first line test message', '   and my second line']
->>> print_flower_box_msg(msg_list)
-**************************************
-* This is my first line test message *
-*    and my second line              *
-**************************************
-
-time_box decorator example
---------------------------
-
-wrap a function with time_box
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
->>> from scottbrian_utils.time_hdr import time_box
-
->>> @time_box
-... def func2():
-...      print('2 * 3 =', 2*3)
-
->>> func2()
-**********************************************
-* Starting func2 on Tue May 12 2020 20:35:06 *
-**********************************************
-2 * 3 = 6
-********************************************
-* Ending func2 on Tue May 12 2020 20:35:07 *
-* Elapsed time: 0:00:00.000196             *
-********************************************
 
 Development setup
 =================

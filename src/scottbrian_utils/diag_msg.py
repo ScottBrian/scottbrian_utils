@@ -42,7 +42,54 @@ class CallerInfo(NamedTuple):
     line_num: int
 
 
-# def get_caller_info(frame: FrameType) -> Tuple[str, str, str, int]:
+###############################################################################
+# diag_msg
+###############################################################################
+def diag_msg(*args: Any,
+             depth: int = diag_msg_caller_depth,
+             dt_format: str = diag_msg_datetime_fmt,
+             **kwargs: Any) -> None:
+    """Print diagnostic message.
+
+    Args:
+        args: the text to print as part of the diagnostic message
+        depth:  specifies how many callers to include in the call sequence
+        dt_format: datetime format to use
+        kwargs: keyword args to pass along to the print statement
+
+    :Example: print a diagnostic message from a method with a seq depth of 2
+
+    >>> from scottbrian_utils.diag_msg import diag_msg
+    >>> class Cls1:
+    ...     @classmethod
+    ...     def f1(cls, x):
+    ...         # limit to two calls
+    ...         diag_msg('diagnostic info', x, depth=2)
+    >>> Cls1.f1(42)
+    16:20:05.909260 <input>:1 -> <input>::Cls1.f1:5 diagnostic info 42
+
+    :Example: print a diagnostic message with different datetime format
+
+    >>> from scottbrian_utils.diag_msg import diag_msg
+    >>> class Cls1:
+    ...     def f1(self, x):
+    ...         # use different datetime format
+    ...         diag_msg('diagnostic info', x, dt_format='%a %b-%d %H:%M:%S')
+    >>> Cls1().f1(24)
+    Tue Feb-16 10:38:32 <input>::Cls1.f1:4 diagnostic info 24
+
+    """
+    # we specify 2 frames back since we don't want our call in the sequence
+    caller_sequence = get_formatted_call_sequence(1, depth)
+
+    str_time = datetime.now().strftime(dt_format)
+
+    print(f'{str_time} {caller_sequence}', *args, **kwargs)
+
+
+###############################################################################
+# get_caller_info
+###############################################################################
 def get_caller_info(frame: FrameType) -> CallerInfo:
     """Return caller information from the given stack frame.
 
@@ -92,6 +139,9 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
     return CallerInfo(mod_name, cls_name, func_name, frame.f_lineno)
 
 
+###############################################################################
+# get_formatted_call_sequence
+###############################################################################
 def get_formatted_call_sequence(latest: int = 0,
                                 depth: int = get_formatted_call_seq_depth
                                 ) -> str:
@@ -212,45 +262,3 @@ def get_formatted_call_sequence(latest: int = 0,
         arrow = ' -> '  # set arrow for subsequent iterations
 
     return caller_sequence
-
-
-def diag_msg(*args: Any,
-             depth: int = diag_msg_caller_depth,
-             dt_format: str = diag_msg_datetime_fmt,
-             **kwargs: Any) -> None:
-    """Print diagnostic message.
-
-    Args:
-        args: the text to print as part of the diagnostic message
-        depth:  specifies how many callers to include in the call sequence
-        dt_format: datetime format to use
-        kwargs: keyword args to pass along to the print statement
-
-    :Example: print a diagnostic message from a method with a seq depth of 2
-
-    >>> from scottbrian_utils.diag_msg import diag_msg
-    >>> class Cls1:
-    ...     @classmethod
-    ...     def f1(cls, x):
-    ...         # limit to two calls
-    ...         diag_msg('diagnostic info', x, depth=2)
-    >>> Cls1.f1(42)
-    16:20:05.909260 <input>:1 -> <input>::Cls1.f1:5 diagnostic info 42
-
-    :Example: print a diagnostic message with different datetime format
-
-    >>> from scottbrian_utils.diag_msg import diag_msg
-    >>> class Cls1:
-    ...     def f1(self, x):
-    ...         # use different datetime format
-    ...         diag_msg('diagnostic info', x, dt_format='%a %b-%d %H:%M:%S')
-    >>> Cls1().f1(24)
-    Tue Feb-16 10:38:32 <input>::Cls1.f1:4 diagnostic info 24
-
-    """
-    # we specify 2 frames back since we don't want our call in the sequence
-    caller_sequence = get_formatted_call_sequence(1, depth)
-
-    str_time = datetime.now().strftime(dt_format)
-
-    print(f'{str_time} {caller_sequence}', *args, **kwargs)
