@@ -62,7 +62,7 @@ FileSpecs = Dict[str, Path]
 
 
 class FileCatalogError(Exception):
-    """Base class for exception in this module."""
+    """Base class for exceptions in this module."""
     pass
 
 

@@ -1,4 +1,4 @@
-"""flower_box.py module."""
+"""test_flower_box.py module."""
 
 import pytest
 import sys
