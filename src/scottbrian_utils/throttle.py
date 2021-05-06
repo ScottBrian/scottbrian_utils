@@ -61,9 +61,10 @@ The throttle module contains:
        b. IncorrectPerSecondsSpecified
 
 """
+import time
 from collections import deque
-from pathlib import Path
-from typing import Type, TYPE_CHECKING
+from datetime import datetime, timedelta
+from typing import Type, TYPE_CHECKING, Union
 
 
 class ThrottleError(Exception):
@@ -90,7 +91,7 @@ class Throttle:
 
     def __init__(self,
                  num_requests_allowed: int,
-                 per_seconds: float
+                 per_seconds: Union[int, float]
                  ) -> None:
         """Initialize an instance of the Throttle class.
 
@@ -105,7 +106,6 @@ class Throttle:
                                                 specification must be
                                                 a positive integer greater than
                                                 zero.
-
             IncorrectPerSecondsSpecified: The per_seconds specification must be
                                             a positive int or float greater
                                             than zero.
@@ -138,7 +138,7 @@ class Throttle:
                                                    'than zero.')
         if ((isinstance(per_seconds, float) or isinstance(per_seconds, int))
                 and (0 < per_seconds)):
-            self.per_seconds = per_seconds
+            self.per_seconds = timedelta(seconds=per_seconds)
         else:
             raise IncorrectPerSecondsSpecified('The per_seconds specification '
                                                'must be a positive int or '
@@ -151,13 +151,20 @@ class Throttle:
         Returns:
             The number of entries in the request_times deque as an integer
 
+        The call to the Throttle after_request method adds a timestamp to
+        its deque and the call to the Throttle before_request removes any of
+        those timestamps that have aged out per the per_seconds instantiation
+        argument. Thus, the len of Throttle depends on whatever timestamnps
+        are on the deque that have not yet been removed by a call to
+        before_request.
+
         :Example: instantiate a throttle for 10 requests per 1 minute
 
         >>> from scottbrian_utils.throttle import Throttle
         >>> import time
         >>> request_throttle = Throttle(num_requests_allowed=10,
         ...                             per_seconds=60)
-        >>> for i in range(7):
+        >>> for i in range(7):  # quickly add 6 timestamps to throttle deque
         >>>     request_throttle.before_request()
         >>>     time.sleep(.1)  # simulate request that takes 1/10 second
         >>>     request_throttle.after_request()
@@ -198,13 +205,27 @@ class Throttle:
         >>> from scottbrian_utils.throttle import Throttle
         >>> import time
         >>> request_throttle = Throttle(num_requests_allowed=10, per_seconds=5)
-        >>> for i in range(100):
+        >>> for i in range(30):  # try to push us over the limit
         >>>     request_throttle.before_request()
         >>>     time.sleep(.1)  # simulate request that takes 1/10 second
         >>>     request_throttle.after_request()
 
         """
-        pass
+        #######################################################################
+        # trim the deque of aged out timestamps
+        #######################################################################
+        trim_time = datetime.utcnow() - self.per_seconds
+        while len(self.request_times) > 0:
+            if self.request_times[0] < trim_time:
+                self.request_times.popleft()
+            else:  # all remaining times are still ahead of trim_time
+                break
+        #######################################################################
+        # wait if we are at limit
+        #######################################################################
+        # note: in the next line, we should never find more than allowed
+        if len(self.request_times) >= self.num_requests_allowed:
+            time.sleep((self.request_times[0] - trim_time).total_seconds())
 
     def after_request(self) -> None:
         """Add the current time to the request_times deque.
@@ -214,10 +235,10 @@ class Throttle:
         >>> from scottbrian_utils.throttle import Throttle
         >>> import time
         >>> request_throttle = Throttle(num_requests_allowed=6, per_seconds=10)
-        >>> for i in range(10):
+        >>> for i in range(20):  # try to push us over the limit
         >>>     request_throttle.before_request()
         >>>     time.sleep(.1)  # simulate request that takes 1/10 second
         >>>     request_throttle.after_request()
 
         """
-        pass
+        self.request_times.append(datetime.utcnow())

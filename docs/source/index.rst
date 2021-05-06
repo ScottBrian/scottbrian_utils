@@ -10,6 +10,8 @@
    :maxdepth: 4
    :caption: API Reference:
 
+   throttle <throttle_link>
+
    diag_msg <diag_msg_link>
 
    file_catalog <file_catalog_link>
