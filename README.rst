@@ -7,10 +7,38 @@ Intro
 
 This is a collection of generally useful functions for use with any application.
 
-1. The diag_msg function allows you to print a message with the time and caller sequence added for you.
-2. The FileCatalog item allows you to map file names to their paths.
-3. The @time_box decorator allows you to print start, stop, and execution times.
-4. The print_flower_box_msg function allows you to print text in a flower box (i.e., surrounded by asterisks).
+1. The @throttle decorator allows you to throttle service requests to avoid exceeding a stated limit.
+2. The diag_msg function allows you to print a message with the time and caller sequence added for you.
+3. The FileCatalog item allows you to map file names to their paths.
+4. The @time_box decorator allows you to print start, stop, and execution times.
+5. The print_flower_box_msg function allows you to print text in a flower box (i.e., surrounded by asterisks).
+
+With **@throttle** you can decorate a function to avoid exceeding a stated limit, such as 1 request per second,
+or 20 requests per minute.
+
+:Example: prevent a request loop from exceeding 10 requests per second
+
+In the following code, make_request will be called 30 times. The first 10 calls will happen quickly, one
+after the other. The 11th call will be delayed for approximately a second to allow the first 10 calls to
+age out. As the code continues for this example, the throttle code will ensure that no more than 10 calls
+are made per second.
+
+>>> from scottbrian_utils.throttle import Throttle
+>>> from time import time
+>>> @throttle(requests=10, seconds=1)
+... def make_request(i, start_i, start_time):
+...     if time() - start_time >= 1:
+...         print(f'requests {start_i} to {i-1} made in 1 second')
+...         return i, time()  # update for next batch
+...     return start_i, start_time  # no change
+
+>>> start_i = 0
+>>> start_time = time()
+>>> for i in range(30):
+...     start_i, start_time = make_request(i, start_i, start_time)
+requests 0 to 9 made in 1 second
+requests 10 to 19 made in 1 second
+requests 20 to 29 made in 1 second
 
 
 With **diag_msg** you can print messages with the time and caller info added automatically.
@@ -98,6 +126,9 @@ Release History
 
 * 1.2.0
     * Added diag_msg
+
+* 1.3.0
+    * Added @throttle
 
 Meta
 ====

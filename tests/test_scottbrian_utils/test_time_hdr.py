@@ -497,7 +497,7 @@ class TestTimeBox:
 
     """
     The following section tests each combination of arguments to the time_box
-    decorator for three styles of decoration (using pie, calling the
+    decorator for three styles of decoration (using pie, calling
     with the function as the first parameter, and calling the decorator with
     the function specified after the call. This test is especially useful to
     ensure that the type hints are working correctly, and that all
