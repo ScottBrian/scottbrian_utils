@@ -1,6 +1,7 @@
 """test_throttle.py module."""
 
 import pytest
+import time
 from time import time
 from datetime import datetime, timedelta
 from typing import Any, Callable, cast, Final, Tuple, Union
@@ -9,8 +10,12 @@ from collections import deque
 from scottbrian_utils.flower_box import print_flower_box_msg as flowers
 
 from scottbrian_utils.throttle import Throttle, throttle
-from scottbrian_utils.throttle import IncorrectNumberRequestsSpecified
-from scottbrian_utils.throttle import IncorrectPerSecondsSpecified
+from scottbrian_utils.throttle import IncorrectRequestsSpecified
+from scottbrian_utils.throttle import IncorrectSecondsSpecified
+from scottbrian_utils.throttle import IncorrectModeSpecified
+from scottbrian_utils.throttle import IncorrectLbThresholdSpecified
+from scottbrian_utils.throttle import IncorrectEarlyCountSpecified
+from scottbrian_utils.throttle import IncorrectShutdownCheckSpecified
 
 
 ###############################################################################
@@ -62,6 +67,89 @@ def seconds_arg(request: Any) -> Union[int, float]:
         The params values are returned one at a time
     """
     return cast(Union[int, float], request.param)
+
+###############################################################################
+# mode_arg fixture
+###############################################################################
+mode_arg_list = [Throttle.ASYNC_MODE,
+                 Throttle.SYNC_MODE_LB,
+                 Throttle.SYNC_MODE_EC]
+
+
+@pytest.fixture(params=mode_arg_list)  # type: ignore
+def mode_arg(request: Any) -> int:
+    """Using different modes.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+###############################################################################
+# mode_arg fixture
+###############################################################################
+lb_threshold_arg_list = [0, 0.1, 1, 1.5, 2, 3]
+
+
+@pytest.fixture(params=lb_threshold_arg_list)  # type: ignore
+def lb_threshold_arg(request: Any) -> Union[int, float]:
+    """Using different lb_threshold values.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(Union[int, float], request.param)
+
+
+###############################################################################
+# early_count_arg fixture
+###############################################################################
+early_count_arg_list = [0, 1, 2, 3]
+
+
+@pytest.fixture(params=early_count_arg_list)  # type: ignore
+def early_count_arg(request: Any) -> int:
+    """Using different early_count values.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+###############################################################################
+# early_count_arg fixture
+###############################################################################
+tc_shutdown_flag: bool = False
+
+
+def tc_shutdown_check() -> bool:
+    return tc_shutdown_flag
+
+
+shutdown_check_arg_list = [None, tc_shutdown_check]
+
+
+@pytest.fixture(params=shutdown_check_arg_list)  # type: ignore
+def shutdown_check_arg(request: Any) -> Union[None, Callable[[], bool]]:
+    """Using different shutdown_check values.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(Union[None, Callable[[], bool]], request.param)
 
 
 ###############################################################################
@@ -154,7 +242,7 @@ class Request:
 ###############################################################################
 # TestThrottleBasic class to test Throttle methods
 ###############################################################################
-class TestThrottleBasic:
+class TestThrottleErrors:
     """TestThrottle class."""
     def test_throttle_bad_args(self) -> None:
         """test_throttle using bad arguments."""
@@ -163,27 +251,124 @@ class TestThrottleBasic:
         #######################################################################
         with pytest.raises(IncorrectNumberRequestsSpecified):
             _ = Throttle(requests=0,
-                         seconds=1)
+                         seconds=1,
+                         mode=1)
         with pytest.raises(IncorrectNumberRequestsSpecified):
             _ = Throttle(requests=-1,
-                         seconds=1)
+                         seconds=1,
+                         mode=2)
         with pytest.raises(IncorrectNumberRequestsSpecified):
             _ = Throttle(requests='1',  # type: ignore
-                         seconds=1)
+                         seconds=1,
+                         mode=3)
 
         #######################################################################
         # bad seconds
         #######################################################################
         with pytest.raises(IncorrectPerSecondsSpecified):
             _ = Throttle(requests=1,
-                         seconds=0)
+                         seconds=0,
+                         mode=3)
         with pytest.raises(IncorrectPerSecondsSpecified):
             _ = Throttle(requests=1,
-                         seconds=-1)
+                         seconds=-1,
+                         mode=2)
         with pytest.raises(IncorrectPerSecondsSpecified):
             _ = Throttle(requests=1,
-                         seconds='1')  # type: ignore
+                         seconds='1',  # type: ignore
+                         mode=1)
 
+        #######################################################################
+        # bad mode
+        #######################################################################
+        with pytest.raises(IncorrectModeSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=-1)
+        with pytest.raises(IncorrectModeSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=0)
+        with pytest.raises(IncorrectModeSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=4)
+        with pytest.raises(IncorrectModeSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode='1')  # type: ignore
+
+        #######################################################################
+        # bad lb_threshold
+        #######################################################################
+        with pytest.raises(IncorrectLbThresholdSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=1,
+                         lb_threshold=1)  # not allowed with mode 1
+        with pytest.raises(IncorrectLbThresholdSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=3,
+                         lb_threshold=0)  # not allowed with mode 3
+        with pytest.raises(IncorrectLbThresholdSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=2,
+                         lb_threshold=-1)
+        with pytest.raises(IncorrectLbThresholdSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=2,
+                         lb_threshold='1')  # type: ignore
+
+        #######################################################################
+        # bad early_count
+        #######################################################################
+        with pytest.raises(IncorrectEarlyCountSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=1,
+                         early_count=0)  # not allowed with mode 1
+        with pytest.raises(IncorrectEarlyCountSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=2,
+                         early_count=1)  # not allowed with mode 2
+        with pytest.raises(IncorrectEarlyCountSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=2,
+                         early_count=-1)
+        with pytest.raises(IncorrectEarlyCountSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=2,
+                         early_count='1')  # type: ignore
+
+        #######################################################################
+        # bad shut_down
+        #######################################################################
+        with pytest.raises(IncorrectShutdownCheckSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=1,
+                         shutdown_check=1)  # type: ignore
+        with pytest.raises(IncorrectShutdownCheckSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=1,
+                         shutdown_check='1')  # type: ignore
+
+
+###############################################################################
+# TestThrottleBasic class to test Throttle methods
+###############################################################################
+class TestThrottleBasic:
+
+    ###########################################################################
+    # len checks
+    ###########################################################################
     def test_throttle_len(self,
                           requests_arg: int) -> None:
         """Test the len of throttle.
@@ -192,53 +377,135 @@ class TestThrottleBasic:
             requests_arg: fixture that provides args
 
         """
-        throttle = Throttle(requests=1,
-                            seconds=1)
+        # create a throttle with a long enough interval to ensure that we
+        # can populate the request_q and get the length before we start
+        # dequeing requests from it
+        a_throttle = Throttle(requests=requests_arg,
+                              seconds=60,
+                              mode=1)
+
+        def dummy_func() -> None:
+            pass
 
         for i in range(requests_arg):
-            throttle.after_request()
+            a_throttle.send_async(dummy_func)
 
-        assert len(throttle) == requests_arg
+        time.sleep(2)  # wait 2 seconds to give scheduler time to react
 
-    def test_throttle_repr(self,
-                           requests_arg: int,
-                           seconds_arg: Union[int, float]
-                           ) -> None:
+        # assert is for 1 less than queued because the first request
+        # will be scheduled almost immediately
+        assert len(a_throttle) == requests_arg-1
+
+        # start_shutdown will return when the request_q cleanup is complete
+        a_throttle.start_shutdown()
+
+    ###########################################################################
+    # repr with mode 1 async
+    ###########################################################################
+    def test_throttle_repr_mode1(self,
+                                 requests_arg: int,
+                                 seconds_arg: Union[int, float],
+                                 shutdown_check_arg: Union[None,
+                                                           Callable[[], bool]]
+                                 ) -> None:
+        """test_throttle repr mode 1 with various requests and seconds.
+
+        Args:
+            requests_arg: fixture that provides args
+            seconds_arg: fixture that provides args
+            shutdown_check_arg: fixture that provides args
+
+        """
+        a_throttle = Throttle(requests=requests_arg,
+                              seconds=seconds_arg,
+                              mode=Throttle.ASYNC_MODE,
+                              shutdown_check=shutdown_check_arg)
+
+        expected_repr_str = \
+            f'Throttle(' \
+            f'requests={requests_arg}, ' \
+            f'seconds={float(seconds_arg)}, ' \
+            f'mode=Throttle.ASYNC_MODE'
+
+        if shutdown_check_arg:
+            expected_repr_str += f', shutdown_check=' \
+                                 f'{shutdown_check_arg.__name__}'
+        expected_repr_str += ')'
+        assert repr(a_throttle) == expected_repr_str
+
+    ###########################################################################
+    # repr with mode 2 sync early count
+    ###########################################################################
+    def test_throttle_repr_mode2(self,
+                                 requests_arg: int,
+                                 seconds_arg: Union[int, float],
+                                 early_count_arg: int,
+                                 shutdown_check_arg: Union[None,
+                                                           Callable[[], bool]]
+                                 ) -> None:
+        """test_throttle repr mode 2 with various requests and seconds.
+
+        Args:
+            requests_arg: fixture that provides args
+            seconds_arg: fixture that provides args
+            early_count_arg: fixture that provides args
+            shutdown_check_arg: fixture that provides args
+        """
+        a_throttle = Throttle(requests=requests_arg,
+                              seconds=seconds_arg,
+                              mode=Throttle.SYNC_MODE_EC,
+                              early_count=early_count_arg,
+                              shutdown_check=shutdown_check_arg)
+
+        expected_repr_str = \
+            f'Throttle(' \
+            f'requests={requests_arg}, ' \
+            f'seconds={float(seconds_arg)}, ' \
+            f'mode=Throttle.SYNC_MODE_EC), ' \
+            f'early_count={early_count_arg}'
+
+        if shutdown_check_arg:
+            expected_repr_str += f', shutdown_check=' \
+                                 f'{shutdown_check_arg.__name__}'
+        expected_repr_str += ')'
+        assert repr(a_throttle) == expected_repr_str
+
+    ###########################################################################
+    # repr with mode 3 sync leaky bucket
+    ###########################################################################
+    def test_throttle_repr_mode3(self,
+                                 requests_arg: int,
+                                 seconds_arg: Union[int, float],
+                                 lb_threshold_arg: Union[int, float],
+                                 shutdown_check_arg: Union[None,
+                                                           Callable[[], bool]]
+                                 ) -> None:
         """test_throttle repr with various requests and seconds.
 
         Args:
             requests_arg: fixture that provides args
             seconds_arg: fixture that provides args
-
+            lb_threshold_arg: fixture that provides args
+            shutdown_check_arg: fixture that provides args
         """
-        throttle = Throttle(requests=requests_arg,
-                            seconds=seconds_arg)
+        a_throttle = Throttle(requests=requests_arg,
+                              seconds=seconds_arg,
+                              mode=Throttle.SYNC_MODE_LB,
+                              lb_threshold=lb_threshold_arg,
+                              shutdown_check=shutdown_check_arg)
 
         expected_repr_str = \
             f'Throttle(' \
             f'requests={requests_arg}, ' \
-            f'seconds={float(seconds_arg)})'
+            f'seconds={float(seconds_arg)}, ' \
+            f'mode=Throttle.SYNC_MODE_LB), ' \
+            f'lb_threshold={float(lb_threshold_arg)}'
 
-        assert repr(throttle) == expected_repr_str
-
-    def test_throttle_basic(self,
-                            requests_arg: int,
-                            seconds_arg: Union[int, float]
-                            ) -> None:
-        """test_throttle using various requests and seconds.
-
-        Args:
-            requests_arg: fixture that provides args
-            seconds_arg: fixture that provides args
-        """
-        throttle = Throttle(requests=requests_arg,
-                            seconds=seconds_arg)
-        request = Request(requests=requests_arg,
-                          seconds=seconds_arg)
-        for i in range(requests_arg*3):
-            throttle.before_request()
-            request.make_request()
-            throttle.after_request()
+        if shutdown_check_arg:
+            expected_repr_str += f', shutdown_check=' \
+                                 f'{shutdown_check_arg.__name__}'
+        expected_repr_str += ')'
+        assert repr(a_throttle) == expected_repr_str
 
 
 ###############################################################################

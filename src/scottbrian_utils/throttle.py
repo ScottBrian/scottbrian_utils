@@ -135,13 +135,13 @@ class IncorrectModeSpecified(ThrottleError):
     pass
 
 
-class IncorrectBurstSpecified(ThrottleError):
-    """Throttle exception for an incorrect burst specification."""
+class IncorrectShutdownCheckSpecified(ThrottleError):
+    """Throttle exception for an incorrect shutdown_check specification."""
     pass
 
 
-class IncorrectShutdownCheckSpecified(ThrottleError):
-    """Throttle exception for an incorrect shutdown_check specification."""
+class AttemptedSyncRequestInAsyncMode(ThrottleError):
+    """Throttle exception for sync request with async mode throttle."""
     pass
 
 
@@ -168,9 +168,9 @@ class Throttle:
                  requests: int,
                  seconds: Union[int, float],
                  mode: int,
-                 lb_tolerance: Optional[Union[int, float]],
-                 early_count: Optional[int],
-                 shutdown_check: Optional[Callable[[], bool]]
+                 early_count: Optional[int] = None,
+                 lb_threshold: Optional[Union[int, float]] = None,
+                 shutdown_check: Optional[Callable[[], bool]] = None
                  ) -> None:
         """Initialize an instance of the Throttle class.
 
@@ -198,14 +198,38 @@ class Throttle:
                     immediately returned to the caller when the request
                     completes.
                     The synchronous processing can employ one of two
-                    different algorithms that can provide some flexability to
+                    different algorithms that can provide flexability to
                     the caller be allowing some number of requests to
-                    proceed without delay. The first is the leaky bucket
+                    proceed without delay. The first is the early arrival count
                     algorithm, specified with a mode value of 2
-                    (Throttle.SYNC_MODE_LB) and an lb_tolerance value.
-                    The other algorithm is the early arrival count
-                    algorithm, specified with a mode value of 3
-                    (Throttle.SYNC_MODE_EC) and an early_count value.
+                    (Throttle.SYNC_MODE_EC) and an early_count value. The other
+                    algorithm is the leaky bucket algorithm, specified with
+                    a mode value of 3 (Throttle.SYNC_MODE_LB) and an
+                    lb_threshold value.
+            early_count: Specifies the number of requests that are allowed
+                           to proceed that arrive earlier than the
+                           allowed interval. The count of early requests
+                           is incemented and when it exceeds the early_count it
+                           will be delayed for enough time such that is not
+                           early. Any request that arrives at or beyond the
+                           allowed interval will cause the count to be
+                           reset (included the request that was delayed
+                           since it will now be sent at the allowed interval).
+                           A specification of zero for the early_count will
+                           effectively cause all requests that are early to
+                           be delayed.
+            lb_threshold: Specifies the threshold for the leaky bucket when
+                            Throttle.SYNC_MODE_LB is specified for mode.
+                            This is the number of requests that can be in
+                            the bucket such that the next request is allowed
+                            to proceed without delay. That request is
+                            added to the bucket, and then the bucket leaks
+                            out the requests. When the next request arrives,
+                            it will be delayed by whatever amount of time is
+                            needed for the bucket to have leaked enough to be
+                            at the threshold. A specification of zero for the
+                            lb_threshold will effectively cause all requests
+                            that are early to be delayed.
             shutdown_check: The client method to call to determine whether the
                               throttle should reject any additional requests
                               and, for async mode, clean up the queue by
@@ -236,16 +260,10 @@ class Throttle:
                                          than zero.
             IncorrectModeSpecified: The mode specification must be an
                                        integer with value 1 or 2.
-            IncorrectBurstSpecified: The burst specification, when supplied,
-                                       must be a positive, non-zero integer.
             IncorrectShutdownCheckSpecified: The shutdown_check specification,
                                                when supplied, must be a
                                                function.
-            AttemptedSyncRequestInAsyncMode: The send_sync method was
-                                               called for a Throttle that
-                                               was instantiated with a mode
-                                               mode of 1 for asynchronous
-                                               requests.
+
 
         :Example: instantiate a throttle for 1 request per second
 
@@ -283,23 +301,10 @@ class Throttle:
         if (isinstance(mode, int)
                 and mode in (Throttle.ASYNC_MODE, Throttle.SYNC_MODE_LB,
                              Throttle.SYNC_MODE_EC)):
-            self._mode = mode
+            self.mode = mode
         else:
             raise IncorrectModeSpecified('The mode specification must be an '
                                           'integer with value 1 or 2.')
-
-        if burst:
-            if (isinstance(burst, int)) and (0 < burst):
-                self.burst = burst
-            else:
-                raise IncorrectBurstSpecified('The burst specification, '
-                                              'when supplied, must be a '
-                                              'positive, non-zero integer')
-        else:  # burst is None
-            if mode == Throttle.SYNC_MODE:
-                self.burst = 1
-            else:  # mode == Throttle.SYNC_MODE
-                self.burst = 64
 
         if shutdown_check:
             if callable(shutdown_check):
@@ -384,23 +389,21 @@ class Throttle:
         """Determine whether we need to shutdown.
 
         Returns:
-            True is we need to start shutdown processing, False otherwise
+            True if we need to start shutdown processing, False otherwise
         """
         if self.shutdown_check:  # if client provided a shutdown_check func
             self._shutdown = self.shutdown_check()
         return self._shutdown
 
-    @shutdown.setter
-    def shutdown(self, tf: bool) -> None:
+    def start_shutdown(self) -> None:
         """Shutdown the throttle request scheduling.
 
         Args:
             tf: True is we need to indicate to start shutdown, False otherwise
 
         """
-        self._shutdown = tf  # signal request_scheduler to clean up and
-        if self._shutdown:
-            self.request_scheduler_thread.join()
+        self._shutdown = True  # signal request_scheduler to clean up and
+        self.request_scheduler_thread.join()
 
     def send_sync(self,
                   func: Callable[[...], None],
@@ -439,7 +442,7 @@ class Throttle:
         #######################################################################
         if arrival_time < (self._expected_arrival_time -
                            self._leaky_bucket_tolerance):  # if early
-            if self._mode == Throttle.SYNC_MODE_LB:  # if leaky bucket algo
+            if self.mode == Throttle.SYNC_MODE_LB:  # if leaky bucket algo
                 # calculate wait time such that the wait will bring the
                 # request within tolerance and not be early
                 wait_time = (self._expected_arrival_time -
@@ -448,7 +451,7 @@ class Throttle:
                 # update arrival_time to be used to update
                 # self._expected_arrival_time below
                 arrival_time = time.time()
-            elif self._mode == Throttle.SYNC_MODE_EC:  # early count algo
+            elif self.mode == Throttle.SYNC_MODE_EC:  # early count algo
                 # bump count of early arrivals without an intervening wait
                 self._early_arrival_count += 1
 
@@ -486,8 +489,8 @@ class Throttle:
 
     def send_async(self,
                    func: Callable[[...], None],
-                   args: Tuple[Any, ],
-                   kwargs: Dict['str', Any]
+                   args: Tuple[Any, ] = (,),
+                   kwargs: Dict['str', Any] = {}
                    ) -> None:
         """Queue the request to be sent asynchronously.
 
@@ -516,12 +519,12 @@ class Throttle:
 
     def schedule_requests(self) -> None:
         """Get tasks from queue and run them."""
-        # The app will pass in a method to use to check whether we should
-        # continue to wait for requests to be queued, or if we are done and
-        # should end the thread. The schedule_active is that method.
-        # Note that request_q.get will only wait for a second to be somewhat
-        # responsive to shutdown which will be indicated if and when
-        # schedule_active returns False.
+        # Requests will be scheduled from the request_q at the interval
+        # calculated from the requests and seconds arguments when the
+        # throttle was instantiated. If shutdown is indicated,
+        # the request_q will be cleaned up with any remaining requests
+        # dropped. Note that request_q.get will only wait for a second so
+        # we can detect shutdown in a timely fashion.
         with self.schedule_requests_lock:
             while not self.shutdown or not self.request_q.empty():
                 try:
@@ -530,26 +533,22 @@ class Throttle:
                     continue  # no need to wait since we already did
                 ###############################################################
                 # call the request function
+                # if shutdown indicated, drop requests
                 ###############################################################
-                request_item.request_func(*request_item.args,
-                                          **request_item.kwargs)
+                if not self.shutdown:
+                    request_item.request_func(*request_item.args,
+                                              **request_item.kwargs)
                 self.request_q.task_done()
 
                 ###############################################################
                 # wait (i.e., throttle)
                 # Note that the wait time could be anywhere from a fraction of
-                # a second to be several seconds. We want to be responsive in
+                # a second to several seconds. We want to be responsive in
                 # case we need to bail for shutdown, so we wait in 1 second
-                # or less increments.
-                # Note that we want to bail on the wait if we detect shutdown,
-                # but only if the queue is empty - if we are in shutdown and
-                # the queue still has items, then we want to still do the
-                # waits to avoid exceeding the limits while cleaning up the
-                # queue.
+                # or less increments and bail if we detect shutdown.
                 ###############################################################
                 wait_seconds = self.wait_seconds  # could be small or large
-                while wait_seconds > 0 and (not self.shutdown or
-                                            not self.request_q.empty()):
+                while wait_seconds > 0 and not self.shutdown:
                     time.sleep(min(1, wait_seconds))
                     wait_seconds = wait_seconds - 1
 
