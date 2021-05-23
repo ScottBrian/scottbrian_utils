@@ -209,9 +209,10 @@ class Throttle:
             early_count: Specifies the number of requests that are allowed
                            to proceed that arrive earlier than the
                            allowed interval. The count of early requests
-                           is incemented and when it exceeds the early_count it
-                           will be delayed for enough time such that is not
-                           early. Any request that arrives at or beyond the
+                           is incemented, and when it exceeds the
+                           early_count, the request will be delayed to
+                           align it with its expected arrival time. Any
+                           request that arrives at or beyond the
                            allowed interval will cause the count to be
                            reset (included the request that was delayed
                            since it will now be sent at the allowed interval).
@@ -232,7 +233,7 @@ class Throttle:
                             that are early to be delayed.
             shutdown_check: The client method to call to determine whether the
                               throttle should reject any additional requests
-                              and, for async mode, clean up the queue by
+                              for async mode and clean up the queue by
                               scheduling the remaining request items
                               immediately without delay. This method must
                               not take arguments, and must return a bool.
@@ -246,9 +247,9 @@ class Throttle:
                               in the case where the client is waiting on an
                               event from its callback method. The
                               shutdown_check is optional. An alternative is
-                              to set the shutdown flag in the Throttle to
-                              get the same result, or to do nothing if the
-                              client design calls for it.
+                              to call start_shutdown to get the same result,
+                              or to do nothing if the client design calls for
+                              it.
 
 
         Raises:
@@ -327,10 +328,13 @@ class Throttle:
         self._leaky_bucket_tolerance = 0
         self._early_arrival_count = 0
         self._allowed_early_arrivals = 0
-        self.request_scheduler_thread = \
-            threading.Thread(target=self.schedule_requests)
 
-        self.request_scheduler_thread.start()
+        if mode == Throttle.ASYNC_MODE:
+            self.request_scheduler_thread = \
+                threading.Thread(target=self.schedule_requests)
+            self.request_scheduler_thread.start()
+        else:
+            self.request_scheduler_thread = None
 
     def __len__(self) -> int:
         """Return the number of items in the request_times deque.
@@ -391,26 +395,34 @@ class Throttle:
         Returns:
             True if we need to start shutdown processing, False otherwise
         """
-        if self.shutdown_check:  # if client provided a shutdown_check func
-            self._shutdown = self.shutdown_check()
+        # If client provided a shutdown_check func and it returns true,
+        # set self._shutdown to True.
+        # Note that self._shutdown is initialized to False, and once
+        # shutdown_check returns True we set self._shutdown to True
+        # and never back to False.
+        if self.shutdown_check and self.shutdown_check():
+            self._shutdown = True
         return self._shutdown
 
     def start_shutdown(self) -> None:
         """Shutdown the throttle request scheduling.
 
-        Args:
-            tf: True is we need to indicate to start shutdown, False otherwise
-
+        Raises:
+            AttemptedShutdownForSyncThrottle: Calling start_shutdown is only
+                                                valid for a throttle
+                                                instantiated with a mode of
+                                                Throttle.MODE_ASYNC                                             shutthe shutdown
         """
-        self._shutdown = True  # signal request_scheduler to clean up and
-        self.request_scheduler_thread.join()
+        self._shutdown = True  # indicate shutdown in progress
+        if self.mode == Throttle.ASYNC_MODE:
+            self.request_scheduler_thread.join()  # wait for scheduler cleanup
 
-    def send_sync(self,
-                  func: Callable[[...], None],
-                  args: Tuple[Any,],
-                  kwargs: Dict['str', Any]
-                  ) -> Any:
-        """Send the request synchronously, possibly delayed.
+    def send_request(self,
+                     func: Callable[..., Any],
+                     *args: Any,
+                     **kwargs: Any
+                     ) -> Any:
+        """Send the request.
 
         Args:
             func: the request function to be run
@@ -420,102 +432,97 @@ class Throttle:
         Returns:
               The return code from the request function (may be None)
 
-        Raises:
-              AttemptedSyncRequestInAsyncMode: The send_sync method was
-                                                 called for a Throttle that
-                                                 was instantiated with a mode
-                                                 mode of 1 for asynchronous
-                                                 requests.
-
         """
-        arrival_time = time.time()  # time that this request is being made
-
         #######################################################################
-        # The Throttle class can be instantiated for sync requests using
-        # either the leaky bucket algo or by specifying the number of
-        # early requests allowed. If the leaky bucket algo is being used,
-        # self._leaky_bucket_tolerance will be a positive non_zero value.
-        # If, instead, the early requests allowed technique is being used,
-        # self._early_arrival_count will be a positive non-zero value.
-        # The following code handles either one case or the other, whichever
-        # one was decided by the user when the class was instantiated.
+        # ASYNC_MODE
         #######################################################################
-        if arrival_time < (self._expected_arrival_time -
-                           self._leaky_bucket_tolerance):  # if early
-            if self.mode == Throttle.SYNC_MODE_LB:  # if leaky bucket algo
-                # calculate wait time such that the wait will bring the
-                # request within tolerance and not be early
-                wait_time = (self._expected_arrival_time -
-                             self._leaky_bucket_tolerance - arrival_time)
-                time.sleep(wait_time)
-                # update arrival_time to be used to update
-                # self._expected_arrival_time below
-                arrival_time = time.time()
-            elif self.mode == Throttle.SYNC_MODE_EC:  # early count algo
-                # bump count of early arrivals without an intervening wait
-                self._early_arrival_count += 1
+        if self.mode == Throttle.ASYNC_MODE:
+            request_item = Throttle.Request(func, args, kwargs)
 
-                # if we exceed the allowed early arrivals, delay the request
-                if self._early_arrival_count > self._allowed_early_arrivals:
-                    self._early_arrival_count = 0  # reset the count
-                    wait_time = self._expected_arrival_time - arrival_time
+            while not self.shutdown:
+                try:
+                    self.request_q.put(request_item, block=True, timeout=1)
+                except queue.Full:
+                    continue  # no need to wait since we already did
+
+                ###################################################################
+                # There is a possibility that shutdown was switched to True
+                # and the schedule_requests method saw that and cleaned up the
+                # queue and exited BEFORE we were able to queue our request. In
+                # that case, we need to deal with that here by simply calling
+                # schedule_requests and run our new request from this thread.
+                ###################################################################
+                if not self.shutdown and not self.request_q.empty():
+                    self.schedule_requests()
+            return
+        #######################################################################
+        # SYNC_MODE
+        #######################################################################
+        else:
+            arrival_time = time.time()  # time that this request is being made
+
+            ###################################################################
+            # The Throttle class can be instantiated for sync requests using
+            # either the leaky bucket algo or by specifying the number of
+            # early requests allowed. If the leaky bucket algo is being used,
+            # self._leaky_bucket_tolerance will be a positive non_zero value.
+            # If, instead, the early requests allowed technique is being used,
+            # self._early_arrival_count will be a positive non-zero value.
+            # The following code handles either one case or the other,
+            # whichever one was decided by the user when the class was
+            # instantiated.
+            ###################################################################
+
+            if self.mode == Throttle.SYNC_MODE_EC:  # early count algo
+                if arrival_time < self._expected_arrival_time:  # if early
+                    # bump count of early arrivals without an intervening wait
+                    self._early_arrival_count += 1
+
+                    # if we exceed the allowed early arrivals, delay the
+                    # request
+                    if (self._allowed_early_arrivals <
+                            self._early_arrival_count):
+                        self._early_arrival_count = 0  # reset the count
+                        wait_time = self._expected_arrival_time - arrival_time
+                        time.sleep(wait_time)
+            else:  # leaky bucket algo
+                if arrival_time < (self._expected_arrival_time -
+                                   self._leaky_bucket_tolerance):  # if early
+                    # calculate wait time such that the wait will bring the
+                    # request within tolerance and not be early
+                    wait_time = (self._expected_arrival_time -
+                                 self._leaky_bucket_tolerance - arrival_time)
                     time.sleep(wait_time)
-                    # update arrival_time to be used to update
-                    # self._expected_arrival_time below
-                    arrival_time = time.time()
-            else:
-                raise AttemptedSyncRequestInAsyncMode('The send_sync method'
-                                                      'was called for '
-                                                      'a Throttle that was '
-                                                      'instantiated with a '
-                                                      'mode of 1 for '
-                                                      'asynchronous '
-                                                      'requests.')
 
-        ret_value = func(*args, **kwargs)  # make the request
+            # The caller should protect the function with a try and either
+            # raise an exception or pass back a return value that makes sense.
+            # Putting a try around the call here and raising an exception
+            # might not be what the caller wants.
+            ret_value = func(*args, **kwargs)  # make the request
 
-        # Update the expected arrival time for the next request by
-        # adding the request interval to our current arrival time or the
-        # current expected arrival time, whichever is most recent. The
-        # current arrival time will most recent if the request arrived after
-        # the expected arrival time or if the request was early and
-        # triggered a delay, in which case we updated the arrival time after
-        # the wait and it will now be most recent.
-        self._expected_arrival_time = (max(arrival_time,
-                                           self._expected_arrival_time)
-                                       + self._interval)
+            # Update the expected arrival time for the next request by
+            # adding the request interval to our current time. Note that we
+            # use the current time instead of the arrival time to make sure we
+            # account for any processing delays while trying to get the
+            # request to the service who is then observing arrival times at
+            # its point or arrival, not ours. If we were to use our arrival
+            # time to update the next expected arrival time, we face a
+            # possible scenario where we send a request that gets delayed
+            # en route to the service, but out next request arrives at the
+            # updated expected arrival time and is sent out immediately, but it
+            # now arrives early relative to the previous request, as observed
+            # by the service. By using the current time, we avoid that
+            # scenario. It does mean, however, that any built in constant
+            # delays in sending the request will be adding an extra amount of
+            # time to our calculated interval with the undesirable effect
+            # that all requests will now be throttled more than they need to
+            # be.
+            # TODO: subtract the constant path delay from the interval
+            self._expected_arrival_time = (max(time.time(),
+                                               self._expected_arrival_time)
+                                           + self._interval)
 
-        return ret_value  # return the request return value (might be None)
-
-    def send_async(self,
-                   func: Callable[[...], None],
-                   args: Tuple[Any, ] = (,),
-                   kwargs: Dict['str', Any] = {}
-                   ) -> None:
-        """Queue the request to be sent asynchronously.
-
-        Args:
-            func: the request function to be run
-            args: the request function positional arguments
-            kwargs: the request function keyword arguments
-
-        """
-        request_item = Throttle.Request(func, args, kwargs)
-        while not self.shutdown:
-            try:
-                self.request_q.put(request_item, block=True, timeout=1)
-            except queue.Full:
-                continue  # no need to wait since we already did
-
-            ###################################################################
-            # There is a possibility that shutdown was switched to True
-            # and the schedule_requests method saw that and cleaned up the
-            # queue and exited BEFORE we were able to queue our request. In
-            # that case, we need to deal with that here by simply calling
-            # schedule_requests and run our new request from this thread.
-            ###################################################################
-            if not self.shutdown and not self.request_q.empty():
-                self.schedule_requests()
+            return ret_value  # return the request return value (might be None)
 
     def schedule_requests(self) -> None:
         """Get tasks from queue and run them."""
@@ -551,6 +558,140 @@ class Throttle:
                 while wait_seconds > 0 and not self.shutdown:
                     time.sleep(min(1, wait_seconds))
                     wait_seconds = wait_seconds - 1
+
+    # def _send_sync(self,
+    #                func: Callable[[...], None],
+    #                *,
+    #                args: Optional[Tuple[Any, ...]] = (),
+    #                kwargs: Optional[Dict['str', Any]] = None
+    #                ) -> Any:
+    #     """Send the request synchronously, possibly delayed.
+    #
+    #     Args:
+    #         func: the request function to be run
+    #         args: the request function positional arguments
+    #         kwargs: the request function keyword arguments
+    #
+    #     Returns:
+    #           The return code from the request function (may be None)
+    #
+    #     Raises:
+    #           AttemptedSyncRequestInAsyncMode: The send_sync method was
+    #                                              called for a Throttle that
+    #                                              was instantiated with a mode
+    #                                              mode of 1 for asynchronous
+    #                                              requests.
+    #
+    #     """
+    #     arrival_time = time.time()  # time that this request is being made
+    #
+    #     #######################################################################
+    #     # The Throttle class can be instantiated for sync requests using
+    #     # either the leaky bucket algo or by specifying the number of
+    #     # early requests allowed. If the leaky bucket algo is being used,
+    #     # self._leaky_bucket_tolerance will be a positive non_zero value.
+    #     # If, instead, the early requests allowed technique is being used,
+    #     # self._early_arrival_count will be a positive non-zero value.
+    #     # The following code handles either one case or the other, whichever
+    #     # one was decided by the user when the class was instantiated.
+    #     #######################################################################
+    #
+    #     if self.mode == Throttle.SYNC_MODE_EC:  # early count algo
+    #         if arrival_time < self._expected_arrival_time:  # if early
+    #             # bump count of early arrivals without an intervening wait
+    #             self._early_arrival_count += 1
+    #
+    #             # if we exceed the allowed early arrivals, delay the request
+    #             if self._allowed_early_arrivals < self._early_arrival_count:
+    #                 self._early_arrival_count = 0  # reset the count
+    #                 wait_time = self._expected_arrival_time - arrival_time
+    #                 time.sleep(wait_time)
+    #     elif self.mode == Throttle.SYNC_MODE_LB:  # if leaky bucket algo
+    #         if arrival_time < (self._expected_arrival_time -
+    #                            self._leaky_bucket_tolerance):  # if early
+    #             # calculate wait time such that the wait will bring the
+    #             # request within tolerance and not be early
+    #             wait_time = (self._expected_arrival_time -
+    #                          self._leaky_bucket_tolerance - arrival_time)
+    #             time.sleep(wait_time)
+    #      else:
+    #         raise AttemptedSyncRequestInAsyncMode('The send_sync method'
+    #                                               'was called for '
+    #                                               'a Throttle that was '
+    #                                               'instantiated with a '
+    #                                               'mode of 1 for '
+    #                                               'asynchronous '
+    #                                               'requests.')
+    #
+    #     # The caller should protect the function with a try and either
+    #     # raise an exception or pass back a return value that makes sense.
+    #     # Putting a try around the call here and raising an exception
+    #     # might not be what the caller wants.
+    #     if kwargs:  # we have kwargs
+    #         # if no args, then *args becomes *() which means no pos args
+    #         ret_value = func(*args, **kwargs)  # make the request
+    #     else:
+    #         # if no args, then *args becomes *() which means no pos args
+    #         ret_value = func(*args)  # make the request
+    #
+    #
+    #     # Update the expected arrival time for the next request by
+    #     # adding the request interval to our current time. Note that we
+    #     # use the current time instead of the arrival time to make sure we
+    #     # account for any processing delays while trying to get the
+    #     # request to the service who is then observing arrival times at
+    #     # its point or arrival, not ours. If we were to use our arrival
+    #     # time to update the next expected arrival time, we face a
+    #     # possible scenario where we send a request that gets delayed
+    #     # en route to the service, but out next request arrives at the
+    #     # updated expected arrival time and is sent out immediately, but it
+    #     # now arrives early relative to the previous request, as observed by
+    #     # the service. By using the current time, we avoid that scenario. It
+    #     # does mean, however, that any built in constant delays in sending
+    #     # the request will be adding an extra amount of time to our calculated
+    #     # interval with the undesirable effect that all requests will now be
+    #     # throttled more than they need to be.
+    #     # TODO: subtract the constant path delay from the interval
+    #     self._expected_arrival_time = (max(time.time(),
+    #                                        self._expected_arrival_time)
+    #                                    + self._interval)
+    #
+    #     return ret_value  # return the request return value (might be None)
+    #
+    # def _send_async(self,
+    #                 func: Callable[[...], None],
+    #                 *,
+    #                 args: Optional[Tuple[Any, ...]] = (),
+    #                 kwargs: Optional[Dict['str', Any]] = None
+    #                 ) -> None:
+    #     """Queue the request to be sent asynchronously.
+    #
+    #     Args:
+    #         func: the request function to be run
+    #         args: the request function positional arguments
+    #         kwargs: the request function keyword arguments
+    #
+    #     """
+    #     if kwargs:
+    #         request_item = Throttle.Request(func, args, kwargs)
+    #     else:
+    #         request_item = Throttle.Request(func, args, {})
+    #
+    #     while not self.shutdown:
+    #         try:
+    #             self.request_q.put(request_item, block=True, timeout=1)
+    #         except queue.Full:
+    #             continue  # no need to wait since we already did
+    #
+    #         ###################################################################
+    #         # There is a possibility that shutdown was switched to True
+    #         # and the schedule_requests method saw that and cleaned up the
+    #         # queue and exited BEFORE we were able to queue our request. In
+    #         # that case, we need to deal with that here by simply calling
+    #         # schedule_requests and run our new request from this thread.
+    #         ###################################################################
+    #         if not self.shutdown and not self.request_q.empty():
+    #             self.schedule_requests()
 
 
 F = TypeVar('F', bound=Callable[..., Any])
