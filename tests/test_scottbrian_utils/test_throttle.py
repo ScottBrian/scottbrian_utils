@@ -1674,20 +1674,187 @@ class RequestValidator:
         self.idx = -1
         self.req_times = []
         self.normalized_times = []
+        self.normalized_intervals = []
+        self.mean_interval = 0
 
         # calculate parms
-        self.request_interval = seconds/requests
+
         self.total_requests = requests * request_mult
+        self.target_interval = seconds / requests
+        self.max_interval = max(self.target_interval,
+                                self.send_interval)
+
+        self.target_interval_1pct = self.target_interval * 0.01
+        self.target_interval_5pct = self.target_interval * 0.05
+        self.target_interval_10pct = self.target_interval * 0.10
+
+        self.max_interval_1pct = self.max_interval * 0.01
+        self.max_interval_5pct = self.max_interval * 0.05
+        self.max_interval_10pct = self.max_interval * 0.10
+
+
+
 
     def validate_series(self):
         """Validate the requests."""
         assert len(self.req_times) == self.total_requests
         base_time = self.req_times[0][1]
-        for idx, req_item in enumerate(range(len(self.req_times))):
+        prev_time = base_time
+        for idx, req_item in enumerate(self.req_times):
             assert idx == req_item[0]
-            self.normalized_times.append(req_item[0] - base_time)
+            cur_time = req_item[1]
+            self.normalized_times.append(cur_time - base_time)
+            self.normalized_intervals.append(cur_time - prev_time)
+            prev_time = cur_time
+
+        self.mean_interval = self.normalized_times[-1]/(self.total_requests-1)
+        # self.total_series_time = self.normalized_times[-1]
+        # self.average_interval = self.total_series_time / self.total_requests
+        #
+        # self.exp_total_series_time = (max(self.request_interval,
+        #                                   self.send_interval)
+        #                              * self.total_requests)
+
+        if ((self.mode == Throttle.MODE_ASYNC) or
+                (self.mode == Throttle.MODE_SYNC)):
+            self.validate_async_sync()
+        elif self.mode == Throttle.MODE_SYNC_EC:
+            self.validate_async_sync_ec()
+        elif self.mode == Throttle.MODE_SYNC_LB:
+            self.validate_async_sync_lb()
+        else:
+            raise InvalidModeNum('Mode must be 1, 2, 3, or 4')
+
+    def validate_async_sync(self):
+        num_early = 0
+        num_early_1pct = 0
+        num_early_5pct = 0
+        num_early_10pct = 0
+
+        num_late = 0
+        num_late_1pct = 0
+        num_late_5pct = 0
+        num_late_10pct = 0
+
+        for interval in self.normalized_intervals[1:]:
+            if interval < self.target_interval:
+                num_early += 1
+            if interval < self.target_interval - self.target_interval_1pct:
+                num_early_1pct += 1
+            if interval < self.target_interval - self.target_interval_5pct:
+                num_early_5pct += 1
+            if interval < self.target_interval - self.target_interval_10pct:
+                num_early_10pct += 1
+
+            if self.max_interval < interval:
+                num_late += 1
+            if self.max_interval + self.max_interval_1pct < interval:
+                num_late_1pct += 1
+            if self.max_interval + self.max_interval_5pct < interval:
+                num_late_5pct += 1
+            if self.max_interval + self.max_interval_10pct < interval:
+                num_late_10pct += 1
+
+        assert num_early_10pct == 0
+        assert num_early_5pct == 0
+        assert num_early_5pct == 0
+        assert num_early == 0
+
+        assert num_late_10pct == 0
+        assert num_late_5pct == 0
+        assert num_late_1pct == 0
+        assert num_late == 0
+
+        assert self.target_interval <= self.mean_interval
 
 
+    def validate_async_sync_ec(self):
+        num_short_early = 0
+        num_short_early_1pct = 0
+        num_short_early_5pct = 0
+        num_short_early_10pct = 0
+
+        num_short_late = 0
+        num_short_late_1pct = 0
+        num_short_late_5pct = 0
+        num_short_late_10pct = 0
+
+        num_long_early = 0
+        num_long_early_1pct = 0
+        num_long_early_5pct = 0
+        num_long_early_10pct = 0
+
+        num_long_late = 0
+        num_long_late_1pct = 0
+        num_long_late_5pct = 0
+        num_long_late_10pct = 0
+
+        long_interval = (((self.early_count + 1) * self.target_interval)
+                         - (self.early_count * self.send_interval))
+        short_interval = self.send_interval
+
+        for idx, interval in enumerate(self.normalized_intervals[1:], 1):
+            if idx % (self.early_count + 1):  # if long interval expected
+                if interval < long_interval:
+                    num_long_early += 1
+                if interval < long_interval - self.target_interval_1pct:
+                    num_long_early_1pct += 1
+                if interval < long_interval - self.target_interval_5pct:
+                    num_long_early_5pct += 1
+                if interval < (long_interval - self.target_interval_10pct):
+                    num_long_early_10pct += 1
+
+                if self.max_interval < interval:
+                    num_long_late += 1
+                if self.max_interval + self.max_interval_1pct < interval:
+                    num_long_late_1pct += 1
+                if self.max_interval + self.max_interval_5pct < interval:
+                    num_long_late_5pct += 1
+                if self.max_interval + self.max_interval_10pct < interval:
+                    num_long_late_10pct += 1
+            else:
+                if interval < short_interval:
+                    num_short_early += 1
+                if interval < short_interval - self.target_interval_1pct:
+                    num_short_early_1pct += 1
+                if interval < short_interval - self.target_interval_5pct:
+                    num_short_early_5pct += 1
+                if interval < (short_interval - self.target_interval_10pct):
+                    num_short_early_10pct += 1
+
+                if self.max_interval < interval:
+                    num_short_late += 1
+                if self.max_interval + self.max_interval_1pct < interval:
+                    num_short_late_1pct += 1
+                if self.max_interval + self.max_interval_5pct < interval:
+                    num_short_late_5pct += 1
+                if self.max_interval + self.max_interval_10pct < interval:
+                    num_short_late_10pct += 1
+
+        assert num_long_early_10pct == 0
+        assert num_long_early_5pct == 0
+        assert num_long_early_5pct == 0
+        assert num_long_early == 0
+
+        assert num_long_late_10pct == 0
+        assert num_long_late_5pct == 0
+        assert num_long_late_1pct == 0
+        assert num_long_late == 0
+
+        assert num_short_early_10pct == 0
+        assert num_short_early_5pct == 0
+        assert num_short_early_5pct == 0
+        assert num_short_early == 0
+
+        assert num_short_late_10pct == 0
+        assert num_short_late_5pct == 0
+        assert num_short_late_1pct == 0
+        assert num_short_late == 0
+
+        assert self.target_interval <= self.mean_interval
+
+    def validate_async_sync_lb(self):
+        pass
 
     def request0(self) -> int:
         """Request0 target.
