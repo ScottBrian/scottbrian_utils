@@ -135,8 +135,58 @@ class IncorrectModeSpecified(ThrottleError):
     pass
 
 
+class IncorrectAsyncQSizeSpecified(ThrottleError):
+    """Throttle exception for an incorrect async_q_size specification."""
+    pass
+
+
+class AsyncQSizeNotAllowed(ThrottleError):
+    """Throttle exception for async_q_size specified when not allowed."""
+    pass
+
+
+class IncorrectEarlyCountSpecified(ThrottleError):
+    """Throttle exception for an incorrect early_count specification."""
+    pass
+
+
+class MissingEarlyCountSpecification(ThrottleError):
+    """Throttle exception for missing early_count specification."""
+    pass
+
+
+class EarlyCountNotAllowed(ThrottleError):
+    """Throttle exception for early_count specified when not allowed."""
+    pass
+
+
+class IncorrectLbThresholdSpecified(ThrottleError):
+    """Throttle exception for an incorrect lb_threshold specification."""
+    pass
+
+
+class MissingLbThresholdSpecification(ThrottleError):
+    """Throttle exception for missing lb_threshold specification."""
+    pass
+
+
+class LbThresholdNotAllowed(ThrottleError):
+    """Throttle exception for lb_threshold specified when not allowed."""
+    pass
+
+
 class IncorrectShutdownCheckSpecified(ThrottleError):
     """Throttle exception for an incorrect shutdown_check specification."""
+    pass
+
+
+class ShutdownCheckNotAllowed(ThrottleError):
+    """Throttle exception for shutdown_check specified when not allowed."""
+    pass
+
+
+class AttemptedShutdownForSyncThrottle(ThrottleError):
+    """Throttle exception for shutdown not in mode Throttle.MODE_ASYNC."""
     pass
 
 
@@ -164,12 +214,15 @@ class Throttle:
     MODE_SYNC_LB: Final[int] = 4
     MODE_MAX: Final[int] = MODE_SYNC_LB
 
+    DEFAULT_ASYNC_Q_SIZE: Final[int] = 1024
+
 
 
     def __init__(self, *,
                  requests: int,
                  seconds: Union[int, float],
                  mode: int,
+                 async_q_size: Optional[int] = None,
                  early_count: Optional[int] = None,
                  lb_threshold: Optional[Union[int, float]] = None,
                  shutdown_check: Optional[Callable[[], bool]] = None
@@ -220,6 +273,12 @@ class Throttle:
                      lb_threshold specification is required when mode
                      Throttle.MODE_SYNC_LB is specified. See the
                      lb_threshold parameter for details.
+            async_q_size: Specifies the size of the request
+                            queue for async requests. When the request
+                            queue is totaly populated, any additional
+                            calls to send_request will be delayed
+                            until queued requests are removed and
+                            scheduled. The default is 1024 requests.
             early_count: Specifies the number of requests that are allowed
                            to proceed that arrive earlier than the
                            allowed interval. The count of early requests
@@ -274,74 +333,198 @@ class Throttle:
                                          a positive int or float greater
                                          than zero.
             IncorrectModeSpecified: The mode specification must be an
-                                       integer with value 1 or 2.
-            IncorrectShutdownCheckSpecified: The shutdown_check specification,
-                                               when supplied, must be a
+                                      integer with a value of 1, 2, 3, or 4.
+                                      Use Throttle.MODE_ASYNC,
+                                      Throttle.MODE_SYNC,
+                                      Throttle.MODE_SYNC_EC, or
+                                      Throttle.MODE_SYNC_LB.
+            AsyncQSizeNotAllowed: async_q_size is valid for mode
+                                    Throttle.MODE_ASYNC only.
+            IncorrectAsyncQSizeSpecified: async_q_size must be an integer
+                                            greater than zero.
+            EarlyCountNotAllowed: early_count is valid and required for mode
+                                    Throttle.MODE_SYNC_EC only.
+            IncorrectEarlyCountSpecified: early_count must be an integer
+                                            greater than zero.
+            MissingEarlyCountSpecification: early_count is required for mode
+                                              Throttle.MODE_SYNC_EC.
+            LbThresholdNotAllowed: lb_threshold is valid and required for
+                                     mode Throttle.MODE_SYNC_LB only.
+            IncorrectLbThresholdSpecified: lb_threshold must be an integer or
+                                             float greater than zero.
+            MissingLbThresholdSpecification: lb_threshold is required for
+                                               mode Throttle.MODE_SYNC_LB.
+            ShutdownCheckNotAllowed: shutdown_check is valid for mode
+                                       Throttle.MODE_ASYNC only.
+            IncorrectShutdownCheckSpecified: shutdown_check must be a
                                                function.
 
-
-        :Example: instantiate a throttle for 1 request per second
+        :Example: instantiate a, async throttle for 1 request per second
 
         >>> from scottbrian_utils.throttle import Throttle
-        >>> request_throttle = Throttle(requests=1, seconds=1)
+        >>> request_throttle = Throttle(requests=1,
+        ...                             seconds=1,
+        ...                             mode=Throttle.MODE_ASYNC)
 
-        :Example: instantiate a throttle for 5 requests per 1/2 second
+
+        :Example: instantiate an async throttle for 5 requests per 1/2 second
+                  with an async_q_size of 256 and a shutdonw_check function.
+
+        >>> from scottbrian_utils.throttle import Throttle
+        >>> my_shutdown_flag = False
+        >>> def my_shutdown_check() -> bool:
+        ...     return my_shutdown_flag
+        >>> request_throttle = Throttle(requests=5,
+        ...                             seconds=0.5,
+        ...                             mode=Throttle.MODE_ASYNC,
+        ...                             async_q_size=256,
+        ...                             shutdown_check=my_shutdown_check)
+
+
+        :Example: instantiate a throttle for 20 requests per 2 minutes using
+                  the early count algo
 
         >>> from scottbrian_utils.throttle import Throttle
         >>> request_throttle = Throttle(requests=5,
-        ...                             seconds=0.5)
+        ...                             seconds=120,
+        ...                             mode=Throttle.MODE_SYNC_EC,
+        ...                             early_count=3)
 
-        :Example: instantiate a throttle for 20 requests per 2 minutes
+
+        :Example: instantiate a throttle for 3 requests per second
+                  using the leaky bucket algo
 
         >>> from scottbrian_utils.throttle import Throttle
         >>> request_throttle = Throttle(requests=5,
-        ...                             seconds=120)
+        ...                             seconds=120,
+        ...                             mode=Throttle.MODE_SYNC_LB,
+        ...                             lb_threshold=5)
+
 
         """
+        #######################################################################
+        # requests
+        #######################################################################
         if (isinstance(requests, int)
                 and (0 < requests)):
             self.requests = requests
         else:
             raise IncorrectRequestsSpecified('The requests '
-                                              'specification must be a '
-                                              'positive integer greater '
-                                              'than zero.')
+                                             'specification must be a '
+                                             'positive integer greater '
+                                             'than zero.')
+        #######################################################################
+        # seconds
+        #######################################################################
         if isinstance(seconds, (int, float)) and (0 < seconds):
             self.seconds = timedelta(seconds=seconds)
         else:
             raise IncorrectSecondsSpecified('The seconds specification '
-                                            'must be a positive int or '
+                                            'must be an integer or '
                                             'float greater than zero.')
 
+        #######################################################################
+        # mode
+        #######################################################################
         if (isinstance(mode, int)
-                and mode in (Throttle.MODE_ASYNC, Throttle.MODE_SYNC_LB,
-                             Throttle.MODE_SYNC_EC)):
+                and mode in (Throttle.MODE_ASYNC, Throttle.MODE_SYNC,
+                             Throttle.MODE_SYNC_LB, Throttle.MODE_SYNC_EC)):
             self.mode = mode
         else:
             raise IncorrectModeSpecified('The mode specification must be an '
-                                          'integer with value 1 or 2.')
+                                         'integer with value 1, 2, 3, or 4.')
 
-        if shutdown_check:
-            if callable(shutdown_check):
-                self.shutdown_check = shutdown_check
+        #######################################################################
+        # max_async_requests
+        #######################################################################
+        if async_q_size:
+            if mode != Throttle.MODE_ASYNC:
+                raise AsyncQSizeNotAllowed('async_q_size is valid '
+                                           'for mode Throttle.MODE_ASYNC '
+                                           'only.')
             else:
-                raise IncorrectShutdownCheckSpecified('The shutdown_check '
-                                                      'specification, when'
-                                                      'supplied, must be a '
-                                                      'function')
+                if (isinstance(async_q_size, int) and
+                        (0 < async_q_size)):
+                    self.async_q_size = async_q_size
+                else:
+                    raise IncorrectAsyncQSizeSpecified('async_q_size '
+                                                       'must be an '
+                                                       'integer greater'
+                                                       'than zero.')
+        else:
+            self.async_q_size = Throttle.DEFAULT_ASYNC_Q_SIZE
+        #######################################################################
+        # early_count
+        #######################################################################
+        if early_count:
+            if mode != Throttle.MODE_SYNC_EC:
+                raise EarlyCountNotAllowed('early_count is valid and required '
+                                           'for mode Throttle.MODE_SYNC_EC '
+                                           'only.')
+
+            else:
+                if isinstance(early_count, int) and (0 < early_count):
+                    self.early_count = early_count
+                else:
+                    raise IncorrectEarlyCountSpecified('early_count must be '
+                                                       'an integer greater'
+                                                       'than zero.')
+        else:
+            if mode == Throttle.MODE_SYNC_EC:
+                raise MissingEarlyCountSpecification('early_count is '
+                                                     'required for mode '
+                                                     'Throttle.MODE_SYNC_EC.')
+            else:
+                self.early_count = 0
+
+        #######################################################################
+        # lb_threshold
+        #######################################################################
+        if lb_threshold:
+            if mode != Throttle.MODE_SYNC_LB:
+                raise LbThresholdNotAllowed('lb_threshold is valid and '
+                                            'required for mode '
+                                            'Throttle.MODE_SYNC_LB only.')
+            else:
+                if (isinstance(lb_threshold, (int, float))
+                        and (0 < lb_threshold)):
+                    self.lb_threshold = lb_threshold
+                else:
+                    raise IncorrectLbThresholdSpecified('lb_threshold must be '
+                                                        'an integer or '
+                                                        'float greater than '
+                                                        'zero.')
+        else:
+            if mode == Throttle.MODE_SYNC_LB:
+                raise MissingLbThresholdSpecification('lb_threshold is '
+                                                      'required for mode '
+                                                      'Throttle.MODE_SYNC_LB.')
+            else:
+                self.lb_threshold = 0
+        #######################################################################
+        # shutdown_check
+        #######################################################################
+        if shutdown_check:
+            if mode != Throttle.MODE_ASYNC:
+                raise ShutdownCheckNotAllowed('shutdown_check is valid '
+                                              'for mode Throttle.MODE_ASYNC '
+                                              'only.')
+            else:
+                if callable(shutdown_check):
+                    self.shutdown_check = shutdown_check
+                else:
+                    raise IncorrectShutdownCheckSpecified('shutdown_check '
+                                                          'must be a '
+                                                          'function.')
         else:
             self.shutdown_check = None
 
-        self._interval = 0
-        self.wait_seconds = seconds/requests
-        self.request_times = deque()
-        self.request_q = queue.Queue(maxsize=self.burst)
+        self.target_interval = seconds/requests
+        self.async_q = queue.Queue(maxsize=self.async_q_size)
         self.schedule_requests_lock = threading.Lock()
         self._shutdown = False
         self._expected_arrival_time = 0
-        self._leaky_bucket_tolerance = 0
         self._early_arrival_count = 0
-        self._allowed_early_arrivals = 0
 
         if mode == Throttle.MODE_ASYNC:
             self.request_scheduler_thread = \
@@ -351,33 +534,38 @@ class Throttle:
             self.request_scheduler_thread = None
 
     def __len__(self) -> int:
-        """Return the number of items in the request_times deque.
+        """Return the number of items in the async_q.
 
         Returns:
-            The number of entries in the request_times deque as an integer
+            The number of entries in the async_q as an integer
 
-        The call to the Throttle after_request method adds a timestamp to
-        its deque and the call to the Throttle before_request removes any of
-        those timestamps that have aged out per the seconds instantiation
-        argument. Thus, the len of Throttle depends on whatever timestamnps
-        are on the deque that have not yet been removed by a call to
-        before_request.
+        The calls to the send_request add request items to the async_q
+        for mode Throttle.MODE_ASYNC. The request items are
+        eventually removed and scheduled. The len of Throttle is the
+        number of request items on the async_q when the len function
+        is called. Note that the returned queue size is the approximate
+        size as described in the documentation for the python threading
+        queue.
 
-        :Example: instantiate a throttle for 10 requests per 1 minute
+        :Example: instantiate a throttle for 1 request per second
 
         >>> from scottbrian_utils.throttle import Throttle
         >>> import time
-        >>> request_throttle = Throttle(requests=10,
-        ...                             seconds=60)
-        >>> for i in range(7):  # quickly add 6 timestamps to throttle deque
-        >>>     request_throttle.before_request()
-        >>>     time.sleep(.1)  # simulate request that takes 1/10 second
-        >>>     request_throttle.after_request()
+        >>> def my_request(idx):
+        ...     print('idx:' idx)
+        >>> request_throttle = Throttle(requests=1,
+        ...                             seconds=1,
+        ...                             mode=Throttle.MODE_ASYNC)
+        >>> for i in range(3):  # quickly send 3 items (2 get queued)
+        ...     request_throttle.send_request(my_request,i)
         >>> print(len(request_throttle))
+        idx: 0
         6
+        idx: 1
+        idx: 2
 
         """
-        return len(self.request_times)
+        return self.async_q.qsize()
 
     def __repr__(self) -> str:
         """Return a representation of the class.
@@ -385,20 +573,35 @@ class Throttle:
         Returns:
             The representation as how the class is instantiated
 
-        :Example: instantiate a throttle for 30 requests per 1/2 minute
+        :Example: instantiate a throttle for 20 requests per 1/2 minute
 
          >>> from scottbrian_utils.throttle import Throttle
         >>> request_throttle = Throttle(requests=30,
-        ...                             seconds=30)
+        ...                             seconds=30,
+        ...                             mode=Throttle.MODE_ASYNC)
         >>> repr(request_throttle)
-        Throttle(requests=30, seconds=30)
+        Throttle(requests=20, seconds=30, mode=Throttle.MODE_ASYNC)
 
         """
         if TYPE_CHECKING:
             __class__: Type[Throttle]
         classname = self.__class__.__name__
         parms = f'requests={self.requests}, ' \
-                f'seconds={self.seconds.total_seconds()}'
+                f'seconds={self.seconds.total_seconds()}, '
+
+        if self.mode == Throttle.MODE_ASYNC:
+            parms += f'mode=Throttle.MODE_ASYNC, ' \
+                     f'async_q_size={self.async_q_size}'
+            if self.shutdown_check:
+                parms += f', shutdown_check={self.shutdown_check.__name__}'
+        elif self.mode == Throttle.MODE_SYNC:
+            parms += f'mode=Throttle.MODE_SYNC'
+        elif self.mode == Throttle.MODE_SYNC_EC:
+            parms += f'mode=Throttle.MODE_SYNC_EC, ' \
+                     f'early_count={self.early_count}'
+        else:
+            parms += f'mode=Throttle.MODE_SYNC_LB, ' \
+                     f'early_count={self.early_count}'
 
         return f'{classname}({parms})'
 
@@ -427,9 +630,15 @@ class Throttle:
                                                 instantiated with a mode of
                                                 Throttle.MODE_ASYNC                                             shutthe shutdown
         """
-        self._shutdown = True  # indicate shutdown in progress
         if self.mode == Throttle.MODE_ASYNC:
-            self.request_scheduler_thread.join()  # wait for scheduler cleanup
+            self._shutdown = True  # indicate shutdown in progress
+            if self.mode == Throttle.MODE_ASYNC:
+                self.request_scheduler_thread.join()  # wait for cleanup
+        else:
+            raise AttemptedShutdownForSyncThrottle('Calling start_shutdown is '
+                                                   'valid only for a throttle '
+                                                   'instantiated with mode '
+                                                   'Throttle.MODE_ASYNC.'
 
     def send_request(self,
                      func: Callable[..., Any],
@@ -455,7 +664,7 @@ class Throttle:
 
             while not self.shutdown:
                 try:
-                    self.request_q.put(request_item, block=True, timeout=1)
+                    self.async_q.put(request_item, block=True, timeout=1)
                 except queue.Full:
                     continue  # no need to wait since we already did
 
@@ -464,7 +673,7 @@ class Throttle:
                 # queue and exited BEFORE we were able to queue our request. In
                 # that case, we need to deal with that here by simply calling
                 # schedule_requests and run our new request from this thread.
-                if not self.shutdown and not self.request_q.empty():
+                if not self.shutdown and not self.async_q.empty():
                     self.schedule_requests()
             return
         #######################################################################
@@ -483,7 +692,7 @@ class Throttle:
             if arrival_time < self._expected_arrival_time:
                 self._early_arrival_count += 1
                 if ((self.mode != Throttle.MODE_SYNC_EC) or
-                        (self._allowed_early_arrivals <
+                        (self.early_count <
                             self._early_arrival_count)):
                     self._early_arrival_count = 0  # reset the count
                     wait_time = self._expected_arrival_time - arrival_time
@@ -515,10 +724,10 @@ class Throttle:
             # TODO: subtract the constant path delay from the interval
             self._expected_arrival_time = (max(time.time(),
                                                self._expected_arrival_time
-                                               + self._leaky_bucket_tolerance
+                                               + self.lb_threshold
                                                )
-                                           - self._leaky_bucket_tolerance
-                                           + self._interval)
+                                           - self.lb_threshold
+                                           + self.target_interval)
 
             return ret_value  # return the request return value (might be None)
 
@@ -531,9 +740,9 @@ class Throttle:
         # dropped. Note that request_q.get will only wait for a second so
         # we can detect shutdown in a timely fashion.
         with self.schedule_requests_lock:
-            while not self.shutdown or not self.request_q.empty():
+            while not self.shutdown or not self.async_q.empty():
                 try:
-                    request_item = self.request_q.get(block=True, timeout=1)
+                    request_item = self.async_q.get(block=True, timeout=1)
                 except queue.Empty:
                     continue  # no need to wait since we already did
                 ###############################################################
@@ -543,7 +752,7 @@ class Throttle:
                 if not self.shutdown:
                     request_item.request_func(*request_item.args,
                                               **request_item.kwargs)
-                self.request_q.task_done()
+                self.async_q.task_done()
 
                 ###############################################################
                 # wait (i.e., throttle)
@@ -552,7 +761,7 @@ class Throttle:
                 # case we need to bail for shutdown, so we wait in 1 second
                 # or less increments and bail if we detect shutdown.
                 ###############################################################
-                wait_seconds = self.wait_seconds  # could be small or large
+                wait_seconds = self.target_interval  # could be small or large
                 while wait_seconds > 0 and not self.shutdown:
                     time.sleep(min(1, wait_seconds))
                     wait_seconds = wait_seconds - 1

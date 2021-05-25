@@ -2,6 +2,7 @@
 
 import pytest
 import time
+import math
 from time import time
 from datetime import datetime, timedelta
 from typing import Any, Callable, cast, Final, Optional, Tuple, Union
@@ -206,13 +207,13 @@ def enabled_arg(request: Any) -> Union[None, str]:
 
 
 ###############################################################################
-# send_interval_arg fixture
+# send_interval_mult_arg fixture
 ###############################################################################
-send_interval_arg_list = [-1.0, 0.0, 0.1, 0.2, 0.3, 0.5, 0.9, 1.0, 1.1]
+send_interval_mult_arg_list = [0.0, 0.1, 0.2, 0.3, 0.5, 0.9, 1.0, 1.1, 1.5]
 
 
-@pytest.fixture(params=send_interval_arg_list)  # type: ignore
-def send_interval_arg(request: Any) -> float:
+@pytest.fixture(params=send_interval_mult_arg_list)  # type: ignore
+def send_interval_mult_arg(request: Any) -> float:
     """Using different send rates.
 
     Args:
@@ -890,7 +891,7 @@ class TestThrottle:
                             seconds_arg: Union[int, float],
                             shutdown_check_arg: Union[None,
                                                       Callable[[], bool]],
-                            send_interval_arg: float
+                            send_interval_mult_arg: float
                             ) -> None:
         """Method to start throttle mode1 tests
 
@@ -898,15 +899,16 @@ class TestThrottle:
             requests_arg: number of requests per interval from fixture
             seconds_arg: interval for number of requests from fixture
             shutdown_check_arg: function to call to check for shutdown
-            send_interval_arg: interval between each send of a request
+            send_interval_mult_arg: interval between each send of a request
         """
+        send_interval = (seconds_arg / requests_arg) * send_interval_mult_arg
         self.throttle_router(requests=requests_arg,
                              seconds=seconds_arg,
                              mode=Throttle.MODE_ASYNC,
                              early_count=0,
                              lb_threshold=0,
                              shutdown_check=shutdown_check_arg,
-                             send_interval=send_interval_arg)
+                             send_interval=send_interval)
 
     ###########################################################################
     # test_throttle_sync
@@ -915,7 +917,7 @@ class TestThrottle:
                            requests_arg: int,
                            seconds_arg: Union[int, float],
                            early_count_arg: int,
-                           send_interval_arg: float
+                           send_interval_mult_arg: float
                            ) -> None:
         """Method to start throttle sync tests
 
@@ -923,15 +925,16 @@ class TestThrottle:
             requests_arg: number of requests per interval from fixture
             seconds_arg: interval for number of requests from fixture
             early_count_arg: count used for sync with early count algo
-            send_interval_arg: interval between each send of a request
+            send_interval_mult_arg: interval between each send of a request
         """
+        send_interval = (seconds_arg / requests_arg) * send_interval_mult_arg
         self.throttle_router(requests=requests_arg,
                              seconds=seconds_arg,
                              mode=Throttle.MODE_SYNC_EC,
                              early_count=0,
                              lb_threshold=0,
                              shutdown_check=None,
-                             send_interval=send_interval_arg)
+                             send_interval=send_interval)
 
     ###########################################################################
     # test_throttle_sync_ec
@@ -940,7 +943,7 @@ class TestThrottle:
                               requests_arg: int,
                               seconds_arg: Union[int, float],
                               early_count_arg: int,
-                              send_interval_arg: float
+                              send_interval_mult_arg: float
                               ) -> None:
         """Method to start throttle sync_ec tests
 
@@ -948,15 +951,16 @@ class TestThrottle:
             requests_arg: number of requests per interval from fixture
             seconds_arg: interval for number of requests from fixture
             early_count_arg: count used for sync with early count algo
-            send_interval_arg: interval between each send of a request
+            send_interval_mult_arg: interval between each send of a request
         """
+        send_interval = (seconds_arg / requests_arg) * send_interval_mult_arg
         self.throttle_router(requests=requests_arg,
                              seconds=seconds_arg,
                              mode=Throttle.MODE_SYNC_EC,
                              early_count=early_count_arg,
                              lb_threshold=0,
                              shutdown_check=None,
-                             send_interval=send_interval_arg)
+                             send_interval=send_interval)
 
     ###########################################################################
     # test_throttle_sync_lb
@@ -965,7 +969,7 @@ class TestThrottle:
                               requests_arg: int,
                               seconds_arg: Union[int, float],
                               lb_threshold_arg: Union[int, float],
-                              send_interval_arg: float
+                              send_interval_mult_arg: float
                               ) -> None:
         """Method to start throttle sync_lb tests
 
@@ -973,15 +977,16 @@ class TestThrottle:
             requests_arg: number of requests per interval from fixture
             seconds_arg: interval for number of requests from fixture
             lb_threshold_arg: threshold used with sync leaky bucket algo
-            send_interval_arg: interval between each send of a request
+            send_interval_mult_arg: interval between each send of a request
         """
+        send_interval = (seconds_arg / requests_arg) * send_interval_mult_arg
         self.throttle_router(requests=requests_arg,
                              seconds=seconds_arg,
                              mode=Throttle.MODE_SYNC_LB,
                              early_count=0,
                              lb_threshold=lb_threshold_arg,
                              shutdown_check=None,
-                             send_interval=send_interval_arg)
+                             send_interval=send_interval)
 
 
     ###########################################################################
@@ -992,7 +997,7 @@ class TestThrottle:
                                 seconds_arg: Union[int, float],
                                 shutdown_check_arg: Union[None,
                                                           Callable[[], bool]],
-                                send_interval_arg: float
+                                send_interval_mult_arg: float
                                 ) -> None:
         """Method to start throttle mode1 tests
 
@@ -1000,12 +1005,13 @@ class TestThrottle:
             requests_arg: number of requests per interval from fixture
             seconds_arg: interval for number of requests from fixture
             shutdown_check_arg: function to call to check for shutdown
-            send_interval_arg: interval between each send of a request
+            send_interval_mult_arg: interval between each send of a request
         """
         #######################################################################
         # Instantiate Request Validator
         #######################################################################
         request_multiplier = 100
+        send_interval = (seconds_arg/requests_arg) * send_interval_mult_arg
         request_validator = RequestValidator(requests=requests_arg,
                                              seconds=seconds_arg,
                                              mode=Throttle.MODE_ASYNC,
@@ -1013,7 +1019,7 @@ class TestThrottle:
                                              lb_threshold=0,
                                              shutdown_check=shutdown_check_arg,
                                              request_mult=request_multiplier,
-                                             send_interval=send_interval_arg)
+                                             send_interval=send_interval)
 
         #######################################################################
         # Decorate functions with throttle
@@ -1124,32 +1130,32 @@ class TestThrottle:
         for i in range(requests_arg * request_multiplier):
             rc = f0()
             assert rc is None
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f1(i)
             assert rc is None
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f2(i, requests_arg)
             assert rc is None
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f3(idx=i)
             assert rc is None
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f4(idx=i, seconds=seconds_arg)
             assert rc is None
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
-            rc = f5(idx=i, interval=send_interval_arg)
+            rc = f5(idx=i, interval=send_interval_mult_arg)
             assert rc is None
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f6(i, requests_arg,
-                    seconds=seconds_arg, interval=send_interval_arg)
+                    seconds=seconds_arg, interval=send_interval_mult_arg)
             assert rc is None
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
         request_validator.validate_series()  # validate for the series
 
@@ -1159,19 +1165,20 @@ class TestThrottle:
     def test_pie_throttle_sync(self,
                                requests_arg: int,
                                seconds_arg: Union[int, float],
-                               send_interval_arg: float
+                               send_interval_mult_arg: float
                                ) -> None:
         """Method to start throttle sync tests
 
         Args:
             requests_arg: number of requests per interval from fixture
             seconds_arg: interval for number of requests from fixture
-            send_interval_arg: interval between each send of a request
+            send_interval_mult_arg: interval between each send of a request
         """
         #######################################################################
         # Instantiate Request Validator
         #######################################################################
         request_multiplier = 100
+        send_interval = (seconds_arg / requests_arg) * send_interval_mult_arg
         request_validator = RequestValidator(requests=requests_arg,
                                              seconds=seconds_arg,
                                              mode=Throttle.MODE_SYNC,
@@ -1179,7 +1186,7 @@ class TestThrottle:
                                              lb_threshold=0,
                                              shutdown_check=None,
                                              request_mult=request_multiplier,
-                                             send_interval=send_interval_arg)
+                                             send_interval=send_interval)
 
         #######################################################################
         # Decorate functions with throttle
@@ -1243,32 +1250,32 @@ class TestThrottle:
         for i in range(requests_arg * request_multiplier):
             rc = f0()
             assert rc == 0
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f1(i)
             assert rc == i + 42 + 1
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f2(i, requests_arg)
             assert rc == i + 42 + 2
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f3(idx=i)
             assert rc == i + 42 + 3
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f4(idx=i, seconds=seconds_arg)
             assert rc == i + 42 + 4
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
-            rc = f5(idx=i, interval=send_interval_arg)
+            rc = f5(idx=i, interval=send_interval_mult_arg)
             assert rc == i + 42 + 5
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f6(i, requests_arg,
-                    seconds=seconds_arg, interval=send_interval_arg)
+                    seconds=seconds_arg, interval=send_interval_mult_arg)
             assert rc == i + 42 + 6
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
         request_validator.validate_series()  # validate for the series
 
@@ -1279,7 +1286,7 @@ class TestThrottle:
                                   requests_arg: int,
                                   seconds_arg: Union[int, float],
                                   early_count_arg: int,
-                                  send_interval_arg: float
+                                  send_interval_mult_arg: float
                                 ) -> None:
         """Method to start throttle sync_ec tests
 
@@ -1287,12 +1294,13 @@ class TestThrottle:
             requests_arg: number of requests per interval from fixture
             seconds_arg: interval for number of requests from fixture
             early_count_arg: count used for sync with early count algo
-            send_interval_arg: interval between each send of a request
+            send_interval_mult_arg: interval between each send of a request
         """
         #######################################################################
         # Instantiate Request Validator
         #######################################################################
         request_multiplier = 100
+        send_interval = (seconds_arg / requests_arg) * send_interval_mult_arg
         request_validator = RequestValidator(requests=requests_arg,
                                              seconds=seconds_arg,
                                              mode=Throttle.MODE_SYNC_EC,
@@ -1300,7 +1308,7 @@ class TestThrottle:
                                              lb_threshold=0,
                                              shutdown_check=None,
                                              request_mult=request_multiplier,
-                                             send_interval=send_interval_arg)
+                                             send_interval=send_interval)
 
         #######################################################################
         # Decorate functions with throttle
@@ -1371,32 +1379,32 @@ class TestThrottle:
         for i in range(requests_arg * request_multiplier):
             rc = f0()
             assert rc == 0
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f1(i)
             assert rc == i + 42 + 1
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f2(i, requests_arg)
             assert rc == i + 42 + 2
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f3(idx=i)
             assert rc == i + 42 + 3
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f4(idx=i, seconds=seconds_arg)
             assert rc == i + 42 + 4
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
-            rc = f5(idx=i, interval=send_interval_arg)
+            rc = f5(idx=i, interval=send_interval_mult_arg)
             assert rc == i + 42 + 5
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f6(i, requests_arg,
-                    seconds=seconds_arg, interval=send_interval_arg)
+                    seconds=seconds_arg, interval=send_interval_mult_arg)
             assert rc == i + 42 + 6
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
         request_validator.validate_series()  # validate for the series
 
@@ -1407,7 +1415,7 @@ class TestThrottle:
                                   requests_arg: int,
                                   seconds_arg: Union[int, float],
                                   lb_threshold_arg: Union[int, float],
-                                  send_interval_arg: float
+                                  send_interval_mult_arg: float
                                   ) -> None:
         """Method to start throttle sync_lb tests
 
@@ -1415,12 +1423,13 @@ class TestThrottle:
             requests_arg: number of requests per interval from fixture
             seconds_arg: interval for number of requests from fixture
             lb_threshold_arg: threshold used with sync leaky bucket algo
-            send_interval_arg: interval between each send of a request
+            send_interval_mult_arg: interval between each send of a request
         """
         #######################################################################
         # Instantiate Request Validator
         #######################################################################
         request_multiplier = 100
+        send_interval = (seconds_arg / requests_arg) * send_interval_mult_arg
         request_validator = RequestValidator(requests=requests_arg,
                                              seconds=seconds_arg,
                                              mode=Throttle.MODE_SYNC_LB,
@@ -1428,7 +1437,7 @@ class TestThrottle:
                                              lb_threshold=lb_threshold_arg,
                                              shutdown_check=None,
                                              request_mult=request_multiplier,
-                                             send_interval=send_interval_arg)
+                                             send_interval=send_interval)
 
         #######################################################################
         # Decorate functions with throttle
@@ -1499,32 +1508,32 @@ class TestThrottle:
         for i in range(requests_arg * request_multiplier):
             rc = f0()
             assert rc == 0
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f1(i)
             assert rc == i + 42 + 1
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f2(i, requests_arg)
             assert rc == i + 42 + 2
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f3(idx=i)
             assert rc == i + 42 + 3
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f4(idx=i, seconds=seconds_arg)
             assert rc == i + 42 + 4
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
-            rc = f5(idx=i, interval=send_interval_arg)
+            rc = f5(idx=i, interval=send_interval_mult_arg)
             assert rc == i + 42 + 5
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
             rc = f6(i, requests_arg,
-                    seconds=seconds_arg, interval=send_interval_arg)
+                    seconds=seconds_arg, interval=send_interval_mult_arg)
             assert rc == i + 42 + 6
-            time.sleep(send_interval_arg)
+            time.sleep(send_interval)
 
         request_validator.validate_series()  # validate for the series
 
@@ -1683,6 +1692,8 @@ class RequestValidator:
         self.target_interval = seconds / requests
         self.max_interval = max(self.target_interval,
                                 self.send_interval)
+        self.min_interval = min(self.target_interval,
+                                self.send_interval)
 
         self.target_interval_1pct = self.target_interval * 0.01
         self.target_interval_5pct = self.target_interval * 0.05
@@ -1691,6 +1702,10 @@ class RequestValidator:
         self.max_interval_1pct = self.max_interval * 0.01
         self.max_interval_5pct = self.max_interval * 0.05
         self.max_interval_10pct = self.max_interval * 0.10
+
+        self.min_interval_1pct = self.min_interval * 0.01
+        self.min_interval_5pct = self.min_interval * 0.05
+        self.min_interval_10pct = self.min_interval * 0.10
 
 
 
@@ -1708,20 +1723,16 @@ class RequestValidator:
             prev_time = cur_time
 
         self.mean_interval = self.normalized_times[-1]/(self.total_requests-1)
-        # self.total_series_time = self.normalized_times[-1]
-        # self.average_interval = self.total_series_time / self.total_requests
-        #
-        # self.exp_total_series_time = (max(self.request_interval,
-        #                                   self.send_interval)
-        #                              * self.total_requests)
+
 
         if ((self.mode == Throttle.MODE_ASYNC) or
-                (self.mode == Throttle.MODE_SYNC)):
+                (self.mode == Throttle.MODE_SYNC) or
+                (self.target_interval <= self.send_interval)):
             self.validate_async_sync()
         elif self.mode == Throttle.MODE_SYNC_EC:
-            self.validate_async_sync_ec()
+            self.validate_sync_ec()
         elif self.mode == Throttle.MODE_SYNC_LB:
-            self.validate_async_sync_lb()
+            self.validate_sync_lb()
         else:
             raise InvalidModeNum('Mode must be 1, 2, 3, or 4')
 
@@ -1755,20 +1766,33 @@ class RequestValidator:
             if self.max_interval + self.max_interval_10pct < interval:
                 num_late_10pct += 1
 
+        print('num_requests_sent1:', self.total_requests)
+        print('num_early1:', num_early)
+        print('num_early_1pct1:', num_early_1pct)
+        print('num_early_5pct1:', num_early_5pct)
+        print('num_early_10pct1:', num_early_10pct)
+
+        print('num_late1:', num_late)
+        print('num_late_1pct1:', num_late_1pct)
+        print('num_late_5pct1:', num_late_5pct)
+        print('num_late_10pct1:', num_late_10pct)
+
         assert num_early_10pct == 0
-        assert num_early_5pct == 0
-        assert num_early_5pct == 0
-        assert num_early == 0
+        # assert num_early_5pct == 0
+        # assert num_early_1pct == 0
+
+        if self.target_interval < self.send_interval:
+            assert num_early == 0
 
         assert num_late_10pct == 0
-        assert num_late_5pct == 0
-        assert num_late_1pct == 0
-        assert num_late == 0
+        # assert num_late_5pct == 0
+        # assert num_late_1pct == 0
+        # assert num_late == 0
 
-        assert self.target_interval <= self.mean_interval
+        assert self.max_interval <= self.mean_interval
 
 
-    def validate_async_sync_ec(self):
+    def validate_sync_ec(self):
         num_short_early = 0
         num_short_early_1pct = 0
         num_short_early_5pct = 0
@@ -1790,8 +1814,7 @@ class RequestValidator:
         num_long_late_10pct = 0
 
         long_interval = (((self.early_count + 1) * self.target_interval)
-                         - (self.early_count * self.send_interval))
-        short_interval = self.send_interval
+                         - (self.early_count * self.min_interval))
 
         for idx, interval in enumerate(self.normalized_intervals[1:], 1):
             if idx % (self.early_count + 1):  # if long interval expected
@@ -1813,48 +1836,221 @@ class RequestValidator:
                 if self.max_interval + self.max_interval_10pct < interval:
                     num_long_late_10pct += 1
             else:
-                if interval < short_interval:
+                if interval < self.min_interval:
                     num_short_early += 1
-                if interval < short_interval - self.target_interval_1pct:
+                if interval < self.min_interval - self.min_interval_1pct:
                     num_short_early_1pct += 1
-                if interval < short_interval - self.target_interval_5pct:
+                if interval < self.min_interval - self.min_interval_5pct:
                     num_short_early_5pct += 1
-                if interval < (short_interval - self.target_interval_10pct):
+                if interval < (self.min_interval - self.min_interval_10pct):
                     num_short_early_10pct += 1
 
-                if self.max_interval < interval:
+                if self.min_interval < interval:
                     num_short_late += 1
-                if self.max_interval + self.max_interval_1pct < interval:
+                if self.min_interval + self.min_interval_1pct < interval:
                     num_short_late_1pct += 1
-                if self.max_interval + self.max_interval_5pct < interval:
+                if self.min_interval + self.min_interval_5pct < interval:
                     num_short_late_5pct += 1
-                if self.max_interval + self.max_interval_10pct < interval:
+                if self.min_interval + self.min_interval_10pct < interval:
                     num_short_late_10pct += 1
 
+        print('num_requests_sent2:', self.total_requests)
+        print('num_early2:', num_long_early)
+        print('num_early_1pct2:', num_long_early_1pct)
+        print('num_early_5pct2:', num_long_early_5pct)
+        print('num_early_10pct2:', num_long_early_10pct)
+
+        print('num_late2:', num_long_late)
+        print('num_late_1pct2:', num_long_late_1pct)
+        print('num_late_5pct2:', num_long_late_5pct)
+        print('num_late_10pct2:', num_long_late_10pct)
+
+        print('num_early2:', num_short_early)
+        print('num_early_1pct2:', num_short_early_1pct)
+        print('num_early_5pct2:', num_short_early_5pct)
+        print('num_early_10pct2:', num_short_early_10pct)
+
+        print('num_late2:', num_short_late)
+        print('num_late_1pct2:', num_short_late_1pct)
+        print('num_late_5pct2:', num_short_late_5pct)
+        print('num_late_10pct2:', num_short_late_10pct)
+
         assert num_long_early_10pct == 0
-        assert num_long_early_5pct == 0
-        assert num_long_early_5pct == 0
-        assert num_long_early == 0
+        # assert num_long_early_5pct == 0
+        # assert num_long_early_5pct == 0
+        # assert num_long_early == 0
 
         assert num_long_late_10pct == 0
-        assert num_long_late_5pct == 0
-        assert num_long_late_1pct == 0
-        assert num_long_late == 0
+        # assert num_long_late_5pct == 0
+        # assert num_long_late_1pct == 0
+        # assert num_long_late == 0
 
         assert num_short_early_10pct == 0
-        assert num_short_early_5pct == 0
-        assert num_short_early_5pct == 0
-        assert num_short_early == 0
+        # assert num_short_early_5pct == 0
+        # assert num_short_early_5pct == 0
+        # assert num_short_early == 0
 
         assert num_short_late_10pct == 0
-        assert num_short_late_5pct == 0
-        assert num_short_late_1pct == 0
-        assert num_short_late == 0
+        # assert num_short_late_5pct == 0
+        # assert num_short_late_1pct == 0
+        # assert num_short_late == 0
 
         assert self.target_interval <= self.mean_interval
 
-    def validate_async_sync_lb(self):
-        pass
+    def validate_sync_lb(self):
+        amt_added_per_send = self.target_interval - self.send_interval
+        num_sends_before_trigger = (math.floor(self.lb_threshold /
+                                               amt_added_per_send))
+        amt_remaining_in_bucket = (self.lb_threshold
+                                   - (num_sends_before_trigger
+                                      * self.send_interval))
+        amt_over = self.send_interval - amt_remaining_in_bucket
+
+
+
+        trigger_interval = self.send_interval + amt_over
+        trigger_interval_1pct = trigger_interval * 0.01
+        trigger_interval_5pct = trigger_interval * 0.05
+        trigger_interval_10pct = trigger_interval * 0.10
+
+
+
+        num_short_early = 0
+        num_short_early_1pct = 0
+        num_short_early_5pct = 0
+        num_short_early_10pct = 0
+
+        num_short_late = 0
+        num_short_late_1pct = 0
+        num_short_late_5pct = 0
+        num_short_late_10pct = 0
+
+        num_trigger_early = 0
+        num_trigger_early_1pct = 0
+        num_trigger_early_5pct = 0
+        num_trigger_early_10pct = 0
+
+        num_trigger_late = 0
+        num_trigger_late_1pct = 0
+        num_trigger_late_5pct = 0
+        num_trigger_late_10pct = 0
+
+        num_early = 0
+        num_early_1pct = 0
+        num_early_5pct = 0
+        num_early_10pct = 0
+
+        num_late = 0
+        num_late_1pct = 0
+        num_late_5pct = 0
+        num_late_10pct = 0
+
+        for idx, interval in enumerate(self.normalized_intervals[1:], 1):
+            if idx <= num_sends_before_trigger:
+                if interval < self.min_interval:
+                    num_short_early += 1
+                if interval < self.min_interval - self.min_interval_1pct:
+                    num_short_early_1pct += 1
+                if interval < self.min_interval - self.min_interval_5pct:
+                    num_short_early_5pct += 1
+                if interval < (self.min_interval - self.min_interval_10pct):
+                    num_short_early_10pct += 1
+
+                if self.min_interval < interval:
+                    num_short_late += 1
+                if self.min_interval + self.min_interval_1pct < interval:
+                    num_short_late_1pct += 1
+                if self.min_interval + self.min_interval_5pct < interval:
+                    num_short_late_5pct += 1
+                if self.min_interval + self.min_interval_10pct < interval:
+                    num_short_late_10pct += 1
+            elif idx == num_sends_before_trigger + 1:
+                if interval < trigger_interval:
+                    num_trigger_early += 1
+                if interval < trigger_interval - trigger_interval_1pct:
+                    num_trigger_early_1pct += 1
+                if interval < trigger_interval - trigger_interval_5pct:
+                    num_trigger_early_5pct += 1
+                if interval < trigger_interval - trigger_interval_10pct:
+                    num_trigger_early_10pct += 1
+
+                if trigger_interval < interval:
+                    num_trigger_late += 1
+                if trigger_interval + trigger_interval_1pct < interval:
+                    num_trigger_late_1pct += 1
+                if trigger_interval + trigger_interval_5pct < interval:
+                    num_trigger_late_5pct += 1
+                if trigger_interval + trigger_interval_10pct < interval:
+                    num_trigger_late_10pct += 1
+            else:
+                if interval < self.target_interval:
+                    num_early += 1
+                if interval < self.target_interval - self.target_interval_1pct:
+                    num_early_1pct += 1
+                if interval < self.target_interval - self.target_interval_5pct:
+                    num_early_5pct += 1
+                if interval < self.target_interval - \
+                        self.target_interval_10pct:
+                    num_early_10pct += 1
+
+                if self.max_interval < interval:
+                    num_late += 1
+                if self.max_interval + self.max_interval_1pct < interval:
+                    num_late_1pct += 1
+                if self.max_interval + self.max_interval_5pct < interval:
+                    num_late_5pct += 1
+                if self.max_interval + self.max_interval_10pct < interval:
+                    num_late_10pct += 1
+
+        print('num_requests_sent3:', self.total_requests)
+
+        print('num_short_early3:' ,num_short_early)
+        print('num_short_early_1pct3:', num_short_early_1pct)
+        print('num_short_early_5pct3:', num_short_early_5pct)
+        print('num_short_early_10pct3:', num_short_early_10pct)
+
+        print('num_short_late3:', num_short_late)
+        print('num_short_late_1pct3:', num_short_late_1pct)
+        print('num_short_late_5pct3:', num_short_late_5pct)
+        print('num_short_late_10pct3:', num_short_late_10pct)
+
+        print('num_trigger_early3:', num_trigger_early)
+        print('num_trigger_early_1pct3:', num_trigger_early_1pct)
+        print('num_trigger_early_5pct3:', num_trigger_early_5pct)
+        print('num_trigger_early_10pct3:', num_trigger_early_10pct)
+
+        print('num_trigger_late3:', num_trigger_late)
+        print('num_trigger_late_1pct3:', num_trigger_late_1pct)
+        print('num_trigger_late_5pct3:', num_trigger_late_5pct)
+        print('num_trigger_late_10pct3:', num_trigger_late_10pct)
+
+        print('num_early3:', num_early)
+        print('num_early_1pct3:', num_early_1pct)
+        print('num_early_5pct3:', num_early_5pct)
+        print('num_early_10pct3:', num_early_10pct)
+
+        print('num_late3:', num_late)
+        print('num_late_1pct3:', num_late_1pct)
+        print('num_late_5pct3:', num_late_5pct)
+        print('num_late_10pct3:', num_late_10pct)
+
+        assert num_short_early_10pct == 0
+        assert num_short_late_10pct == 0
+
+        assert num_trigger_early_10pct == 0
+        assert num_trigger_late_10pct == 0
+
+        assert num_early_10pct == 0
+        assert num_late_10pct == 0
+
+        exp_mean_interval = ((self.send_interval * num_sends_before_trigger)
+                             + trigger_interval
+                             + (self.target_interval
+                                * (self.total_requests
+                                   - (num_sends_before_trigger + 1)))
+                             ) / (self.total_requests - 1)
+
+        assert exp_mean_interval <= self.mean_interval
 
     def request0(self) -> int:
         """Request0 target.
