@@ -15,14 +15,17 @@ from scottbrian_utils.throttle import Throttle, throttle
 from scottbrian_utils.throttle import IncorrectRequestsSpecified
 from scottbrian_utils.throttle import IncorrectSecondsSpecified
 from scottbrian_utils.throttle import IncorrectModeSpecified
-from scottbrian_utils.throttle import IncorrectLbThresholdSpecified
+from scottbrian_utils.throttle import IncorrectAsyncQSizeSpecified
+from scottbrian_utils.throttle import AsyncQSizeNotAllowed
 from scottbrian_utils.throttle import IncorrectEarlyCountSpecified
-from scottbrian_utils.throttle import IncorrectShutdownCheckSpecified
-from scottbrian_utils.throttle import MissingLbThresholdSpecification
 from scottbrian_utils.throttle import MissingEarlyCountSpecification
 from scottbrian_utils.throttle import EarlyCountNotAllowed
+from scottbrian_utils.throttle import IncorrectLbThresholdSpecified
+from scottbrian_utils.throttle import MissingLbThresholdSpecification
 from scottbrian_utils.throttle import LbThresholdNotAllowed
+from scottbrian_utils.throttle import IncorrectShutdownCheckSpecified
 from scottbrian_utils.throttle import ShutdownCheckNotAllowed
+from scottbrian_utils.throttle import AttemptedShutdownForSyncThrottle
 
 
 ###############################################################################
@@ -226,49 +229,6 @@ def send_interval_mult_arg(request: Any) -> float:
 
 
 ###############################################################################
-# Request class use to verify tests
-###############################################################################
-class Request:
-    """Request class to test throttle."""
-    def __init__(self,
-                 requests: int,
-                 seconds: Union[int, float],
-                 throttle_TF: bool = True) -> None:
-        """Initialize the request class instance.
-
-        Args:
-            requests: number of requests allowed per interval
-            seconds: interval for number of allowed requests
-
-        """
-        self.requests = requests
-        self.seconds = timedelta(seconds=seconds)
-        self.request_times = deque()
-        self.last_len = 0
-        self.throttle_TF = throttle_TF
-
-    def make_request(self) -> None:
-        """Make a request."""
-        #######################################################################
-        # trim queue
-        #######################################################################
-        self.request_times.append(datetime.utcnow())
-        trim_time = self.request_times[-1] - self.seconds
-        # print('\nrequests before trim:\n', self.request_times)
-        while 0 < len(self.request_times):
-            if self.request_times[0] < trim_time:
-                self.request_times.popleft()
-            else:
-                break
-        # print('\nrequests after trim:\n', self.request_times)
-        if self.throttle_TF:
-            assert len(self.request_times) <= self.requests
-        else:
-            assert len(self.request_times) > self.last_len
-        self.last_len = len(self.request_times)
-
-
-###############################################################################
 # TestThrottleBasic class to test Throttle methods
 ###############################################################################
 class TestThrottleErrors:
@@ -328,6 +288,41 @@ class TestThrottleErrors:
                          mode='1')  # type: ignore
 
         #######################################################################
+        # bad async_q_size
+        #######################################################################
+        with pytest.raises(IncorrectAsyncQSizeSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=Throttle.MODE_ASYNC,
+                         async_q_size=-1)
+        with pytest.raises(IncorrectAsyncQSizeSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=Throttle.MODE_ASYNC,
+                         async_q_size=0)
+        with pytest.raises(IncorrectAsyncQSizeSpecified):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=Throttle.MODE_ASYNC,
+                         async_q_size='1')  #type: ignore
+        with pytest.raises(AsyncQSizeNotAllowed):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=Throttle.MODE_SYNC,
+                         async_q_size=256)
+        with pytest.raises(AsyncQSizeNotAllowed):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=Throttle.MODE_SYNC_EC,
+                         async_q_size=256,
+                         early_count=3)
+        with pytest.raises(AsyncQSizeNotAllowed):
+            _ = Throttle(requests=1,
+                         seconds=1,
+                         mode=Throttle.MODE_SYNC_LB,
+                         async_q_size=256,
+                         lb_threshold=3)
+        #######################################################################
         # bad early_count
         #######################################################################
         with pytest.raises(EarlyCountNotAllowed):
@@ -376,6 +371,7 @@ class TestThrottleErrors:
             _ = Throttle(requests=1,
                          seconds=1,
                          mode=Throttle.MODE_SYNC_EC,
+                         early_count=3,
                          lb_threshold=0)
         with pytest.raises(MissingLbThresholdSpecification):
             _ = Throttle(requests=1,
@@ -410,22 +406,31 @@ class TestThrottleErrors:
                 return True
             _ = Throttle(requests=1,
                          seconds=1,
-                         mode=Throttle.SYNC,
+                         mode=Throttle.MODE_SYNC,
                          shutdown_check=sd_check)
         with pytest.raises(ShutdownCheckNotAllowed):
             def sd_check() -> bool:
                 return True
             _ = Throttle(requests=1,
                          seconds=1,
-                         mode=Throttle.SYNC_EC,
+                         mode=Throttle.MODE_SYNC_EC,
+                         early_count=3,
                          shutdown_check=sd_check)
         with pytest.raises(ShutdownCheckNotAllowed):
             def sd_check() -> bool:
                 return True
             _ = Throttle(requests=1,
                          seconds=1,
-                         mode=Throttle.SYNC_LB,
+                         mode=Throttle.MODE_SYNC_LB,
+                         lb_threshold=3,
                          shutdown_check=sd_check)
+        with pytest.raises(AttemptedShutdownForSyncThrottle):
+            a_throttle = Throttle(requests=1,
+                                  seconds=1,
+                                  mode=Throttle.MODE_SYNC)
+            a_throttle.start_shutdown()
+
+
 ###############################################################################
 # TestThrottleBasic class to test Throttle methods
 ###############################################################################
@@ -450,19 +455,18 @@ class TestThrottleBasic:
                               mode=Throttle.MODE_ASYNC)
 
         def dummy_func(throttle_obj, num_requests, an_event) -> None:
-            assert len(throttle_obj) == num_requests  # -1
+            # assert is for 1 less than queued because the first request
+            # will be scheduled immediately
+            assert len(throttle_obj) == num_requests - 1
             an_event.set()
-        event = threading.Event()
-        for i in range(requests_arg):
-            a_throttle.send_async(dummy_func, args=(a_throttle,
-                                               requests_arg,
-                                               event))
 
-        # time.sleep(2)  # wait 2 seconds to give scheduler time to react
-        #
-        # # assert is for 1 less than queued because the first request
-        # # will be scheduled almost immediately
-        # assert len(a_throttle) == requests_arg-1
+        event = threading.Event()
+
+        for i in range(requests_arg):
+            a_throttle.send_request(dummy_func,
+                                    a_throttle,
+                                    requests_arg,
+                                    event)
         event.wait()
         # start_shutdown will return when the request_q cleanup is complete
         a_throttle.start_shutdown()
@@ -522,7 +526,7 @@ class TestThrottleBasic:
             f'Throttle(' \
             f'requests={requests_arg}, ' \
             f'seconds={float(seconds_arg)}, ' \
-            f'mode=Throttle.MODE_SYNC)
+            f'mode=Throttle.MODE_SYNC)'
 
         assert repr(a_throttle) == expected_repr_str
     ###########################################################################
@@ -661,6 +665,60 @@ class TestThrottleDecoratorErrors:
             @throttle(requests=1,
                       seconds=1,
                       mode='1')  # type: ignore
+            def f1():
+                print('42')
+            f1()
+
+        #######################################################################
+        # bad async_q_size
+        #######################################################################
+        with pytest.raises(IncorrectAsyncQSizeSpecified):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_ASYNC,
+                      async_q_size=-1)
+            def f1():
+                print('42')
+            f1()
+        with pytest.raises(IncorrectAsyncQSizeSpecified):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_ASYNC,
+                      async_q_size=0)
+            def f1():
+                print('42')
+            f1()
+        with pytest.raises(IncorrectAsyncQSizeSpecified):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_ASYNC,
+                      async_q_size='1')  # type: ignore
+            def f1():
+                print('42')
+            f1()
+        with pytest.raises(AsyncQSizeNotAllowed):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_SYNC,
+                      async_q_size=256)
+            def f1():
+                print('42')
+            f1()
+        with pytest.raises(AsyncQSizeNotAllowed):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_SYNC_EC,
+                      async_q_size=256,
+                      early_count=3)
+            def f1():
+                print('42')
+            f1()
+        with pytest.raises(AsyncQSizeNotAllowed):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_SYNC_LB,
+                      async_q_size=256,
+                      lb_threshold=3)
             def f1():
                 print('42')
             f1()
@@ -815,46 +873,6 @@ class TestThrottleDecoratorErrors:
             def f1():
                 print('42')
             f1()
-
-###############################################################################
-# TestThrottleDecoratorBasic class
-###############################################################################
-class TestThrottleDecoratorBasic:
-    """TestThrottleDecoratorBasic class."""
-    def test_pie_throttle(self,
-                          requests_arg: int,
-                          seconds_arg: Union[int, float]
-                          ) -> None:
-        """test_throttle using int for seconds.
-
-        Args:
-            requests_arg: fixture that provides args
-            seconds_arg: fixture that provides args
-        """
-        a_requests = requests_arg
-        a_seconds = timedelta(seconds=seconds_arg)
-        a_request_times = deque()
-
-        @throttle(requests=requests_arg,
-                  seconds=seconds_arg)
-        def make_request() -> None:
-            """Make a request."""
-            #######################################################################
-            # trim queue
-            #######################################################################
-            a_request_times.append(datetime.utcnow())
-            trim_time = a_request_times[-1] - a_seconds
-            # print('\nrequests before trim:\n', a_request_times)
-            while 0 < len(a_request_times):
-                if a_request_times[0] < trim_time:
-                    a_request_times.popleft()
-                else:
-                    break
-            # print('\nrequests after trim:\n', a_request_times)
-            assert len(a_request_times) <= a_requests
-
-        for i in range(requests_arg*3):
-            make_request()
 
 
 ###############################################################################
@@ -1569,12 +1587,16 @@ class TestThrottle:
                 a_throttle = Throttle(requests=requests,
                                       seconds=seconds,
                                       mode=Throttle.MODE_ASYNC,
+                                      async_q_size=(requests
+                                                    * request_multiplier),
                                       shutdown_check=shutdown_check
                                       )
             else:
                 a_throttle = Throttle(requests=requests,
                                       seconds=seconds,
-                                      mode=Throttle.MODE_ASYNC
+                                      mode=Throttle.MODE_ASYNC,
+                                      async_q_size=(requests
+                                                    * request_multiplier)
                                       )
         elif mode  == Throttle.MODE_SYNC:
             a_throttle = Throttle(requests=requests,
@@ -1658,6 +1680,67 @@ class TestThrottle:
             time.sleep(send_interval)
 
         request_validator.validate_series()  # validate for the series
+
+    ###########################################################################
+    # test_throttle_shutdown
+    ###########################################################################
+    def test_throttle_shutdown(self) -> None:
+        """Method to test shutdown scenarios.
+
+        Args:
+            requests_arg: number of requests per interval from fixture
+            seconds_arg: interval for number of requests from fixture
+            shutdown_check_arg: function to call to check for shutdown
+            send_interval_mult_arg: interval between each send of a request
+        """
+        #######################################################################
+        # test 1 - call start_shutdown
+        #######################################################################
+        a_throttle1 = Throttle(requests=1,
+                               seconds=4,
+                               mode=Throttle.MODE_ASYNC)
+
+        gvar = 0
+        def f1() -> None:
+            global gvar
+            gvar += 1
+
+        for i in range(32):
+            a_throttle1.send_request(f1)
+
+        time.sleep(14)  # allow 4 requests to be scheduled
+        a_throttle1.start_shutdown()
+
+        assert gvar == 4
+
+        #######################################################################
+        # test 2 - shutdown_check
+        #######################################################################
+        my_shutdown_flag = False
+
+        def check_shutdown():
+            return my_shutdown_flag
+
+        a_throttle2 = Throttle(requests=1,
+                               seconds=4,
+                               mode=Throttle.MODE_ASYNC,
+                               shutdown_check=check_shutdown)
+
+        gvar = 0
+
+        def f1() -> None:
+            global gvar
+            gvar += 1
+
+        for i in range(32):
+            a_throttle2.send_request(f1)
+
+        time.sleep(14)  # allow 4 requests to be scheduled
+        my_shutdown_flag = True
+        time.sleep(5)  # allow time to shutdown
+
+        assert gvar == 4
+
 
 ###############################################################################
 # RequestValidator class
@@ -2270,7 +2353,7 @@ class TestThrottleDocstrings:
                 previous_arrival_time = arrival_time
             interval = arrival_time - previous_arrival_time
             print(f'request {i} interval from previous: {interval:0.2f} '
-                  f'seconds'
+                  f'seconds')
             return arrival_time
 
         previous_time = 0
