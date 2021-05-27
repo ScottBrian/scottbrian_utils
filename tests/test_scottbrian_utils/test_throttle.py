@@ -3,13 +3,13 @@
 import pytest
 import time
 import math
-from time import time
-from datetime import datetime, timedelta
-from typing import Any, Callable, cast, Final, Optional, Tuple, Union
-from collections import deque
+from time import time, sleep
+from typing import Any, Callable, cast, Union
+
 import threading
 
 from scottbrian_utils.flower_box import print_flower_box_msg as flowers
+from scottbrian_utils.diag_msg import diag_msg
 
 from scottbrian_utils.throttle import Throttle, throttle
 from scottbrian_utils.throttle import IncorrectRequestsSpecified
@@ -85,6 +85,7 @@ def seconds_arg(request: Any) -> Union[int, float]:
 # mode_arg fixture
 ###############################################################################
 mode_arg_list = [Throttle.MODE_ASYNC,
+                 Throttle.MODE_SYNC,
                  Throttle.MODE_SYNC_LB,
                  Throttle.MODE_SYNC_EC]
 
@@ -439,37 +440,119 @@ class TestThrottleBasic:
     ###########################################################################
     # len checks
     ###########################################################################
-    def test_throttle_len(self,
-                          requests_arg: int) -> None:
-        """Test the len of throttle.
+    def test_throttle_len_async(self,
+                                requests_arg: int
+                                ) -> None:
+        """Test the len of async throttle.
 
         Args:
             requests_arg: fixture that provides args
 
         """
         # create a throttle with a long enough interval to ensure that we
-        # can populate the request_q and get the length before we start
+        # can populate the async_q and get the length before we start
         # dequeing requests from it
-        a_throttle = Throttle(requests=requests_arg,
-                              seconds=60,
-                              mode=Throttle.MODE_ASYNC)
+        if mode_arg == Throttle.MODE_ASYNC:
+            a_throttle = Throttle(requests=requests_arg,
+                                  seconds=requests_arg * 3,  # 3 sec interval
+                                  mode=Throttle.MODE_ASYNC)
+        elif mode_arg == Throttle.MODE_SYNC:
+            a_throttle = Throttle(requests=requests_arg,
+                                  seconds=1,
+                                  mode=Throttle.MODE_SYNC)
+        elif mode_arg == Throttle.MODE_SYNC_EC:
+            a_throttle = Throttle(requests=requests_arg,
+                                  seconds=1,
+                                  mode=Throttle.MODE_SYNC_EC,
+                                  early_count=3)
+        elif mode_arg == Throttle.MODE_SYNC_LB:
+            a_throttle = Throttle(requests=requests_arg,
+                                  seconds=1,
+                                  mode=Throttle.MODE_SYNC_LB,
+                                  lb_threshold=2)
+        else:
+            raise InvalidModeNum('Mode invalid')
 
-        def dummy_func(throttle_obj, num_requests, an_event) -> None:
-            # assert is for 1 less than queued because the first request
-            # will be scheduled immediately
-            assert len(throttle_obj) == num_requests - 1
+
+        def dummy_func(an_event) -> None:
             an_event.set()
 
         event = threading.Event()
 
         for i in range(requests_arg):
-            a_throttle.send_request(dummy_func,
-                                    a_throttle,
-                                    requests_arg,
-                                    event)
+            a_throttle.send_request(dummy_func, event)
+
         event.wait()
-        # start_shutdown will return when the request_q cleanup is complete
+        # assert is for 1 less than queued because the first request
+        # will be scheduled immediately
+        if mode_arg == Throttle.MODE_ASYNC:
+            assert len(a_throttle) == requests_arg - 1
+            # start_shutdown will return when the request_q cleanup is complete
+            a_throttle.start_shutdown()
+            assert len(a_throttle) == 0
+        else:
+            assert len(a_throttle) == 0
+
+
+    def test_throttle_len_sync(self,
+                               requests_arg: int
+                               ) -> None:
+        """Test the len of sync throttle.
+
+        Args:
+            requests_arg: fixture that provides args
+
+        """
+        # create a sync throttle
+        a_throttle = Throttle(requests=requests_arg,
+                              seconds=requests_arg * 3,  # 3 second interval
+                              mode=Throttle.MODE_SYNC)
+
+        def dummy_func() -> None:
+            pass
+
+        for i in range(requests_arg):
+            a_throttle.send_request(dummy_func)
+
+        # assert is for 0 since sync mode does not have an async_q
+
+        assert len(a_throttle) == 0
+
+    ###########################################################################
+    # task done check
+    ###########################################################################
+    def test_throttle_task_done(self,
+                                requests_arg: int
+                                ) -> None:
+        """Test task done for throttle throttle.
+
+        Args:
+            requests_arg: fixture that provides args
+
+        """
+        # create a throttle with a short interval
+        a_throttle = Throttle(requests=requests_arg,
+                              seconds=requests_arg * 0.25,  #  1/4 interval
+                              mode=Throttle.MODE_ASYNC)
+
+        class Counts:
+            def __init__(self):
+                self.count = 0
+
+        a_counts = Counts()
+
+        def dummy_func(counts) -> None:
+            counts.count += 1
+
+        for i in range(requests_arg):
+             a_throttle.send_request(dummy_func, a_counts)
+
+        a_throttle.async_q.join()
+        assert len(a_throttle) == 0
+        assert a_counts.count == requests_arg
+        # start_shutdown to end the scheduler thread
         a_throttle.start_shutdown()
+        assert len(a_throttle) == 0
 
     ###########################################################################
     # repr with mode async
@@ -488,6 +571,9 @@ class TestThrottleBasic:
             shutdown_check_arg: fixture that provides args
 
         """
+        #######################################################################
+        # throttle with async_q_size specified
+        #######################################################################
         a_throttle = Throttle(requests=requests_arg,
                               seconds=seconds_arg,
                               mode=Throttle.MODE_ASYNC,
@@ -497,13 +583,42 @@ class TestThrottleBasic:
             f'Throttle(' \
             f'requests={requests_arg}, ' \
             f'seconds={float(seconds_arg)}, ' \
-            f'mode=Throttle.MODE_ASYNC'
+            f'mode=Throttle.MODE_ASYNC, ' \
+            f'async_q_size={Throttle.DEFAULT_ASYNC_Q_SIZE}'
 
         if shutdown_check_arg:
             expected_repr_str += f', shutdown_check=' \
                                  f'{shutdown_check_arg.__name__}'
         expected_repr_str += ')'
         assert repr(a_throttle) == expected_repr_str
+
+        a_throttle.start_shutdown()
+
+
+        #######################################################################
+        # throttle with async_q_size specified
+        #######################################################################
+        q_size = requests_arg * 3
+        a_throttle = Throttle(requests=requests_arg,
+                              seconds=seconds_arg,
+                              mode=Throttle.MODE_ASYNC,
+                              async_q_size=q_size,
+                              shutdown_check=shutdown_check_arg)
+
+        expected_repr_str = \
+            f'Throttle(' \
+            f'requests={requests_arg}, ' \
+            f'seconds={float(seconds_arg)}, ' \
+            f'mode=Throttle.MODE_ASYNC, ' \
+            f'async_q_size={q_size}'
+
+        if shutdown_check_arg:
+            expected_repr_str += f', shutdown_check=' \
+                                 f'{shutdown_check_arg.__name__}'
+        expected_repr_str += ')'
+        assert repr(a_throttle) == expected_repr_str
+
+        a_throttle.start_shutdown()
 
     ###########################################################################
     # repr with mode sync
@@ -529,6 +644,7 @@ class TestThrottleBasic:
             f'mode=Throttle.MODE_SYNC)'
 
         assert repr(a_throttle) == expected_repr_str
+
     ###########################################################################
     # repr with mode sync early count
     ###########################################################################
@@ -553,7 +669,7 @@ class TestThrottleBasic:
             f'Throttle(' \
             f'requests={requests_arg}, ' \
             f'seconds={float(seconds_arg)}, ' \
-            f'mode=Throttle.MODE_SYNC_EC), ' \
+            f'mode=Throttle.MODE_SYNC_EC, ' \
             f'early_count={early_count_arg})'
 
         assert repr(a_throttle) == expected_repr_str
@@ -582,7 +698,7 @@ class TestThrottleBasic:
             f'Throttle(' \
             f'requests={requests_arg}, ' \
             f'seconds={float(seconds_arg)}, ' \
-            f'mode=Throttle.MODE_SYNC_LB), ' \
+            f'mode=Throttle.MODE_SYNC_LB, ' \
             f'lb_threshold={float(lb_threshold_arg)})'
 
         assert repr(a_throttle) == expected_repr_str
@@ -1741,6 +1857,31 @@ class TestThrottle:
 
         assert gvar == 4
 
+        #######################################################################
+        # test 3 - shutdown_check with pie throttle
+        #######################################################################
+        my_shutdown_pie_flag = False
+        gvar = 0
+
+        def check_pie_shutdown():
+            return my_shutdown_pie_flag
+
+        @throttle(requests=1,
+                  seconds=4,
+                  mode=Throttle.MODE_ASYNC,
+                  shutdown_check=check_pie_shutdown)
+        def f1() -> None:
+            global gvar
+            gvar += 1
+
+        for i in range(32):
+            f1()
+
+        time.sleep(14)  # allow 4 requests to be scheduled
+        my_shutdown_pie_flag = True
+        time.sleep(5)  # allow time to shutdown
+
+        assert gvar == 4
 
 ###############################################################################
 # RequestValidator class
