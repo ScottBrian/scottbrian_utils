@@ -4,26 +4,26 @@
 Throttle
 ========
 
-You can use the @throttle decorator to limit the number of requests made
-during a specific interval. Many online services state a limit as to how many
-requests can be made per some time interval. For example, "no more than one
-request per second", or maybe something like "no more than 30 requests each
-minute". The @throttle decorator wraps a method that makes requests to ensure
-that the the limit is not exceeded. The @throttle keeps track of the time for
-each request and will insert a wait (via time.sleep()) as needed to stay within
-the limit. Note that the Throttle class provides the same service to allow
-you to use the throttle where a decorator is not the optimal choice. Following
-are examples of using both the @throttle decorator and the Throttle class
-methods.
+You can use the Throttle class or the @throttle decorator to limit the
+number of requests made during a specific interval. Many online services
+state a limit as to how many requests can be made per some time interval.
+For example, "no more than one request per second", or maybe something like
+"no more than 30 requests each minute". The @throttle decorator wraps a
+method that makes requests to ensure that the the limit is not exceeded. The
+@throttle keeps track of the time for each request and will insert a wait
+(via time.sleep()) as needed to stay within the limit. Note that the
+Throttle class provides the same service to allow you to use the throttle
+where a decorator is not the optimal choice. Following are examples of using
+both the @throttle decorator and the Throttle class methods.
 
 :Example: use @throttle decorator for a limit of one request per second
 
 In the example code below, in the first iteration, the @throttle
 decorator code will see that there are no requests that have been made within
-the last second and will allow the request to proceed. On the next iteration,
-the @throttle code will wait until the first request has aged out and then
-allow the second request to proceed. This will continue with a wait before
-each request to ensure the limit is not exceeded.
+the last second and will allow the request to proceed. For each subsequent
+call, the @throttle code will delay via time.sleep for approximately 0.9
+seconds before allowing the request to proceed. This will ensure that the
+limit is not exceeded.
 
 >>> from scottbrian_utils.throttle import Throttle
 >>> import time
@@ -36,22 +36,27 @@ each request to ensure the limit is not exceeded.
 
 :Example: use Throttle methods for a limit of one request per second
 
-In the example code below, the call to before_request will check to make sure
-we are within the allowed limit. After the request is made and returns, the
-call to after_request will save the time the request was made. Upon iteration,
-before_request will now see that a request was just made and will wait for
-just enough time to ensure we do not make the next request too soon.
+In the example code below, each call to send_request passes the request
+funtion and its args. For the first iteration, send_request will see that
+there are no requests that have been made within the last second and will
+call the request function without delay. For each subsequent call,
+send_request will delay via time.sleep for approximately 0.9
+seconds before allowing the request to proceed. This will ensure that the
+limit is not exceeded.
 
 >>> from scottbrian_utils.throttle import Throttle
 >>> import time
->>> request_throttle = Throttle(requests=1, seconds=1)
->>> for i in range(100):
-...     request_throttle.before_request()
-...     time.sleep(.1)  # simulate request that takes 1/10 second
-...     request_throttle.after_request()
+>>> def my_request(idx, *, life):
+...     print(f'my_request entered with idx {idx}, and life is {life}')
+>>> request_throttle = Throttle(requests=1, seconds=1, mode=Throttle.MODE_SYNC)
+>>> for i in range(3):
+...     request_throttle.send_request(my_req, i, life='good')
+my_request entered with idx 1, and life is good
+my_request entered with idx 1, and life is good
+my_request entered with idx 1, and life is good
 
-
-Example: use @throttle decorator for a limit of 20 requests per minute
+Example: use @throttle decorator for a limit of 20 requests per minute with the
+         early count algorithm
 
 In this example, we are allowing up to 20 requests per minute. In this case
 the @throttle decorator code will allow the first 20 requests to go through
@@ -63,40 +68,27 @@ seconds. Thus, @throttle code will wait for 58 seconds before allowing the
 
 >>> from scottbrian_utils.throttle import Throttle
 >>> import time
->>> @throttle(requests=20, seconds=60)
+>>> @throttle(requests=20, seconds=60, mode=Throttle.MODE_SYNC_EC,
+...           early_count=20)
 >>> def make_request():
 ...     time.sleep(.1)  # simulate request that takes 1/10 second
->>> for i in range(100):
+>>> for i in range(21):
 ...     make_request()
 
-Example: use Throttle methods for a limit of 20 requests per minute
 
-In this example, we are allowing up to 20 requests per minute. In this case
-the before_request method will allow the first 20 requests to go through
-without waiting. When the 21st request is made, before_request will wait to
-ensure we remain within the limit. More specifically, with each request being
-made approximately every .1 seconds, the first 20 request took approximately 2
-seconds. Thus, before_request will wait for 58 seconds before allowing the
-21st request to proceed.
-
->>> from scottbrian_utils.throttle import Throttle
->>> import time
->>> request_throttle = Throttle(requests=20, seconds=60)
->>> for i in range(100):
->>>     request_throttle.before_request()
->>>     time.sleep(.1)  # simulate request that takes 1/10 second
->>>     request_throttle.after_request()
-
-As can be seen with the above examples, we were able to allow a burst of
-20 requests and still remain within the limit. A simpler approach would wait
-1/3 second between each request to ensure no more than 20 requess per minute,
-but that would penalize a case where a burst of less than 20 requests are made,
-and then we go do some other processing for a couple of minutes, and then
-make another burst of requests.
+As can be seen with the above example, we were able to allow a burst of
+20 requests and still remain within the limit (i.e., if the service in
+stating no more thna 20 requests per minutes is OK with getting a burst of
+20 each minute). Uing mode Throttle.MODE_ASYNC or Throttle.MODE_SYNC without
+the early count algorithm will simply delay the requests by a uniform 3
+seconds each to ensure we remain with the 60 second limit for 20 requests.
 
 The throttle module contains:
 
-    1) Throttle class with before_request and after_request methods.
+    1) Throttle class with methods:
+
+       a. send_request
+       b. start_shutdown
     2) Error exception classes:
 
        a. IncorrectNumberRequestsSpecified
@@ -105,10 +97,11 @@ The throttle module contains:
 
 """
 import time
-from collections import deque
-import threading, queue
+import threading
+import queue
+import inspect
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import (Any, Callable, cast, Dict, Final, NamedTuple, Optional,
                     Tuple, Type, TYPE_CHECKING, TypeVar, Union)
 import functools
@@ -185,6 +178,11 @@ class StartShutdownEventNotAllowed(ThrottleError):
     pass
 
 
+class MissingStartShutdownEvent(ThrottleError):
+    """Throttle exception for missing start_shutdown_event."""
+    pass
+
+
 class IncorrectShutdownCompleteEventSpecified(ThrottleError):
     """Throttle exception incorrect shutdown_complete_event specification."""
     pass
@@ -195,14 +193,9 @@ class ShutdownCompleteEventNotAllowed(ThrottleError):
     pass
 
 
-# class IncorrectShutdownCheckSpecified(ThrottleError):
-#     """Throttle exception for an incorrect shutdown_check specification."""
-#     pass
-#
-#
-# class ShutdownCheckNotAllowed(ThrottleError):
-#     """Throttle exception for shutdown_check specified when not allowed."""
-#     pass
+class MissingShutdownCompleteEvent(ThrottleError):
+    """Throttle exception for missing shutdown_complete_event."""
+    pass
 
 
 class AttemptedShutdownForSyncThrottle(ThrottleError):
@@ -230,9 +223,6 @@ class Throttle:
     MODE_MAX: Final[int] = MODE_SYNC_LB
 
     DEFAULT_ASYNC_Q_SIZE: Final[int] = 4096
-    MAX_EMPTY_ASYNC_Q_SECONDS: Final[int] = 16
-
-
 
     def __init__(self, *,
                  requests: int,
@@ -243,7 +233,6 @@ class Throttle:
                  lb_threshold: Optional[Union[int, float]] = None,
                  start_shutdown_event: Optional[threading.Event] = None,
                  shutdown_complete_event: Optional[threading.Event] = None
-                 # shutdown_check: Optional[Callable[[], bool]] = None
                  ) -> None:
         """Initialize an instance of the Throttle class.
 
@@ -323,32 +312,21 @@ class Throttle:
                             lb_threshold will effectively cause all requests
                             that are early to be delayed.
             start_shutdown_event: An event that the client will post when
-                                    shutdown is to be started. Required and
-                                    allowed only for mode Throttle.MODE_ASYNC.
+                                    shutdown is to be started. See the
+                                    description further down regarding the
+                                    throttle states to understand what
+                                    shutdown processing does.
+                                    Required and valid only for the
+                                    throttle decorator with mode
+                                    Throttle.MODE_ASYNC.
             shutdown_complete_event: An event that the client will wait
                                        upon to be posted once shutdown is
-                                       complete. Required and allowed only for
-                                       mode Throttle.MODE_ASYNC.
-            shutdown_check: The client method to call to determine whether the
-                              throttle should reject any additional requests
-                              for async mode and clean up the queue by
-                              scheduling the remaining request items
-                              immediately without delay. This method must
-                              not take arguments, and must return a bool.
-                              Note that the client will most likely need a
-                              proper protocol for shutdown such that its
-                              request code recognizes when shutdown is in
-                              progress. For example, instead of calling the
-                              service, the request could call its callback
-                              method with a code to signify that shutdown is in
-                              progress. This may be needed, for example,
-                              in the case where the client is waiting on an
-                              event from its callback method. The
-                              shutdown_check is optional. An alternative is
-                              to call start_shutdown to get the same result,
-                              or to do nothing if the client design calls for
-                              it.
-
+                                       complete. See the description further
+                                       down regarding the throttle states to
+                                       understand what shutdown processing
+                                       does. Required and valid only for
+                                       the throttle decorator with mode
+                                       Throttle.MODE_ASYNC.
 
         Raises:
             IncorrectRequestsSpecified: The requests specification must be
@@ -379,10 +357,56 @@ class Throttle:
                                              float greater than zero.
             MissingLbThresholdSpecification: lb_threshold is required for
                                                mode Throttle.MODE_SYNC_LB.
-            ShutdownCheckNotAllowed: shutdown_check is valid for mode
-                                       Throttle.MODE_ASYNC only.
-            IncorrectShutdownCheckSpecified: shutdown_check must be a
-                                               function.
+            StartShutdownEventNotAllowed: start_shutdown_event is valid only
+                                            for the throttle decorator with
+                                            mode Throttle.MODE_ASYNC.
+            IncorrectStartShutdownEventSpecified: start_shutdown_event must
+                                                    be a threading Event
+                                                    object
+            MissingStartShutdownEvent: A start_shutdown_event is required for
+                                         the decorator with mode
+                                         Throttle.MODE_ASYNC.
+            ShutdownCompleteEventNotAllowed: shutdown_complete_event is
+                                               valid only for the throttle
+                                               decorator with mode
+                                               Throttle.MODE_ASYNC
+            IncorrectShutdownCompleteEventSpecified: shutdown_complete_event
+                                               must be a threading Event
+                                               object.
+            MissingShutdownCompleteEvent: A shutdown_complete_event is
+                                            required for the decorator with
+                                            mode Throttle.MODE_ASYNC.
+
+        States and processing for mode Throttle.MODE_ASYNC:
+
+            The Throttle is initialized with an empty async_q and the
+            scheduler thread is started and ready to receive work. The
+            starting state is 'active'.
+
+            1) state: active
+               a) send_request called (directly or via decorated func call):
+                  1) request is queued to the async_q
+                  2) state remains 'active'
+               b) start_shutdown called (non-decorator only):
+                  1) state is changed to 'shutdown'
+                  2) scheduler removes but does not schedule async_q items
+                  3) scheduler exits
+                  4) control returns after scheduler thread returns
+               c) start_shutdown_event is set (decorator only):
+                  1) state is changed to 'shutdown'
+                  2) scheduler removes but does not schedule async_q items
+                  3) scheduler exits
+                  4) shutdown_complete_event is set
+            2) state: shutdown
+               a) send_request called (directly or via decorated func call):
+                  1) request is ignored  (i.e, not queued to async_q)
+               b) start_shutdown called (non-decorator only):
+                  1) state remains 'shutdown'
+                  2) control returns immediately
+               c) start_shutdown_event is set (decorator only):
+                  1) state remains 'shutdown'
+                  2) shutddown_complete_event set
+
 
         :Example: instantiate an async throttle for 1 request per second
 
@@ -393,21 +417,18 @@ class Throttle:
 
 
         :Example: instantiate an async throttle for 5 requests per 1/2 second
-                  with an async_q_size of 256 and a shutdonw_check function.
+                  with an async queue size of 256
 
         >>> from scottbrian_utils.throttle import Throttle
-        >>> my_shutdown_flag = False
-        >>> def my_shutdown_check() -> bool:
-        ...     return my_shutdown_flag
+        >>> from threading import Event
         >>> request_throttle = Throttle(requests=5,
         ...                             seconds=0.5,
         ...                             mode=Throttle.MODE_ASYNC,
-        ...                             async_q_size=256,
-        ...                             shutdown_check=my_shutdown_check)
+        ...                             async_q_size=256)
 
 
         :Example: instantiate a throttle for 20 requests per 2 minutes using
-                  the early count algo
+                  the early count algorithm
 
         >>> from scottbrian_utils.throttle import Throttle
         >>> request_throttle = Throttle(requests=5,
@@ -417,7 +438,7 @@ class Throttle:
 
 
         :Example: instantiate a throttle for 3 requests per second
-                  using the leaky bucket algo
+                  using the leaky bucket algorithm
 
         >>> from scottbrian_utils.throttle import Throttle
         >>> request_throttle = Throttle(requests=5,
@@ -427,6 +448,14 @@ class Throttle:
 
 
         """
+        #######################################################################
+        # determine whether we are throttle decorator
+        #######################################################################
+        if inspect.currentframe().f_back.f_code.co_name == 'throttle':
+            self.decorator = True
+        else:
+            self.decorator = False
+
         #######################################################################
         # requests
         #######################################################################
@@ -438,6 +467,7 @@ class Throttle:
                                              'specification must be a '
                                              'positive integer greater '
                                              'than zero.')
+
         #######################################################################
         # seconds
         #######################################################################
@@ -478,6 +508,7 @@ class Throttle:
                                                        'than zero.')
         else:
             self.async_q_size = Throttle.DEFAULT_ASYNC_Q_SIZE
+
         #######################################################################
         # early_count
         #######################################################################
@@ -526,14 +557,15 @@ class Throttle:
                                                       'Throttle.MODE_SYNC_LB.')
             else:
                 self.lb_threshold = 0
+
         #######################################################################
         # start_shutdown_event
         #######################################################################
         if start_shutdown_event is not None:
-            if mode != Throttle.MODE_ASYNC:
-                raise StartShutdownEventNotAllowed('start_shutdown_event is '
-                                                   'valid for mode '
-                                                   'Throttle.MODE_ASYNC only.')
+            if (mode != Throttle.MODE_ASYNC) or (not self.decorator):
+                raise StartShutdownEventNotAllowed(
+                    'start_shutdown_event is valid only for the throttle '
+                    'decorator with mode Throttle.MODE_ASYNC.')
             else:
                 if isinstance(start_shutdown_event, threading.Event):
                     self.start_shutdown_event = start_shutdown_event
@@ -543,15 +575,19 @@ class Throttle:
                         'object.')
         else:
             self.start_shutdown_event = None
+            if self.decorator and (mode == Throttle.MODE_ASYNC):
+                raise MissingStartShutdownEvent(
+                    'A start_shutdown_event is required for the decorator '
+                    'with mode Throttle.MODE_ASYNC.')
+
         #######################################################################
         # shutdown_complete_event
         #######################################################################
         if shutdown_complete_event is not None:
-            if mode != Throttle.MODE_ASYNC:
-                raise ShutdownCompleteEventNotAllowed('shutdown_complete_event'
-                                                      ' is valid  for mode '
-                                                      'Throttle.MODE_ASYNC '
-                                                      'only.')
+            if (mode != Throttle.MODE_ASYNC) or (not self.decorator):
+                raise ShutdownCompleteEventNotAllowed(
+                    'shutdown_complete_event is valid only for the throttle '
+                    'decorator with mode Throttle.MODE_ASYNC.')
             else:
                 if isinstance(shutdown_complete_event, threading.Event):
                     self.shutdown_complete_event = shutdown_complete_event
@@ -561,39 +597,32 @@ class Throttle:
                         'object.')
         else:
             self.shutdown_complete_event = None
-        #######################################################################
-        # shutdown_check
-        #######################################################################
-        # if shutdown_check is not None:
-        #     if mode != Throttle.MODE_ASYNC:
-        #         raise ShutdownCheckNotAllowed('shutdown_check is valid '
-        #                                       'for mode Throttle.MODE_ASYNC '
-        #                                       'only.')
-        #     else:
-        #         if callable(shutdown_check):
-        #             self.shutdown_check = shutdown_check
-        #         else:
-        #             raise IncorrectShutdownCheckSpecified('shutdown_check '
-        #                                                   'must be a '
-        #                                                   'function.')
-        # else:
-        #     self.shutdown_check = None
+            if self.decorator and (mode == Throttle.MODE_ASYNC):
+                raise MissingShutdownCompleteEvent(
+                    'A shutdown_complete_event is required for the decorator '
+                    'with mode Throttle.MODE_ASYNC.')
 
+        #######################################################################
+        # Set remainder of vars
+        #######################################################################
         self.target_interval = seconds/requests
-
         self.schedule_lock = threading.Lock()
-        self.scheduler_thread_active = False
-        self.request_scheduler_thread = None
         self._shutdown = False
         self._expected_arrival_time = 0
         self._early_arrival_count = 0
 
         if mode == Throttle.MODE_ASYNC:
             self.async_q = queue.Queue(maxsize=self.async_q_size)
+            self.request_scheduler_thread = threading.Thread(
+                    target=self.schedule_requests)
+            self.request_scheduler_thread.start()
         else:
             self.async_q = None
+            self.request_scheduler_thread = None
 
-
+    ###########################################################################
+    # len
+    ###########################################################################
     def __len__(self) -> int:
         """Return the number of items in the async_q.
 
@@ -631,6 +660,9 @@ class Throttle:
         else:
             return 0
 
+    ###########################################################################
+    # repr
+    ###########################################################################
     def __repr__(self) -> str:
         """Return a representation of the class.
 
@@ -656,8 +688,14 @@ class Throttle:
         if self.mode == Throttle.MODE_ASYNC:
             parms += f'mode=Throttle.MODE_ASYNC, ' \
                      f'async_q_size={self.async_q_size}'
-            if self.shutdown_check:
-                parms += f', shutdown_check={self.shutdown_check.__name__}'
+            # Client specified event are only valid with the throttle
+            # decorator.
+            # if self.start_shutdown_event:
+            #     parms += f', start_shutdown_event=' \
+            #              f'start_shutdown_event'
+            # if self.shutdown_complete_event:
+            #     parms += f', shutdown_complete_event=' \
+            #              f'shutdown_complete_event'
         elif self.mode == Throttle.MODE_SYNC:
             parms += f'mode=Throttle.MODE_SYNC'
         elif self.mode == Throttle.MODE_SYNC_EC:
@@ -669,6 +707,9 @@ class Throttle:
 
         return f'{classname}({parms})'
 
+    ###########################################################################
+    # shutdown check
+    ###########################################################################
     @property
     def shutdown(self) -> bool:
         """Determine whether we need to shutdown.
@@ -676,15 +717,15 @@ class Throttle:
         Returns:
             True if we need to start shutdown processing, False otherwise
         """
-        # If client provided a shutdown_check func and it returns true,
+        # If client provided a start_shutdown_event and it is set,
         # set self._shutdown to True.
-        # Note that self._shutdown is initialized to False, and once
-        # shutdown_check returns True we set self._shutdown to True
-        # and never back to False.
-        if self.shutdown_check and self.shutdown_check():
+        if self.start_shutdown_event and self.start_shutdown_event.is_set():
             self._shutdown = True
         return self._shutdown
 
+    ###########################################################################
+    # start_shutdown
+    ###########################################################################
     def start_shutdown(self) -> None:
         """Shutdown the throttle request scheduling.
 
@@ -703,6 +744,9 @@ class Throttle:
                                                    'instantiated with mode '
                                                    'Throttle.MODE_ASYNC.')
 
+    ###########################################################################
+    # send_request
+    ###########################################################################
     def send_request(self,
                      func: Callable[..., Any],
                      *args: Any,
@@ -724,52 +768,32 @@ class Throttle:
         #######################################################################
         if self.mode == Throttle.MODE_ASYNC:
             request_item = Throttle.Request(func, args, kwargs)
-            while not self.shutdown:
+            while not self._shutdown:
                 try:
-                    self.async_q.put(request_item, block=True, timeout=1)
+                    self.async_q.put(request_item,
+                                     block=True,
+                                     timeout=0.5)
+                    break
                 except queue.Full:
                     continue  # no need to wait since we already did
 
-                # There is a possibility that shutdown was switched to True
-                # and the schedule_requests method saw that and cleaned up the
-                # queue and exited BEFORE we were able to queue our request.
-                # Or, the scheduler may have exited after a period of
-                # inactivity just BEFORE we could get our request on the
-                # async_q. Or, this might be the first trip through here
-                # and the scheduler has not yet been started. In any case,
-                # the following code will get the scheduler thread
-                # started or restarted to handle the async_q. We are
-                # using the schedule_lock and the scheduler_thread_active
-                # flag in a protocol designed to handle any race conditions.
-                # consider the cases:
-                #   1) async_q.empty() and scheduler_active False
-                #      Nothing to do since no work on async_q. Since we
-                #      had just added an item to the async_q, this case
-                #      can only suggest that the scheduler handled it and
-                #      then exited because shutdown was requested just
-                #      after we queued our request.
-                #   2) async_q.empty() and scheduler_active True
-                #      Nothing to do since no work on async_q. Since we
-                #      had just added an item to the async_q, this case
-                #      can only suggest that the scheduler handled it and
-                #      is now parked on the async_q waiting for more work.
-                #   3) not async_q.empty() and scheduler_active False
-                #      Since we have work on the async_q and the scheduler
-                #      is not active, we need to start the scheduler on
-                #      a new thread. This case suggests that this is the first
-                #      time we have done a send_request, or that the
-                #      scheduler exited for inactivity or for shutdown.
-                #   4) not async_q.empty() and scheduler_active True
-                #      Nothing to do here. The scheduler will see that there
-                #      is now work on the async_q and will handle it. This is
-                #      probably the most expected case of the four.
-                with self.schedule_lock:
-                    if ((not self.async_q.empty()) and
-                            (not self.scheduler_thread_active)):
-                        self.request_scheduler_thread = \
-                            threading.Thread(target=self.schedule_requests)
-                        self.scheduler_thread_active = True
-                        self.request_scheduler_thread.start()
+            # There is a possibility that the following steps occur in
+            # the following order:
+            # 1) send_request is entered for async mode and sees at
+            # the while statement that we are *not* in shutdown
+            # 2) send_request proceeds to the try statement just before
+            # the request will be queued to the async_q
+            # 2) shutdown is requested and is detected by
+            # schedule_requests
+            # 3) schedule_requests cleans up the async_q end exits
+            # 4) back in send_request, we put our request on the
+            # async_q
+            # The following section of code handles that case and cleans
+            # up the async_q of anything added after the scheduler has
+            # exited
+            if self._shutdown:
+                while not self.async_q.empty():
+                    _ = self.async_q.get()
 
         #######################################################################
         # SYNC_MODE
@@ -826,6 +850,9 @@ class Throttle:
 
             return ret_value  # return the request return value (might be None)
 
+    ###########################################################################
+    # schedule_requests
+    ###########################################################################
     def schedule_requests(self) -> None:
         """Get tasks from queue and run them."""
         # Requests will be scheduled from the async_q at the interval
@@ -834,41 +861,21 @@ class Throttle:
         # the async_q will be cleaned up with any remaining requests
         # dropped. Note that async_q.get will only wait for a second so
         # we can detect shutdown in a timely fashion.
-        start_get_time = time.time()  # start tracking the time
-        while not self.shutdown or not self.async_q.empty():
+        while not self.shutdown:
             try:
                 request_item = self.async_q.get(block=True, timeout=1)
             except queue.Empty:
-                # If we looped for a while without finding items, then we
-                # will bail out to end the thread. This is done to help
-                # cleanup the thread when it appears the application using
-                # the throttle has quiesced or exited. In the following
-                # code, we will get the schedule lock and make one last
-                # check of the async_q while locked, and if it is still
-                # empty we will reset the thread active flag, also while
-                # locked, and return. The protocol here with the lock is
-                # needed to coordinate with the send_request method which
-                # will also get the lock and start or restart the thread.
-                # We use the lock and the thread active flag to solve the race
-                # condition where we might see an empty async_q here and
-                # decide to exit just as a new request comes in via
-                # send_request.
-                if (Throttle.MAX_EMPTY_ASYNC_Q_SECONDS
-                        < time.time() - start_get_time):
-                    with self.schedule_lock:
-                        if self.async_q.empty():
-                            self.scheduler_thread_active = False
-                            return  # bail out for inactivity
-                    # if here, continue since we now have items on the q
                 continue  # no need to wait since we already did
-            ###############################################################
-            # call the request function
-            # if shutdown indicated, drop requests
-            ###############################################################
-            if not self.shutdown:
+            ###################################################################
+            # Call the request function.
+            # We use try/except to ignore any unhandled errors so we can
+            # keep going.
+            ###################################################################
+            try:
                 request_item.request_func(*request_item.args,
                                           **request_item.kwargs)
-            self.async_q.task_done()
+            except Exception:
+                pass
 
             ###############################################################
             # wait (i.e., throttle)
@@ -881,7 +888,13 @@ class Throttle:
             while wait_seconds > 0 and not self.shutdown:
                 time.sleep(min(1, wait_seconds))
                 wait_seconds = wait_seconds - 1
-            start_get_time = time.time()  # reset get timeout clock
+
+        # if we are here, shutdown was detected
+        while not self.async_q.empty():
+            _ = self.async_q.get()
+        if self.shutdown_complete_event:
+            self.shutdown_complete_event.set()
+
 
 ###############################################################################
 # Pie Throttle Decorator
@@ -896,7 +909,9 @@ def throttle(wrapped: Optional[F] = None, *,
              async_q_size: Optional[int] = None,
              early_count: Optional[int] = None,
              lb_threshold: Optional[Union[int, float]] = None,
-             shutdown_check: Optional[Callable[[], bool]] = None) -> F:
+             start_shutdown_event: Optional[threading.Event] = None,
+             shutdown_complete_event: Optional[threading.Event] = None
+             ) -> F:
     """Decorator to wrap a function in a throttle to avoid exceeding a limit.
 
     The throttle wraps code around a function that is typically used to issue
@@ -958,7 +973,7 @@ def throttle(wrapped: Optional[F] = None, *,
                         queue is totaly populated, any additional
                         calls to send_request will be delayed
                         until queued requests are removed and
-                        scheduled. The default is 1024 requests.
+                        scheduled. The default is 4096 requests.
         early_count: Specifies the number of requests that are allowed
                        to proceed that arrive earlier than the
                        allowed interval. The count of early requests
@@ -984,25 +999,22 @@ def throttle(wrapped: Optional[F] = None, *,
                         at the threshold. A specification of zero for the
                         lb_threshold will effectively cause all requests
                         that are early to be delayed.
-        shutdown_check: The client method to call to determine whether the
-                          throttle should reject any additional requests
-                          for async mode and clean up the queue by
-                          scheduling the remaining request items
-                          immediately without delay. This method must
-                          not take arguments, and must return a bool.
-                          Note that the client will most likely need a
-                          proper protocol for shutdown such that its
-                          request code recognizes when shutdown is in
-                          progress. For example, instead of calling the
-                          service, the request could call its callback
-                          method with a code to signify that shutdown is in
-                          progress. This may be needed, for example,
-                          in the case where the client is waiting on an
-                          event from its callback method. The
-                          shutdown_check is optional. An alternative is
-                          to call start_shutdown to get the same result,
-                          or to do nothing if the client design calls for
-                          it.
+        start_shutdown_event: An event that the client will post when
+                                shutdown is to be started. See the
+                                description further down regarding the
+                                throttle states to understand what
+                                shutdown processing does.
+                                Required and valid only for the
+                                throttle decorator with mode
+                                Throttle.MODE_ASYNC.
+        shutdown_complete_event: An event that the client will wait
+                                   upon to be posted once shutdown is
+                                   complete. See the description further
+                                   down regarding the throttle states to
+                                   understand what shutdown processing
+                                   does. Required and valid only for
+                                   the throttle decorator with mode
+                                   Throttle.MODE_ASYNC.
 
     Raises:
         IncorrectRequestsSpecified: The requests specification must be
@@ -1033,15 +1045,63 @@ def throttle(wrapped: Optional[F] = None, *,
                                          float greater than zero.
         MissingLbThresholdSpecification: lb_threshold is required for
                                            mode Throttle.MODE_SYNC_LB.
-        ShutdownCheckNotAllowed: shutdown_check is valid for mode
-                                   Throttle.MODE_ASYNC only.
-        IncorrectShutdownCheckSpecified: shutdown_check must be a
-                                           function.
+        StartShutdownEventNotAllowed: start_shutdown_event is valid only
+                                        for the throttle decorator with
+                                        mode Throttle.MODE_ASYNC.
+        IncorrectStartShutdownEventSpecified: start_shutdown_event must
+                                                be a threading Event
+                                                object
+        MissingStartShutdownEvent: A start_shutdown_event is required for
+                                     the decorator with mode
+                                     Throttle.MODE_ASYNC.
+        ShutdownCompleteEventNotAllowed: shutdown_complete_event is
+                                           valid only for the throttle
+                                           decorator with mode
+                                           Throttle.MODE_ASYNC
+        IncorrectShutdownCompleteEventSpecified: shutdown_complete_event
+                                           must be a threading Event
+                                           object.
+        MissingShutdownCompleteEvent: A shutdown_complete_event is
+                                        required for the decorator with
+                                        mode Throttle.MODE_ASYNC.
+
+
     Returns:
         A callable function that, for mode Throttle.MODE_ASYNC, queues the
         request to be scheduled in accordance with the specified limits, or,
         for all other modes, delays the request as needed in accordance with
         the specified limits.
+
+    States and processing for mode Throttle.MODE_ASYNC:
+
+        The Throttle is initialized with an empty async_q and the
+        scheduler thread is started and ready to receive work. The
+        starting state is 'active'.
+
+        1) state: active
+           a) send_request called (directly or via decorated func call):
+              1) request is queued to the async_q
+              2) state remains 'active'
+           b) start_shutdown called (non-decorator only):
+              1) state is changed to 'shutdown'
+              2) scheduler removes but does not schedule async_q items
+              3) scheduler exits
+              4) control returns after scheduler thread returns
+           c) start_shutdown_event is set (decorator only):
+              1) state is changed to 'shutdown'
+              2) scheduler removes but does not schedule async_q items
+              3) scheduler exits
+              4) shutdown_complete_event is set
+        2) state: shutdown
+           a) send_request called (directly or via decorated func call):
+              1) request is ignored  (i.e, not queued to async_q)
+           b) start_shutdown called (non-decorator only):
+              1) state remains 'shutdown'
+              2) control returns immediately
+           c) start_shutdown_event is set (decorator only):
+              1) state remains 'shutdown'
+              2) shutddown_complete_event set
+
 
         :Example: wrap a function with an async throttle for 1 request per
                   second
@@ -1051,19 +1111,38 @@ def throttle(wrapped: Optional[F] = None, *,
         ... def f1() -> None:
         ...     print('example 1 request function')
 
-        :Example: wrap a function with an async throttle for 5 requests
-                  per 1/2 second with an async_q_size of 256 and a
-                  shutdonw_check function.
+
+        :Example: Instantiate an async throttle for 5 requests per 1/2 second
+                  with an async queue size of 256 and an event to start a
+                  shutdown when set, and an event to wait upon for shutdown
+                  to complete.
 
         >>> from scottbrian_utils.throttle import Throttle
-        >>> my_shutdown_flag = False
-        >>> def my_shutdown_check() -> bool:
-        ...     return my_shutdown_flag
+        >>> from threading import Event
+        >>> start_shutdown = Event()
+        >>> shutdown_done = Event()
+        >>> request_throttle = Throttle(requests=5,
+        ...                             seconds=0.5,
+        ...                             mode=Throttle.MODE_ASYNC,
+        ...                             async_q_size=256,
+        ...                             start_shutdown_event=start_shutdown,
+        ...                             shutdown_complete_event=shutdown_done)
+
+        :Example: wrap a function with an async throttle for 5 requests
+                  per 1/2 second with an async queue size of 256 and an event
+                  to start a shutdown when set, and an event to wait upon
+                  for shutdown to complete.
+
+        >>> from scottbrian_utils.throttle import Throttle
+        >>> from threading import Event
+        >>> start_shutdown = Event()
+        >>> shutdown_done = Event()
         >>> @throttle(requests=5,
         ...           seconds=0.5,
         ...           mode=Throttle.MODE_ASYNC,
         ...           async_q_size=256,
-        ...           shutdown_check=my_shutdown_check)
+        ...           start_shutdown_event=start_shutdown,
+        ...           shutdown_complete_event=shutdown_done)
         ... def f2(a) -> None:
         ...     print(f'example 2 request function with arg {a}')
 
@@ -1113,8 +1192,8 @@ def throttle(wrapped: Optional[F] = None, *,
     #                          mode=Throttle.MODE_SYNC)(aFunc)
     #
     #     The call to throttle results in a function being returned that takes
-    #     as its first aFunc specification that we see in parens immediately
-    #     following the throttle call.
+    #     as its first argument the aFunc specification that we see in parens
+    #     immediately following the throttle call.
     #
     #     Note that we can also code the above as shown and get the same
     #     result.
@@ -1146,14 +1225,18 @@ def throttle(wrapped: Optional[F] = None, *,
                                          async_q_size=async_q_size,
                                          early_count=early_count,
                                          lb_threshold=lb_threshold,
-                                         shutdown_check=shutdown_check))
+                                         start_shutdown_event=
+                                         start_shutdown_event,
+                                         shutdown_complete_event=
+                                         shutdown_complete_event))
     a_throttle = Throttle(requests=requests,
                           seconds=seconds,
                           mode=mode,
                           async_q_size=async_q_size,
                           early_count=early_count,
                           lb_threshold=lb_threshold,
-                          shutdown_check=shutdown_check)
+                          start_shutdown_event=start_shutdown_event,
+                          shutdown_complete_event=shutdown_complete_event)
 
     @decorator  # type: ignore
     def wrapper(func_to_wrap: F, instance: Optional[Any],

@@ -23,8 +23,12 @@ from scottbrian_utils.throttle import EarlyCountNotAllowed
 from scottbrian_utils.throttle import IncorrectLbThresholdSpecified
 from scottbrian_utils.throttle import MissingLbThresholdSpecification
 from scottbrian_utils.throttle import LbThresholdNotAllowed
-from scottbrian_utils.throttle import IncorrectShutdownCheckSpecified
-from scottbrian_utils.throttle import ShutdownCheckNotAllowed
+from scottbrian_utils.throttle import IncorrectStartShutdownEventSpecified
+from scottbrian_utils.throttle import StartShutdownEventNotAllowed
+from scottbrian_utils.throttle import MissingStartShutdownEvent
+from scottbrian_utils.throttle import IncorrectShutdownCompleteEventSpecified
+from scottbrian_utils.throttle import ShutdownCompleteEventNotAllowed
+from scottbrian_utils.throttle import MissingShutdownCompleteEvent
 from scottbrian_utils.throttle import AttemptedShutdownForSyncThrottle
 
 
@@ -138,76 +142,6 @@ def early_count_arg(request: Any) -> int:
         The params values are returned one at a time
     """
     return cast(int, request.param)
-
-
-###############################################################################
-# early_count_arg fixture
-###############################################################################
-tc_shutdown_flag: bool = False
-
-
-def tc_shutdown_check() -> bool:
-    return tc_shutdown_flag
-
-
-shutdown_check_arg_list = [None, tc_shutdown_check]
-
-
-@pytest.fixture(params=shutdown_check_arg_list)  # type: ignore
-def shutdown_check_arg(request: Any) -> Union[None, Callable[[], bool]]:
-    """Using different shutdown_check values.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(Union[None, Callable[[], bool]], request.param)
-
-
-###############################################################################
-# style fixture for @throttle tests
-###############################################################################
-style_num_list = [1, 2, 3]
-
-
-@pytest.fixture(params=style_num_list)  # type: ignore
-def style_num(request: Any) -> int:
-    """Using different throttle styles.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(int, request.param)
-
-
-###############################################################################
-# enabled arg fixture for @throttle tests
-###############################################################################
-enabled_arg_list = [None,
-                    'static_true',
-                    'static_false',
-                    'dynamic_true',
-                    'dynamic_false'
-                    ]
-# enabled_arg_list = [None]
-
-
-@pytest.fixture(params=enabled_arg_list)  # type: ignore
-def enabled_arg(request: Any) -> Union[None, str]:
-    """Determines how to specify throttle_enabled.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(Union[None, str], request.param)
 
 
 ###############################################################################
@@ -389,48 +323,6 @@ class TestThrottleErrors:
                          mode=Throttle.MODE_SYNC_LB,
                          lb_threshold='1')  # type: ignore
 
-        #######################################################################
-        # bad shut_down  (no missing check since shutdown_check is optional)
-        #######################################################################
-        with pytest.raises(IncorrectShutdownCheckSpecified):
-            _ = Throttle(requests=1,
-                         seconds=1,
-                         mode=Throttle.MODE_ASYNC,
-                         shutdown_check=1)  # type: ignore
-        with pytest.raises(IncorrectShutdownCheckSpecified):
-            _ = Throttle(requests=1,
-                         seconds=1,
-                         mode=Throttle.MODE_ASYNC,
-                         shutdown_check='1')  # type: ignore
-        with pytest.raises(ShutdownCheckNotAllowed):
-            def sd_check() -> bool:
-                return True
-            _ = Throttle(requests=1,
-                         seconds=1,
-                         mode=Throttle.MODE_SYNC,
-                         shutdown_check=sd_check)
-        with pytest.raises(ShutdownCheckNotAllowed):
-            def sd_check() -> bool:
-                return True
-            _ = Throttle(requests=1,
-                         seconds=1,
-                         mode=Throttle.MODE_SYNC_EC,
-                         early_count=3,
-                         shutdown_check=sd_check)
-        with pytest.raises(ShutdownCheckNotAllowed):
-            def sd_check() -> bool:
-                return True
-            _ = Throttle(requests=1,
-                         seconds=1,
-                         mode=Throttle.MODE_SYNC_LB,
-                         lb_threshold=3,
-                         shutdown_check=sd_check)
-        with pytest.raises(AttemptedShutdownForSyncThrottle):
-            a_throttle = Throttle(requests=1,
-                                  seconds=1,
-                                  mode=Throttle.MODE_SYNC)
-            a_throttle.start_shutdown()
-
 
 ###############################################################################
 # TestThrottleBasic class to test Throttle methods
@@ -559,16 +451,13 @@ class TestThrottleBasic:
     ###########################################################################
     def test_throttle_repr_async(self,
                                  requests_arg: int,
-                                 seconds_arg: Union[int, float],
-                                 shutdown_check_arg: Union[None,
-                                                           Callable[[], bool]]
+                                 seconds_arg: Union[int, float]
                                  ) -> None:
         """test_throttle repr mode 1 with various requests and seconds.
 
         Args:
             requests_arg: fixture that provides args
             seconds_arg: fixture that provides args
-            shutdown_check_arg: fixture that provides args
 
         """
         #######################################################################
@@ -576,20 +465,15 @@ class TestThrottleBasic:
         #######################################################################
         a_throttle = Throttle(requests=requests_arg,
                               seconds=seconds_arg,
-                              mode=Throttle.MODE_ASYNC,
-                              shutdown_check=shutdown_check_arg)
+                              mode=Throttle.MODE_ASYNC)
 
         expected_repr_str = \
             f'Throttle(' \
             f'requests={requests_arg}, ' \
             f'seconds={float(seconds_arg)}, ' \
             f'mode=Throttle.MODE_ASYNC, ' \
-            f'async_q_size={Throttle.DEFAULT_ASYNC_Q_SIZE}'
+            f'async_q_size={Throttle.DEFAULT_ASYNC_Q_SIZE})'
 
-        if shutdown_check_arg:
-            expected_repr_str += f', shutdown_check=' \
-                                 f'{shutdown_check_arg.__name__}'
-        expected_repr_str += ')'
         assert repr(a_throttle) == expected_repr_str
 
         a_throttle.start_shutdown()
@@ -602,20 +486,15 @@ class TestThrottleBasic:
         a_throttle = Throttle(requests=requests_arg,
                               seconds=seconds_arg,
                               mode=Throttle.MODE_ASYNC,
-                              async_q_size=q_size,
-                              shutdown_check=shutdown_check_arg)
+                              async_q_size=q_size)
 
         expected_repr_str = \
             f'Throttle(' \
             f'requests={requests_arg}, ' \
             f'seconds={float(seconds_arg)}, ' \
             f'mode=Throttle.MODE_ASYNC, ' \
-            f'async_q_size={q_size}'
+            f'async_q_size={q_size})'
 
-        if shutdown_check_arg:
-            expected_repr_str += f', shutdown_check=' \
-                                 f'{shutdown_check_arg.__name__}'
-        expected_repr_str += ')'
         assert repr(a_throttle) == expected_repr_str
 
         a_throttle.start_shutdown()
@@ -941,55 +820,99 @@ class TestThrottleDecoratorErrors:
             f1()
 
         #######################################################################
-        # bad shut_down (no missing check since shutdown_check is optional)
+        # bad start_shutdown_event
         #######################################################################
-        with pytest.raises(IncorrectShutdownCheckSpecified):
+        start_shutdown = threading.Event()
+        shutdown_complete = threading.Event()
+        with pytest.raises(MissingStartShutdownEvent):
             @throttle(requests=1,
                       seconds=1,
                       mode=Throttle.MODE_ASYNC,
-                      shutdown_check=1)  # type: ignore
+                      shutdown_complete_event=shutdown_complete)
             def f1():
                 print('42')
             f1()
-        with pytest.raises(IncorrectShutdownCheckSpecified):
+        with pytest.raises(IncorrectStartShutdownEventSpecified):
             @throttle(requests=1,
                       seconds=1,
                       mode=Throttle.MODE_ASYNC,
-                      shutdown_check='1')  # type: ignore
+                      start_shutdown_event=1,  # type: ignore
+                      shutdown_complete_event=shutdown_complete)
             def f1():
                 print('42')
             f1()
-        with pytest.raises(ShutdownCheckNotAllowed):
-            def sd_check() -> bool:
-                return True
+        with pytest.raises(StartShutdownEventNotAllowed):
             @throttle(requests=1,
                       seconds=1,
                       mode=Throttle.MODE_SYNC,
-                      shutdown_check=sd_check)  # type: ignore
+                      start_shutdown_event=start_shutdown)
             def f1():
                 print('42')
             f1()
-        with pytest.raises(ShutdownCheckNotAllowed):
-            def sd_check() -> bool:
-                return True
+        with pytest.raises(StartShutdownEventNotAllowed):
             @throttle(requests=1,
                       seconds=1,
                       mode=Throttle.MODE_SYNC_EC,
-                      shutdown_check=sd_check)  # type: ignore
+                      early_count=3,
+                      start_shutdown_event=start_shutdown)
             def f1():
                 print('42')
             f1()
-        with pytest.raises(ShutdownCheckNotAllowed):
-            def sd_check() -> bool:
-                return True
+        with pytest.raises(StartShutdownEventNotAllowed):
             @throttle(requests=1,
                       seconds=1,
                       mode=Throttle.MODE_SYNC_LB,
-                      shutdown_check=sd_check)  # type: ignore
+                      lb_threshold=5,
+                      start_shutdown_event=start_shutdown)
             def f1():
                 print('42')
             f1()
-
+        #######################################################################
+        # bad shutdown_complete_event
+        #######################################################################
+        with pytest.raises(MissingShutdownCompleteEvent):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_ASYNC,
+                      start_shutdown_event=start_shutdown)
+            def f1():
+                print('42')
+            f1()
+        with pytest.raises(IncorrectShutdownCompleteEventSpecified):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_ASYNC,
+                      start_shutdown_event=start_shutdown,
+                      shutdown_complete_event=1)  # type: ignore
+            def f1():
+                print('42')
+            f1()
+        with pytest.raises(ShutdownCompleteEventNotAllowed):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_SYNC,
+                      shutdown_complete_event=shutdown_complete)
+            def f1():
+                print('42')
+            f1()
+        with pytest.raises(ShutdownCompleteEventNotAllowed):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_SYNC_EC,
+                      early_count=3,
+                      shutdown_complete_event=shutdown_complete)
+            def f1():
+                print('42')
+            f1()
+        with pytest.raises(ShutdownCompleteEventNotAllowed):
+            @throttle(requests=1,
+                      seconds=1,
+                      mode=Throttle.MODE_SYNC_LB,
+                      lb_threshold=3,
+                      shutdown_complete_event=shutdown_complete)
+            def f1():
+                print('42')
+            f1()
 
 ###############################################################################
 # TestThrottle class
@@ -1023,8 +946,6 @@ class TestThrottle:
     def test_throttle_async(self,
                             requests_arg: int,
                             seconds_arg: Union[int, float],
-                            shutdown_check_arg: Union[None,
-                                                      Callable[[], bool]],
                             send_interval_mult_arg: float
                             ) -> None:
         """Method to start throttle mode1 tests
@@ -1032,7 +953,6 @@ class TestThrottle:
         Args:
             requests_arg: number of requests per interval from fixture
             seconds_arg: interval for number of requests from fixture
-            shutdown_check_arg: function to call to check for shutdown
             send_interval_mult_arg: interval between each send of a request
         """
         send_interval = (seconds_arg / requests_arg) * send_interval_mult_arg
@@ -1041,7 +961,6 @@ class TestThrottle:
                              mode=Throttle.MODE_ASYNC,
                              early_count=0,
                              lb_threshold=0,
-                             shutdown_check=shutdown_check_arg,
                              send_interval=send_interval)
 
     ###########################################################################
@@ -1067,7 +986,6 @@ class TestThrottle:
                              mode=Throttle.MODE_SYNC_EC,
                              early_count=0,
                              lb_threshold=0,
-                             shutdown_check=None,
                              send_interval=send_interval)
 
     ###########################################################################
@@ -1093,7 +1011,6 @@ class TestThrottle:
                              mode=Throttle.MODE_SYNC_EC,
                              early_count=early_count_arg,
                              lb_threshold=0,
-                             shutdown_check=None,
                              send_interval=send_interval)
 
     ###########################################################################
@@ -1119,7 +1036,6 @@ class TestThrottle:
                              mode=Throttle.MODE_SYNC_LB,
                              early_count=0,
                              lb_threshold=lb_threshold_arg,
-                             shutdown_check=None,
                              send_interval=send_interval)
 
 
@@ -1129,8 +1045,6 @@ class TestThrottle:
     def test_pie_throttle_async(self,
                                 requests_arg: int,
                                 seconds_arg: Union[int, float],
-                                shutdown_check_arg: Union[None,
-                                                          Callable[[], bool]],
                                 send_interval_mult_arg: float
                                 ) -> None:
         """Method to start throttle mode1 tests
@@ -1138,7 +1052,6 @@ class TestThrottle:
         Args:
             requests_arg: number of requests per interval from fixture
             seconds_arg: interval for number of requests from fixture
-            shutdown_check_arg: function to call to check for shutdown
             send_interval_mult_arg: interval between each send of a request
         """
         #######################################################################
@@ -1151,112 +1064,85 @@ class TestThrottle:
                                              mode=Throttle.MODE_ASYNC,
                                              early_count=0,
                                              lb_threshold=0,
-                                             shutdown_check=shutdown_check_arg,
                                              request_mult=request_multiplier,
                                              send_interval=send_interval)
 
         #######################################################################
         # Decorate functions with throttle
         #######################################################################
-        if shutdown_check_arg:
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC,
-                      shutdown_check=shutdown_check_arg)
-            def f0():
-                request_validator.callback0()
+        start_shutdown0 = threading.Event()
+        shutdown_complete0 = threading.Event()
+        @throttle(requests=requests_arg,
+                  seconds=seconds_arg,
+                  mode=Throttle.MODE_ASYNC,
+                  start_shutdown_event=start_shutdown0,
+                  shutdown_complete_event=shutdown_complete0)
+        def f0():
+            request_validator.callback0()
 
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC,
-                      shutdown_check=shutdown_check_arg)
-            def f1(idx):
-                request_validator.callback1(idx)
+        start_shutdown1 = threading.Event()
+        shutdown_complete1 = threading.Event()
+        @throttle(requests=requests_arg,
+                  seconds=seconds_arg,
+                  mode=Throttle.MODE_ASYNC,
+                  start_shutdown_event=start_shutdown1,
+                  shutdown_complete_event=shutdown_complete1)
+        def f1(idx):
+            request_validator.callback1(idx)
 
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC,
-                      shutdown_check=shutdown_check_arg)
-            def f2(idx, requests):
-                request_validator.callback2(idx, requests)
+        start_shutdown2 = threading.Event()
+        shutdown_complete2 = threading.Event()
+        @throttle(requests=requests_arg,
+                  seconds=seconds_arg,
+                  mode=Throttle.MODE_ASYNC,
+                  start_shutdown_event=start_shutdown2,
+                  shutdown_complete_event=shutdown_complete2)
+        def f2(idx, requests):
+            request_validator.callback2(idx, requests)
 
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC,
-                      shutdown_check=shutdown_check_arg)
-            def f3(*, idx):
-                request_validator.callback3(idx=idx)
+        start_shutdown3 = threading.Event()
+        shutdown_complete3 = threading.Event()
+        @throttle(requests=requests_arg,
+                  seconds=seconds_arg,
+                  mode=Throttle.MODE_ASYNC,
+                  start_shutdown_event=start_shutdown3,
+                  shutdown_complete_event=shutdown_complete3)
+        def f3(*, idx):
+            request_validator.callback3(idx=idx)
 
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC,
-                      shutdown_check=shutdown_check_arg)
-            def f4(*, idx, seconds):
-                request_validator.callback4(idx=idx, seconds=seconds)
+        start_shutdown4 = threading.Event()
+        shutdown_complete4 = threading.Event()
+        @throttle(requests=requests_arg,
+                  seconds=seconds_arg,
+                  mode=Throttle.MODE_ASYNC,
+                  start_shutdown_event=start_shutdown4,
+                  shutdown_complete_event=shutdown_complete4)
+        def f4(*, idx, seconds):
+            request_validator.callback4(idx=idx, seconds=seconds)
 
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC,
-                      shutdown_check=shutdown_check_arg)
-            def f5(idx,*, interval):
-                request_validator.callback5(idx,
-                                                  interval=interval)
+        start_shutdown5 = threading.Event()
+        shutdown_complete5 = threading.Event()
+        @throttle(requests=requests_arg,
+                  seconds=seconds_arg,
+                  mode=Throttle.MODE_ASYNC,
+                  start_shutdown_event=start_shutdown5,
+                  shutdown_complete_event=shutdown_complete5
+        def f5(idx, *, interval):
+            request_validator.callback5(idx,
+                                        interval=interval)
 
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC,
-                      shutdown_check=shutdown_check_arg)
-            def f6(idx, requests, *, seconds, interval):
-                request_validator.callback6(idx,
-                                                  requests,
-                                                  seconds=seconds,
-                                                  interval=interval)
-        else:
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC)
-            def f0():
-                request_validator.callback0()
-
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC)
-            def f1(idx):
-                request_validator.callback1(idx)
-
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC)
-            def f2(idx, requests):
-                request_validator.callback2(idx, requests)
-
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC)
-            def f3(*, idx):
-                request_validator.callback3(idx=idx)
-
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC)
-            def f4(*, idx, seconds):
-                request_validator.callback4(idx=idx, seconds=seconds)
-
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC)
-            def f5(idx, *, interval):
-                request_validator.callback5(idx,
-                                                  interval=interval)
-
-            @throttle(requests=requests_arg,
-                      seconds=seconds_arg,
-                      mode=Throttle.MODE_ASYNC)
-            def f6(idx, requests, *, seconds, interval):
-                request_validator.callback6(idx,
-                                                  requests,
-                                                  seconds=seconds,
-                                                  interval=interval)
+        start_shutdown6 = threading.Event()
+        shutdown_complete6 = threading.Event()
+        @throttle(requests=requests_arg,
+                  seconds=seconds_arg,
+                  mode=Throttle.MODE_ASYNC,
+                  start_shutdown_event=start_shutdown6,
+                  shutdown_complete_event=shutdown_complete6)
+        def f6(idx, requests, *, seconds, interval):
+            request_validator.callback6(idx,
+                                        requests,
+                                        seconds=seconds,
+                                        interval=interval)
 
         #######################################################################
         # Invoke the functions
