@@ -1,10 +1,9 @@
 """test_throttle.py module."""
 
 import pytest
-import time
 import math
-from time import time, sleep
-from typing import Any, Callable, cast, Union
+import time
+from typing import Any, cast, Union
 
 import threading
 
@@ -51,7 +50,7 @@ class InvalidModeNum(ErrorTstThrottle):
 ###############################################################################
 # requests_arg fixture
 ###############################################################################
-requests_arg_list = [1, 2, 3, 10, 33]
+requests_arg_list = [1]  # [1, 2, 3, 10, 33]
 
 
 @pytest.fixture(params=requests_arg_list)  # type: ignore
@@ -70,7 +69,7 @@ def requests_arg(request: Any) -> int:
 ###############################################################################
 # seconds_arg fixture
 ###############################################################################
-seconds_arg_list = [0.1, 0.2, 0.3, 1, 2, 3, 3.3, 9]
+seconds_arg_list = [1]   # [0.1, 0.2, 0.3, 1, 2, 3, 3.3, 9]
 
 
 @pytest.fixture(params=seconds_arg_list)  # type: ignore
@@ -147,7 +146,8 @@ def early_count_arg(request: Any) -> int:
 ###############################################################################
 # send_interval_mult_arg fixture
 ###############################################################################
-send_interval_mult_arg_list = [0.0, 0.1, 0.2, 0.3, 0.5, 0.9, 1.0, 1.1, 1.5]
+send_interval_mult_arg_list = [0.5]  # [0.0, 0.1, 0.2, 0.3, 0.5, 0.9, 1.0,
+# 1.1, 1.5]
 
 
 @pytest.fixture(params=send_interval_mult_arg_list)  # type: ignore
@@ -333,17 +333,20 @@ class TestThrottleBasic:
     # len checks
     ###########################################################################
     def test_throttle_len_async(self,
-                                requests_arg: int
+                                requests_arg: int,
+                                mode_arg: int
                                 ) -> None:
         """Test the len of async throttle.
 
         Args:
             requests_arg: fixture that provides args
+            mode_arg: throttle mode to use
 
         """
         # create a throttle with a long enough interval to ensure that we
         # can populate the async_q and get the length before we start
         # dequeing requests from it
+        print('mode_arg:', mode_arg)
         if mode_arg == Throttle.MODE_ASYNC:
             a_throttle = Throttle(requests=requests_arg,
                                   seconds=requests_arg * 3,  # 3 sec interval
@@ -413,38 +416,38 @@ class TestThrottleBasic:
     ###########################################################################
     # task done check
     ###########################################################################
-    def test_throttle_task_done(self,
-                                requests_arg: int
-                                ) -> None:
-        """Test task done for throttle throttle.
-
-        Args:
-            requests_arg: fixture that provides args
-
-        """
-        # create a throttle with a short interval
-        a_throttle = Throttle(requests=requests_arg,
-                              seconds=requests_arg * 0.25,  #  1/4 interval
-                              mode=Throttle.MODE_ASYNC)
-
-        class Counts:
-            def __init__(self):
-                self.count = 0
-
-        a_counts = Counts()
-
-        def dummy_func(counts) -> None:
-            counts.count += 1
-
-        for i in range(requests_arg):
-             a_throttle.send_request(dummy_func, a_counts)
-
-        a_throttle.async_q.join()
-        assert len(a_throttle) == 0
-        assert a_counts.count == requests_arg
-        # start_shutdown to end the scheduler thread
-        a_throttle.start_shutdown()
-        assert len(a_throttle) == 0
+    # def test_throttle_task_done(self,
+    #                             requests_arg: int
+    #                             ) -> None:
+    #     """Test task done for throttle throttle.
+    #
+    #     Args:
+    #         requests_arg: fixture that provides args
+    #
+    #     """
+    #     # create a throttle with a short interval
+    #     a_throttle = Throttle(requests=requests_arg,
+    #                           seconds=requests_arg * 0.25,  #  1/4 interval
+    #                           mode=Throttle.MODE_ASYNC)
+    #
+    #     class Counts:
+    #         def __init__(self):
+    #             self.count = 0
+    #
+    #     a_counts = Counts()
+    #
+    #     def dummy_func(counts) -> None:
+    #         counts.count += 1
+    #
+    #     for i in range(requests_arg):
+    #          a_throttle.send_request(dummy_func, a_counts)
+    #
+    #     a_throttle.async_q.join()
+    #     assert len(a_throttle) == 0
+    #     assert a_counts.count == requests_arg
+    #     # start_shutdown to end the scheduler thread
+    #     a_throttle.start_shutdown()
+    #     assert len(a_throttle) == 0
 
     ###########################################################################
     # repr with mode async
@@ -791,6 +794,7 @@ class TestThrottleDecoratorErrors:
             @throttle(requests=1,
                       seconds=1,
                       mode=Throttle.MODE_SYNC_EC,
+                      early_count=5,
                       lb_threshold=0)
             def f1():
                 print('42')
@@ -930,8 +934,7 @@ class TestThrottle:
     
     The non-decorator cases will be simpler, with the exception of 
     doing some explicit calls to shutdown the throttle (which is not possible 
-    with the decorator style - for this, we can only set a bit that is 
-    checked by the shutdown_check function passed into the throttle). 
+    with the decorator style - for this, we can set the start_shutdown_event.
 
     The following keywords with various values and in all combinations are
     tested:
@@ -1126,7 +1129,7 @@ class TestThrottle:
                   seconds=seconds_arg,
                   mode=Throttle.MODE_ASYNC,
                   start_shutdown_event=start_shutdown5,
-                  shutdown_complete_event=shutdown_complete5
+                  shutdown_complete_event=shutdown_complete5)
         def f5(idx, *, interval):
             request_validator.callback5(idx,
                                         interval=interval)
@@ -1151,32 +1154,43 @@ class TestThrottle:
             rc = f0()
             assert rc is None
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f1(i)
             assert rc is None
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f2(i, requests_arg)
             assert rc is None
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f3(idx=i)
             assert rc is None
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f4(idx=i, seconds=seconds_arg)
             assert rc is None
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f5(idx=i, interval=send_interval_mult_arg)
             assert rc is None
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f6(i, requests_arg,
                     seconds=seconds_arg, interval=send_interval_mult_arg)
             assert rc is None
             time.sleep(send_interval)
-
         request_validator.validate_series()  # validate for the series
 
     ###########################################################################
@@ -1204,7 +1218,6 @@ class TestThrottle:
                                              mode=Throttle.MODE_SYNC,
                                              early_count=0,
                                              lb_threshold=0,
-                                             shutdown_check=None,
                                              request_mult=request_multiplier,
                                              send_interval=send_interval)
 
@@ -1251,7 +1264,7 @@ class TestThrottle:
                   mode=Throttle.MODE_SYNC)
         def f5(idx, *, interval):
             request_validator.callback5(idx,
-                                              interval=interval)
+                                        interval=interval)
             return idx + 42 + 5
 
         @throttle(requests=requests_arg,
@@ -1259,9 +1272,9 @@ class TestThrottle:
                   mode=Throttle.MODE_SYNC)
         def f6(idx, requests, *, seconds, interval):
             request_validator.callback6(idx,
-                                              requests,
-                                              seconds=seconds,
-                                              interval=interval)
+                                        requests,
+                                        seconds=seconds,
+                                        interval=interval)
             return idx + 42 + 6
 
         #######################################################################
@@ -1271,32 +1284,43 @@ class TestThrottle:
             rc = f0()
             assert rc == 0
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f1(i)
             assert rc == i + 42 + 1
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f2(i, requests_arg)
             assert rc == i + 42 + 2
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f3(idx=i)
             assert rc == i + 42 + 3
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f4(idx=i, seconds=seconds_arg)
             assert rc == i + 42 + 4
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f5(idx=i, interval=send_interval_mult_arg)
             assert rc == i + 42 + 5
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f6(i, requests_arg,
                     seconds=seconds_arg, interval=send_interval_mult_arg)
             assert rc == i + 42 + 6
             time.sleep(send_interval)
-
         request_validator.validate_series()  # validate for the series
 
     ###########################################################################
@@ -1326,10 +1350,8 @@ class TestThrottle:
                                              mode=Throttle.MODE_SYNC_EC,
                                              early_count=early_count_arg,
                                              lb_threshold=0,
-                                             shutdown_check=None,
                                              request_mult=request_multiplier,
                                              send_interval=send_interval)
-
         #######################################################################
         # Decorate functions with throttle
         #######################################################################
@@ -1379,7 +1401,7 @@ class TestThrottle:
                   early_count=early_count_arg)
         def f5(idx, *, interval):
             request_validator.callback5(idx,
-                                              interval=interval)
+                                        interval=interval)
             return idx + 42 + 5
 
         @throttle(requests=requests_arg,
@@ -1388,9 +1410,9 @@ class TestThrottle:
                   early_count=early_count_arg)
         def f6(idx, requests, *, seconds, interval):
             request_validator.callback6(idx,
-                                              requests,
-                                              seconds=seconds,
-                                              interval=interval)
+                                        requests,
+                                        seconds=seconds,
+                                        interval=interval)
             return idx + 42 + 6
 
         #######################################################################
@@ -1400,32 +1422,43 @@ class TestThrottle:
             rc = f0()
             assert rc == 0
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f1(i)
             assert rc == i + 42 + 1
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f2(i, requests_arg)
             assert rc == i + 42 + 2
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f3(idx=i)
             assert rc == i + 42 + 3
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f4(idx=i, seconds=seconds_arg)
             assert rc == i + 42 + 4
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f5(idx=i, interval=send_interval_mult_arg)
             assert rc == i + 42 + 5
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f6(i, requests_arg,
                     seconds=seconds_arg, interval=send_interval_mult_arg)
             assert rc == i + 42 + 6
             time.sleep(send_interval)
-
         request_validator.validate_series()  # validate for the series
 
     ###########################################################################
@@ -1455,7 +1488,6 @@ class TestThrottle:
                                              mode=Throttle.MODE_SYNC_LB,
                                              early_count=0,
                                              lb_threshold=lb_threshold_arg,
-                                             shutdown_check=None,
                                              request_mult=request_multiplier,
                                              send_interval=send_interval)
 
@@ -1508,7 +1540,7 @@ class TestThrottle:
                   lb_threshold=lb_threshold_arg)
         def f5(idx, *, interval):
             request_validator.callback5(idx,
-                                              interval=interval)
+                                        interval=interval)
             return idx + 42 + 5
 
         @throttle(requests=requests_arg,
@@ -1517,9 +1549,9 @@ class TestThrottle:
                   lb_threshold=lb_threshold_arg)
         def f6(idx, requests, *, seconds, interval):
             request_validator.callback6(idx,
-                                              requests,
-                                              seconds=seconds,
-                                              interval=interval)
+                                        requests,
+                                        seconds=seconds,
+                                        interval=interval)
             return idx + 42 + 6
 
         #######################################################################
@@ -1529,32 +1561,43 @@ class TestThrottle:
             rc = f0()
             assert rc == 0
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f1(i)
             assert rc == i + 42 + 1
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f2(i, requests_arg)
             assert rc == i + 42 + 2
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f3(idx=i)
             assert rc == i + 42 + 3
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f4(idx=i, seconds=seconds_arg)
             assert rc == i + 42 + 4
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f5(idx=i, interval=send_interval_mult_arg)
             assert rc == i + 42 + 5
             time.sleep(send_interval)
+        request_validator.validate_series()  # validate for the series
 
+        for i in range(requests_arg * request_multiplier):
             rc = f6(i, requests_arg,
                     seconds=seconds_arg, interval=send_interval_mult_arg)
             assert rc == i + 42 + 6
             time.sleep(send_interval)
-
         request_validator.validate_series()  # validate for the series
 
     ###########################################################################
@@ -1566,7 +1609,6 @@ class TestThrottle:
                         mode: int,
                         early_count: int,
                         lb_threshold: Union[int, float],
-                        shutdown_check: Union[None, Callable[[], bool]],
                         send_interval: float
                         ) -> None:
         """Method test_throttle_router.
@@ -1577,7 +1619,6 @@ class TestThrottle:
             mode: async or sync_EC or sync_LB
             early_count: count used for sync with early count algo
             lb_threshold: threshold used with sync leaky bucket algo
-            shutdown_check: function to call to check for shutdown
             send_interval: interval between each send of a request
         """
         request_multiplier = 100
@@ -1585,21 +1626,12 @@ class TestThrottle:
         # Instantiate Throttle
         #######################################################################
         if mode == Throttle.MODE_ASYNC:
-            if shutdown_check:
-                a_throttle = Throttle(requests=requests,
-                                      seconds=seconds,
-                                      mode=Throttle.MODE_ASYNC,
-                                      async_q_size=(requests
-                                                    * request_multiplier),
-                                      shutdown_check=shutdown_check
-                                      )
-            else:
-                a_throttle = Throttle(requests=requests,
-                                      seconds=seconds,
-                                      mode=Throttle.MODE_ASYNC,
-                                      async_q_size=(requests
-                                                    * request_multiplier)
-                                      )
+            a_throttle = Throttle(requests=requests,
+                                  seconds=seconds,
+                                  mode=Throttle.MODE_ASYNC,
+                                  async_q_size=(requests
+                                                * request_multiplier)
+                                  )
         elif mode  == Throttle.MODE_SYNC:
             a_throttle = Throttle(requests=requests,
                                   seconds=seconds,
@@ -1631,6 +1663,7 @@ class TestThrottle:
                                              request_mult=request_multiplier,
                                              send_interval=send_interval)
 
+
         #######################################################################
         # Make requests and validate
         #######################################################################
@@ -1638,47 +1671,74 @@ class TestThrottle:
         for i in range(requests * request_multiplier):
             # 0
             rc = a_throttle.send_request(request_validator.request0)
-            assert rc == i if mode!=Throttle.MODE_ASYNC else None
+            if mode == Throttle.MODE_ASYNC:
+                assert rc is None
+            else:
+                assert rc == i
             time.sleep(send_interval)
 
+        request_validator.validate_series()  # validate for the series
+
+        for i in range(requests * request_multiplier):
             # 1
             rc = a_throttle.send_request(request_validator.request1, i)
-            assert rc == i if mode!=Throttle.MODE_ASYNC else None
+            exp_rc = i if mode!=Throttle.MODE_ASYNC else None
+            assert rc == exp_rc
             time.sleep(send_interval)
 
+        request_validator.validate_series()  # validate for the series
+
+        for i in range(requests * request_multiplier):
             # 2
             rc = a_throttle.send_request(request_validator.request2,
                                          i,
                                          requests)
-            assert rc == i if mode!=Throttle.MODE_ASYNC else None
+            exp_rc = i if mode != Throttle.MODE_ASYNC else None
+            assert rc == exp_rc
             time.sleep(send_interval)
 
+        request_validator.validate_series()  # validate for the series
+
+        for i in range(requests * request_multiplier):
             # 3
             rc = a_throttle.send_request(request_validator.request3, idx=i)
-            assert rc == i if mode!=Throttle.MODE_ASYNC else None
+            exp_rc = i if mode != Throttle.MODE_ASYNC else None
+            assert rc == exp_rc
             time.sleep(send_interval)
 
+        request_validator.validate_series()  # validate for the series
+
+        for i in range(requests * request_multiplier):
             # 4
             rc = a_throttle.send_request(request_validator.request4,
                                          idx=i,
                                          seconds=seconds)
-            assert rc == i if mode!=Throttle.MODE_ASYNC else None
+            exp_rc = i if mode != Throttle.MODE_ASYNC else None
+            assert rc == exp_rc
             time.sleep(send_interval)
 
+        request_validator.validate_series()  # validate for the series
+
+        for i in range(requests * request_multiplier):
             # 5
             rc = a_throttle.send_request(request_validator.request5,
                                          i,
                                          interval=send_interval)
-            assert rc == i if mode!=Throttle.MODE_ASYNC else None
+            exp_rc = i if mode != Throttle.MODE_ASYNC else None
+            assert rc == exp_rc
             time.sleep(send_interval)
 
+        request_validator.validate_series()  # validate for the series
+
+        for i in range(requests * request_multiplier):
             # 6
             rc = a_throttle.send_request(request_validator.request6,
                                          i,
                                          requests,
                                          seconds=seconds,
                                          interval=send_interval)
-            assert rc == i if mode!=Throttle.MODE_ASYNC else None
+            exp_rc = i if mode != Throttle.MODE_ASYNC else None
+            assert rc == exp_rc
             time.sleep(send_interval)
 
         request_validator.validate_series()  # validate for the series
@@ -1687,88 +1747,89 @@ class TestThrottle:
     # test_throttle_shutdown
     ###########################################################################
     def test_throttle_shutdown(self) -> None:
-        """Method to test shutdown scenarios.
-
-        Args:
-            requests_arg: number of requests per interval from fixture
-            seconds_arg: interval for number of requests from fixture
-            shutdown_check_arg: function to call to check for shutdown
-            send_interval_mult_arg: interval between each send of a request
-        """
+        """Method to test shutdown scenarios."""
         #######################################################################
-        # test 1 - call start_shutdown
+        # test 1 - call start_shutdown for sync mode
         #######################################################################
         a_throttle1 = Throttle(requests=1,
                                seconds=4,
+                               mode=Throttle.MODE_SYNC)
+
+        a_var = [0]
+
+        def f1(a) -> None:
+            a[0] += 1
+
+        for i in range(4):
+            a_throttle1.send_request(f1, a_var)
+
+        with pytest.raises(AttemptedShutdownForSyncThrottle):
+            a_throttle1.start_shutdown()
+
+        assert a_var[0] == 4
+
+        # the following requests should not get ignored
+        for i in range(6):
+            a_throttle1.send_request(f1, a_var)
+
+        # the count should not have changed
+        assert a_var[0] == 10
+        #######################################################################
+        # test 2 - call start_shutdown
+        #######################################################################
+        b_throttle1 = Throttle(requests=1,
+                               seconds=4,
                                mode=Throttle.MODE_ASYNC)
 
-        gvar = 0
-        def f1() -> None:
-            global gvar
-            gvar += 1
+        b_var = [0]
+        def f2(b) -> None:
+            b[0] += 1
 
         for i in range(32):
-            a_throttle1.send_request(f1)
+            b_throttle1.send_request(f2, b_var)
 
         time.sleep(14)  # allow 4 requests to be scheduled
-        a_throttle1.start_shutdown()
+        b_throttle1.start_shutdown()
 
-        assert gvar == 4
+        assert b_var[0] == 4
 
-        #######################################################################
-        # test 2 - shutdown_check
-        #######################################################################
-        my_shutdown_flag = False
-
-        def check_shutdown():
-            return my_shutdown_flag
-
-        a_throttle2 = Throttle(requests=1,
-                               seconds=4,
-                               mode=Throttle.MODE_ASYNC,
-                               shutdown_check=check_shutdown)
-
-        gvar = 0
-
-        def f1() -> None:
-            global gvar
-            gvar += 1
-
+        # the following requests should get ignored
         for i in range(32):
-            a_throttle2.send_request(f1)
+            b_throttle1.send_request(f2, b_var)
 
-        time.sleep(14)  # allow 4 requests to be scheduled
-        my_shutdown_flag = True
-        time.sleep(5)  # allow time to shutdown
-
-        assert gvar == 4
+        # the count should not have changed
+        assert b_var[0] == 4
 
         #######################################################################
-        # test 3 - shutdown_check with pie throttle
+        # test 3 - shutdown events with pie throttle
         #######################################################################
-        my_shutdown_pie_flag = False
-        gvar = 0
-
-        def check_pie_shutdown():
-            return my_shutdown_pie_flag
+        start_shutdown = threading.Event()
+        shutdown_complete = threading.Event()
+        c_var = [0]
 
         @throttle(requests=1,
                   seconds=4,
                   mode=Throttle.MODE_ASYNC,
-                  shutdown_check=check_pie_shutdown)
-        def f1() -> None:
-            global gvar
-            gvar += 1
+                  start_shutdown_event=start_shutdown,
+                  shutdown_complete_event=shutdown_complete)
+        def f3(c) -> None:
+            c[0] += 1
 
         for i in range(32):
-            f1()
+            f3(c_var)
 
         time.sleep(14)  # allow 4 requests to be scheduled
-        my_shutdown_pie_flag = True
-        time.sleep(5)  # allow time to shutdown
+        start_shutdown.set()
+        shutdown_complete.wait()
 
-        assert gvar == 4
+        assert c_var == 4
 
+        # the following requests should get ignored
+        for i in range(32):
+            f3(c_var)
+
+        # the count should not have changed
+        assert c_var[0] == 4
 ###############################################################################
 # RequestValidator class
 ###############################################################################
@@ -1779,7 +1840,6 @@ class RequestValidator:
                  mode,
                  early_count,
                  lb_threshold,
-                 shutdown_check,
                  request_mult,
                  send_interval) -> None:
         self.requests = requests
@@ -1787,7 +1847,6 @@ class RequestValidator:
         self.mode = mode
         self.early_count = early_count
         self.lb_threshold = lb_threshold
-        self.shutdown_check = shutdown_check
         self.request_mult = request_mult
         self.send_interval = send_interval
         self.idx = -1
@@ -1795,15 +1854,18 @@ class RequestValidator:
         self.normalized_times = []
         self.normalized_intervals = []
         self.mean_interval = 0
-
         # calculate parms
 
         self.total_requests = requests * request_mult
         self.target_interval = seconds / requests
+
         self.max_interval = max(self.target_interval,
                                 self.send_interval)
         self.min_interval = min(self.target_interval,
                                 self.send_interval)
+
+        self.exp_total_time = self.max_interval * self.total_requests
+
 
         self.target_interval_1pct = self.target_interval * 0.01
         self.target_interval_5pct = self.target_interval * 0.05
@@ -1817,11 +1879,31 @@ class RequestValidator:
         self.min_interval_5pct = self.min_interval * 0.05
         self.min_interval_10pct = self.min_interval * 0.10
 
+        self.reset()
 
-
+    def reset(self):
+        self.idx = -1
+        self.req_times = []
+        self.normalized_times = []
+        self.normalized_intervals = []
+        self.mean_interval = 0
 
     def validate_series(self):
         """Validate the requests."""
+
+        sleep_time = 0
+        if self.mode == Throttle.MODE_ASYNC:
+            while True:
+                if len(self.req_times) == self.total_requests:
+                    break
+                time.sleep(1)
+                sleep_time += 1
+                # diag_msg('len(self.req_times)', len(self.req_times),
+                #          'self.total_requests', self.total_requests,
+                #          'sleep_time:', sleep_time)
+                assert sleep_time <= self.exp_total_time
+
+
         assert len(self.req_times) == self.total_requests
         base_time = self.req_times[0][1]
         prev_time = base_time
@@ -1845,6 +1927,8 @@ class RequestValidator:
             self.validate_sync_lb()
         else:
             raise InvalidModeNum('Mode must be 1, 2, 3, or 4')
+
+        self.reset()
 
     def validate_async_sync(self):
         num_early = 0
@@ -2169,7 +2253,7 @@ class RequestValidator:
             the index reflected back
         """
         self.idx += 1
-        self.req_times.append((self.idx, time()))
+        self.req_times.append((self.idx, time.time()))
         return self.idx
 
     def request1(self, idx: int) -> int:
@@ -2181,7 +2265,7 @@ class RequestValidator:
         Returns:
             the index reflected back
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         self.idx = idx
         return idx
@@ -2196,7 +2280,7 @@ class RequestValidator:
         Returns:
             the index reflected back
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         assert requests == self.requests
         self.idx = idx
@@ -2211,7 +2295,7 @@ class RequestValidator:
         Returns:
             the index reflected back
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         self.idx = idx
         return idx
@@ -2226,7 +2310,7 @@ class RequestValidator:
         Returns:
             the index reflected back
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         assert seconds == self.seconds
         self.idx = idx
@@ -2242,7 +2326,7 @@ class RequestValidator:
         Returns:
             the index reflected back
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         assert interval == self.send_interval
         self.idx = idx
@@ -2265,7 +2349,7 @@ class RequestValidator:
         Returns:
             the index reflected back
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         assert requests == self.requests
         assert seconds == self.seconds
@@ -2279,7 +2363,7 @@ class RequestValidator:
     def callback0(self) -> None:
         """Queue the callback for request0."""
         self.idx += 1
-        self.req_times.append((self.idx, time()))
+        self.req_times.append((self.idx, time.time()))
 
     def callback1(self, idx: int) -> None:
         """Queue the callback for request0.
@@ -2287,7 +2371,7 @@ class RequestValidator:
         Args:
             idx: index of the request call
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         self.idx = idx
 
@@ -2298,7 +2382,7 @@ class RequestValidator:
             idx: index of the request call
             requests: number of requests for the throttle
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         assert requests == self.requests
         self.idx = idx
@@ -2309,7 +2393,7 @@ class RequestValidator:
         Args:
             idx: index of the request call
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         self.idx = idx
 
@@ -2320,32 +2404,32 @@ class RequestValidator:
             idx: index of the request call
             seconds: number of seconds for the throttle
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         assert seconds == self.seconds
         self.idx = idx
 
     def callback5(self,
-                        idx: int,
-                        *,
-                        interval: float) -> None:
+                  idx: int,
+                  *,
+                  interval: float) -> None:
         """Queue the callback for request0.
 
         Args:
             idx: index of the request call
             interval: interval between requests
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         assert interval == self.send_interval
         self.idx = idx
 
     def callback6(self,
-                        idx: int,
-                        requests: int,
-                        *,
-                        seconds: int,
-                        interval: float) -> None:
+                  idx: int,
+                  requests: int,
+                  *,
+                  seconds: int,
+                  interval: float) -> None:
         """Queue the callback for request0.
 
         Args:
@@ -2354,7 +2438,7 @@ class RequestValidator:
             seconds: number of seconds for the throttle
             interval: interval between requests
         """
-        self.req_times.append((idx, time()))
+        self.req_times.append((idx, time.time()))
         assert idx == self.idx + 1
         assert requests == self.requests
         assert seconds == self.seconds
@@ -2373,9 +2457,9 @@ class TestThrottleDocstrings:
 
         from time import time
         from scottbrian_utils.throttle import throttle
-        @throttle(requests=3, seconds=1, mode=Throttle.SYNC_MODE)
+        @throttle(requests=3, seconds=1, mode=Throttle.MODE_SYNC)
         def make_request(i, previous_arrival_time):
-            arrival_time = time()
+            arrival_time = time.time()
             if i == 0:
                 previous_arrival_time = arrival_time
             interval = arrival_time - previous_arrival_time

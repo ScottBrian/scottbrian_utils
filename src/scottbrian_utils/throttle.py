@@ -108,6 +108,9 @@ import functools
 from wrapt.decorators import decorator  # type: ignore
 from scottbrian_utils.diag_msg import diag_msg
 
+###############################################################################
+# Throttle class exceptions
+###############################################################################
 class ThrottleError(Exception):
     """Base class for exceptions in this module."""
     pass
