@@ -1,13 +1,18 @@
 """test_thread_comm.py module."""
 
+
 import pytest
 import time
-from typing import Any, cast, Union
+from typing import Any, cast, List, Union
 
 import threading
 from scottbrian_utils.diag_msg import diag_msg
 from scottbrian_utils.thread_comm import ThreadComm
 
+import logging
+
+logger = logging.getLogger(__name__)
+logger.debug('about to start the tests')
 
 # ###############################################################################
 # # Throttle test exceptions
@@ -28,11 +33,11 @@ from scottbrian_utils.thread_comm import ThreadComm
 ###############################################################################
 # requests_arg fixture
 ###############################################################################
-requests_arg_list = [1, 2, 3, 10, 33]
+msg_arg_list = [1, 2, 3, 'a', 'bb', 'xyz', 0.1, 0.2, 0.33, 'word to the wise']
 
 
-@pytest.fixture(params=requests_arg_list)  # type: ignore
-def requests_arg(request: Any) -> int:
+@pytest.fixture(params=msg_arg_list)  # type: ignore
+def msg_arg(request: Any) -> Any:
     """Using different requests.
 
     Args:
@@ -41,7 +46,7 @@ def requests_arg(request: Any) -> int:
     Returns:
         The params values are returned one at a time
     """
-    return cast(int, request.param)
+    return request.param
 
 
 ###############################################################################
@@ -126,45 +131,81 @@ def send_interval_mult_arg(request: Any) -> float:
 class TestThreadCommBasic:
 
     ###########################################################################
-    # test_thread_comm
+    # test_thread_comm_simple_send
     ###########################################################################
-    def test_thread_comm(self) -> None:
+    def test_thread_comm_simple_send(self,
+                                     msg_arg: Any
+                                     ) -> None:
         """Test the ThreadComm."""
-        thread_comm = ThreadComm()
-        a_code = 42
-        inner_wait_time = 7
-
-        b_code = 17
-        outer_wait_time = 4
-
         def f1(in_thread_comm: ThreadComm,
-               exp_code: int,
-               exp_wait_time: int,
-               code2: int,
-               wait_time: int):
-            entry_time = time.time()
-            diag_msg('about to recv msg')
-            msg = in_thread_comm.recv(timeout=5)
-            print(f'f1 received message {msg}')
-            assert msg == exp_code
-            assert time.time() - entry_time >= exp_wait_time
-            time.sleep(wait_time)
-            # in_thread_comm.send(code2)
+               exp_msg: int,
+               exc1: List[Any]) -> None:
+            """Thread to receive message."""
+            logger.debug('thread f1 about to recv msg')
+            msg = in_thread_comm.recv()
+            logger.debug(f'thread f1 received message {msg}')
+            try:
+                assert msg == exp_msg
+            except AssertionError as e:
+                exc1[0] = e
+
+        thread_comm = ThreadComm()
+        exc = [None]
+
 
         f1_thread = threading.Thread(target=f1,
                                      args=(thread_comm,
-                                           a_code,
-                                           outer_wait_time,
-                                           b_code,
-                                           inner_wait_time))
-        f1_thread.run()
-        time.sleep(outer_wait_time)
-        diag_msg('about to send msg')
-        thread_comm.send(a_code, timeout=3)
-        start_time = time.time()
-        # msg = thread_comm.recv()
-        # assert msg == b_code
-        # assert time.time() - start_time >= inner_wait_time
+                                           msg_arg,
+                                           exc))
+
+        logger.debug('main about to start f1 thread')
+        f1_thread.start()
+        diag_msg(f'main about to send msg {msg_arg}')
+        thread_comm.send(msg_arg)
+        f1_thread.join()
+        if exc[0]:
+            raise exc[0]
+
+    ###########################################################################
+    # test_thread_comm_simple_send
+    ###########################################################################
+    def test_thread_comm_simple_send2(self,
+                                      msg_arg: Any
+                                      ) -> None:
+        """Test the ThreadComm."""
+        class ThreadCommApp(threading.Thread):
+            def __init__(self,
+                         exp_msg: Any) -> None:
+                super().__init__()
+                self.thread_comm = ThreadComm()
+                self.exp_msg = exp_msg
+                self.exc = None
+
+            def run(self):
+                """Thread to receive message."""
+                try:
+                    self._run()
+                except AssertionError as e:
+                    self.exc = e
+
+            def _run(self):
+                """Thread to receive message."""
+                logger.debug('thread f1 about to recv msg')
+                msg = self.thread_comm.recv()
+                logger.debug(f'thread f1 received message {msg}')
+                assert msg == self.exp_msg
+
+            def send_msg(self):
+                self.thread_comm.send(self.exp_msg)
+
+        logger.debug('main about to start f1 thread')
+        thread_comm_app = ThreadCommApp(msg_arg)
+        thread_comm_app.start()
+        diag_msg(f'main about to send msg {msg_arg}')
+        thread_comm_app.send_msg()
+        thread_comm_app.join()
+        if thread_comm_app.exc:
+            raise thread_comm_app.exc
 
     ###########################################################################
     # repr for ThreadComm

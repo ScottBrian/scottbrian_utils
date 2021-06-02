@@ -108,6 +108,24 @@ import functools
 from wrapt.decorators import decorator  # type: ignore
 from scottbrian_utils.diag_msg import diag_msg
 
+import logging
+
+###############################################################################
+# logging
+###############################################################################
+logging.basicConfig(filename='AlgoApp.log',
+                    filemode='w',
+                    level=logging.ERROR,
+                    format='%(asctime)s '
+                           '%(levelname)s '
+                           '%(filename)s:'
+                           '%(funcName)s:'
+                           '%(lineno)d '
+                           '%(message)s')
+
+logger = logging.getLogger(__name__)
+
+
 ###############################################################################
 # Throttle class exceptions
 ###############################################################################

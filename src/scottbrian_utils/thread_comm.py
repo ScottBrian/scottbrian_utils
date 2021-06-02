@@ -57,6 +57,12 @@ import threading
 import queue
 from typing import (Any, Final, Optional, Type, TYPE_CHECKING, Union)
 
+from scottbrian_utils.diag_msg import diag_msg
+
+import logging
+
+logger = logging.getLogger(__name__)
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 ###############################################################################
 # ThreadComm class exceptions
@@ -82,7 +88,7 @@ class ThreadCommRecvTimedOut(ThreadCommError):
 class ThreadComm:
     """Provides a communication link between threads."""
 
-    MAX_MSGS_DEFAULT: Final[int] = 64
+    MAX_MSGS_DEFAULT: Final[int] = 16
 
     def __init__(self,
                  max_msgs: Optional[int] = None
@@ -90,19 +96,21 @@ class ThreadComm:
         """Initialize an instance of the ThreadComm class.
 
         Args:
-            max_msgs: Number of messages that can be queued on the send
-                        queue before being received. Once the max has
+            max_msgs: Number of messages that can be placed onto the send
+                        queue until being received. Once the max has
                         been reached, no more sends will be allowed
-                        until messages are received from the queue.
+                        until messages are received from the queue. The
+                        default is 16
         """
-        self.main_send = queue.Queue(maxsize=max_msgs)
-        self.main_recv = queue.Queue(maxsize=max_msgs)
         if max_msgs:
             self.max_msgs = max_msgs
         else:
             self.max_msgs = ThreadComm.MAX_MSGS_DEFAULT
+        self.main_send = queue.Queue(maxsize=self.max_msgs)
+        self.main_recv = queue.Queue(maxsize=self.max_msgs)
 
-        self.init_thread_id = threading.get_ident()
+        self.main_thread_id = threading.get_ident()
+        logger.info(f'ThreadComm created by thread ID {self.main_thread_id}')
 
     ###########################################################################
     # repr
@@ -148,11 +156,14 @@ class ThreadComm:
 
         """
         try:
-            if self.init_thread_id == threading.get_ident():  # if main
+            if self.main_thread_id == threading.get_ident():  # if main
+                logger.info('ThreadComm sending msg from main to child')
                 self.main_send.put(msg, timeout=timeout)  # send to child
             else:  # else not main
+                logger.info('ThreadComm sending msg from child to main')
                 self.main_recv.put(msg, timeout=timeout)  # send to main
         except queue.Full:
+            logger.error('Raise ThreadCommSendFailed')
             raise ThreadCommSendFailed('send method unable to send the '
                                        'message because the send queue '
                                        'is full with the maximum '
@@ -177,11 +188,14 @@ class ThreadComm:
 
         """
         try:
-            if self.init_thread_id == threading.get_ident():  # if main
+            if self.main_thread_id == threading.get_ident():  # if main
+                logger.info('ThreadComm main receiving msg from child')
                 return self.main_recv.get(timeout=timeout)  # recv from child
             else:  # else child
+                logger.info('ThreadComm child receiving msg from main')
                 return self.main_send.get(timeout=timeout)  # recv from main
         except queue.Empty:
+            logger.error('Raise ThreadCommRecvTimedOut')
             raise ThreadCommRecvTimedOut('recv processing timed out '
                                          'waiting for a message to '
                                          'arrive.')
@@ -214,7 +228,7 @@ class ThreadComm:
         Returns:
             True if message is ready to receive, False otherwise
         """
-        if self.init_thread_id == threading.get_ident():
+        if self.main_thread_id == threading.get_ident():
             return not self.main_recv.empty()
         else:
             return not self.main_send.empty()

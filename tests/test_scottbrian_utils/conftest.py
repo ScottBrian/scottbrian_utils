@@ -1,6 +1,23 @@
 """conftest.py module for testing."""
 import pytest
 from typing import Any, cast
+import logging
+
+###############################################################################
+# logging
+###############################################################################
+logging.basicConfig(filename='ThreadComm.log',
+                    filemode='w',
+                    level=logging.DEBUG,
+                    format='%(asctime)s '
+                           '[%(levelname)8s] '
+                           '%(filename)s:'
+                           '%(funcName)s:'
+                           '%(lineno)d '
+                           '%(message)s')
+
+logger = logging.getLogger(__name__)
+
 
 dt_format_arg_list = [None,
                       '%H:%M',
