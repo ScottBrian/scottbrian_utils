@@ -126,7 +126,7 @@ class ThreadComm:
          >>> from scottbrian_utils.thread_comm import ThreadComm
         >>> thread_comm = ThreadComm()
         >>> repr(thread_comm)
-        ThreadComm(max_msgs=64)
+        ThreadComm(max_msgs=16)
 
         """
         if TYPE_CHECKING:

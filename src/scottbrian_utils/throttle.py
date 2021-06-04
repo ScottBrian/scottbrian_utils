@@ -110,19 +110,6 @@ from scottbrian_utils.diag_msg import diag_msg
 
 import logging
 
-###############################################################################
-# logging
-###############################################################################
-logging.basicConfig(filename='AlgoApp.log',
-                    filemode='w',
-                    level=logging.ERROR,
-                    format='%(asctime)s '
-                           '%(levelname)s '
-                           '%(filename)s:'
-                           '%(funcName)s:'
-                           '%(lineno)d '
-                           '%(message)s')
-
 logger = logging.getLogger(__name__)
 
 
@@ -189,36 +176,6 @@ class LbThresholdNotAllowed(ThrottleError):
     pass
 
 
-class IncorrectStartShutdownEventSpecified(ThrottleError):
-    """Throttle exception for incorrect start_shutdown_event specification."""
-    pass
-
-
-class StartShutdownEventNotAllowed(ThrottleError):
-    """Throttle exception start_shutdown_event specified when not allowed."""
-    pass
-
-
-class MissingStartShutdownEvent(ThrottleError):
-    """Throttle exception for missing start_shutdown_event."""
-    pass
-
-
-class IncorrectShutdownCompleteEventSpecified(ThrottleError):
-    """Throttle exception incorrect shutdown_complete_event specification."""
-    pass
-
-
-class ShutdownCompleteEventNotAllowed(ThrottleError):
-    """Throttle exception shutdown_complete_event specified not allowed."""
-    pass
-
-
-class MissingShutdownCompleteEvent(ThrottleError):
-    """Throttle exception for missing shutdown_complete_event."""
-    pass
-
-
 class AttemptedShutdownForSyncThrottle(ThrottleError):
     """Throttle exception for shutdown not in mode Throttle.MODE_ASYNC."""
     pass
@@ -251,9 +208,7 @@ class Throttle:
                  mode: int,
                  async_q_size: Optional[int] = None,
                  early_count: Optional[int] = None,
-                 lb_threshold: Optional[Union[int, float]] = None,
-                 start_shutdown_event: Optional[threading.Event] = None,
-                 shutdown_complete_event: Optional[threading.Event] = None
+                 lb_threshold: Optional[Union[int, float]] = None
                  ) -> None:
         """Initialize an instance of the Throttle class.
 
@@ -332,22 +287,6 @@ class Throttle:
                             at the threshold. A specification of zero for the
                             lb_threshold will effectively cause all requests
                             that are early to be delayed.
-            start_shutdown_event: An event that the client will post when
-                                    shutdown is to be started. See the
-                                    description further down regarding the
-                                    throttle states to understand what
-                                    shutdown processing does.
-                                    Required and valid only for the
-                                    throttle decorator with mode
-                                    Throttle.MODE_ASYNC.
-            shutdown_complete_event: An event that the client will wait
-                                       upon to be posted once shutdown is
-                                       complete. See the description further
-                                       down regarding the throttle states to
-                                       understand what shutdown processing
-                                       does. Required and valid only for
-                                       the throttle decorator with mode
-                                       Throttle.MODE_ASYNC.
 
         Raises:
             IncorrectRequestsSpecified: The requests specification must be
@@ -378,25 +317,7 @@ class Throttle:
                                              float greater than zero.
             MissingLbThresholdSpecification: lb_threshold is required for
                                                mode Throttle.MODE_SYNC_LB.
-            StartShutdownEventNotAllowed: start_shutdown_event is valid only
-                                            for the throttle decorator with
-                                            mode Throttle.MODE_ASYNC.
-            IncorrectStartShutdownEventSpecified: start_shutdown_event must
-                                                    be a threading Event
-                                                    object
-            MissingStartShutdownEvent: A start_shutdown_event is required for
-                                         the decorator with mode
-                                         Throttle.MODE_ASYNC.
-            ShutdownCompleteEventNotAllowed: shutdown_complete_event is
-                                               valid only for the throttle
-                                               decorator with mode
-                                               Throttle.MODE_ASYNC
-            IncorrectShutdownCompleteEventSpecified: shutdown_complete_event
-                                               must be a threading Event
-                                               object.
-            MissingShutdownCompleteEvent: A shutdown_complete_event is
-                                            required for the decorator with
-                                            mode Throttle.MODE_ASYNC.
+
 
         States and processing for mode Throttle.MODE_ASYNC:
 
@@ -408,25 +329,17 @@ class Throttle:
                a) send_request called (directly or via decorated func call):
                   1) request is queued to the async_q
                   2) state remains 'active'
-               b) start_shutdown called (non-decorator only):
+               b) start_shutdown called:
                   1) state is changed to 'shutdown'
                   2) scheduler removes but does not schedule async_q items
                   3) scheduler exits
                   4) control returns after scheduler thread returns
-               c) start_shutdown_event is set (decorator only):
-                  1) state is changed to 'shutdown'
-                  2) scheduler removes but does not schedule async_q items
-                  3) scheduler exits
-                  4) shutdown_complete_event is set
             2) state: shutdown
                a) send_request called (directly or via decorated func call):
                   1) request is ignored  (i.e, not queued to async_q)
                b) start_shutdown called (non-decorator only):
                   1) state remains 'shutdown'
                   2) control returns immediately
-               c) start_shutdown_event is set (decorator only):
-                  1) state remains 'shutdown'
-                  2) shutddown_complete_event set
 
 
         :Example: instantiate an async throttle for 1 request per second
@@ -580,50 +493,6 @@ class Throttle:
                 self.lb_threshold = 0
 
         #######################################################################
-        # start_shutdown_event
-        #######################################################################
-        if start_shutdown_event is not None:
-            if (mode != Throttle.MODE_ASYNC) or (not self.decorator):
-                raise StartShutdownEventNotAllowed(
-                    'start_shutdown_event is valid only for the throttle '
-                    'decorator with mode Throttle.MODE_ASYNC.')
-            else:
-                if isinstance(start_shutdown_event, threading.Event):
-                    self.start_shutdown_event = start_shutdown_event
-                else:
-                    raise IncorrectStartShutdownEventSpecified(
-                        'start_shutdown_event must be a threading Event '
-                        'object.')
-        else:
-            self.start_shutdown_event = None
-            if self.decorator and (mode == Throttle.MODE_ASYNC):
-                raise MissingStartShutdownEvent(
-                    'A start_shutdown_event is required for the decorator '
-                    'with mode Throttle.MODE_ASYNC.')
-
-        #######################################################################
-        # shutdown_complete_event
-        #######################################################################
-        if shutdown_complete_event is not None:
-            if (mode != Throttle.MODE_ASYNC) or (not self.decorator):
-                raise ShutdownCompleteEventNotAllowed(
-                    'shutdown_complete_event is valid only for the throttle '
-                    'decorator with mode Throttle.MODE_ASYNC.')
-            else:
-                if isinstance(shutdown_complete_event, threading.Event):
-                    self.shutdown_complete_event = shutdown_complete_event
-                else:
-                    raise IncorrectShutdownCompleteEventSpecified(
-                        'shutdown_complete_event must be a threading Event '
-                        'object.')
-        else:
-            self.shutdown_complete_event = None
-            if self.decorator and (mode == Throttle.MODE_ASYNC):
-                raise MissingShutdownCompleteEvent(
-                    'A shutdown_complete_event is required for the decorator '
-                    'with mode Throttle.MODE_ASYNC.')
-
-        #######################################################################
         # Set remainder of vars
         #######################################################################
         self.target_interval = seconds/requests
@@ -709,14 +578,6 @@ class Throttle:
         if self.mode == Throttle.MODE_ASYNC:
             parms += f'mode=Throttle.MODE_ASYNC, ' \
                      f'async_q_size={self.async_q_size}'
-            # Client specified event are only valid with the throttle
-            # decorator.
-            # if self.start_shutdown_event:
-            #     parms += f', start_shutdown_event=' \
-            #              f'start_shutdown_event'
-            # if self.shutdown_complete_event:
-            #     parms += f', shutdown_complete_event=' \
-            #              f'shutdown_complete_event'
         elif self.mode == Throttle.MODE_SYNC:
             parms += f'mode=Throttle.MODE_SYNC'
         elif self.mode == Throttle.MODE_SYNC_EC:
@@ -738,10 +599,6 @@ class Throttle:
         Returns:
             True if we need to start shutdown processing, False otherwise
         """
-        # If client provided a start_shutdown_event and it is set,
-        # set self._shutdown to True.
-        if self.start_shutdown_event and self.start_shutdown_event.is_set():
-            self._shutdown = True
         return self._shutdown
 
     ###########################################################################
@@ -754,7 +611,7 @@ class Throttle:
             AttemptedShutdownForSyncThrottle: Calling start_shutdown is only
                                                 valid for a throttle
                                                 instantiated with a mode of
-                                                Throttle.MODE_ASYNC                                             shutthe shutdown
+                                                Throttle.MODE_ASYNC
         """
         if self.mode == Throttle.MODE_ASYNC:
             self._shutdown = True  # indicate shutdown in progress
@@ -913,8 +770,6 @@ class Throttle:
         # if we are here, shutdown was detected
         while not self.async_q.empty():
             _ = self.async_q.get()
-        if self.shutdown_complete_event:
-            self.shutdown_complete_event.set()
 
 
 ###############################################################################
@@ -929,9 +784,7 @@ def throttle(wrapped: Optional[F] = None, *,
              mode: int,
              async_q_size: Optional[int] = None,
              early_count: Optional[int] = None,
-             lb_threshold: Optional[Union[int, float]] = None,
-             start_shutdown_event: Optional[threading.Event] = None,
-             shutdown_complete_event: Optional[threading.Event] = None
+             lb_threshold: Optional[Union[int, float]] = None
              ) -> F:
     """Decorator to wrap a function in a throttle to avoid exceeding a limit.
 
@@ -1020,22 +873,6 @@ def throttle(wrapped: Optional[F] = None, *,
                         at the threshold. A specification of zero for the
                         lb_threshold will effectively cause all requests
                         that are early to be delayed.
-        start_shutdown_event: An event that the client will post when
-                                shutdown is to be started. See the
-                                description further down regarding the
-                                throttle states to understand what
-                                shutdown processing does.
-                                Required and valid only for the
-                                throttle decorator with mode
-                                Throttle.MODE_ASYNC.
-        shutdown_complete_event: An event that the client will wait
-                                   upon to be posted once shutdown is
-                                   complete. See the description further
-                                   down regarding the throttle states to
-                                   understand what shutdown processing
-                                   does. Required and valid only for
-                                   the throttle decorator with mode
-                                   Throttle.MODE_ASYNC.
 
     Raises:
         IncorrectRequestsSpecified: The requests specification must be
@@ -1066,26 +903,6 @@ def throttle(wrapped: Optional[F] = None, *,
                                          float greater than zero.
         MissingLbThresholdSpecification: lb_threshold is required for
                                            mode Throttle.MODE_SYNC_LB.
-        StartShutdownEventNotAllowed: start_shutdown_event is valid only
-                                        for the throttle decorator with
-                                        mode Throttle.MODE_ASYNC.
-        IncorrectStartShutdownEventSpecified: start_shutdown_event must
-                                                be a threading Event
-                                                object
-        MissingStartShutdownEvent: A start_shutdown_event is required for
-                                     the decorator with mode
-                                     Throttle.MODE_ASYNC.
-        ShutdownCompleteEventNotAllowed: shutdown_complete_event is
-                                           valid only for the throttle
-                                           decorator with mode
-                                           Throttle.MODE_ASYNC
-        IncorrectShutdownCompleteEventSpecified: shutdown_complete_event
-                                           must be a threading Event
-                                           object.
-        MissingShutdownCompleteEvent: A shutdown_complete_event is
-                                        required for the decorator with
-                                        mode Throttle.MODE_ASYNC.
-
 
     Returns:
         A callable function that, for mode Throttle.MODE_ASYNC, queues the
@@ -1103,25 +920,18 @@ def throttle(wrapped: Optional[F] = None, *,
            a) send_request called (directly or via decorated func call):
               1) request is queued to the async_q
               2) state remains 'active'
-           b) start_shutdown called (non-decorator only):
+           b) start_shutdown called:
               1) state is changed to 'shutdown'
               2) scheduler removes but does not schedule async_q items
               3) scheduler exits
               4) control returns after scheduler thread returns
-           c) start_shutdown_event is set (decorator only):
-              1) state is changed to 'shutdown'
-              2) scheduler removes but does not schedule async_q items
-              3) scheduler exits
-              4) shutdown_complete_event is set
         2) state: shutdown
            a) send_request called (directly or via decorated func call):
               1) request is ignored  (i.e, not queued to async_q)
-           b) start_shutdown called (non-decorator only):
+           b) start_shutdown called:
               1) state remains 'shutdown'
               2) control returns immediately
-           c) start_shutdown_event is set (decorator only):
-              1) state remains 'shutdown'
-              2) shutddown_complete_event set
+
 
 
         :Example: wrap a function with an async throttle for 1 request per
@@ -1245,19 +1055,13 @@ def throttle(wrapped: Optional[F] = None, *,
                                          mode=mode,
                                          async_q_size=async_q_size,
                                          early_count=early_count,
-                                         lb_threshold=lb_threshold,
-                                         start_shutdown_event=
-                                         start_shutdown_event,
-                                         shutdown_complete_event=
-                                         shutdown_complete_event))
+                                         lb_threshold=lb_threshold))
     a_throttle = Throttle(requests=requests,
                           seconds=seconds,
                           mode=mode,
                           async_q_size=async_q_size,
                           early_count=early_count,
-                          lb_threshold=lb_threshold,
-                          start_shutdown_event=start_shutdown_event,
-                          shutdown_complete_event=shutdown_complete_event)
+                          lb_threshold=lb_threshold)
 
     @decorator  # type: ignore
     def wrapper(func_to_wrap: F, instance: Optional[Any],
@@ -1267,4 +1071,7 @@ def throttle(wrapped: Optional[F] = None, *,
         ret_value = a_throttle.send_request(func_to_wrap, *args, **kwargs2)
         return ret_value
 
-    return cast(F, wrapper(wrapped))
+    wrapper2 = wrapper(wrapped)
+    wrapper2.throttle = a_throttle
+    # return cast(F, wrapper(wrapped))
+    return wrapper2
