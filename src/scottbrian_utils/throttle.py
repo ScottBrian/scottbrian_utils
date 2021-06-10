@@ -181,6 +181,11 @@ class AttemptedShutdownForSyncThrottle(ThrottleError):
     pass
 
 
+class IncorrectShutdownTypeSpecified(ThrottleError):
+    """Throttle exception for incorrect shutdown_type specification."""
+    pass
+
+
 class Throttle:
     """Provides a throttle mechanism.
 
@@ -201,6 +206,13 @@ class Throttle:
     MODE_MAX: Final[int] = MODE_SYNC_LB
 
     DEFAULT_ASYNC_Q_SIZE: Final[int] = 4096
+
+    TYPE_SHUTDOWN_NONE: Final[int] = 0
+    TYPE_SHUTDOWN_SOFT: Final[int] = 4
+    TYPE_SHUTDOWN_HARD: Final[int] = 8
+
+    RC_OK: Final[int] = 0
+    RC_SHUTDOWN: Final[int] = 4
 
     def __init__(self, *,
                  requests: int,
@@ -496,8 +508,9 @@ class Throttle:
         # Set remainder of vars
         #######################################################################
         self.target_interval = seconds/requests
-        self.schedule_lock = threading.Lock()
+        self.shutdown_lock = threading.Lock()
         self._shutdown = False
+        self.do_shutdown = Throttle.TYPE_SHUTDOWN_NONE
         self._expected_arrival_time = 0
         self._early_arrival_count = 0
 
@@ -604,17 +617,43 @@ class Throttle:
     ###########################################################################
     # start_shutdown
     ###########################################################################
-    def start_shutdown(self) -> None:
+    def start_shutdown(self,
+                       shutdown_type: int = TYPE_SHUTDOWN_SOFT
+                       ) -> None:
         """Shutdown the throttle request scheduling.
+
+        Args:
+            shutdown_type: specifies either Throttle.TYPE_SHUTDOWN_SOFT or
+                             Throttle.TYPE_SHUTDOWN_HARD. A soft shutdown,
+                             the default, stops any additional requests
+                             from being queued and cleans up the request
+                             queue by scheduling any remaining requests at
+                             the interval calculated as seconds/requests. A
+                             hard shutdown stops any additional requests
+                             from being queued and cleans up the request
+                             queue by quickly removing any remaining
+                             requests without executing them.
 
         Raises:
             AttemptedShutdownForSyncThrottle: Calling start_shutdown is only
                                                 valid for a throttle
                                                 instantiated with a mode of
                                                 Throttle.MODE_ASYNC
+            IncorrectShutdownTypeSpecified: For start_shutdowm, shutdownType
+                                              must be specified as either
+                                              Throttle.TYPE_SHUTDOWN_SOFT or
+                                              Throttle.TYPE_SHUTDOWN_HARD
         """
+        if shutdown_type not in (Throttle.TYPE_SHUTDOWN_SOFT,
+                                 Throttle.TYPE_SHUTDOWN_HARD):
+            raise IncorrectShutdownTypeSpecified(
+                'For start_shutdowm, shutdownType must be specified as '
+                'either Throttle.TYPE_SHUTDOWN_SOFT or '
+                'Throttle.TYPE_SHUTDOWN_HARD')
         if self.mode == Throttle.MODE_ASYNC:
             self._shutdown = True  # indicate shutdown in progress
+            with self.shutdown_lock:
+                self.do_shutdown = shutdown_type
             self.request_scheduler_thread.join()  # wait for cleanup
         else:
             raise AttemptedShutdownForSyncThrottle('Calling start_shutdown is '
@@ -645,33 +684,33 @@ class Throttle:
         # ASYNC_MODE
         #######################################################################
         if self.mode == Throttle.MODE_ASYNC:
-            request_item = Throttle.Request(func, args, kwargs)
-            while not self._shutdown:
-                try:
-                    self.async_q.put(request_item,
-                                     block=True,
-                                     timeout=0.5)
-                    break
-                except queue.Full:
-                    continue  # no need to wait since we already did
-
-            # There is a possibility that the following steps occur in
-            # the following order:
-            # 1) send_request is entered for async mode and sees at
-            # the while statement that we are *not* in shutdown
-            # 2) send_request proceeds to the try statement just before
-            # the request will be queued to the async_q
-            # 2) shutdown is requested and is detected by
-            # schedule_requests
-            # 3) schedule_requests cleans up the async_q end exits
-            # 4) back in send_request, we put our request on the
-            # async_q
-            # The following section of code handles that case and cleans
-            # up the async_q of anything added after the scheduler has
-            # exited
             if self._shutdown:
-                while not self.async_q.empty():
-                    _ = self.async_q.get()
+                return Throttle.RC_SHUTDOWN
+            with self.shutdown_lock:
+                request_item = Throttle.Request(func, args, kwargs)
+                while not self._shutdown:
+                    try:
+                        self.async_q.put(request_item,
+                                         block=True,
+                                         timeout=0.5)
+                        return Throttle.RC_OK
+                    except queue.Full:
+                        continue  # no need to wait since we already did
+                return Throttle.RC_SHUTDOWN
+                # There is a possibility that the following steps occur in
+                # the following order:
+                # 1) send_request is entered for async mode and sees at
+                # the while statement that we are *not* in shutdown
+                # 2) send_request proceeds to the try statement just before
+                # the request will be queued to the async_q
+                # 2) shutdown is requested and is detected by
+                # schedule_requests
+                # 3) schedule_requests cleans up the async_q end exits
+                # 4) back in send_request, we put our request on the
+                # async_q
+                # The following section of code handles that case and cleans
+                # up the async_q of anything added after the scheduler has
+                # exited
 
         #######################################################################
         # SYNC_MODE
@@ -735,14 +774,17 @@ class Throttle:
         """Get tasks from queue and run them."""
         # Requests will be scheduled from the async_q at the interval
         # calculated from the requests and seconds arguments when the
-        # throttle is instantiated. If shutdown is indicated,
+        # throttle was instantiated. If shutdown is indicated,
         # the async_q will be cleaned up with any remaining requests
         # dropped. Note that async_q.get will only wait for a second so
         # we can detect shutdown in a timely fashion.
-        while not self.shutdown:
+        while True:
             try:
                 request_item = self.async_q.get(block=True, timeout=1)
+                next_send_time = time.time() + self.target_interval
             except queue.Empty:
+                if self.do_shutdown != Throttle.TYPE_SHUTDOWN_NONE:
+                    return
                 continue  # no need to wait since we already did
             ###################################################################
             # Call the request function.
@@ -750,26 +792,27 @@ class Throttle:
             # keep going.
             ###################################################################
             try:
-                request_item.request_func(*request_item.args,
-                                          **request_item.kwargs)
+                if self.do_shutdown != Throttle.TYPE_SHUTDOWN_HARD:
+                    request_item.request_func(*request_item.args,
+                                              **request_item.kwargs)
             except Exception:
                 pass
 
-            ###############################################################
+            ###################################################################
             # wait (i.e., throttle)
             # Note that the wait time could be anywhere from a fraction of
             # a second to several seconds. We want to be responsive in
             # case we need to bail for shutdown, so we wait in 1 second
             # or less increments and bail if we detect shutdown.
-            ###############################################################
-            wait_seconds = self.target_interval  # could be small or large
-            while wait_seconds > 0 and not self.shutdown:
-                time.sleep(min(1, wait_seconds))
-                wait_seconds = wait_seconds - 1
-
-        # if we are here, shutdown was detected
-        while not self.async_q.empty():
-            _ = self.async_q.get()
+            ###################################################################
+            while self.do_shutdown != Throttle.TYPE_SHUTDOWN_HARD:
+                # Use min to ensure we don't sleep too long and appear
+                # slow to respond to a shutdown request.
+                sleep_seconds = next_send_time - time.time()
+                if sleep_seconds > 0:  # if still time to go
+                    time.sleep(min(1.0, sleep_seconds))
+                else:  # we are done sleeping
+                    break
 
 
 ###############################################################################
