@@ -110,6 +110,7 @@ class ThreadComm:
         self.main_recv = queue.Queue(maxsize=self.max_msgs)
 
         self.main_thread_id = threading.get_ident()
+        self.child_thread_id: Any = 0
         logger.info(f'ThreadComm created by thread ID {self.main_thread_id}')
 
     ###########################################################################
@@ -123,7 +124,7 @@ class ThreadComm:
 
         :Example: instantiate an ThreadComm
 
-         >>> from scottbrian_utils.thread_comm import ThreadComm
+        >>> from scottbrian_utils.thread_comm import ThreadComm
         >>> thread_comm = ThreadComm()
         >>> repr(thread_comm)
         ThreadComm(max_msgs=16)
@@ -135,6 +136,51 @@ class ThreadComm:
         parms = f'max_msgs={self.max_msgs}'
 
         return f'{classname}({parms})'
+
+    ###########################################################################
+    # set_child_thread_id
+    ###########################################################################
+    def set_child_thread_id(self,
+                            child_thread_id: Optional[Any] = None
+                            ) -> None:
+        """Set child thread id.
+
+        Args:
+            child_thread_id: the id to set. The default is None which will set
+                               the id to the caller's thread id
+
+        :Example: instantiate a ThreadComm and set the id to 5
+
+        >>> from scottbrian_utils.thread_comm import ThreadComm
+        >>> thread_comm = ThreadComm()
+        >>> thread_comm.set_child_thread_id(5)
+        >>> print(thread_comm.get_child_thread_id())
+        5
+        """
+        if child_thread_id:
+            self.child_thread_id = child_thread_id
+        else:
+            self.child_thread_id = threading.get_ident()
+
+    ###########################################################################
+    # get_child_thread_id
+    ###########################################################################
+    def get_child_thread_id(self) -> Any:
+        """Get child thread id.
+
+        Returns:
+            child thread id
+
+        :Example: instantiate a ThreadComm and set the id to 5
+
+        >>> from scottbrian_utils.thread_comm import ThreadComm
+        >>> thread_comm = ThreadComm()
+        >>> thread_comm.set_child_thread_id('child_A')
+        >>> print(thread_comm.get_child_thread_id())
+        child_A
+
+        """
+        return self.child_thread_id
 
     ###########################################################################
     # send
@@ -157,10 +203,12 @@ class ThreadComm:
         """
         try:
             if self.main_thread_id == threading.get_ident():  # if main
-                logger.info('ThreadComm sending msg from main to child')
+                logger.info(f'ThreadComm main {self.main_thread_id} sending '
+                            f'msg to child {self.child_thread_id}')
                 self.main_send.put(msg, timeout=timeout)  # send to child
             else:  # else not main
-                logger.info('ThreadComm sending msg from child to main')
+                logger.info(f'ThreadComm child {self.child_thread_id} '
+                            f'sending msg to main {self.main_thread_id}')
                 self.main_recv.put(msg, timeout=timeout)  # send to main
         except queue.Full:
             logger.error('Raise ThreadCommSendFailed')
@@ -189,10 +237,12 @@ class ThreadComm:
         """
         try:
             if self.main_thread_id == threading.get_ident():  # if main
-                logger.info('ThreadComm main receiving msg from child')
+                logger.info(f'ThreadComm main {self.main_thread_id} receiving '
+                            f'msg from child {self.child_thread_id}')
                 return self.main_recv.get(timeout=timeout)  # recv from child
             else:  # else child
-                logger.info('ThreadComm child receiving msg from main')
+                logger.info(f'ThreadComm child {self.child_thread_id} '
+                            f'receiving msg from main {self.main_thread_id}')
                 return self.main_send.get(timeout=timeout)  # recv from main
         except queue.Empty:
             logger.error('Raise ThreadCommRecvTimedOut')
