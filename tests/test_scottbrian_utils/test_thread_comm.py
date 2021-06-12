@@ -5,7 +5,7 @@ import time
 import math
 import pytest
 from typing import Any, cast, List
-
+from sys import _getframe
 import threading
 from scottbrian_utils.diag_msg import diag_msg
 from scottbrian_utils.thread_comm import ThreadComm, ThreadCommSendFailed
@@ -233,8 +233,8 @@ class TestThreadCommBasic:
         class ThreadCommApp(threading.Thread):
             def __init__(self,
                          thread_comm: ThreadComm,
-                         wait_event: threading.Event,
-                         post_event: threading.Event
+                         thread_wait: threading.Event,
+                         mainline_wait: threading.Event
                          ) -> None:
                 """Init the class.
 
@@ -245,17 +245,17 @@ class TestThreadCommBasic:
                 """
                 super().__init__()
                 self.thread_comm = thread_comm
-                self.wait_event = wait_event
-                self.post_event = post_event
+                self.thread_wait = thread_wait
+                self.mainline_wait = mainline_wait
                 self.exc = None
                 self.thread_comm.set_child_thread_id()
 
             def run(self) -> None:
                 try:
                     assert not self.thread_comm.msg_waiting()
-                    self.post_event.set()  # tell mainline we are ready
-                    self.wait_event.wait()  # wait for mainline to send msg
-                    self.wait_event.clear()
+                    self.mainline_wait.set()  # tell mainline we are ready
+                    self.thread_wait.wait()  # wait for mainline to send msg
+                    self.thread_wait.clear()
                     assert self.thread_comm.msg_waiting()
                     assert self.thread_comm.recv() == 'hello'
                     assert self.thread_comm.msg_waiting()
@@ -266,8 +266,8 @@ class TestThreadCommBasic:
                     self.thread_comm.send('was nice seeing you')
                     self.thread_comm.send('take care')
 
-                    self.post_event.set()  # tell mainline msgs were sent
-                    self.wait_event.wait()  # wait for mainline to send msg
+                    self.mainline_wait.set()  # tell mainline msgs were sent
+                    self.thread_wait.wait()  # wait for mainline to send msg
                     assert self.thread_comm.msg_waiting()
                     assert self.thread_comm.recv() == 'yep, you take care too'
                     assert not self.thread_comm.msg_waiting()
@@ -276,15 +276,15 @@ class TestThreadCommBasic:
 
         thread_comm = ThreadComm()
         thread_wait_event = threading.Event()
-        thread_post_event = threading.Event()
+        mainline_wait_event = threading.Event()
         thread_comm_app = ThreadCommApp(thread_comm,
                                         thread_wait_event,
-                                        thread_post_event)
+                                        mainline_wait_event)
         assert not thread_comm.msg_waiting()
 
         thread_comm_app.start()
-        thread_post_event.wait()
-        thread_post_event.clear()
+        mainline_wait_event.wait()
+        mainline_wait_event.clear()
         assert not thread_comm.msg_waiting()
 
         thread_comm.send('hello')
@@ -293,7 +293,7 @@ class TestThreadCommBasic:
         assert not thread_comm.msg_waiting()
         thread_wait_event.set()  # tell thread to check messages and send msg
 
-        thread_post_event.wait()
+        mainline_wait_event.wait()
         assert thread_comm.msg_waiting()
         assert thread_comm.recv() == 'goodbye'
         assert thread_comm.msg_waiting()
@@ -320,8 +320,8 @@ class TestThreadCommBasic:
         class ThreadCommApp(threading.Thread):
             def __init__(self,
                          thread_comm: ThreadComm,
-                         wait_event: threading.Event,
-                         post_event: threading.Event
+                         thread_wait_e: threading.Event,
+                         mainline_wait_e: threading.Event
                          ) -> None:
                 """Init the class.
 
@@ -332,22 +332,48 @@ class TestThreadCommBasic:
                 """
                 super().__init__()
                 self.thread_comm = thread_comm
-                self.wait_event = wait_event
-                self.post_event = post_event
+                self.thread_wait_e = thread_wait_e
+                self.mainline_wait_e = mainline_wait_e
                 self.exc = None
                 self.thread_comm.set_child_thread_id()
 
+            def thread_wait(self, reason, num=[]):
+                if num:
+                    num[0] += 1
+                else:
+                    num.append(1)
+                line_no = _getframe(1).f_lineno
+                logger.debug(f'Thread {line_no} wait #{num[0]}C: {reason}')
+                self.thread_wait_e.wait()
+                self.thread_wait_e.clear()
+                logger.debug(f'Thread {line_no} end wait #{num[0]}C: {reason}')
+
+            def thread_post(self, reason, num=[]):
+                if num:
+                    num[0] += 1
+                else:
+                    num.append(1)
+                line_no = _getframe(1).f_lineno
+                logger.debug(f'Thread {line_no} post mainline #{num[0]}B:'
+                             f' {reason}')
+                self.mainline_wait_e.set()
+
             def run(self) -> None:
                 try:
+                    ###########################################################
+                    # Part 1 - mainline timeouts
+                    ###########################################################
+                    logger.debug('Thread starting part 1')
                     assert not self.thread_comm.msg_waiting()
-                    self.post_event.set()  # tell mainline we are ready
-                    self.wait_event.wait()  # wait for mainline to send msg
-                    self.wait_event.clear()
+                    self.thread_post('tell mainline thread started')
+
+                    self.thread_wait('mainline to send 3 msgs')
+
                     time.sleep(5)
                     assert self.thread_comm.msg_waiting()
                     assert self.thread_comm.recv() == 'msg1'
-                    self.wait_event.wait()  # wait for mainline
-                    self.wait_event.clear()
+                    self.thread_wait('mainline to finish timeouts')
+
                     assert self.thread_comm.msg_waiting()
                     assert self.thread_comm.recv() == 'msg2'
                     assert self.thread_comm.msg_waiting()
@@ -355,36 +381,94 @@ class TestThreadCommBasic:
                     assert self.thread_comm.msg_waiting()
                     assert self.thread_comm.recv() == 'msg4'
                     assert not self.thread_comm.msg_waiting()
+                    self.thread_post('tell mainline finished part 1')
+
+                    ###########################################################
+                    # Part 2 - thread timeouts
+                    ###########################################################
+                    logger.debug('Thread starting part 2')
+                    self.thread_wait('signal from mainline to send 3 msgs')
+
+                    self.thread_comm.send('msg10')
+                    self.thread_comm.send('msg20')
+                    self.thread_comm.send('msg30')
+
+                    self.thread_post('tell mainline pause, read 1, and wait')
+
+                    t_start_time = time.time()
+                    self.thread_comm.send('msg40')
+                    t_duration_seconds = time.time() - t_start_time
+                    assert 5 <= t_duration_seconds <= 6
+
+                    t_start_time = time.time()
+                    with pytest.raises(ThreadCommSendFailed):
+                        self.thread_comm.send('msg50', timeout=3)
+                    t_duration_seconds = time.time() - t_start_time
+                    assert 3 <= t_duration_seconds <= 4
+
+                    t_start_time = time.time()
+                    with pytest.raises(ThreadCommSendFailed):
+                        self.thread_comm.send('msg60', timeout=5)
+                    t_duration_seconds = time.time() - start_time
+                    assert 5 <= duration_seconds <= 6
+
+                    self.thread_post('tell mainline we finished part 2')
+
+                    self.thread_wait('mainline to signal exit')
 
                 except Exception as e:
                     self.exc = e
 
+        def mainline_wait(wait_event, reason, num=[]):
+            if num:
+                num[0] += 1
+            else:
+                num.append(1)
+            line_no = _getframe(1).f_lineno
+            logger.debug(f'Mainline {line_no} wait #{num[0]}A: {reason}')
+            wait_event.wait()
+            wait_event.clear()
+            logger.debug(f'Mainline {line_no} end wait #{num[0]}A: {reason}')
+
+        def mainline_post(post_event, reason, num=[]):
+            if num:
+                num[0] += 1
+            else:
+                num.append(1)
+            line_no = _getframe(1).f_lineno
+            logger.debug(f'Mainline {line_no} post thread #{num[0]}D:'
+                         f' {reason}')
+            post_event.set()
+
         thread_comm = ThreadComm(3)
         thread_wait_event = threading.Event()
-        thread_post_event = threading.Event()
+        mainline_wait_event = threading.Event()
         thread_comm_app = ThreadCommApp(thread_comm,
                                         thread_wait_event,
-                                        thread_post_event)
+                                        mainline_wait_event)
         thread_comm_app.start()
-        thread_post_event.wait()  # wait for thread to start
-        thread_post_event.clear()
+        mainline_wait(mainline_wait_event, 'thread to start')
 
+        #######################################################################
+        # part 1 - mainline timeouts
+        #######################################################################
+        logger.debug('Mainline starting part 1')
         thread_comm.send('msg1')
         thread_comm.send('msg2')
         thread_comm.send('msg3')
 
-        thread_wait_event.set()  # tell thread to proceed
+        mainline_post(thread_wait_event, 'pause, then read first msg and wait')
 
-        start_time = time.time()
+        m_start_time = time.time()
         thread_comm.send('msg4')
-        duration_seconds = time.time() - start_time
-        assert 5 <= duration_seconds <= 6
+        m_duration_seconds = time.time() - m_start_time
+        assert 5 <= m_duration_seconds <= 6
 
-        start_time = time.time()
+        m_start_time = time.time()
         with pytest.raises(ThreadCommSendFailed):
             thread_comm.send('msg5', timeout=3)
-        duration_seconds = time.time() - start_time
-        assert 3 <= duration_seconds <= 4
+        m_duration_seconds = time.time() - m_start_time
+        assert 3 <= m_duration_seconds <= 4
 
         start_time = time.time()
         with pytest.raises(ThreadCommSendFailed):
@@ -392,14 +476,37 @@ class TestThreadCommBasic:
         duration_seconds = time.time() - start_time
         assert 5 <= duration_seconds <= 6
 
-        thread_wait_event.set()  # tell thread to proceed
+        mainline_post(thread_wait_event, 'done with timeouts')
+        mainline_wait(mainline_wait_event, 'thread to finish part 1')
+
+        #######################################################################
+        # part 2 - thread timeouts
+        #######################################################################
+        logger.debug('Mainline starting part 2')
+        assert not thread_comm.msg_waiting()
+
+        mainline_post(thread_wait_event, 'tell thread to send 3 msgs')
+        mainline_wait(mainline_wait_event, 'thread to finish 3 msgs')
+
+        time.sleep(5)
+        assert thread_comm.msg_waiting()
+        assert thread_comm.recv() == 'msg10'
+        mainline_wait(mainline_wait_event, 'thread to finish timeouts')
+
+        assert thread_comm.msg_waiting()
+        assert thread_comm.recv() == 'msg20'
+        assert thread_comm.msg_waiting()
+        assert thread_comm.recv() == 'msg30'
+        assert thread_comm.msg_waiting()
+        assert thread_comm.recv() == 'msg40'
+        assert not thread_comm.msg_waiting()
+
+        mainline_post(thread_wait_event, 'tell thread to exit')
         thread_comm_app.join()
 
         if thread_comm_app.exc:
             print(thread_comm_app.exc)
             raise thread_comm_app.exc
-
-
 
     ###########################################################################
     # test_thread_comm_thread_app_combos
