@@ -8,7 +8,7 @@ from typing import Any, cast, List
 
 import threading
 from scottbrian_utils.diag_msg import diag_msg
-from scottbrian_utils.thread_comm import ThreadComm
+from scottbrian_utils.thread_comm import ThreadComm, ThreadCommSendFailed
 
 import logging
 
@@ -225,7 +225,184 @@ class TestThreadCommBasic:
         assert thread_comm.get_child_thread_id() == 'abc'
 
     ###########################################################################
-    # test_thread_comm_simple_main_send
+    # test_thread_comm_msg_waiting
+    ###########################################################################
+    def test_thread_comm_msg_waiting(self) -> None:
+        """Test msg waiting method."""
+
+        class ThreadCommApp(threading.Thread):
+            def __init__(self,
+                         thread_comm: ThreadComm,
+                         wait_event: threading.Event,
+                         post_event: threading.Event
+                         ) -> None:
+                """Init the class.
+
+                Args:
+                    thread_comm: instance of ThreadComm
+                    event: event used to signal completion
+
+                """
+                super().__init__()
+                self.thread_comm = thread_comm
+                self.wait_event = wait_event
+                self.post_event = post_event
+                self.exc = None
+                self.thread_comm.set_child_thread_id()
+
+            def run(self) -> None:
+                try:
+                    assert not self.thread_comm.msg_waiting()
+                    self.post_event.set()  # tell mainline we are ready
+                    self.wait_event.wait()  # wait for mainline to send msg
+                    self.wait_event.clear()
+                    assert self.thread_comm.msg_waiting()
+                    assert self.thread_comm.recv() == 'hello'
+                    assert self.thread_comm.msg_waiting()
+                    assert self.thread_comm.recv() == 'world'
+                    assert not self.thread_comm.msg_waiting()
+
+                    self.thread_comm.send('goodbye')
+                    self.thread_comm.send('was nice seeing you')
+                    self.thread_comm.send('take care')
+
+                    self.post_event.set()  # tell mainline msgs were sent
+                    self.wait_event.wait()  # wait for mainline to send msg
+                    assert self.thread_comm.msg_waiting()
+                    assert self.thread_comm.recv() == 'yep, you take care too'
+                    assert not self.thread_comm.msg_waiting()
+                except Exception as e:
+                    self.exc = e
+
+        thread_comm = ThreadComm()
+        thread_wait_event = threading.Event()
+        thread_post_event = threading.Event()
+        thread_comm_app = ThreadCommApp(thread_comm,
+                                        thread_wait_event,
+                                        thread_post_event)
+        assert not thread_comm.msg_waiting()
+
+        thread_comm_app.start()
+        thread_post_event.wait()
+        thread_post_event.clear()
+        assert not thread_comm.msg_waiting()
+
+        thread_comm.send('hello')
+        assert not thread_comm.msg_waiting()
+        thread_comm.send('world')
+        assert not thread_comm.msg_waiting()
+        thread_wait_event.set()  # tell thread to check messages and send msg
+
+        thread_post_event.wait()
+        assert thread_comm.msg_waiting()
+        assert thread_comm.recv() == 'goodbye'
+        assert thread_comm.msg_waiting()
+        assert thread_comm.recv() == 'was nice seeing you'
+        assert thread_comm.msg_waiting()
+        assert thread_comm.recv() == 'take care'
+        assert not thread_comm.msg_waiting()
+
+        thread_comm.send('yep, you take care too')
+        thread_wait_event.set()
+        thread_comm_app.join()
+        assert not thread_comm.msg_waiting()
+
+        if thread_comm_app.exc:
+            print(thread_comm_app.exc)
+            raise thread_comm_app.exc
+
+    ###########################################################################
+    # test_thread_comm_msg_waiting
+    ###########################################################################
+    def test_thread_comm_send_timeout(self) -> None:
+        """Test send timeout method."""
+
+        class ThreadCommApp(threading.Thread):
+            def __init__(self,
+                         thread_comm: ThreadComm,
+                         wait_event: threading.Event,
+                         post_event: threading.Event
+                         ) -> None:
+                """Init the class.
+
+                Args:
+                    thread_comm: instance of ThreadComm
+                    event: event used to signal completion
+
+                """
+                super().__init__()
+                self.thread_comm = thread_comm
+                self.wait_event = wait_event
+                self.post_event = post_event
+                self.exc = None
+                self.thread_comm.set_child_thread_id()
+
+            def run(self) -> None:
+                try:
+                    assert not self.thread_comm.msg_waiting()
+                    self.post_event.set()  # tell mainline we are ready
+                    self.wait_event.wait()  # wait for mainline to send msg
+                    self.wait_event.clear()
+                    time.sleep(5)
+                    assert self.thread_comm.msg_waiting()
+                    assert self.thread_comm.recv() == 'msg1'
+                    self.wait_event.wait()  # wait for mainline
+                    self.wait_event.clear()
+                    assert self.thread_comm.msg_waiting()
+                    assert self.thread_comm.recv() == 'msg2'
+                    assert self.thread_comm.msg_waiting()
+                    assert self.thread_comm.recv() == 'msg3'
+                    assert self.thread_comm.msg_waiting()
+                    assert self.thread_comm.recv() == 'msg4'
+                    assert not self.thread_comm.msg_waiting()
+
+                except Exception as e:
+                    self.exc = e
+
+        thread_comm = ThreadComm(3)
+        thread_wait_event = threading.Event()
+        thread_post_event = threading.Event()
+        thread_comm_app = ThreadCommApp(thread_comm,
+                                        thread_wait_event,
+                                        thread_post_event)
+        thread_comm_app.start()
+        thread_post_event.wait()  # wait for thread to start
+        thread_post_event.clear()
+
+        thread_comm.send('msg1')
+        thread_comm.send('msg2')
+        thread_comm.send('msg3')
+
+        thread_wait_event.set()  # tell thread to proceed
+
+        start_time = time.time()
+        thread_comm.send('msg4')
+        duration_seconds = time.time() - start_time
+        assert 5 <= duration_seconds <= 6
+
+        start_time = time.time()
+        with pytest.raises(ThreadCommSendFailed):
+            thread_comm.send('msg5', timeout=3)
+        duration_seconds = time.time() - start_time
+        assert 3 <= duration_seconds <= 4
+
+        start_time = time.time()
+        with pytest.raises(ThreadCommSendFailed):
+            thread_comm.send('msg6', timeout=5)
+        duration_seconds = time.time() - start_time
+        assert 5 <= duration_seconds <= 6
+
+        thread_wait_event.set()  # tell thread to proceed
+        thread_comm_app.join()
+
+        if thread_comm_app.exc:
+            print(thread_comm_app.exc)
+            raise thread_comm_app.exc
+
+
+
+    ###########################################################################
+    # test_thread_comm_thread_app_combos
     ###########################################################################
     def test_thread_comm_thread_app_combos(self,
                                            action1_arg: Any,

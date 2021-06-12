@@ -200,6 +200,23 @@ class ThreadComm:
                                     is full with the maximum
                                     number of messages.
 
+        :Example: instantiate a ThreadComm and send a message
+
+        >>> from scottbrian_utils.thread_comm import ThreadComm
+        >>> import threading
+        >>> def f1(thread_comm: ThreadComm) -> None:
+        ...     msg = thread_comm.recv()
+        ...     if msg == 'hello thread':
+        ...         thread_comm.send('hi')
+        >>> a_thread_comm = ThreadComm()
+        >>> thread = threading.Thread(target=f1, args=(a_thread_comm,))
+        >>> thread.start()
+        >>> a_thread_comm.send('hello thread')
+        >>> print(a_thread_comm.recv())
+        hi
+
+        >>> thread.join()
+
         """
         try:
             if self.main_thread_id == threading.get_ident():  # if main
@@ -265,6 +282,23 @@ class ThreadComm:
         Returns:
               message unless send q is full or timeout occurs during recv
 
+        :Example: instantiate a ThreadComm and send a message
+
+        >>> from scottbrian_utils.thread_comm import ThreadComm
+        >>> import threading
+        >>> def f1(thread_comm: ThreadComm) -> None:
+        ...     msg = thread_comm.recv()
+        ...     if msg == 'hello thread':
+        ...         thread_comm.send('hi')
+        >>> a_thread_comm = ThreadComm()
+        >>> thread = threading.Thread(target=f1, args=(a_thread_comm,))
+        >>> thread.start()
+        >>> a_thread_comm.send('hello thread')
+        >>> print(a_thread_comm.recv())
+        hi
+
+        >>> thread.join()
+
         """
         self.send(msg, timeout=timeout)
         return self.recv(timeout=timeout)
@@ -277,6 +311,35 @@ class ThreadComm:
 
         Returns:
             True if message is ready to receive, False otherwise
+
+        :Example: instantiate a ThreadComm and set the id to 5
+
+        >>> from scottbrian_utils.thread_comm import ThreadComm
+        >>> class ThreadCommApp(threading.Thread):
+        ...     def __init__(self,
+        ...                  thread_comm: ThreadComm,
+        ...                  event: threading.Event) -> None:
+        ...         super().__init__()
+        ...         self.thread_comm = thread_comm
+        ...         self.event = event
+        ...         self.thread_comm.set_child_thread_id()
+        ...     def run(self) -> None:
+        ...         self.thread_comm.send('goodbye')
+        ...         self.event.set()
+        >>> thread_comm = ThreadComm()
+        >>> event = threading.Event()
+        >>> thread_comm_app = ThreadCommApp(thread_comm, event)
+        >>> print(thread_comm.msg_waiting())
+        False
+
+        >>> thread_comm_app.start()
+        >>> event.wait()
+        >>> print(thread_comm.msg_waiting())
+        True
+
+        >>> print(thread_comm.recv())
+        goodbye
+
         """
         if self.main_thread_id == threading.get_ident():
             return not self.main_recv.empty()
