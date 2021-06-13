@@ -52,17 +52,18 @@ The thread_comm module contains:
        c. send_recv
 
 """
-import time
+# import time
 import threading
 import queue
 from typing import (Any, Final, Optional, Type, TYPE_CHECKING, Union)
 
-from scottbrian_utils.diag_msg import diag_msg
+# from scottbrian_utils.diag_msg import diag_msg
 
 import logging
 
 logger = logging.getLogger(__name__)
 logging.getLogger(__name__).addHandler(logging.NullHandler())
+
 
 ###############################################################################
 # ThreadComm class exceptions
@@ -273,7 +274,7 @@ class ThreadComm:
     def send_recv(self,
                   msg: Any,
                   timeout: Optional[Union[int, float]] = None) -> Any:
-        """send a message and wait for reply.
+        """Send a message and wait for reply.
 
         Args:
             msg: the msg to be sent

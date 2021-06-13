@@ -37,17 +37,18 @@ The se_lock module contains:
     3) SELock context manager
 
 """
-import time
+# import time
 import threading
-import queue
-import inspect
+# import queue
+# import inspect
 
-from datetime import timedelta
-from typing import (Any, Callable, cast, Dict, Final, NamedTuple, Optional,
-                    Tuple, Type, TYPE_CHECKING, TypeVar, Union)
-import functools
-from wrapt.decorators import decorator  # type: ignore
-from scottbrian_utils.diag_msg import diag_msg
+# from datetime import timedelta
+# from typing import (Any, Callable, cast, Dict, Final, NamedTuple, Optional,
+#                     Tuple, Type, TYPE_CHECKING, TypeVar, Union)
+from typing import (Final, NamedTuple, Type, TYPE_CHECKING)
+# import functools
+# from wrapt.decorators import decorator  # type: ignore
+# from scottbrian_utils.diag_msg import diag_msg
 
 import logging
 

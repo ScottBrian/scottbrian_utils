@@ -106,7 +106,7 @@ from typing import (Any, Callable, cast, Dict, Final, NamedTuple, Optional,
                     Tuple, Type, TYPE_CHECKING, TypeVar, Union)
 import functools
 from wrapt.decorators import decorator  # type: ignore
-from scottbrian_utils.diag_msg import diag_msg
+# from scottbrian_utils.diag_msg import diag_msg
 
 import logging
 
@@ -196,7 +196,7 @@ class Throttle:
     class Request(NamedTuple):
         """NamedTuple for the request queue item."""
         request_func: Callable[..., Any]
-        args: Tuple[Any,]
+        args: Tuple[Any, ]
         kwargs: Dict[str, Any]
 
     MODE_ASYNC: Final[int] = 1
@@ -268,6 +268,7 @@ class Throttle:
                      lb_threshold specification is required when mode
                      Throttle.MODE_SYNC_LB is specified. See the
                      lb_threshold parameter for details.
+
             async_q_size: Specifies the size of the request
                             queue for async requests. When the request
                             queue is totaly populated, any additional
@@ -592,7 +593,7 @@ class Throttle:
             parms += f'mode=Throttle.MODE_ASYNC, ' \
                      f'async_q_size={self.async_q_size}'
         elif self.mode == Throttle.MODE_SYNC:
-            parms += f'mode=Throttle.MODE_SYNC'
+            parms += 'mode=Throttle.MODE_SYNC'
         elif self.mode == Throttle.MODE_SYNC_EC:
             parms += f'mode=Throttle.MODE_SYNC_EC, ' \
                      f'early_count={self.early_count}'
@@ -885,6 +886,7 @@ def throttle(wrapped: Optional[F] = None, *,
                  lb_threshold specification is required when mode
                  Throttle.MODE_SYNC_LB is specified. See the
                  lb_threshold parameter for details.
+
         async_q_size: Specifies the size of the request
                         queue for async requests. When the request
                         queue is totaly populated, any additional
@@ -916,36 +918,6 @@ def throttle(wrapped: Optional[F] = None, *,
                         at the threshold. A specification of zero for the
                         lb_threshold will effectively cause all requests
                         that are early to be delayed.
-
-    Raises:
-        IncorrectRequestsSpecified: The requests specification must be
-                                      a positive integer greater than
-                                      zero.
-        IncorrectSecondsSpecified: The seconds specification must be
-                                     a positive int or float greater
-                                     than zero.
-        IncorrectModeSpecified: The mode specification must be an
-                                  integer with a value of 1, 2, 3, or 4.
-                                  Use Throttle.MODE_ASYNC,
-                                  Throttle.MODE_SYNC,
-                                  Throttle.MODE_SYNC_EC, or
-                                  Throttle.MODE_SYNC_LB.
-        AsyncQSizeNotAllowed: async_q_size is valid for mode
-                                Throttle.MODE_ASYNC only.
-        IncorrectAsyncQSizeSpecified: async_q_size must be an integer
-                                        greater than zero.
-        EarlyCountNotAllowed: early_count is valid and required for mode
-                                Throttle.MODE_SYNC_EC only.
-        IncorrectEarlyCountSpecified: early_count must be an integer
-                                        greater than zero.
-        MissingEarlyCountSpecification: early_count is required for mode
-                                          Throttle.MODE_SYNC_EC.
-        LbThresholdNotAllowed: lb_threshold is valid and required for
-                                 mode Throttle.MODE_SYNC_LB only.
-        IncorrectLbThresholdSpecified: lb_threshold must be an integer or
-                                         float greater than zero.
-        MissingLbThresholdSpecification: lb_threshold is required for
-                                           mode Throttle.MODE_SYNC_LB.
 
     Returns:
         A callable function that, for mode Throttle.MODE_ASYNC, queues the

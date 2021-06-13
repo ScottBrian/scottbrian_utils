@@ -155,78 +155,12 @@ def time_box(wrapped: F, *,
              dt_format: DT_Format = StartStopHeader.default_dt_format,
              time_box_enabled: Union[bool, Callable[..., bool]] = True,
              **kwargs: Any) -> F:
-    r"""Overloaded time_box function.
-
-    This overloaded function is needed strictly for mypy type checking.
-
-    Note that there is a *wrapped* parameter for this overloaded
-    function. This is the case where the time_box is called directly
-    without using the pie decorator style. For example:
-    def func(): pass
-    func = time_box(func, dt_format = my_dt_format)
-
-    What happens is the time_box call returns with a callable function that
-    is the wrapped function. This new function is assigned to *func*. When
-    *func* is called, the decorator function issues a starting time
-    message, calls the wrapped function (i.e., the original *func*), issues
-    the ending time message, and returns any return values that the wrapped
-    function returns.
-
-    Args:
-        wrapped: Any callable function that accepts optional positional
-                   and/or optional keyword arguments, and optionally returns a
-                   value. The default is None, which will be the case when
-                   the pie decorator version is used with any of the following
-                   arguments specified.
-        dt_format: Specifies the datetime format to use in the start
-                     time message. The default is
-                     StartStopHeader.default_dt_format.
-        time_box_enabled: Specifies whether the start and end messages
-                            should be issued (True) or not (False). The
-                            default is True.
-        kwargs: Specifies the print arguments to use on the print
-                      statement, such as *end*, *file*, or *flush*.
-    """
-
 
 @overload
 def time_box(*,
              dt_format: DT_Format = StartStopHeader.default_dt_format,
              time_box_enabled: Union[bool, Callable[..., bool]] = True,
              **kwargs: Any) -> Callable[[F], F]:
-    """Overloaded time_box function.
-
-    This overloaded function is needed strictly for mypy type checking.
-
-    Note that there is no *wrapped* parameter for this overloaded
-    function. This is the case where the time_box decorator call is coded as,
-    for example:
-    @time_box(dt_format = my_dt_format)
-    def func(): pass
-
-    This results in the equivalent of:
-    def func(): pass
-    func = time_box(dt_format = my_dt_format)(func)
-
-    What happens is the time_box call returns with a callable function that
-    specifies as input a callable, and this returned function is immediately
-    called with *func* as the argument. This then results in the assignment
-    of *func* to the decorator function that issues a starting time
-    message, calls the wrapped function (i.e., the original *func*), issues
-    the ending time message, and returns any return values that the wrapped
-    function returns.
-
-    Args:
-        dt_format: Specifies the datetime format to use in the start
-                     time message. The default is
-                     StartStopHeader.default_dt_format.
-        time_box_enabled: Specifies whether the start and end messages
-                            should be issued (True) or not (False). The
-                            default is True.
-        kwargs: Specifies the print arguments to use on the print
-                      statement, such as *end*, *file*, or *flush*.
-    """
-
 
 def time_box(wrapped: Optional[F] = None, *,
              dt_format: DT_Format = StartStopHeader.default_dt_format,
