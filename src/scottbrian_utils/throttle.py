@@ -848,7 +848,6 @@ def throttle(wrapped: Optional[F] = None, *,
         seconds: The number of seconds in which the number of requests
                    specified in requests can be made.
         mode: Specifies one of four modes for the throttle.
-
               1) mode=Throttle.MODE_ASYNC specifies asynchronous mode.
                  With asynchoneous throttling,
                  each request is placed on a queue and control returns
@@ -886,7 +885,6 @@ def throttle(wrapped: Optional[F] = None, *,
                  lb_threshold specification is required when mode
                  Throttle.MODE_SYNC_LB is specified. See the
                  lb_threshold parameter for details.
-
         async_q_size: Specifies the size of the request
                         queue for async requests. When the request
                         queue is totaly populated, any additional

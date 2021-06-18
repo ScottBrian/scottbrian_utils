@@ -7,7 +7,7 @@ import pytest
 from typing import Any, cast, List
 from sys import _getframe
 import threading
-from scottbrian_utils.diag_msg import diag_msg
+# from scottbrian_utils.diag_msg import diag_msg
 from scottbrian_utils.thread_comm import (ThreadComm,
                                           ThreadCommSendFailed,
                                           ThreadCommRecvTimedOut)
@@ -18,8 +18,35 @@ logger = logging.getLogger(__name__)
 logger.debug('about to start the tests')
 
 
+class SmartEvent(threading.Event):
+    def __init__(self):
+        super().__init__()
+        self.exc = None
+
+    def wait(self, timeout=None):
+        if timeout:
+            t_out = min(0.1, timeout)
+        else:
+            t_out = 0.1
+        start_time = time.time()
+        while not super().wait(timeout=t_out):
+            if self.exc:
+                raise self.exc
+            if timeout and (timeout <= (time.time() - start_time)):
+                return False
+        return True
+
+    def set(self):
+        super().set()
+        if self.exc:
+            raise exc
+
+    def set_exc(self, exc):
+        self.exc = exc
+
+
 ###############################################################################
-# Throttle test exceptions
+# ThreadComm test exceptions
 ###############################################################################
 class ErrorTstThreadComm(Exception):
     """Base class for exception in this module."""
@@ -192,6 +219,7 @@ def num_msg3_arg(request: Any) -> int:
 # TestThreadCommBasic class to test ThreadComm methods
 ###############################################################################
 class TestThreadCommBasic:
+    """Test class for ThreadComm basic tests."""
 
     ###########################################################################
     # repr for ThreadComm
@@ -234,14 +262,15 @@ class TestThreadCommBasic:
         class ThreadCommApp(threading.Thread):
             def __init__(self,
                          thread_comm: ThreadComm,
-                         thread_wait: threading.Event,
-                         mainline_wait: threading.Event
+                         thread_wait: SmartEvent,  # threading.Event,
+                         mainline_wait: SmartEvent  # threading.Event
                          ) -> None:
                 """Init the class.
 
                 Args:
                     thread_comm: instance of ThreadComm
-                    event: event used to signal completion
+                    thread_wait: event to wait on
+                    mainline_wait: event used to signal completion
 
                 """
                 super().__init__()
@@ -274,43 +303,50 @@ class TestThreadCommBasic:
                     assert not self.thread_comm.msg_waiting()
                 except Exception as e:
                     self.exc = e
+                    self.mainline_wait.set_exc(e)
+
 
         thread_comm = ThreadComm()
-        thread_wait_event = threading.Event()
-        mainline_wait_event = threading.Event()
+        thread_wait_event = SmartEvent()  # threading.Event()
+        mainline_wait_event = SmartEvent()  # threading.Event()
         thread_comm_app = ThreadCommApp(thread_comm,
                                         thread_wait_event,
                                         mainline_wait_event)
-        assert not thread_comm.msg_waiting()
+        try:
+            assert not thread_comm.msg_waiting()
 
-        thread_comm_app.start()
-        mainline_wait_event.wait()
-        mainline_wait_event.clear()
-        assert not thread_comm.msg_waiting()
+            thread_comm_app.start()
+            mainline_wait_event.wait()
+            mainline_wait_event.clear()
+            assert not thread_comm.msg_waiting()
 
-        thread_comm.send('hello')
-        assert not thread_comm.msg_waiting()
-        thread_comm.send('world')
-        assert not thread_comm.msg_waiting()
-        thread_wait_event.set()  # tell thread to check messages and send msg
+            thread_comm.send('hello')
+            assert not thread_comm.msg_waiting()
+            thread_comm.send('world')
+            assert not thread_comm.msg_waiting()
+            thread_wait_event.set()  # tell thread to check messages and send msg
 
-        mainline_wait_event.wait()
-        assert thread_comm.msg_waiting()
-        assert thread_comm.recv() == 'goodbye'
-        assert thread_comm.msg_waiting()
-        assert thread_comm.recv() == 'was nice seeing you'
-        assert thread_comm.msg_waiting()
-        assert thread_comm.recv() == 'take care'
-        assert not thread_comm.msg_waiting()
+            mainline_wait_event.wait()
+            assert thread_comm.msg_waiting()
+            assert thread_comm.recv() == 'goodbye'
+            assert thread_comm.msg_waiting()
+            assert thread_comm.recv() == 'was nice seeing you'
+            assert thread_comm.msg_waiting()
+            assert thread_comm.recv() == 'take care'
+            assert not thread_comm.msg_waiting()
 
-        thread_comm.send('yep, you take care too')
-        thread_wait_event.set()
-        thread_comm_app.join()
-        assert not thread_comm.msg_waiting()
+            thread_comm.send('yep, you take care too')
+            thread_wait_event.set()
+            thread_comm_app.join()
+            assert not thread_comm.msg_waiting()
 
-        if thread_comm_app.exc:
-            print(thread_comm_app.exc)
-            raise thread_comm_app.exc
+            if thread_comm_app.exc:
+                print(thread_comm_app.exc)
+                raise thread_comm_app.exc
+
+        except Exception as mainline_e:
+            thread_wait_event.set_exc(mainline_e)
+            raise mainline_e
 
     ###########################################################################
     # test_thread_comm_msg_waiting
@@ -554,7 +590,8 @@ class TestThreadCommBasic:
 
                 Args:
                     thread_comm: instance of ThreadComm
-                    event: event used to signal completion
+                    thread_wait_e: event to wait on
+                    mainline_wait_e: event used to signal completion
 
                 """
                 super().__init__()
@@ -609,7 +646,6 @@ class TestThreadCommBasic:
                     # Part 2 - thread timeouts
                     ###########################################################
                     logger.debug('Thread starting part 2')
-
 
                     t_start_time = time.time()
                     assert self.thread_comm.recv() == 'msg10'
@@ -731,7 +767,6 @@ class TestThreadCommBasic:
             print(thread_comm_app.exc)
             raise thread_comm_app.exc
 
-
     ###########################################################################
     # test_thread_comm_thread_app_combos
     ###########################################################################
@@ -757,6 +792,10 @@ class TestThreadCommBasic:
             IncorrectActionSpecified: The Action is not recognized
 
         """
+
+
+
+
         def get_exp_recv_msg(msg) -> Any:
             """Return the expected recv msg give the send msg.
 
@@ -816,7 +855,7 @@ class TestThreadCommBasic:
                             logger.debug('ThreadCommApp doing send')
                             for msg in self.msgs:
                                 self.thread_comm.send(msg)
-                                logger.debug(f'ThreadCommApp sent '
+                                logger.debug('ThreadCommApp sent '
                                              f'message {msg}')
                             self.complete_event.set()
                         elif self.action_to_do[0] == 'pause_send':
@@ -824,16 +863,16 @@ class TestThreadCommBasic:
                             time.sleep(1)
                             for msg in self.msgs:
                                 self.thread_comm.send(msg)
-                                logger.debug(f'ThreadCommApp sent '
+                                logger.debug('ThreadCommApp sent '
                                              f'message {msg}')
                             self.complete_event.set()
                         elif self.action_to_do[0] == 'recv_reply':
                             logger.debug('ThreadCommApp doing recv_reply')
-                            logger.debug(f'ThreadCommApp msgs = '
+                            logger.debug('ThreadCommApp msgs = '
                                          f'{self.msgs}')
                             for msg in self.msgs:
                                 recv_msg = self.thread_comm.recv()
-                                logger.debug(f'ThreadCommApp received message '
+                                logger.debug('ThreadCommApp received message '
                                              f'{recv_msg}')
                                 assert recv_msg == msg
                                 reply_msg = get_exp_recv_msg(msg)
@@ -843,7 +882,7 @@ class TestThreadCommBasic:
                             logger.debug('ThreadCommApp doing recv_verify')
                             for msg in self.msgs:
                                 recv_msg = self.thread_comm.recv()
-                                logger.debug(f'ThreadCommApp received message '
+                                logger.debug('ThreadCommApp received message '
                                              f'{recv_msg}')
                                 test_msg = get_exp_recv_msg(msg)
                                 assert recv_msg == test_msg
@@ -892,8 +931,6 @@ class TestThreadCommBasic:
                 """
                 return self.thread_comm.send_recv(msg)
 
-
-
         def f1(in_thread_comm: ThreadComm,
                action_event: threading.Event,
                action_to_do: List[Any],
@@ -912,6 +949,7 @@ class TestThreadCommBasic:
 
             Raises:
                 UnrecognizedActionToDo: Thread received an unrecognized action
+                Exception: any exception in thread
             """
             try:
                 logger.debug('thread f1 started')
@@ -937,7 +975,7 @@ class TestThreadCommBasic:
                         logger.debug(f'thread f1 msgs = {msgs}')
                         for msg in msgs:
                             recv_msg = in_thread_comm.recv()
-                            logger.debug(f'thread f1 received message '
+                            logger.debug('thread f1 received message '
                                          f'{recv_msg}')
                             assert recv_msg == msg
                             reply_msg = get_exp_recv_msg(msg)
@@ -947,7 +985,7 @@ class TestThreadCommBasic:
                         logger.debug('thread f1 doing recv_verify')
                         for msg in msgs:
                             recv_msg = in_thread_comm.recv()
-                            logger.debug(f'thread f1 received message '
+                            logger.debug('thread f1 received message '
                                          f'{recv_msg}')
                             test_msg = get_exp_recv_msg(msg)
                             assert recv_msg == test_msg
@@ -969,9 +1007,9 @@ class TestThreadCommBasic:
                 exc1[0] = f1_e
 
         thread_comm = ThreadComm()
-        thread_action_event = threading.Event()
+        thread_action_event = SmartEvent()  # threading.Event()
         thread_actions = [0]
-        thread_complete_event = threading.Event()
+        thread_complete_event = SmartEvent()  # threading.Event()
         send_msgs = [0]
         exc = [None]
 
@@ -1169,7 +1207,7 @@ class TestThreadCommBasic:
             else:
                 raise IncorrectActionSpecified('The Action is not recognized')
 
-        logger.debug(f'main completed all actions')
+        logger.debug('main completed all actions')
         thread_actions[0] = 'exit'
         thread_action_event.set()
         f1_thread.join()
@@ -1193,11 +1231,20 @@ class TestThreadCommBasic:
         Args:
             msg_arg: the message to be sent by main
 
+        Raises:
+            Exception: any exception in thread
+
         """
         def f1(in_thread_comm: ThreadComm,
                exp_msg: int,
                exc1: List[Any]) -> None:
-            """Thread to receive message."""
+            """Thread to receive message.
+
+            Args:
+                exp_msg: expected message to receive
+                exc1: place to put exceptions for mainline to see
+
+            """
             logger.debug('thread f1 about to recv msg')
             msg = in_thread_comm.recv()
             logger.debug(f'thread f1 received message {msg}')
@@ -1221,6 +1268,7 @@ class TestThreadCommBasic:
         f1_thread.join()
         if exc[0]:
             raise exc[0]
+
     ###########################################################################
     # test_thread_comm_simple_main_send2
     ###########################################################################
@@ -1231,6 +1279,9 @@ class TestThreadCommBasic:
 
         Args:
             msg_arg: the message to be sent by main
+
+        Raises:
+            Exception: any exception in thread
 
         """
         class ThreadCommApp(threading.Thread):
@@ -1274,10 +1325,18 @@ class TestThreadCommBasic:
         Args:
             msg_arg: the message to be sent by thread
 
+        Raises:
+            Exception: any exception in thread
+
         """
         def f1(in_thread_comm: ThreadComm,
                 msg: int) -> None:
-            """Thread to receive message."""
+            """Thread to receive message.
+
+            Args:
+                in_thread_comm: instance of ThreadComm
+                msg: msg to send
+            """
             logger.debug('thread f1 about to send msg')
             in_thread_comm.send(msg)
             logger.debug(f'thread f1 sent message {msg}')
@@ -1291,7 +1350,7 @@ class TestThreadCommBasic:
         logger.debug('main about to start f1 thread')
         try:
             f1_thread.start()
-            logger.debug(f'main about to receive msg from thread')
+            logger.debug('main about to receive msg from thread')
             msg_received = thread_comm.recv()
             f1_thread.join()
             assert msg_received == msg_arg
@@ -1309,6 +1368,9 @@ class TestThreadCommBasic:
 
         Args:
             msg_arg: the message to be sent by thread
+
+        Raises:
+            Exception: any exception in thread
 
         """
         class ThreadCommApp(threading.Thread):
@@ -1334,7 +1396,7 @@ class TestThreadCommBasic:
         logger.debug('main about to start f1 thread')
         thread_comm_app = ThreadCommApp(msg_arg)
         thread_comm_app.start()
-        logger.debug(f'main about to receive msg from thread')
+        logger.debug('main about to receive msg from thread')
         received_msg = thread_comm_app.recv_msg()
         thread_comm_app.join()
         if thread_comm_app.exc:
@@ -1355,12 +1417,20 @@ class TestThreadCommBasic:
             msg_arg: the message to be sent by main
             reply_arg: message to be received by main
 
+        Raises:
+            Exception: any exception in thread
         """
         def f1(in_thread_comm: ThreadComm,
                exp_msg: Any,
                reply: Any,
                exc1: List[Any]) -> None:
-            """Thread to receive and send reply message."""
+            """Thread to receive and send reply message.
+
+            Args:
+                exp_msg: expected message
+                reply: message to send back
+                exc1: place to put exceptions for mainline to see
+            """
             try:
                 logger.debug('thread f1 about to recv msg')
                 msg = in_thread_comm.recv()
@@ -1385,7 +1455,7 @@ class TestThreadCommBasic:
         try:
             f1_thread.start()
             logger.debug(f'main about to send msg {msg_arg} to thread and '
-                         f'receive reply')
+                         'receive reply')
             msg_received = thread_comm.send_recv(msg_arg)
             assert msg_received == reply_arg
             f1_thread.join()
@@ -1407,6 +1477,9 @@ class TestThreadCommBasic:
         Args:
             msg_arg: the message to be sent by main
             reply_arg: message to be received by main
+
+        Raises:
+            Exception: any exception in thread
 
         """
         class ThreadCommApp(threading.Thread):
@@ -1438,7 +1511,7 @@ class TestThreadCommBasic:
         logger.debug('main about to start f1 thread')
         thread_comm_app = ThreadCommApp(msg_arg, reply_arg)
         thread_comm_app.start()
-        logger.debug(f'main about to send and receive msg from thread')
+        logger.debug('main about to send and receive msg from thread')
         received_msg = thread_comm_app.send_recv_msg(msg_arg)
         thread_comm_app.join()
         if thread_comm_app.exc:
@@ -1459,12 +1532,23 @@ class TestThreadCommBasic:
             msg_arg: the message to be sent by thread
             reply_arg: message to be received by thread
 
+        Raises:
+            Exception: any exception in thread
+
         """
         def f1(in_thread_comm: ThreadComm,
                msg: Any,
                exp_reply: Any,
                exc1: List[Any]) -> None:
-            """Thread to send and receive reply message."""
+            """Thread to send and receive reply message.
+
+            Args:
+                in_thread_comm: instance of ThreadComm
+                msg: message to send
+                exp_reply: expected reply to receive
+                exc1: where to place any exceptions to mainline can see it
+
+            """
             try:
                 logger.debug(f'thread f1 about to send msg {msg} and receive')
                 recv_msg = in_thread_comm.send_recv(msg)
@@ -1485,7 +1569,7 @@ class TestThreadCommBasic:
         logger.debug('main about to start f1 thread')
         try:
             f1_thread.start()
-            logger.debug(f'main about to recv msg and send reply to thread')
+            logger.debug('main about to recv msg and send reply to thread')
             msg_received = thread_comm.recv()
             assert msg_received == msg_arg
             thread_comm.send(reply_arg)
@@ -1508,6 +1592,9 @@ class TestThreadCommBasic:
         Args:
             msg_arg: the message to be sent by thread
             reply_arg: message to be received by thread
+
+        Raises:
+            Exception: any exception from the thread
 
         """
         class ThreadCommApp(threading.Thread):
@@ -1540,9 +1627,9 @@ class TestThreadCommBasic:
         logger.debug('main about to create and start ThreadCommApp')
         thread_comm_app = ThreadCommApp(msg_arg, reply_arg)
         thread_comm_app.start()
-        logger.debug(f'main about to receive msg from thread')
+        logger.debug('main about to receive msg from thread')
         received_msg = thread_comm_app.recv_msg()
-        logger.debug(f'main about to send reply to thread')
+        logger.debug('main about to send reply to thread')
         thread_comm_app.send_msg(reply_arg)
         thread_comm_app.join()
         if thread_comm_app.exc:

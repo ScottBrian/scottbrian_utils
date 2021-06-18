@@ -155,12 +155,16 @@ def time_box(wrapped: F, *,
              dt_format: DT_Format = StartStopHeader.default_dt_format,
              time_box_enabled: Union[bool, Callable[..., bool]] = True,
              **kwargs: Any) -> F:
+    pass
+
 
 @overload
 def time_box(*,
              dt_format: DT_Format = StartStopHeader.default_dt_format,
              time_box_enabled: Union[bool, Callable[..., bool]] = True,
              **kwargs: Any) -> Callable[[F], F]:
+    pass
+
 
 def time_box(wrapped: Optional[F] = None, *,
              dt_format: DT_Format = StartStopHeader.default_dt_format,
