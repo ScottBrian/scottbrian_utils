@@ -21,20 +21,20 @@ when a thread has ended. This helps solves a problem where either:
 >>> from scottbrian_utils.smart_event import SmartEvent
 >>> import threading
 >>> import time
->>> smart_event = SmartEvent()
+>>> smart_event = SmartEvent(alpha=threading.current_thread())
 >>> def f1(in_smart_event):
 ...     try:
 ...         time.sleep(3)
 ...         in_smart_event.set()
-...     except SmartEventMainlineNotAlive as e:
+...     except RemoteThreadNotAlive as e:
 ...         print('mainline is not alive')
 >>> f1_thread = threading.Thread(target=f1, args=(smart_event,)
+>>> smart_event.set_thread(beta=f1_thread)
 >>> f1_thread.start()
 >>> try:
 >>>     smart_event.wait()
->>>     smart_event.clear()
->>> except SmartEventThreadNotAlive:
->>>     print('Thread is not alive')
+>>> except RemoteThreadNotAlive:
+>>>     print('Thread f1 is not alive')
 
 
 The smart_event module contains:
@@ -44,14 +44,16 @@ The smart_event module contains:
        a. wait
        b. set
        c. clear
+       d. is_waiting
+       e. is_set
 
 """
 import time
 import threading
-import queue
+from enum import Enum
 from typing import (Any, Final, Optional, Type, TYPE_CHECKING, Union)
 
-# from scottbrian_utils.diag_msg import diag_msg
+from scottbrian_utils.diag_msg import get_formatted_call_sequence
 
 import logging
 
@@ -67,86 +69,83 @@ class SmartEventError(Exception):
     pass
 
 
-class SmartEventMainlineNotAlive(SmartEventError):
-    """SmartEvent mainline is not alive."""
+class IncorrectThreadSpecified(SmartEventError):
+    """SmartEvent exception for incorrect thread specification."""
     pass
 
 
-class SmartEventThreadNotAlive(SmartEventError):
-    """SmartEvent thread not alive."""
+class DuplicateThreadSpecified(SmartEventError):
+    """SmartEvent exception for duplicate thread specification."""
     pass
 
+
+class ThreadAlreadySet(SmartEventError):
+    """SmartEvent exception for thread already set."""
+    pass
+
+
+class BothAlphaBetaNotSet(SmartEventError):
+    """SmartEvent exception for alpha or beta thread not set."""
+    pass
+
+
+class DetectedOpFromForeignThread(SmartEventError):
+    """SmartEvent exception for attempted op from unregistered thread."""
+    pass
+
+
+class RemoteThreadNotAlive(SmartEventError):
+    """SmartEvent exception for alpha or beta thread not alive."""
+    pass
+
+
+class WaitUntilTimeout(SmartEventError):
+    """SmartEvent exception for wait_until timeout."""
+    pass
+###############################################################################
+# wait_until conditions
+###############################################################################
+WUCond = Enum('WUCond',
+              'BothThreadsSet RemoteWaiting')
 
 ###############################################################################
 # SmartEvent class
 ###############################################################################
-class SmartEvent(threading.Event):
-    """SmartEvent class."""
+class SmartEvent():
+    """Provides a coordination mechanism between two threads."""
+
+    WAIT_UNTIL_TIMEOUT: Final[int] = 16
 
     def __init__(self,
-                 thread_object: threading.Thread):
-        """Initialize SmartEvent object.
-
-        Args:
-            thread_object: the thread object that mainline will
-        """
-        super().__init__()
-        self.thread_object = thread_object
-
-    def wait(self, timeout=None):
-        if timeout:
-            t_out = min(0.1, timeout)
-        else:
-            t_out = 0.1
-        start_time = time.time()
-        while not super().wait(timeout=t_out):
-            if threading.current_thread() is threading.main_thread():
-                if not self.thread_object.is_alive():
-                    raise Exception('mainline wait sees thread is gone')
-            elif not threading.main_thread().is_alive():
-                raise Exception('thread wait sees mainline is gone')
-            if timeout and (timeout <= (time.time() - start_time)):
-                return False
-        return True
-
-    def set(self):
-        super().set()
-        if threading.current_thread() is threading.main_thread():
-            if not self.thread_object.is_alive():
-                raise Exception('mainline set sees thread is gone')
-        elif not threading.main_thread().is_alive():
-            raise Exception('thread set sees mainline is gone')
-
-    # def set_exc(self, exc):
-    #     self.exc = exc
-
-class SmartEvent:
-    """Provides a communication link between threads."""
-
-    MAX_MSGS_DEFAULT: Final[int] = 16
-
-    def __init__(self,
-                 max_msgs: Optional[int] = None
+                 alpha: Optional[threading.Thread] = None,
+                 beta: Optional[threading.Thread] = None
                  ) -> None:
         """Initialize an instance of the SmartEvent class.
 
         Args:
-            max_msgs: Number of messages that can be placed onto the send
-                        queue until being received. Once the max has
-                        been reached, no more sends will be allowed
-                        until messages are received from the queue. The
-                        default is 16
-        """
-        if max_msgs:
-            self.max_msgs = max_msgs
-        else:
-            self.max_msgs = SmartEvent.MAX_MSGS_DEFAULT
-        self.main_send = queue.Queue(maxsize=self.max_msgs)
-        self.main_recv = queue.Queue(maxsize=self.max_msgs)
+            alpha: instance of a thread object that is used to determine
+                     which event is to be set or waited on.
+            beta: instance of a thread object that is used to determine
+                     which event is to be set or waited on.
 
-        self.main_thread_id = threading.get_ident()
-        self.child_thread_id: Any = 0
-        logger.info(f'SmartEvent created by thread ID {self.main_thread_id}')
+        Raises:
+            IncorrectThreadSpecified: The alpha or beta arguments must be of
+                                        type threading.Thread.
+            DuplicateThreadSpecified: The alpha and beta arguments must be
+                                        be for separate objects of type
+                                        threading.Thread.
+
+        """
+        self.alpha_thread = None
+        self.beta_thread = None
+        self._both_threads_set = False
+        self.set_thread(alpha, beta)
+
+        self.alpha_event = threading.Event()
+        self.beta_event = threading.Event()
+
+        self.alpha_code = None
+        self.beta_code = None
 
     ###########################################################################
     # repr
@@ -162,221 +161,377 @@ class SmartEvent:
         >>> from scottbrian_utils.smart_event import SmartEvent
         >>> smart_event = SmartEvent()
         >>> repr(smart_event)
-        SmartEvent(max_msgs=16)
+        SmartEvent()
 
         """
         if TYPE_CHECKING:
             __class__: Type[SmartEvent]
         classname = self.__class__.__name__
-        parms = f'max_msgs={self.max_msgs}'
+        parms = ''
+        comma_space = ''
+        if self.alpha_thread:
+            parms += f'alpha={repr(self.alpha_thread)}'
+            comma_space = ', '
+        if self.beta_thread:
+            parms += f'{comma_space}beta={repr(self.beta_thread)}'
 
         return f'{classname}({parms})'
 
     ###########################################################################
-    # set_child_thread_id
+    # set_thread
     ###########################################################################
-    def set_child_thread_id(self,
-                            child_thread_id: Optional[Any] = None
-                            ) -> None:
-        """Set child thread id.
+    def set_thread(self,
+                   alpha: Optional[threading.Thread] = None,
+                   beta: Optional[threading.Thread] = None
+                   ) -> None:
+        """Set alpha and/or beta thread.
 
         Args:
-            child_thread_id: the id to set. The default is None which will set
-                               the id to the caller's thread id
+            alpha: instance of a thread object that is used to determine
+                     which event is to be set or waited on.
+            beta: instance of a thread object that is used to determine
+                     which event is to be set or waited on.
 
-        :Example: instantiate a SmartEvent and set the id to 5
+        Raises:
+            IncorrectThreadSpecified: The alpha or beta arguments must be of
+                                        type threading.Thread.
+            DuplicateThreadSpecified: The alpha and beta arguments must be
+                                        for separate objects of type
+                                        threading.Thread.
+            ThreadAlreadySet: The set_thread method detected that the
+                                specified thread has already been set to
+                                either a different or the same thread
+
+        :Example: instantiate a SmartEvent and set the alpha thread
 
         >>> from scottbrian_utils.smart_event import SmartEvent
         >>> smart_event = SmartEvent()
-        >>> smart_event.set_child_thread_id(5)
-        >>> print(smart_event.get_child_thread_id())
-        5
-        """
-        if child_thread_id:
-            self.child_thread_id = child_thread_id
-        else:
-            self.child_thread_id = threading.get_ident()
-
-    ###########################################################################
-    # get_child_thread_id
-    ###########################################################################
-    def get_child_thread_id(self) -> Any:
-        """Get child thread id.
-
-        Returns:
-            child thread id
-
-        :Example: instantiate a SmartEvent and set the id to 5
-
-        >>> from scottbrian_utils.smart_event import SmartEvent
-        >>> smart_event = SmartEvent()
-        >>> smart_event.set_child_thread_id('child_A')
-        >>> print(smart_event.get_child_thread_id())
-        child_A
+        >>> smart_event.set_thread(alpha=threading.current_thread())
 
         """
-        return self.child_thread_id
+        if alpha:
+            if not isinstance(alpha, threading.Thread):
+                raise IncorrectThreadSpecified('The alpha or beta arguments'
+                                               'must be of type'
+                                               'threading.Thread')
+            if self.beta_thread and (self.beta_thread is alpha):
+                raise DuplicateThreadSpecified('The alpha and beta arguments'
+                                               'must be be for separate '
+                                               'objects of type '
+                                               'threading.Thread.')
+            if self.alpha_thread:
+                raise ThreadAlreadySet('The set_thread method detected that '
+                                       'the specified thread has already been '
+                                       'set to either a different or the '
+                                       'same thread')
+            self.alpha_thread = alpha
+
+        if beta:
+            if not isinstance(beta, threading.Thread):
+                raise IncorrectThreadSpecified('The alpha or beta arguments'
+                                               'must be of type'
+                                               'threading.Thread')
+            if self.alpha_thread and (self.alpha_thread is beta):
+                raise DuplicateThreadSpecified('The alpha and beta arguments'
+                                               'must be be for separate '
+                                               'objects of type '
+                                               'threading.Thread.')
+            if self.beta_thread:
+                raise ThreadAlreadySet('The set_thread method detected that '
+                                       'the specified thread has already been '
+                                       'set to either a different or the '
+                                       'same thread')
+            self.beta_thread = beta
+
+        if self.alpha_thread and self.beta_thread:
+            self._both_threads_set = True
 
     ###########################################################################
-    # send
+    # wait
     ###########################################################################
-    def send(self,
-             msg: Any,
-             timeout: Optional[Union[int, float]] = None) -> None:
-        """Send a msg.
+    def wait(self,
+             log_msg: Optional[str] = None,
+             timeout: Optional[Union[int, float]] = None) -> bool:
+        """Wait on event.
 
         Args:
-            msg: the msg to be sent
+            log_msg: log msg to log
             timeout: number of seconds to wait for full queue to get free slot
 
-        Raises:
-            SmartEventSendFailed: send method unable to send the
-                                    message because the send queue
-                                    is full with the maximum
-                                    number of messages.
+        Return:
+            True is the wait was successful, False if it timed out
 
-        :Example: instantiate a SmartEvent and send a message
+        Raises:
+            BothAlphaBetaNotSet: Both threads must be set before any
+                                   SmartEvent services can be called
+            DetectedOpFromForeignThread: The wait method must be called
+                                           from either the alpha or the
+                                           beta thread registered at time
+                                           of instantiation or via the
+                                           set_thread method
+            RemoteThreadNotAlive: The wait service has detected that the
+                                    alpha or beta thread is not alive
+
+        :Example: instantiate a SmartEvent and wait for function to set
 
         >>> from scottbrian_utils.smart_event import SmartEvent
         >>> import threading
         >>> def f1(smart_event: SmartEvent) -> None:
-        ...     msg = smart_event.recv()
-        ...     if msg == 'hello thread':
-        ...         smart_event.send('hi')
-        >>> a_smart_event = SmartEvent()
-        >>> thread = threading.Thread(target=f1, args=(a_smart_event,))
-        >>> thread.start()
-        >>> a_smart_event.send('hello thread')
-        >>> print(a_smart_event.recv())
-        hi
+        ...     time.sleep(1)
+        ...     smart_event.set()
 
-        >>> thread.join()
+        >>> a_smart_event = SmartEvent(alpha=threading.current_thread())
+        >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
+        >>> a_smart_event.set_thread(beta=f1_thread)
+        >>> f1_thread.start()
+        >>> a_smart_event.wait()
+        >>> f1_thread.join()
 
         """
-        try:
-            if self.main_thread_id == threading.get_ident():  # if main
-                logger.info(f'SmartEvent main {self.main_thread_id} sending '
-                            f'msg to child {self.child_thread_id}')
-                self.main_send.put(msg, timeout=timeout)  # send to child
-            else:  # else not main
-                logger.info(f'SmartEvent child {self.child_thread_id} '
-                            f'sending msg to main {self.main_thread_id}')
-                self.main_recv.put(msg, timeout=timeout)  # send to main
-        except queue.Full:
-            logger.error('Raise SmartEventSendFailed')
-            raise SmartEventSendFailed('send method unable to send the '
-                                       'message because the send queue '
-                                       'is full with the maximum '
-                                       'number of messages.')
-
-    ###########################################################################
-    # recv
-    ###########################################################################
-    def recv(self, timeout: Optional[Union[int, float]] = None) -> Any:
-        """Send a msg.
-
-        Args:
-            timeout: number of seconds to wait for message
-
-        Returns:
-            message unless timeout occurs
-
-        Raises:
-            SmartEventRecvTimedOut: recv processing timed out
-                                      waiting for a message to
-                                      arrive.
-
-        """
-        try:
-            if self.main_thread_id == threading.get_ident():  # if main
-                logger.info(f'SmartEvent main {self.main_thread_id} receiving '
-                            f'msg from child {self.child_thread_id}')
-                return self.main_recv.get(timeout=timeout)  # recv from child
-            else:  # else child
-                logger.info(f'SmartEvent child {self.child_thread_id} '
-                            f'receiving msg from main {self.main_thread_id}')
-                return self.main_send.get(timeout=timeout)  # recv from main
-        except queue.Empty:
-            logger.error('Raise SmartEventRecvTimedOut')
-            raise SmartEventRecvTimedOut('recv processing timed out '
-                                         'waiting for a message to '
-                                         'arrive.')
-
-    ###########################################################################
-    # send_recv
-    ###########################################################################
-    def send_recv(self,
-                  msg: Any,
-                  timeout: Optional[Union[int, float]] = None) -> Any:
-        """Send a message and wait for reply.
-
-        Args:
-            msg: the msg to be sent
-            timeout: Number of seconds to wait for reply
-
-        Returns:
-              message unless send q is full or timeout occurs during recv
-
-        :Example: instantiate a SmartEvent and send a message
-
-        >>> from scottbrian_utils.smart_event import SmartEvent
-        >>> import threading
-        >>> def f1(smart_event: SmartEvent) -> None:
-        ...     msg = smart_event.recv()
-        ...     if msg == 'hello thread':
-        ...         smart_event.send('hi')
-        >>> a_smart_event = SmartEvent()
-        >>> thread = threading.Thread(target=f1, args=(a_smart_event,))
-        >>> thread.start()
-        >>> a_smart_event.send('hello thread')
-        >>> print(a_smart_event.recv())
-        hi
-
-        >>> thread.join()
-
-        """
-        self.send(msg, timeout=timeout)
-        return self.recv(timeout=timeout)
-
-    ###########################################################################
-    # msg_waiting
-    ###########################################################################
-    def msg_waiting(self) -> bool:
-        """Determine whether a message is waiting, ready to be received.
-
-        Returns:
-            True if message is ready to receive, False otherwise
-
-        :Example: instantiate a SmartEvent and set the id to 5
-
-        >>> from scottbrian_utils.smart_event import SmartEvent
-        >>> class SmartEventApp(threading.Thread):
-        ...     def __init__(self,
-        ...                  smart_event: SmartEvent,
-        ...                  event: threading.Event) -> None:
-        ...         super().__init__()
-        ...         self.smart_event = smart_event
-        ...         self.event = event
-        ...         self.smart_event.set_child_thread_id()
-        ...     def run(self) -> None:
-        ...         self.smart_event.send('goodbye')
-        ...         self.event.set()
-        >>> smart_event = SmartEvent()
-        >>> event = threading.Event()
-        >>> smart_event_app = SmartEventApp(smart_event, event)
-        >>> print(smart_event.msg_waiting())
-        False
-
-        >>> smart_event_app.start()
-        >>> event.wait()
-        >>> print(smart_event.msg_waiting())
-        True
-
-        >>> print(smart_event.recv())
-        goodbye
-
-        """
-        if self.main_thread_id == threading.get_ident():
-            return not self.main_recv.empty()
+        if not self._both_threads_set:
+            raise BothAlphaBetaNotSet(
+                'Both threads must be set before any '
+                'SmartEvent services can be called')
+        current_thread = threading.current_thread()
+        if current_thread is self.alpha_thread:
+            remote_thread = self.beta_thread
+            wait_event = self.beta_event  # alpha waits on beta event
+        elif current_thread is self.beta_thread:
+            remote_thread = self.alpha_thread
+            wait_event = self.alpha_event  # beta waits on alpha event
         else:
-            return not self.main_send.empty()
+            raise DetectedOpFromForeignThread(
+                'The wait method must be called from either the alpha or '
+                'the beta thread registered at time of instantiation or '
+                'via the set_thread method')
+
+        if timeout and (timeout > 0):
+            t_out = min(0.1, timeout)
+        else:
+            t_out = 0.1
+
+        if log_msg:
+            caller_info = get_formatted_call_sequence(latest=1, depth=1)
+            logger.debug(f'{caller_info} {log_msg}')
+
+        start_time = time.time()
+        while not wait_event.wait(timeout=t_out):
+            if not remote_thread.is_alive():
+                dead_thread = 'alpha' if remote_thread is \
+                                              self.alpha_thread else 'beta'
+                raise RemoteThreadNotAlive(
+                    f'The wait service has detected that {dead_thread} thread'
+                    'is not alive')
+
+            if timeout and (timeout < (time.time() - start_time)):
+                return False
+
+        wait_event.clear()  # be ready for next wait
+        return True
+
+    ###########################################################################
+    # set
+    ###########################################################################
+    def set(self,
+            log_msg: Optional[str] = None,
+            code: Optional[Any] = None) -> None:
+        """Set on event.
+
+        Args:
+            log_msg: log msg to log
+            code: code that waiter can retrieve with get_code
+
+        Raises:
+            BothAlphaBetaNotSet: Both threads must be set before any
+                                   SmartEvent services can be called
+            DetectedOpFromForeignThread: The set method must be called
+                                           from either the alpha or the
+                                           beta thread registered at time
+                                           of instantiation or via the
+                                           set_thread method
+            RemoteThreadNotAlive: The set service has detected that the
+                                    alpha or beta thread is not alive
+
+        :Example: instantiate SmartEvent and set event that function waits on
+
+        >>> from scottbrian_utils.smart_event import SmartEvent
+        >>> import threading
+        >>> def f1(smart_event: SmartEvent) -> None:
+        ...     smart_event.wait()
+
+        >>> a_smart_event = SmartEvent(alpha=threading.current_thread())
+        >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
+        >>> a_smart_event.set_thread(beta=f1_thread)
+        >>> f1_thread.start()
+        >>> time.sleep(1)
+        >>> a_smart_event.set()
+        >>> f1_thread.join()
+
+        """
+        if not self._both_threads_set:
+            raise BothAlphaBetaNotSet(
+                'Both threads must be set before any '
+                'SmartEvent services can be called')
+        current_thread = threading.current_thread()
+        if current_thread is self.alpha_thread:
+            remote_thread = self.beta_thread
+            set_event = self.alpha_event  # beta waits on alpha event
+            self.beta_code = code
+        elif current_thread is self.beta_thread:
+            remote_thread = self.alpha_thread
+            set_event = self.beta_event  # alpha waits on beta event
+            self.alpha_code = code
+        else:
+            raise DetectedOpFromForeignThread(
+                'The set method must be called from either the alpha or '
+                'the beta thread registered at time of instantiation or '
+                'via the set_thread method')
+
+        if log_msg:
+            caller_info = get_formatted_call_sequence(latest=1, depth=1)
+            logger.debug(f'{caller_info} {log_msg}')
+
+        if not remote_thread.is_alive():
+            dead_thread = 'alpha' if remote_thread is \
+                                     self.alpha_thread else 'beta'
+            raise RemoteThreadNotAlive(
+                f'The set service has detected that {dead_thread} thread'
+                'is not alive')
+
+        set_event.set()
+
+    ###########################################################################
+    # get_code
+    ###########################################################################
+    def get_code(self) -> Any:
+        """Get code from last set.
+
+        Returns:
+            The code set by the thread that did the set event
+
+        Raises:
+            BothAlphaBetaNotSet: Both threads must be set before any
+                                   SmartEvent services can be called
+            DetectedOpFromForeignThread: The get_code method must be called
+                                           from either the alpha or the
+                                           beta thread registered at time
+                                           of instantiation or via the
+                                           set_thread method
+            RemoteThreadNotAlive: The set service has detected that the
+                                    alpha or beta thread is not alive
+
+        :Example: instantiate SmartEvent and set event that function waits on
+
+        >>> from scottbrian_utils.smart_event import SmartEvent
+        >>> import threading
+        >>> def f1(smart_event: SmartEvent) -> None:
+        ...     smart_event.wait()
+
+        >>> a_smart_event = SmartEvent(alpha=threading.current_thread())
+        >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
+        >>> a_smart_event.set_thread(beta=f1_thread)
+        >>> f1_thread.start()
+        >>> time.sleep(1)
+        >>> a_smart_event.set()
+        >>> f1_thread.join()
+
+        """
+        if not self._both_threads_set:
+            raise BothAlphaBetaNotSet(
+                'Both threads must be set before any '
+                'SmartEvent services can be called')
+        current_thread = threading.current_thread()
+        if current_thread is self.alpha_thread:
+            return self.alpha_code
+        elif current_thread is self.beta_thread:
+            return self.beta_code
+        else:
+            raise DetectedOpFromForeignThread(
+                'The get_code method must be called from either the alpha or '
+                'the beta thread registered at time of instantiation or '
+                'via the set_thread method')
+
+    ###########################################################################
+    # wait_until
+    ###########################################################################
+    def wait_until(self,
+                   cond: WUCond,
+                   timeout: Optional[Union[int, float]] = None
+                   ) -> None:
+        """Wait until both threads have been set and/or remote is waiting.
+
+        Args:
+            cond: specifies to either wait for both threads to be
+                    set (WUCond.BothThreadsSet) or for the remote to
+                    be waiting (WUCond.RemoteWaiting)
+
+        Raises:
+            BothAlphaBetaNotSet: Both threads must be set before wait_until
+                                   can be called to wait until the remote is
+                                   waiting
+            DetectedOpFromForeignThread: The wait_until method must be
+                                           called from either the alpha or
+                                           the beta thread registered at time
+                                            of instantiation or via the
+                                            set_thread method
+            WaitUntilTimeout: The wait_until method timed out
+
+        :Example: instantiate SmartEvent and wait for ready
+
+        >>> from scottbrian_utils.smart_event import SmartEvent
+        >>> import threading
+        >>> def f1(smart_event: SmartEvent) -> None:
+        ...     smart_event.set_thread(beta=threading.current_thread())
+        ...     smart_event.wait()
+
+        >>> a_smart_event = SmartEvent(alpha=threading.current_thread())
+        >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
+        >>> f1_thread.start()
+        >>> a_smart_event.wait_until(WUCond.BothThreadsSet)
+        >>> a_smart_event.set()
+        >>> f1_thread.join()
+
+        """
+        if timeout and (timeout > 0):
+            t_out = min(0.1, timeout)
+        else:
+            t_out = 0.1
+        start_time = time.time()
+        if cond == WUCond.BothThreadsSet:
+            while not self._both_threads_set:
+                if timeout and (timeout < (time.time() - start_time)):
+                    raise WaitUntilTimeout('The wait_until method timed out')
+                time.sleep(t_out)
+
+        elif cond == WUCond.RemoteWaiting:
+            if not self._both_threads_set:
+                raise BothAlphaBetaNotSet(
+                    'Both threads must be set before wait_until can be '
+                    'called to wait until the remote is waiting')
+
+            current_thread = threading.current_thread()
+            if current_thread is self.alpha_thread:
+                remote_thread = self.beta_thread
+                wait_until_event = self.alpha_event
+            elif current_thread is self.beta_thread:
+                remote_thread = self.alpha_thread
+                wait_until_event = self.beta_event
+            else:
+                raise DetectedOpFromForeignThread(
+                    'The wait_until method must be called from either the '
+                    'alpha or the beta thread registered at time of '
+                    'instantiation or via the set_thread method')
+
+            while len(wait_until_event._cond._waiters) == 0:
+                if not remote_thread.is_alive():
+                    dead_thread = 'alpha' if remote_thread is \
+                                             self.alpha_thread else 'beta'
+                    raise RemoteThreadNotAlive(
+                        f'The wait service has detected that {dead_thread} '
+                        f'thread'
+                        'is not alive')
+
+                if timeout and (timeout < (time.time() - start_time)):
+                    raise WaitUntilTimeout('The wait_until method timed out')
+
+                time.sleep(t_out)
