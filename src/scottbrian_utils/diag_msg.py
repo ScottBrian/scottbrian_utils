@@ -244,6 +244,8 @@ def get_formatted_call_sequence(latest: int = 0,
             frame = _getframe(caller_depth)
         except ValueError:
             break  # caller_depth beyond depth of frames
+        except Exception:  # anything else, such as _getframe missing
+            break  # we will return whatever we collected so far (maybe null)
 
         try:
             # mod_name, cls_name, func_name, lineno = get_caller_info(frame)

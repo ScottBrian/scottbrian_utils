@@ -49,15 +49,19 @@ class UnrecognizedActionToDo(ErrorTstSmartEvent):
 ###############################################################################
 # my_excepthook
 ###############################################################################
+exception_error_msg = ''
+
+
 def my_excepthook(args):
-    error_msg = (f'in excepthook with args2 {args.exc_type}, '
-                 f'{args.exc_value}, {args.exc_traceback},'
-                 f' {args.thread}')
-    logger.debug(error_msg)
+    global exception_error_msg
+    exception_error_msg = (f'SmartEvent excepthook: {args.exc_type}, '
+                           f'{args.exc_value}, {args.exc_traceback},'
+                           f' {args.thread}')
+    logger.debug(exception_error_msg)
     current_thread = threading.current_thread()
     logger.debug(f'excepthook current thread is {current_thread}')
-    print(error_msg)
-    raise Exception(f'SmartEvent thread test error: {error_msg}')
+    print(exception_error_msg)
+    raise Exception(f'SmartEvent thread test error: {exception_error_msg}')
 
 
 ###############################################################################
@@ -261,7 +265,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_set_thread_alpha_first(self) -> None:
         """Test set_thread alpha first."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         alpha_t = threading.current_thread()
@@ -398,7 +403,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_set_thread_beta_first(self) -> None:
         """Test set_thread beta first."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         alpha_t = threading.current_thread()
@@ -501,7 +507,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_set_threads_instantiate(self) -> None:
         """Test set_thread during instantiation."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         alpha_t = threading.current_thread()
@@ -557,7 +564,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_set_threads_f1(self) -> None:
         """Test set_thread with f1."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         #######################################################################
@@ -566,6 +574,7 @@ class TestSmartEventBasic:
         logger.debug('start test 1')
         current_thread = threading.current_thread()
         logger.debug(f'mainline current thread is {current_thread}')
+
         def f1(s_event, ml_thread):
             print('f1 entered')
             my_c_thread = threading.current_thread()
@@ -573,12 +582,28 @@ class TestSmartEventBasic:
             assert s_event.alpha_thread is alpha_t
             assert s_event.beta_thread is my_c_thread
             assert s_event.beta_thread is threading.current_thread()
-            time.sleep(5)
+
             while cmd[0] != Cmd.Exit:
                 if cmd[0] == Cmd.Wait:
                     assert s_event.wait()
                 elif cmd[0] == Cmd.Set:
+                    with pytest.raises(WaitUntilTimeout):
+                        s_event.wait_until(WUCond.RemoteWaiting, timeout=0.002)
+                    with pytest.raises(WaitUntilTimeout):
+                        s_event.wait_until(WUCond.RemoteWaiting, timeout=0.01)
+                    with pytest.raises(WaitUntilTimeout):
+                        s_event.wait_until(WUCond.RemoteWaiting, timeout=0.02)
+
+                    s_event.wait_until(WUCond.RemoteWaiting)
+                    s_event.wait_until(WUCond.RemoteWaiting, timeout=0.001)
+                    s_event.wait_until(WUCond.RemoteWaiting, timeout=0.01)
+                    s_event.wait_until(WUCond.RemoteWaiting, timeout=0.02)
+                    s_event.wait_until(WUCond.RemoteWaiting, timeout=-0.02)
+                    s_event.wait_until(WUCond.RemoteWaiting, timeout=-1)
+                    s_event.wait_until(WUCond.RemoteWaiting, timeout=0)
+
                     s_event.set()
+
                 time.sleep(.1)
 
         cmd = [0]
@@ -587,19 +612,48 @@ class TestSmartEventBasic:
         my_f1_thread = threading.Thread(target=f1,
                                         args=(smart_event1,
                                               threading.current_thread()))
+        with pytest.raises(WaitUntilTimeout):
+            smart_event1.wait_until(WUCond.BothThreadsReady, timeout=0.002)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=-0.002)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.002)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.2)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event1.wait_until(WUCond.RemoteWaiting)
         smart_event1.set_thread(beta=my_f1_thread)
+        with pytest.raises(WaitUntilTimeout):
+            smart_event1.wait_until(WUCond.BothThreadsReady, timeout=0.005)
         my_f1_thread.start()
+        smart_event1.wait_until(WUCond.BothThreadsReady, timeout=1)
 
-        cmd[0] = Cmd.Wait
+
         logger.debug('about to wait_until RemoteWaiting')
         with pytest.raises(WaitUntilTimeout):
-            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=4)
+            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.002)
+        with pytest.raises(WaitUntilTimeout):
+            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.01)
+        with pytest.raises(WaitUntilTimeout):
+            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.02)
+        with pytest.raises(WaitUntilTimeout):
+            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=1)
 
-        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=4)
+        cmd[0] = Cmd.Wait
+        smart_event1.wait_until(WUCond.RemoteWaiting)
+        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.001)
+        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.01)
+        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.02)
+        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=-0.02)
+        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=-1)
+        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0)
+
         smart_event1.set()
 
         cmd[0] = Cmd.Set
-
+        time.sleep(2)
         assert smart_event1.wait()
 
         cmd[0] = Cmd.Exit
@@ -636,13 +690,34 @@ class TestSmartEventBasic:
             s_event.set()
 
         smart_event2 = SmartEvent(alpha=threading.current_thread())
+        with pytest.raises(WaitUntilTimeout):
+            smart_event2.wait_until(WUCond.BothThreadsReady, timeout=0.001)
         my_f2_thread = threading.Thread(target=f2, args=(smart_event2,
                                                          alpha_t))
+        with pytest.raises(WaitUntilTimeout):
+            smart_event2.wait_until(WUCond.BothThreadsReady, timeout=0.01)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event2.wait_until(WUCond.RemoteWaiting, timeout=-0.002)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event2.wait_until(WUCond.RemoteWaiting, timeout=0)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event2.wait_until(WUCond.RemoteWaiting, timeout=0.002)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event2.wait_until(WUCond.RemoteWaiting, timeout=0.2)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event2.wait_until(WUCond.RemoteWaiting)
         my_f2_thread.start()
         with pytest.raises(WaitUntilTimeout):
-            smart_event2.wait_until(WUCond.BothThreadsSet, timeout=2)
+            smart_event2.wait_until(WUCond.BothThreadsReady, timeout=2)
+        with pytest.raises(BothAlphaBetaNotSet):
+            smart_event2.wait_until(WUCond.RemoteWaiting)
 
-        smart_event2.wait_until(WUCond.BothThreadsSet)
+        time.sleep(2)
+        smart_event2.wait_until(WUCond.BothThreadsReady)
+        smart_event2.wait_until(WUCond.BothThreadsReady, timeout=1)
+        smart_event2.wait_until(WUCond.BothThreadsReady, timeout=0)
+        smart_event2.wait_until(WUCond.BothThreadsReady, timeout=-1)
+        smart_event2.wait_until(WUCond.BothThreadsReady, timeout=-2)
 
         smart_event2.set()
         assert smart_event2.wait()
@@ -663,7 +738,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_set_threads_thread_app(self) -> None:
         """Test set_thread with thread_app."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         #######################################################################
@@ -687,7 +763,6 @@ class TestSmartEventBasic:
                 assert self.s_event.beta_thread is threading.current_thread()
 
                 assert self.s_event.wait()
-                time.sleep(1)
                 self.s_event.set()
 
         alpha_t = threading.current_thread()
@@ -696,7 +771,6 @@ class TestSmartEventBasic:
         smart_event1.set_thread(beta=my_taa_thread)
         my_taa_thread.start()
 
-        time.sleep(1)
         smart_event1.set()
         assert smart_event1.wait()
 
@@ -707,6 +781,9 @@ class TestSmartEventBasic:
 
         with pytest.raises(RemoteThreadNotAlive):
             smart_event1.wait()
+
+        with pytest.raises(RemoteThreadNotAlive):
+            smart_event1.wait_until(WUCond.RemoteWaiting)
 
         assert smart_event1.alpha_thread is alpha_t
         assert smart_event1.beta_thread is my_taa_thread
@@ -756,6 +833,9 @@ class TestSmartEventBasic:
         with pytest.raises(RemoteThreadNotAlive):
             smart_event2.wait()
 
+        with pytest.raises(RemoteThreadNotAlive):
+            smart_event2.wait_until(WUCond.RemoteWaiting)
+
         assert smart_event2.alpha_thread is alpha_t
         assert smart_event2.beta_thread is my_tab_thread
 
@@ -764,7 +844,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_set_threads_thread_event_app(self) -> None:
         """Test set_thread with thread_event_app."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         #######################################################################
@@ -797,7 +878,7 @@ class TestSmartEventBasic:
         my_te1_thread.set_thread(beta=my_te1_thread)
 
         assert my_te1_thread.alpha_thread is alpha_t
-        assert my_te1_thread.beta_thread is my_ta1_thread
+        assert my_te1_thread.beta_thread is my_te1_thread
 
         my_te1_thread.start()
 
@@ -812,6 +893,9 @@ class TestSmartEventBasic:
 
         with pytest.raises(RemoteThreadNotAlive):
             my_te1_thread.wait()
+
+        with pytest.raises(RemoteThreadNotAlive):
+            my_te1_thread.wait_until(WUCond.RemoteWaiting)
 
         assert my_te1_thread.alpha_thread is alpha_t
         assert my_te1_thread.beta_thread is my_te1_thread
@@ -857,6 +941,9 @@ class TestSmartEventBasic:
         with pytest.raises(RemoteThreadNotAlive):
             my_te2_thread.wait()
 
+        with pytest.raises(RemoteThreadNotAlive):
+            my_te2_thread.wait_until(WUCond.RemoteWaiting, timeout=2)
+
         assert my_te2_thread.alpha_thread is alpha_t
         assert my_te2_thread.beta_thread is my_te2_thread
 
@@ -899,7 +986,10 @@ class TestSmartEventBasic:
             my_te3_thread.set()
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te3_thread.wait()
+            my_te3_thread.wait(timeout=3)
+
+        with pytest.raises(RemoteThreadNotAlive):
+            my_te3_thread.wait_until(WUCond.RemoteWaiting)
 
         assert my_te3_thread.alpha_thread is alpha_t
         assert my_te3_thread.beta_thread is my_te3_thread
@@ -944,6 +1034,9 @@ class TestSmartEventBasic:
         with pytest.raises(RemoteThreadNotAlive):
             my_te4_thread.wait()
 
+        with pytest.raises(RemoteThreadNotAlive):
+            my_te4_thread.wait(WUCond.RemoteWaiting)
+
         assert my_te4_thread.alpha_thread is alpha_t
         assert my_te4_thread.beta_thread is my_te4_thread
 
@@ -952,27 +1045,31 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_set_threads_two_f_threads(self) -> None:
         """Test set_thread with thread_event_app."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         #######################################################################
         # two threads - mainline sets alpha and beta
         #######################################################################
         def fa1(s_event):
-            logger.debug('fa entered')
+            logger.debug('fa1 entered')
             my_fa_thread = threading.current_thread()
             assert s_event.alpha_thread is my_fa_thread
 
+            logger.debug('fa1 about to wait')
             s_event.wait()
+            logger.debug('fa1 back from wait')
             time.sleep(1)
             s_event.set()
 
         def fb1(s_event):
-            logger.debug('fb entered')
+            logger.debug('fb1 entered')
             my_fb_thread = threading.current_thread()
             assert s_event.beta_thread is my_fb_thread
 
             time.sleep(1)
+            logger.debug('fb1 about to set')
             s_event.set()
             s_event.wait()
 
@@ -984,6 +1081,9 @@ class TestSmartEventBasic:
             with pytest.raises(RemoteThreadNotAlive):
                 s_event.wait()
 
+            with pytest.raises(RemoteThreadNotAlive):
+                s_event.wait_until(WUCond.RemoteWaiting)
+
 
         smart_event_ab1 = SmartEvent()
         fa1_thread = threading.Thread(target=fa1, args=(smart_event_ab1,))
@@ -992,7 +1092,10 @@ class TestSmartEventBasic:
         fb1_thread = threading.Thread(target=fb1, args=(smart_event_ab1,))
         smart_event_ab1.set_thread(beta=fb1_thread)
 
+        logger.debug('starting fa1_thread')
         fa1_thread.start()
+        time.sleep(10)
+        logger.debug('starting fb1_thread')
         fb1_thread.start()
 
         fa1_thread.join()
@@ -1005,11 +1108,14 @@ class TestSmartEventBasic:
         del fb1_thread
         del smart_event_ab1
 
+        if exception_error_msg:
+            raise Exception(f'{exception_error_msg}')
+
         #######################################################################
         # two threads - fa2 and fb2 set their own threads
         #######################################################################
         def fa2(s_event):
-            logger.debug('fa entered')
+            logger.debug('fa2 entered')
             my_fa_thread = threading.current_thread()
             s_event.set_thread(alpha=my_fa_thread)
             assert s_event.alpha_thread is my_fa_thread
@@ -1019,7 +1125,7 @@ class TestSmartEventBasic:
             s_event.set()
 
         def fb2(s_event):
-            logger.debug('fb entered')
+            logger.debug('fb2 entered')
             my_fb_thread = threading.current_thread()
             s_event.set_thread(beta=threading.current_thread())
             assert s_event.beta_thread is my_fb_thread
@@ -1055,7 +1161,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_f1_clear(self) -> None:
         """Test smart event timeout with f1 thread."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         def f1(s_event):
@@ -1107,7 +1214,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_thread_app_clear(self) -> None:
         """Test smart event timeout with thread_app thread."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         class MyThread(threading.Thread):
@@ -1165,7 +1273,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_f1_time_out(self) -> None:
         """Test smart event timeout with f1 thread."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         def f1(s_event):
@@ -1188,7 +1297,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_thread_app_time_out(self) -> None:
         """Test smart event timeout with thread_app thread."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         class MyThread(threading.Thread):
@@ -1218,7 +1328,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_f1_event_code(self) -> None:
         """Test smart event code with f1 thread."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         def f1(s_event):
@@ -1246,7 +1357,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_thread_app_event_code(self) -> None:
         """Test smart event code with thread_app thread."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         class MyThread(threading.Thread):
@@ -1281,7 +1393,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_thread_event_app_event_code(self) -> None:
         """Test smart event code with thread_event_app thread."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         class MyThread(threading.Thread, SmartEvent):
@@ -1320,7 +1433,8 @@ class TestSmartEventBasic:
             caplog: fixture to capture log messages
 
         """
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         def f1(s_event):
@@ -1352,7 +1466,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_thread_app_event_logger(self) -> None:
         """Test smart event logger with thread_app thread."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         class MyThread(threading.Thread):
@@ -1384,7 +1499,8 @@ class TestSmartEventBasic:
     ###########################################################################
     def test_smart_event_thread_event_app_event_logger(self) -> None:
         """Test smart event logger with thread_event_app thread."""
-
+        global exception_error_msg
+        exception_error_msg = ''
         threading.excepthook = my_excepthook
 
         class MyThread(threading.Thread, SmartEvent):
@@ -1862,3 +1978,36 @@ class TestSmartEventBasic:
         smart_event_app.join()
         if smart_event_app.exc:
             raise smart_event_app.exc
+
+class TestExc:
+    def test1(self):
+        global exception_error_msg
+        exception_error_msg = ''
+        threading.excepthook = my_excepthook
+
+        def f1():
+            raise Exception('my test1 f1 exception')
+
+        f1_thread = threading.Thread(target=f1)
+        f1_thread.start()
+
+        if exception_error_msg:
+            raise Exception(f'{exception_error_msg}')
+
+    def test2(self):
+        global exception_error_msg
+        exception_error_msg = ''
+        threading.excepthook = my_excepthook
+
+        def f1():
+            raise Exception('my test2 f1 exception')
+            return
+
+        f1_thread = threading.Thread(target=f1)
+        f1_thread.start()
+
+        if exception_error_msg:
+            logger.debug(f'exception error in f2 {exception_error_msg}')
+
+        if exception_error_msg:
+            raise Exception(f'And again: {exception_error_msg}')
