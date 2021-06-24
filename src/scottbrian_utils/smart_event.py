@@ -51,8 +51,9 @@ The smart_event module contains:
 import time
 import threading
 from enum import Enum
-from typing import (Any, Final, NamedTuple, Optional, Type, TYPE_CHECKING,
-                    Union)
+from dataclasses import dataclass
+from typing import (Any, Final, NamedTuple, Optional, Tuple, Type,
+                    TYPE_CHECKING, Union)
 
 from scottbrian_utils.diag_msg import get_formatted_call_sequence
 
@@ -115,25 +116,49 @@ class WaitDeadlockDetected(SmartEventError):
     pass
 
 
+class ConflictingSyncAndDeadlockDetected(SmartEventError):
+    """SmartEvent exception for conflicting requests."""
+    pass
+
+
 ###############################################################################
 # wait_until conditions
 ###############################################################################
 WUCond = Enum('WUCond',
               'ThreadsReady RemoteWaiting RemoteSet')
 
+
+###############################################################################
+# ThreadEvent Class
+###############################################################################
+# @dataclass
+# class ThreadEvent:
+#     thread: threading.Thread = None
+#     event: threading.Event = threading.Event()
+#     code: Any = None
+#     waiting: bool = False
+#     sync_wait: bool = False
+
+
 ###############################################################################
 # SmartEvent class
 ###############################################################################
-class SmartEvent():
+class SmartEvent:
     """Provides a coordination mechanism between two threads."""
 
     WAIT_UNTIL_TIMEOUT: Final[int] = 16
 
-    class WorkSet(NamedTuple):
-        current_thread: threading.Thread
-        remote_thread: threading.Thread
-        set_event: threading.Event
-        wait_event: threading.Event
+    ###########################################################################
+    # ThreadEvent Class
+    ###########################################################################
+    @dataclass
+    class ThreadEvent:
+        name: str
+        thread: threading.Thread = None
+        event: threading.Event = threading.Event()
+        code: Any = None
+        waiting: bool = False
+        sync_wait: bool = False
 
     def __init__(self,
                  alpha: Optional[threading.Thread] = None,
@@ -147,26 +172,17 @@ class SmartEvent():
             beta: instance of a thread object that is used to determine
                      which event is to be set or waited on.
 
-        Raises:
-            IncorrectThreadSpecified: The alpha or beta arguments must be of
-                                        type threading.Thread.
-            DuplicateThreadSpecified: The alpha and beta arguments must be
-                                        be for separate objects of type
-                                        threading.Thread.
-
         """
-        self.alpha_thread = None
-        self.beta_thread = None
+        self._wait_check_lock = threading.Lock()
         self._both_threads_set = False
+        self._sync_detected = False
+        self._deadlock_detected = False
+
+        self.alpha = SmartEvent.ThreadEvent(name='alpha')
+        self.beta = SmartEvent.ThreadEvent(name='beta')
 
         if alpha or beta:
             self.set_thread(alpha, beta)
-
-        self.alpha_event = threading.Event()
-        self.beta_event = threading.Event()
-
-        self.alpha_code = None
-        self.beta_code = None
 
     ###########################################################################
     # repr
@@ -177,7 +193,7 @@ class SmartEvent():
         Returns:
             The representation as how the class is instantiated
 
-        :Example: instantiate an SmartEvent
+        :Example: instantiate a SmartEvent and call repr
 
         >>> from scottbrian_utils.smart_event import SmartEvent
         >>> smart_event = SmartEvent()
@@ -190,11 +206,11 @@ class SmartEvent():
         classname = self.__class__.__name__
         parms = ''
         comma_space = ''
-        if self.alpha_thread:
-            parms += f'alpha={repr(self.alpha_thread)}'
+        if self.alpha.thread:
+            parms += f'alpha={repr(self.alpha.thread)}'
             comma_space = ', '
-        if self.beta_thread:
-            parms += f'{comma_space}beta={repr(self.beta_thread)}'
+        if self.beta.thread:
+            parms += f'{comma_space}beta={repr(self.beta.thread)}'
 
         return f'{classname}({parms})'
 
@@ -217,14 +233,14 @@ class SmartEvent():
             NeitherAlphaNorBetaSpecified:  One of alpha or beta must be
                                              specified for a set_threads
                                              request.
-            IncorrectThreadSpecified: The alpha or beta arguments must be of
+            IncorrectThreadSpecified: The alpha and beta arguments must be of
                                         type threading.Thread.
             DuplicateThreadSpecified: The alpha and beta arguments must be
-                                        for separate objects of type
-                                        threading.Thread.
+                                        for separate and distinct objects of
+                                        type threading.Thread.
             ThreadAlreadySet: The set_thread method detected that the
                                 specified thread has already been set to
-                                either a different or the same thread
+                                either a different or the same input thread.
 
         :Example: instantiate a SmartEvent and set the alpha thread
 
@@ -236,37 +252,98 @@ class SmartEvent():
         if not (alpha or beta):
             raise NeitherAlphaNorBetaSpecified(
                 'One of alpha or beta must be specified for a '
-                'set_threads request.')
+                'set_threads request. '
+                f'Call sequence: {get_formatted_call_sequence()}')
+
         if ((alpha and not isinstance(alpha, threading.Thread))
                 or (beta and not isinstance(beta, threading.Thread))):
             raise IncorrectThreadSpecified(
-                'The alpha or beta arguments must be of type '
+                'The alpha and beta arguments must be of type '
                 'threading.Thread. '
                 f'Call sequence: {get_formatted_call_sequence()}')
 
-        if ((alpha and alpha is self.beta_thread)
-                or (beta and beta is self.alpha_thread)
+        if ((alpha and alpha is self.beta.thread)
+                or (beta and beta is self.alpha.thread)
                 or (alpha and (alpha is beta))):
             raise DuplicateThreadSpecified(
                 'The alpha and beta arguments must be be for separate '
-                'objects of type threading.Thread. '
+                'and distinct objects of type threading.Thread. '
                 f'Call sequence: {get_formatted_call_sequence()}')
 
-        if ((alpha and self.alpha_thread)
-                or (beta and self.beta_thread)):
+        if ((alpha and self.alpha.thread)
+                or (beta and self.beta.thread)):
             raise ThreadAlreadySet(
                 'The set_thread method detected that the specified '
                 'thread has already been set to either a different or the '
-                'same thread. '
+                'same input thread. '
                 f'Call sequence: {get_formatted_call_sequence()}')
 
         if alpha:
-            self.alpha_thread = alpha
+            self.alpha.thread = alpha
         if beta:
-            self.beta_thread = beta
+            self.beta.thread = beta
 
-        if self.alpha_thread and self.beta_thread:
+        if self.alpha.thread and self.beta.thread:
             self._both_threads_set = True
+
+    ###########################################################################
+    # sync
+    ###########################################################################
+    def sync(self,
+             log_msg: Optional[str] = None,
+             timeout: Optional[Union[int, float]] = None) -> bool:
+        """Sync up the threads.
+
+        Args:
+            log_msg: log msg to log
+            timeout: number of seconds to allow for sync to happen
+
+        Return:
+            True is the sync was successful, False if it timed out
+
+        Raises:
+            BothAlphaBetaNotSet: Both threads must be set before any
+                                   SmartEvent services can be called
+            DetectedOpFromForeignThread: The wait method must be called
+                                           from either the alpha or the
+                                           beta thread registered at time
+                                           of instantiation or via the
+                                           set_thread method
+            RemoteThreadNotAlive: The wait service has detected that the
+                                    alpha or beta thread is not alive
+            WaitDeadlockDetected: Both threads are deadlocked, each waiting
+                                    on the other to set their event.
+            ConflictingSyncAndDeadlockDetected: A sync request was made by
+                                                  the current thread but the
+                                                  but the remote thread
+                                                  detected deadlock instead
+                                                  which indicates that the
+                                                  remote thread did not make a
+                                                  matching sync request.
+
+        :Example: instantiate a SmartEvent and sync the threads
+
+        >>> from scottbrian_utils.smart_event import SmartEvent
+        >>> import threading
+        >>> def f1(smart_event: SmartEvent) -> None:
+        ...     smart_event.sync()
+
+        >>> smart_event = SmartEvent(alpha=threading.current_thread())
+        >>> f1_thread = threading.Thread(target=f1, args=(smart_event,))
+        >>> smart_event.set_thread(beta=f1_thread)
+        >>> f1_thread.start()
+        >>> smart_event.sync()
+        >>> f1_thread.join()
+
+        """
+        current, remote = self._get_current_remote()
+
+        if log_msg:
+            caller_info = get_formatted_call_sequence(latest=1, depth=1)
+            logger.debug(f'{caller_info} {log_msg}')
+
+        current.sync_wait = True
+        remote.event.wait(timeout=timeout)
 
     ###########################################################################
     # wait
@@ -278,7 +355,7 @@ class SmartEvent():
 
         Args:
             log_msg: log msg to log
-            timeout: number of seconds to wait for full queue to get free slot
+            timeout: number of seconds to allow for wait
 
         Return:
             True is the wait was successful, False if it timed out
@@ -294,7 +371,14 @@ class SmartEvent():
             RemoteThreadNotAlive: The wait service has detected that the
                                     alpha or beta thread is not alive
             WaitDeadlockDetected: Both threads are deadlocked, each waiting
-                                    on their event.
+                                    on the other to set their event.
+            ConflictingSyncAndDeadlockDetected: A sync request was made by
+                                                  the current thread but the
+                                                  but the remote thread
+                                                  detected deadlock instead
+                                                  which indicates that the
+                                                  remote thread did not make a
+                                                  matching sync request.
 
         :Example: instantiate a SmartEvent and wait for function to set
 
@@ -312,7 +396,7 @@ class SmartEvent():
         >>> f1_thread.join()
 
         """
-        work_set = self._get_work_set()
+        current, remote = self._get_current_remote()
 
         if timeout and (timeout > 0):
             t_out = min(0.1, timeout)
@@ -323,33 +407,99 @@ class SmartEvent():
             caller_info = get_formatted_call_sequence(latest=1, depth=1)
             logger.debug(f'{caller_info} {log_msg}')
 
-        start_time = time.time()
-        while not work_set.wait_event.wait(timeout=t_out):
-            if ((not work_set.remote_thread.is_alive())
-                    and (not work_set.wait_event.is_set())):
-                dead_thread = 'alpha' if work_set.remote_thread is \
-                                              self.alpha_thread else 'beta'
-                raise RemoteThreadNotAlive(
-                    f'The wait service has detected that {dead_thread} thread '
-                    'is not alive. '
-                    f'Call sequence: {get_formatted_call_sequence()}')
+        try:
+            current.waiting = True
+            start_time = time.time()
+            while ((not remote.event.wait(timeout=t_out))
+                    or self._sync_detected
+                    or self._deadlock_detected):
+                # We need to do the following checks while locked to prevent
+                # either
+                # thread from setting the other thread's deadlock flag AFTER
+                # the other thread has already detected deadlock and is now
+                # gone.
+                # The proper protocol for deadlock detection is:
+                # obtain the lock
+                # if remote thread waiting or deadlock flag
+                #     if our deadlock flag is False
+                #         set remote deadlock flag
+                #     set our deadlock flag to False
+                #     raise deadlock
+                with self._wait_check_lock:
+                    if not (remote.thread.is_alive()
+                            or remote.event.is_set()
+                            or self._sync_detected
+                            or self._deadlock_detected):
+                        dead_thread = remote.name
+                        raise RemoteThreadNotAlive(
+                            f'The wait service has detected that {dead_thread} '
+                            'thread is not alive. '
+                            f'Call sequence: {get_formatted_call_sequence()}')
 
-            # Note that the following check must also check that we are
-            # still waiting AFTER seeing that the remote is waiting. This is
-            # to ensure we are not in the window where the above check in
-            # the while statement was true and then while processing in the
-            # body here the remote set our event and went into an immediate
-            # wait which is perfectly fine.
-            if ((len(work_set.set_event._cond._waiters) > 0)
-                    and (not work_set.set_event.is_set())
-                    and (not work_set.wait_event.is_set())):
-                raise WaitDeadlockDetected('Both threads are '
-                                           'deadlocked, each waiting on '
-                                           'their event.')
-            if timeout and (timeout < (time.time() - start_time)):
-                return False
+                    # Note that the following check must also check that we are
+                    # still waiting AFTER seeing that the remote is waiting.
+                    # This
+                    # is to ensure we are not in the window where the above
+                    # check in the while statement was true and then while
+                    # processing in the body here the remote set our event and
+                    # went into an immediate wait which is perfectly fine.
+                    if (remote.waiting
+                            and not (current.event.is_set()
+                                     or remote.event.is_set())
+                            or self._sync_detected
+                            or self._deadlock_detected):
 
-        work_set.wait_event.clear()  # be ready for next wait
+                        if current.sync_wait:
+                            if self._deadlock_detected:
+                                # reset both flags
+                                self._sync_detected = False
+                                self._deadlock_detected = False
+                                raise ConflictingSyncAndDeadlockDetected(
+                                    'A sync request was made by thread '
+                                    f'{current.name} but remote thread '
+                                    f'{remote.name} detected deadlock instead '
+                                    'which indicates that the remote '
+                                    'thread did not make a matching sync '
+                                    'request.')
+                            # Flip the sync detected flag. If we discover sync
+                            # first, flipping will set the flag to True to
+                            # notify the remote. Otherwise, if remote
+                            # flipped the flag to true to let us know sync
+                            # was detected, our flip will set it to False.
+                            self._sync_detected = not self._sync_detected
+                            return True
+                        else:
+                            if self._sync_detected:
+                                # reset both flags
+                                self._sync_detected = False
+                                self._deadlock_detected = False
+                                raise ConflictingSyncAndDeadlockDetected(
+                                    'A sync request appears to have been '
+                                    f'made by remote thread {remote.name} but '
+                                    f'the current thread {current.name} '
+                                    'did not make a matching sync '
+                                    'request.')
+
+                        # Flip the deadlock_detected flag. If on, then remote
+                        # saw the deadlock first and now we must set the flag
+                        # back to False. If off, then we are seeing the
+                        # deadlock and must set the flag True to notify the
+                        # remote thread who will turn it back to False.
+                        self._deadlock_detected = not self._deadlock_detected
+                        raise WaitDeadlockDetected(
+                            'Both threads are deadlocked, each waiting on '
+                            'the other to set their event.')
+
+                    if timeout and (timeout < (time.time() - start_time)):
+                        # make sure remote does not see us waiting
+                        current.waiting = False
+                        current.sync_wait = False
+                        return False
+        finally:
+            current.waiting = False
+            current.sync_wait = False
+            remote.event.clear()  # be ready for next wait
+
         return True
 
     ###########################################################################
@@ -391,28 +541,28 @@ class SmartEvent():
         >>> f1_thread.join()
 
         """
-        work_set = self._get_work_set()
+        current, remote = self._get_current_remote()
 
         if log_msg:  # if caller specified a log message to issue
             # we want the prior 2 callers (latest=1, depth=2)
             logger.debug(f'{get_formatted_call_sequence(latest=1, depth=2)} '
                          f'{log_msg}')
 
-        if not work_set.remote_thread.is_alive():
-            dead_thread = 'alpha' if work_set.remote_thread is \
-                                     self.alpha_thread else 'beta'
+        if not remote.thread.is_alive():
+            dead_thread = remote.name
             raise RemoteThreadNotAlive(
                 f'The set service has detected that {dead_thread} thread '
                 'is not alive. '
                 f'Call sequence: {get_formatted_call_sequence()}')
 
         if code:  # if caller specified a code for the remote thread
-            if work_set.remote_thread is self.alpha_thread:
-                self.alpha_code = code
-            else:
-                self.beta_code = code
+            remote.code = code
+            # if work_set.remote_thread is self.alpha_thread:
+            #     self.alpha_code = code
+            # else:
+            #     self.beta_code = code
 
-        work_set.set_event.set()  # wake remote thread
+        current.event.set()  # wake remote thread
 
     ###########################################################################
     # get_code
@@ -450,55 +600,8 @@ class SmartEvent():
         >>> f1_thread.join()
 
         """
-        work_set = self._get_work_set()
-        if work_set.current_thread is self.alpha_thread:
-            return self.alpha_code
-        else:
-            return self.beta_code
-
-    ###########################################################################
-    # get_work_set
-    ###########################################################################
-    def _get_work_set(self) -> WorkSet:
-        """Get the remote thread and events for the current thread.
-
-        Raises:
-            BothAlphaBetaNotSet: Both threads must be set before wait_until
-                                   can be called to wait until the remote is
-                                   waiting
-            DetectedOpFromForeignThread: The wait_until method must be
-                                           called from either the alpha or
-                                           the beta thread registered at time
-                                            of instantiation or via the
-                                            set_thread method
-            WaitUntilTimeout: The wait_until method timed out
-
-        Returns:
-            A WorkSet named tuple with the remote thread and events
-
-        """
-        if not self._both_threads_set:
-            raise BothAlphaBetaNotSet(
-                'Both threads must be set before any '
-                'SmartEvent services can be called. '
-                f'Call sequence: {get_formatted_call_sequence(1,2)}')
-        current_thread = threading.current_thread()
-        if current_thread is self.alpha_thread:
-            return SmartEvent.WorkSet(current_thread=current_thread,
-                                      remote_thread=self.beta_thread,
-                                      set_event=self.alpha_event,
-                                      wait_event=self.beta_event)
-        elif current_thread is self.beta_thread:
-            return SmartEvent.WorkSet(current_thread=current_thread,
-                                      remote_thread=self.alpha_thread,
-                                      set_event=self.beta_event,
-                                      wait_event=self.alpha_event)
-        else:
-            raise DetectedOpFromForeignThread(
-                'The wait method must be called from either the alpha or '
-                'the beta thread registered at time of instantiation or '
-                'via the set_thread method. '
-                f'Call sequence: {get_formatted_call_sequence(1,2)}')
+        current, _ = self._get_current_remote()
+        return current.code
 
     ###########################################################################
     # wait_until
@@ -553,8 +656,8 @@ class SmartEvent():
         #######################################################################
         if cond == WUCond.ThreadsReady:
             while not (self._both_threads_set
-                       and self.alpha_thread.is_alive()
-                       and self.beta_thread.is_alive()):
+                       and self.alpha.thread.is_alive()
+                       and self.beta.thread.is_alive()):
                 if timeout and (timeout < (time.time() - start_time)):
                     raise WaitUntilTimeout(
                         'The wait_until method timed out. '
@@ -565,11 +668,10 @@ class SmartEvent():
         # Handle RemoteWaiting
         #######################################################################
         elif cond == WUCond.RemoteWaiting:
-            work_set = self._get_work_set()
-            while len(work_set.set_event._cond._waiters) == 0:
-                if not work_set.remote_thread.is_alive():
-                    dead_thread = 'alpha' if work_set.remote_thread is \
-                                             self.alpha_thread else 'beta'
+            current, remote = self._get_current_remote()
+            while len(current.event._cond._waiters) == 0:
+                if not remote.thread.is_alive():
+                    dead_thread = remote.name
                     raise RemoteThreadNotAlive(
                         f'The wait service has detected that {dead_thread} '
                         'thread is not alive. '
@@ -587,10 +689,9 @@ class SmartEvent():
         #######################################################################
         elif cond == WUCond.RemoteSet:
             work_set = self._get_work_set()
-            while not work_set.wait_event.is_set():
-                if not work_set.remote_thread.is_alive():
-                    dead_thread = 'alpha' if work_set.remote_thread is \
-                                             self.alpha_thread else 'beta'
+            while not work_set.remote.event.is_set():
+                if not work_set.remote.thread.is_alive():
+                    dead_thread = work_set.remote.name
                     raise RemoteThreadNotAlive(
                         f'The wait service has detected that {dead_thread} '
                         'thread is not alive. '
@@ -602,3 +703,43 @@ class SmartEvent():
                         f'Call sequence: {get_formatted_call_sequence(1,1)}')
 
                 time.sleep(t_out)
+
+    ###########################################################################
+    # _get_current_remote
+    ###########################################################################
+    def _get_current_remote(self) -> Tuple[ThreadEvent, ThreadEvent]:
+        """Get the current and remote ThreadEvent objects.
+
+        Raises:
+            BothAlphaBetaNotSet: Both threads must be set before wait_until
+                                   can be called to wait until the remote is
+                                   waiting
+            DetectedOpFromForeignThread: The wait_until method must be
+                                           called from either the alpha or
+                                           the beta thread registered at time
+                                            of instantiation or via the
+                                            set_thread method
+            WaitUntilTimeout: The wait_until method timed out
+
+        Returns:
+            The current and remote ThreadEvent objects
+
+        """
+        if not self._both_threads_set:
+            raise BothAlphaBetaNotSet(
+                'Both threads must be set before any '
+                'SmartEvent services can be called. '
+                f'Call sequence: {get_formatted_call_sequence(1,2)}')
+        current_thread = threading.current_thread()
+        if current_thread is self.alpha.thread:
+            return self.alpha, self.beta
+
+        elif current_thread is self.beta.thread:
+            return self.beta, self.alpha
+
+        else:
+            raise DetectedOpFromForeignThread(
+                'The wait method must be called from either the alpha or '
+                'the beta thread registered at time of instantiation or '
+                'via the set_thread method. '
+                f'Call sequence: {get_formatted_call_sequence(1,2)}')
