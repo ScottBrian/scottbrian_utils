@@ -18,7 +18,9 @@ from scottbrian_utils.smart_event import (SmartEvent,
                                           DetectedOpFromForeignThread,
                                           RemoteThreadNotAlive,
                                           WaitUntilTimeout,
-                                          WaitDeadlockDetected)
+                                          WaitDeadlockDetected,
+                                          ConflictDeadlockDetected,
+                                          InconsistentFlagSettings)
 
 import logging
 
@@ -583,6 +585,47 @@ class TestSmartEventBasic:
             raise Exception(f'{exception_error_msg}')
 
     ###########################################################################
+    # test_smart_event_sync
+    ###########################################################################
+    def test_smart_event_sync(self) -> None:
+        """Test set_thread with f1."""
+        global exception_error_msg
+        exception_error_msg = ''
+        threading.excepthook = my_excepthook
+
+        def f1(s_event):
+            logger.debug('f1 beta entered')
+            s_event.sync(log_msg='f1 beta sync point 1')
+
+            s_event.wait()
+
+            logger.debug('f1 beta exiting')
+
+
+        logger.debug('mainline entered')
+        smart_event1 = SmartEvent(alpha=threading.current_thread())
+        f1_thread = threading.Thread(target=f1, args=(smart_event1,))
+        smart_event1.set_thread(beta=f1_thread)
+
+        logger.debug(f'id(smart_event1.alpha.event) = '
+                     f'{id(smart_event1.alpha.event)}')
+        logger.debug(f'id(smart_event1.beta.event) = '
+                     f'{id(smart_event1.beta.event)}')
+
+        f1_thread.start()
+
+        smart_event1.sync(log_msg='mainline sync point 1')
+
+        smart_event1.set()
+
+        f1_thread.join()
+
+        logger.debug('mainline exiting')
+
+        if exception_error_msg:
+            raise Exception(f'{exception_error_msg}')
+
+    ###########################################################################
     # test_smart_event_set_threads_f1
     ###########################################################################
     def test_smart_event_set_threads_f1(self) -> None:
@@ -606,16 +649,24 @@ class TestSmartEventBasic:
             assert s_event.beta.thread is my_c_thread
             assert s_event.beta.thread is threading.current_thread()
 
+            s_event.sync(log_msg='        f1 beta sync point 1')
+
+            logger.debug('        f1 beta about to enter cmd loop')
             while cmd[0] != Cmd.Exit:
                 if cmd[0] == Cmd.Wait:
+                    cmd[0] = 0
                     assert s_event.wait()
+
                 elif cmd[0] == Cmd.Set:
+                    cmd[0] = 0
                     with pytest.raises(WaitUntilTimeout):
                         s_event.wait_until(WUCond.RemoteWaiting, timeout=0.002)
                     with pytest.raises(WaitUntilTimeout):
                         s_event.wait_until(WUCond.RemoteWaiting, timeout=0.01)
                     with pytest.raises(WaitUntilTimeout):
                         s_event.wait_until(WUCond.RemoteWaiting, timeout=0.02)
+
+                    s_event.sync(log_msg='        f1 beta sync point 2')
 
                     s_event.wait_until(WUCond.RemoteWaiting)
                     s_event.wait_until(WUCond.RemoteWaiting, timeout=0.001)
@@ -636,22 +687,33 @@ class TestSmartEventBasic:
             with pytest.raises(BothAlphaBetaNotSet):
                 s_event.wait_until(WUCond.RemoteWaiting, timeout=0.02)
 
-
+            cmd[0] = Cmd.Exit
 
             logger.debug('foreign1 about to wait_until ThreadsReady')
             s_event.wait_until(WUCond.ThreadsReady, timeout=10)
-
-            s_event.sync()
 
             with pytest.raises(DetectedOpFromForeignThread):
                 s_event.wait_until(WUCond.RemoteWaiting, timeout=0.02)
             with pytest.raises(DetectedOpFromForeignThread):
                 s_event.wait_until(WUCond.RemoteWaiting)
+            with pytest.raises(DetectedOpFromForeignThread):
+                s_event.wait()
+            with pytest.raises(DetectedOpFromForeignThread):
+                s_event.set()
+            with pytest.raises(DetectedOpFromForeignThread):
+                s_event.sync()
+
             logger.debug('foreign1 exiting')
 
         cmd = [0]
         alpha_t = threading.current_thread()
         smart_event1 = SmartEvent(alpha=threading.current_thread())
+
+        logger.debug(f'id(smart_event1.alpha.event) = '
+                     f'{id(smart_event1.alpha.event)}')
+        logger.debug(f'id(smart_event1.beta.event) = '
+                     f'{id(smart_event1.beta.event)}')
+
         my_foreign1_thread = threading.Thread(target=foreign1,
                                               args=(smart_event1,))
         my_foreign1_thread.start()
@@ -671,19 +733,22 @@ class TestSmartEventBasic:
         with pytest.raises(BothAlphaBetaNotSet):
             smart_event1.wait_until(WUCond.RemoteWaiting)
 
+        while cmd[0] != Cmd.Exit:
+            time.sleep(0.2)
 
+        cmd[0] = 0
 
         logger.debug('mainline about to set beta thread')
         smart_event1.set_thread(beta=my_f1_thread)
         logger.debug('mainline back from setting beta thread')
 
-        smart_event1.sync()
-
         with pytest.raises(WaitUntilTimeout):
             smart_event1.wait_until(WUCond.ThreadsReady, timeout=0.005)
+
         my_f1_thread.start()
         smart_event1.wait_until(WUCond.ThreadsReady, timeout=1)
 
+        smart_event1.sync(log_msg='mainline sync point 1')
 
         logger.debug('about to wait_until RemoteWaiting')
         with pytest.raises(WaitUntilTimeout):
@@ -696,6 +761,7 @@ class TestSmartEventBasic:
             smart_event1.wait_until(WUCond.RemoteWaiting, timeout=1)
 
         cmd[0] = Cmd.Wait
+
         smart_event1.wait_until(WUCond.RemoteWaiting)
         smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.001)
         smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.01)
@@ -707,10 +773,8 @@ class TestSmartEventBasic:
         smart_event1.set()
 
         cmd[0] = Cmd.Set
-        time.sleep(2)
+        smart_event1.sync(log_msg='mainline sync point 2')
         assert smart_event1.wait()
-
-
 
         cmd[0] = Cmd.Exit
 
@@ -725,44 +789,66 @@ class TestSmartEventBasic:
         with pytest.raises(RemoteThreadNotAlive):
             smart_event1.wait_until(WUCond.RemoteWaiting)
 
+        with pytest.raises(RemoteThreadNotAlive):
+            smart_event1.sync(log_msg='mainline sync point 3')
+
         assert smart_event1.alpha.thread is alpha_t
         assert smart_event1.beta.thread is my_f1_thread
 
         del smart_event1
         del my_f1_thread
 
+        if exception_error_msg:
+            raise Exception(f'{exception_error_msg}')
+
         #######################################################################
         # mainline and f2 - f2 sets beta
         #######################################################################
 
         def f2(s_event, ml_thread):
-            print('f2 entered')
+            logger.debug('        f2 beta entered')
             my_c_thread = threading.current_thread()
-            time.sleep(3)
+
+            while cmd[0] != Cmd.Exit:
+                time.sleep(0.2)
+            cmd[0] = 0
+
             s_event.set_thread(beta=my_c_thread)
             assert s_event.alpha.thread is ml_thread
             assert s_event.alpha.thread is alpha_t
             assert s_event.beta.thread is my_c_thread
             assert s_event.beta.thread is threading.current_thread()
 
+            s_event.sync(log_msg='        f2 thread sync point 1')
+
             with pytest.raises(WaitDeadlockDetected):
                 s_event.wait()
 
+            s_event.sync(log_msg='        f2 thread sync point 2')
+
             s_event.wait()  # clear the set that comes after the deadlock
+
+            s_event.sync(log_msg='        f2 thread sync point 3')
 
             s_event.wait_until(WUCond.RemoteWaiting, timeout=2)
             with pytest.raises(WaitDeadlockDetected):
                 s_event.wait()
 
+            s_event.sync(log_msg='        f2 thread sync point 4')
+
             s_event.set()
 
+        cmd[0] = 0
         smart_event2 = SmartEvent(alpha=threading.current_thread())
+
         with pytest.raises(WaitUntilTimeout):
             smart_event2.wait_until(WUCond.ThreadsReady, timeout=0.001)
+
         my_f2_thread = threading.Thread(target=f2, args=(smart_event2,
                                                          alpha_t))
         with pytest.raises(WaitUntilTimeout):
             smart_event2.wait_until(WUCond.ThreadsReady, timeout=0.01)
+
         with pytest.raises(BothAlphaBetaNotSet):
             smart_event2.wait_until(WUCond.RemoteWaiting, timeout=-0.002)
         with pytest.raises(BothAlphaBetaNotSet):
@@ -777,26 +863,36 @@ class TestSmartEventBasic:
         my_f2_thread.start()
 
         with pytest.raises(WaitUntilTimeout):
-            smart_event2.wait_until(WUCond.ThreadsReady, timeout=2)
+            smart_event2.wait_until(WUCond.ThreadsReady, timeout=0.2)
         with pytest.raises(BothAlphaBetaNotSet):
             smart_event2.wait_until(WUCond.RemoteWaiting)
 
-        time.sleep(2)
+        cmd[0] = Cmd.Exit
+
         smart_event2.wait_until(WUCond.ThreadsReady)
         smart_event2.wait_until(WUCond.ThreadsReady, timeout=1)
         smart_event2.wait_until(WUCond.ThreadsReady, timeout=0)
         smart_event2.wait_until(WUCond.ThreadsReady, timeout=-1)
         smart_event2.wait_until(WUCond.ThreadsReady, timeout=-2)
 
-        smart_event2.wait_until(WUCond.RemoteWaiting, timeout=2)
+        smart_event2.sync(log_msg='mainline sync point 1')
+
         with pytest.raises(WaitDeadlockDetected):
             smart_event2.wait()
+
+        smart_event2.sync(log_msg='mainline sync point 2')
 
         smart_event2.set()
+
+        smart_event2.sync(log_msg='mainline sync point 3')
+
         with pytest.raises(WaitDeadlockDetected):
             smart_event2.wait()
 
+        smart_event2.sync(log_msg='mainline sync point 4')
+
         assert smart_event2.wait()  # clear set
+
         my_f2_thread.join()
 
         with pytest.raises(RemoteThreadNotAlive):
@@ -804,6 +900,9 @@ class TestSmartEventBasic:
 
         with pytest.raises(RemoteThreadNotAlive):
             smart_event2.wait()
+
+        with pytest.raises(RemoteThreadNotAlive):
+            smart_event2.sync(log_msg='mainline sync point 5')
 
         assert smart_event2.alpha.thread is alpha_t
         assert smart_event2.beta.thread is my_f2_thread
