@@ -100,9 +100,13 @@ def thread_exc(monkeypatch: Any) -> "ExcHook":
 
     monkeypatch.setattr(threading, "excepthook", mock_threading_excepthook)
     logger.debug(f'hook after: {threading.excepthook}')
+    new_hook = threading.excepthook
 
     yield exc_hook
     exc_hook.raise_exc_if_one()
+
+    # the following assert ensures -p no:threadexception was specified
+    assert threading.excepthook == new_hook
 
 
 ###############################################################################

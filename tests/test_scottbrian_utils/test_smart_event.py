@@ -6,6 +6,8 @@ import math
 import pytest
 from typing import Any, cast, List
 import threading
+import re
+import copy
 import traceback
 from scottbrian_utils.diag_msg import get_formatted_call_sequence
 from scottbrian_utils.smart_event import (SmartEvent,
@@ -1898,15 +1900,7 @@ class TestSmartEventCode:
     # test_smart_event_thread_event_app_event_code
     ###########################################################################
     def test_smart_event_thread_event_app_event_code(self) -> None:
-        """Test smart event code with thread_event_app thread.
-
-        Args:
-            thread_exc: exception capture fixture
-
-        Raises:
-            Exception: any uncaptured exception from a thread
-
-        """
+        """Test smart event code with thread_event_app thread."""
 
         class MyThread(threading.Thread, SmartEvent):
             def __init__(self,
@@ -1916,21 +1910,88 @@ class TestSmartEventCode:
 
             def run(self):
                 logger.debug('ThreadApp run entered')
-                assert self.get_code() is None
-                assert self.wait(timeout=2)
+
+                assert not self.alpha.code
+                assert not self.beta.code
+                assert not self.get_code()
+
+                self.sync(log_msg='beta sync point 1')
+
+                assert not self.wait(timeout=0.5)
+
+                assert not self.alpha.code
+                assert not self.beta.code
+                assert not self.get_code()
+
+                self.sync(log_msg='beta sync point 2')
+                self.sync(log_msg='beta sync point 3')
+
+                assert not self.alpha.code
+                assert self.beta.code == 42
                 assert self.get_code() == 42
-                time.sleep(4)
+
                 self.set(code='forty-two')
+
+                assert self.alpha.code == 'forty-two'
+                assert self.beta.code == 42
+                assert self.get_code() == 42
+
+                self.sync(log_msg='beta sync point 4')
+                self.sync(log_msg='beta sync point 5')
+
+                assert self.alpha.code == 'forty-two'
+                assert self.beta.code == 42
+                assert self.get_code() == 42
+
+                assert self.wait(timeout=0.5, log_msg='beta wait 56')
+
+                assert self.alpha.code == 'forty-two'
+                assert self.beta.code == 42
+                assert self.get_code() == 42
+
+                self.sync(log_msg='beta sync point 6')
 
         thread_event_app = MyThread(alpha=threading.current_thread())
         thread_event_app.start()
+        thread_event_app.wait_until(WUCond.ThreadsReady)
 
-        time.sleep(3)
+        assert not thread_event_app.alpha.code
+        assert not thread_event_app.beta.code
+        assert not thread_event_app.get_code()
 
-        thread_event_app.set(code=42)
+        thread_event_app.sync(log_msg='mainline sync point 1')
+        thread_event_app.sync(log_msg='mainline sync point 2')
+
+        assert not thread_event_app.alpha.code
+        assert not thread_event_app.beta.code
+        assert not thread_event_app.get_code()
+
+        thread_event_app.set(code=42, log_msg='mainline set for beta 56')
+
+        assert not thread_event_app.alpha.code
+        assert thread_event_app.beta.code == 42
+        assert not thread_event_app.get_code()
+
+        thread_event_app.sync(log_msg='mainline sync point 3')
+        thread_event_app.sync(log_msg='mainline sync point 4')
+
+        assert thread_event_app.alpha.code == 'forty-two'
+        assert thread_event_app.beta.code == 42
+        assert thread_event_app.get_code() == 'forty-two'
 
         assert thread_event_app.wait()
+
+        assert thread_event_app.alpha.code == 'forty-two'
+        assert thread_event_app.beta.code == 42
         assert thread_event_app.get_code() == 'forty-two'
+
+        thread_event_app.sync(log_msg='mainline sync point 5')
+
+        assert thread_event_app.alpha.code == 'forty-two'
+        assert thread_event_app.beta.code == 42
+        assert thread_event_app.get_code() == 'forty-two'
+
+        thread_event_app.sync(log_msg='mainline sync point 6')
 
         thread_event_app.join()
 
@@ -1949,34 +2010,144 @@ class TestSmartEventLogger:
         Args:
             caplog: fixture to capture log messages
 
-        Raises:
-            Exception: any uncaptured exception from a thread
-
         """
 
         def f1(s_event):
             logger.debug('f1 entered')
-            assert s_event.wait(log_msg='wait for mainline to post 1')
-            time.sleep(4)
-            s_event.set(log_msg='post mainline 4')
 
+            s_event.sync(log_msg='beta sync point 1')
+
+            assert s_event.wait(log_msg='wait for mainline to post 12')
+
+            s_event.sync(log_msg='beta sync point 2')
+
+            s_event.set(log_msg='post mainline 23')
+
+            s_event.sync(log_msg='beta sync point 3')
+            s_event.sync(log_msg='beta sync point 4')
+
+        logger.debug('mainline started')
         smart_event = SmartEvent(alpha=threading.current_thread())
         beta_thread = threading.Thread(target=f1, args=(smart_event,))
         smart_event.set_thread(beta=beta_thread)
         beta_thread.start()
-        time.sleep(1)
-        smart_event.set(log_msg=f'post thread {beta_thread.name} 2')
+        smart_event.wait_until(WUCond.ThreadsReady)
 
-        assert smart_event.wait(log_msg='wait for post from thread 3')
+        smart_event.sync(log_msg='mainline sync point 1')
+        smart_event.wait_until(WUCond.RemoteWaiting)
+
+        smart_event.set(log_msg=f'post beta 12')
+
+        smart_event.sync(log_msg='mainline sync point 2')
+        smart_event.sync(log_msg='mainline sync point 3')
+
+        assert smart_event.wait(log_msg='wait for pre-post 23')
+
+        smart_event.sync(log_msg='mainline sync point 4')
 
         beta_thread.join()
 
-        log_found = 0
-        for record in caplog.records:
-            if record.msg == 'wait for mainline to post 1':
-                log_found += 1
+        logger.debug('mainline all tests complete')
 
-        assert log_found == 1
+        #######################################################################
+        # verify log messages
+        #######################################################################
+        ml_log_seq = ('test_smart_event.py::TestSmartEventLogger.'
+                      'test_smart_event_f1_event_logger:[0-9]* ')
+
+        beta_log_seq = ('test_smart_event.py::f1:[0-9]* ')
+
+        ml_sync_enter_log_prefix = ('sync entered ' + ml_log_seq)
+
+        ml_sync_exit_log_prefix = ('sync exiting ' + ml_log_seq)
+
+        ml_wait_enter_log_prefix = ('wait entered ' + ml_log_seq)
+
+        ml_wait_exit_log_prefix = ('wait exiting ' + ml_log_seq)
+
+        ml_set_enter_log_prefix = ('set entered ' + ml_log_seq)
+
+        ml_set_exit_log_prefix = ('set exiting ' + ml_log_seq)
+
+        beta_sync_enter_log_prefix = ('sync entered ' + beta_log_seq)
+
+        beta_sync_exit_log_prefix = ('sync exiting ' + beta_log_seq)
+
+        beta_wait_enter_log_prefix = ('wait entered ' + beta_log_seq)
+
+        beta_wait_exit_log_prefix = ('wait exiting ' + beta_log_seq)
+
+        beta_set_enter_log_prefix = ('set entered ' + beta_log_seq)
+
+        beta_set_exit_log_prefix = ('set exiting ' + beta_log_seq)
+
+
+        exp_log_msgs = [
+            re.compile('mainline started'),
+            re.compile('mainline all tests complete'),
+
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 1'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 1'),
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 2'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 2'),
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 3'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 3'),
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 4'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 4'),
+
+            re.compile(ml_wait_enter_log_prefix + 'wait for pre-post 23'),
+            re.compile(ml_wait_exit_log_prefix + 'wait for pre-post 23'),
+
+            re.compile(ml_set_enter_log_prefix + 'post beta 12'),
+            re.compile(ml_set_exit_log_prefix + 'post beta 12'),
+
+            re.compile('f1 entered'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 1'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 1'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 2'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 2'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 3'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 3'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 4'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 4'),
+
+            re.compile(beta_wait_enter_log_prefix
+                       + 'wait for mainline to post 12'),
+            re.compile(beta_wait_exit_log_prefix
+                       + 'wait for mainline to post 12'),
+
+            re.compile(beta_set_enter_log_prefix + 'post mainline 23'),
+            re.compile(beta_set_exit_log_prefix + 'post mainline 23'),
+                        ]
+
+        log_records_found = 0
+        # caplog_recs = []
+        # for record in caplog.records:
+        #     caplog_recs.append(record.msg)
+
+        for idx, record in enumerate(caplog.records):
+            # print(record.msg)
+            # print(exp_log_msgs)
+            for idx2, l_msg in enumerate(exp_log_msgs):
+                if l_msg.match(record.msg):
+                    # print(l_msg.match(record.msg))
+                    exp_log_msgs.pop(idx2)
+                    # caplog_recs.remove(record.msg)
+                    log_records_found += 1
+                    break
+
+        # print(f'\nlog_records_found: {log_records_found} of {len(caplog.records)}')
+        #
+        # print('*' * 20)
+        # for log_msg in caplog_recs:
+        #     print(log_msg)
+        #
+        # print('*' * 20)
+        # for exp_lm in exp_log_msgs:
+        #     print(exp_lm)
+
+        assert not exp_log_msgs
+        assert log_records_found == len(caplog.records)
 
     ###########################################################################
     # test_smart_event_thread_app_event_logger

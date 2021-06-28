@@ -358,6 +358,16 @@ class SmartEvent:
             caller_info = get_formatted_call_sequence(latest=1, depth=1)
             logger.debug(f'sync entered {caller_info} {log_msg}')
 
+        # current.sync_wait = True
+
+        # if current.name == 'alpha':
+        #     ret_value = self.wait(timeout=timeout)  # , sync=True)
+        #     self.set()
+        # else:
+        #     self.set()
+        #     ret_value = self.wait(timeout=timeout)  # , sync=True)
+
+        current.waiting = True
         current.sync_wait = True
         ret_value = self.wait(timeout=timeout)
 
@@ -432,7 +442,7 @@ class SmartEvent:
             logger.debug(f'wait entered {caller_info} {log_msg}')
 
 
-        logger.debug(f'{current.name} about to enter wait loop')
+        #  logger.debug(f'{current.name} about to enter wait loop')
         current.waiting = True
         current_set_remote_sync_event = False
         start_time = time.time()
@@ -660,11 +670,11 @@ class SmartEvent:
 
         """
         current, remote = self._get_current_remote()
-        code_msg = f'with code: {code}' if code else ''
+        code_msg = f' with code: {code} ' if code else ' '
         if log_msg:  # if caller specified a log message to issue
             # we want the prior 2 callers (latest=1, depth=2)
-            logger.debug(f'set entered {code_msg} '
-                         f'{get_formatted_call_sequence(latest=1, depth=2)} '
+            logger.debug(f'set entered{code_msg}'
+                         f'{get_formatted_call_sequence(latest=1, depth=1)} '
                          f'{log_msg}')
 
         while True:
@@ -688,7 +698,11 @@ class SmartEvent:
                              or remote.conflict))
                         or (remote.conflict and not remote.deadlock)):
                     logger.debug(f'{current.name} raising '
-                                 'InconsistentFlagSettings')
+                                 'InconsistentFlagSettings. '
+                                 f'waiting: {remote.waiting}, '
+                                 f'sync_wait: {remote.sync_wait}, '
+                                 f'deadlock: {remote.deadlock}, '
+                                 f'conflict: {remote.conflict}, ')
                     raise InconsistentFlagSettings(
                         'The remote ThreadEvent flag settings are not valid.')
                 
@@ -706,9 +720,9 @@ class SmartEvent:
                     if code:  # if caller specified a code for remote thread
                         remote.code = code
 
-                    logger.debug(
-                        f'{current.name} about to set event {code_msg} '
-                        f'{get_formatted_call_sequence(latest=1, depth=2)} ')
+                    # logger.debug(
+                    #     f'{current.name} about to set event {code_msg} '
+                    #     f'{get_formatted_call_sequence(latest=1, depth=2)} ')
                     current.event.set()  # wake remote thread
                     break
 
@@ -717,7 +731,7 @@ class SmartEvent:
         if log_msg:  # if caller specified a log message to issue
             # we want the prior 2 callers (latest=1, depth=2)
             logger.debug('set exiting '
-                         f'{get_formatted_call_sequence(latest=1, depth=2)} '
+                         f'{get_formatted_call_sequence(latest=1, depth=1)} '
                          f'{log_msg}')
 
     ###########################################################################
