@@ -164,10 +164,11 @@ class SmartEvent:
         code: Any = None
         waiting: bool = False
         sync_wait: bool = False
+        timeout_specified: bool = False
         deadlock: bool = False
         conflict: bool = False
 
-    def __init__(self,
+    def __init__(self, *,
                  alpha: Optional[threading.Thread] = None,
                  beta: Optional[threading.Thread] = None
                  ) -> None:
@@ -193,7 +194,7 @@ class SmartEvent:
                                            sync_event=threading.Event())
 
         if alpha or beta:
-            self.set_thread(alpha, beta)
+            self.set_thread(alpha=alpha, beta=beta)
 
     ###########################################################################
     # repr
@@ -228,7 +229,7 @@ class SmartEvent:
     ###########################################################################
     # set_thread
     ###########################################################################
-    def set_thread(self,
+    def set_thread(self, *,
                    alpha: Optional[threading.Thread] = None,
                    beta: Optional[threading.Thread] = None
                    ) -> None:
@@ -304,7 +305,7 @@ class SmartEvent:
     ###########################################################################
     # sync
     ###########################################################################
-    def sync(self,
+    def sync(self, *,
              log_msg: Optional[str] = None,
              timeout: Optional[Union[int, float]] = None) -> bool:
         """Sync up the threads.
@@ -369,7 +370,7 @@ class SmartEvent:
     ###########################################################################
     # wait
     ###########################################################################
-    def wait(self,
+    def wait(self, *,
              log_msg: Optional[str] = None,
              timeout: Optional[Union[int, float]] = None) -> bool:
         """Wait on event.
@@ -421,8 +422,10 @@ class SmartEvent:
 
         if timeout and (timeout > 0):
             t_out = min(0.1, timeout)
+            current.timeout_specified = True
         else:
             t_out = 0.1
+            current.timeout_specified = False
 
         if log_msg:
             caller_info = get_formatted_call_sequence(latest=1, depth=1)
@@ -441,16 +444,24 @@ class SmartEvent:
             if current.sync_wait:
                 ret_code = remote.sync_event.wait(timeout=t_out)
                 if ret_code and current_set_remote_sync_event:
-                    current.waiting = False
-                    current.sync_wait = False
-                    remote.sync_event.clear()  # be ready for next wait
+                    # Set the waiting and sync_waiting flags under lock.
+                    # They are checked by remote under lock and the remote
+                    # could get confused is either flag is set to False
+                    # before the other is set to False. See below where
+                    # remote_is_sync_waiting and remote_is_normal_waiting
+                    # are set. Also, see set InconsistentFlagSettings.
+                    with self._wait_check_lock:
+                        current.waiting = False
+                        current.sync_wait = False
+                        remote.sync_event.clear()  # be ready for next wait
                     # return ret_code
                     break
             else:
                 ret_code = remote.event.wait(timeout=t_out)
                 if ret_code:
-                    current.waiting = False
-                    remote.event.clear()  # be ready for next wait
+                    with self._wait_check_lock:
+                        current.waiting = False
+                        remote.event.clear()  # be ready for next wait
                     # return ret_code
                     break
 
@@ -516,7 +527,9 @@ class SmartEvent:
 
                     if not current.deadlock:
                         if current.sync_wait:
-                            if remote_is_normal_waiting:
+                            if (remote_is_normal_waiting and
+                                    not (current.timeout_specified
+                                         or remote.timeout_specified)):
                                 remote.deadlock = True
                                 remote.conflict = True
                                 raise_conflict = True
@@ -526,11 +539,15 @@ class SmartEvent:
                                 current_set_remote_sync_event = True
 
                         else:
-                            if remote_is_sync_waiting:
+                            if (remote_is_sync_waiting and
+                                    not (current.timeout_specified
+                                         or remote.timeout_specified)):
                                 remote.deadlock = True
                                 remote.conflict = True
                                 raise_conflict = True
-                            elif remote_is_normal_waiting:
+                            elif (remote_is_normal_waiting and
+                                    not (current.timeout_specified
+                                         or remote.timeout_specified)):
                                 remote.deadlock = True
                                 remote.conflict = False
                                 raise_deadlock = True
@@ -604,7 +621,7 @@ class SmartEvent:
     ###########################################################################
     # set
     ###########################################################################
-    def set(self,
+    def set(self, *,
             log_msg: Optional[str] = None,
             code: Optional[Any] = None) -> None:
         """Set on event.
@@ -643,10 +660,10 @@ class SmartEvent:
 
         """
         current, remote = self._get_current_remote()
-
+        code_msg = f'with code: {code}' if code else ''
         if log_msg:  # if caller specified a log message to issue
             # we want the prior 2 callers (latest=1, depth=2)
-            logger.debug('set entered '
+            logger.debug(f'set entered {code_msg} '
                          f'{get_formatted_call_sequence(latest=1, depth=2)} '
                          f'{log_msg}')
 
@@ -685,11 +702,13 @@ class SmartEvent:
                 # 2) remote is normal waiting and event not set and not
                 #    deadlock
                 # 3) remote is sync waiting and event not set
-                if not (remote.event.is_set() or remote.deadlock):
+                if not (current.event.is_set() or remote.deadlock):
                     if code:  # if caller specified a code for remote thread
                         remote.code = code
 
-                    logger.debug(f'{current.name} about to set event')
+                    logger.debug(
+                        f'{current.name} about to set event {code_msg} '
+                        f'{get_formatted_call_sequence(latest=1, depth=2)} ')
                     current.event.set()  # wake remote thread
                     break
 

@@ -1205,10 +1205,10 @@ class TestSmartEventBasic:
             my_te4_thread.wait()
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te4_thread.wait(WUCond.RemoteWaiting)
+            my_te4_thread.wait_until(WUCond.RemoteWaiting)
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te4_thread.wait(WUCond.RemoteSet)
+            my_te4_thread.wait_until(WUCond.RemoteSet)
 
         assert my_te4_thread.alpha.thread is alpha_t
         assert my_te4_thread.beta.thread is my_te4_thread
@@ -1766,6 +1766,7 @@ class TestSmartEventTimeout:
 
         thread_app.join()
 
+
 ###############################################################################
 # TestSmartEventCode Class
 ###############################################################################
@@ -1778,23 +1779,77 @@ class TestSmartEventCode:
         """Test smart event code with f1 thread."""
         def f1(s_event):
             logger.debug('f1 entered')
-            assert not s_event.code
+            assert not s_event.alpha.code
+            assert not s_event.beta.code
+            assert not s_event.get_code()
+
             s_event.sync(log_msg='beta sync point 1')
+
             assert s_event.wait(timeout=2)
-            assert s_event.code == 42
-            s_event.set('forty-two')
+            assert not s_event.alpha.code
+            assert s_event.beta.code == 42
+            assert 42 == s_event.get_code()
+
             s_event.sync(log_msg='beta sync point 2')
 
-        smart_event = SmartEvent(threading.current_thread())
+            s_event.set(code='forty-two')
+            assert s_event.alpha.code == 'forty-two'
+            assert s_event.beta.code == 42
+            assert 42 == s_event.get_code()
+
+            s_event.sync(log_msg='beta sync point 3')
+
+            assert s_event.alpha.code == 'forty-two'
+            assert s_event.beta.code == 42
+            assert 42 == s_event.get_code()
+
+            assert not s_event.wait(timeout=.5)
+
+            assert s_event.alpha.code == 'forty-two'
+            assert s_event.beta.code == 42
+            assert 42 == s_event.get_code()
+
+            s_event.sync(log_msg='beta sync point 4')
+            s_event.sync(log_msg='beta sync point 5')
+
+            assert s_event.alpha.code == 'forty-two'
+            assert s_event.beta.code == 'twenty one'
+            assert 'twenty one' == s_event.get_code()
+            assert s_event.alpha.event.is_set()
+
+
+        smart_event = SmartEvent(alpha=threading.current_thread())
         beta_thread = threading.Thread(target=f1, args=(smart_event,))
         smart_event.set_thread(beta=beta_thread)
         beta_thread.start()
+        smart_event.wait_until(WUCond.ThreadsReady)
+
         smart_event.sync(log_msg='mainline sync point 1')
+
+        assert not smart_event.get_code()
+        assert not smart_event.alpha.code
+        assert not smart_event.beta.code
+
         smart_event.set(code=42)
 
-        assert smart_event.wait()
-        assert smart_event.get_code() == 'forty_two'
+        assert not smart_event.get_code()
+        assert not smart_event.alpha.code
+        assert smart_event.beta.code == 42
+
         smart_event.sync(log_msg='mainline sync point 2')
+
+        assert smart_event.wait()
+
+        assert smart_event.get_code() == 'forty-two'
+        assert smart_event.alpha.code == 'forty-two'
+        assert smart_event.beta.code == 42
+
+        smart_event.sync(log_msg='mainline sync point 3')
+        smart_event.sync(log_msg='mainline sync point 4')
+
+        smart_event.set(code='twenty one')
+
+        smart_event.sync(log_msg='mainline sync point 5')
 
         beta_thread.join()
 
@@ -1802,15 +1857,7 @@ class TestSmartEventCode:
     # test_smart_event_thread_app_event_code
     ###########################################################################
     def test_smart_event_thread_app_event_code(self) -> None:
-        """Test smart event code with thread_app thread.
-
-        Args:
-            thread_exc: exception capture fixture
-
-        Raises:
-            Exception: any uncaptured exception from a thread
-
-        """
+        """Test smart event code with thread_app thread."""
 
         class MyThread(threading.Thread):
             def __init__(self, s_event: SmartEvent):
@@ -1822,22 +1869,27 @@ class TestSmartEventCode:
                 logger.debug('ThreadApp run entered')
                 assert self.s_event.get_code() is None
                 assert not self.s_event.wait(timeout=2, log_msg='beta wait 1')
+
                 self.s_event.sync(log_msg='beta sync point 2')
                 self.s_event.sync(log_msg='beta sync point 3')
+
                 assert self.s_event.alpha.event.is_set()
                 assert self.s_event.beta.code == 42
-                time.sleep(4)
-                self.s_event.set(code='forty-two')
+                assert self.s_event.get_code() == 42
+
+                self.s_event.set(log_msg='beta set 4',
+                                 code='forty-two')
 
         smart_event = SmartEvent(alpha=threading.current_thread())
         thread_app = MyThread(smart_event)
         thread_app.start()
+        smart_event.wait_until(WUCond.ThreadsReady)
 
         smart_event.sync(log_msg='mainline sync point 2')
         smart_event.set(code=42)
-        smart_event.sync(log_msg='mainline sync point 2')
+        smart_event.sync(log_msg='mainline sync point 3')
 
-        assert smart_event.wait()
+        assert smart_event.wait(log_msg='mainline wait 4')
         assert smart_event.get_code() == 'forty-two'
 
         thread_app.join()
