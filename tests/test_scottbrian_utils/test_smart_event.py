@@ -46,28 +46,9 @@ class UnrecognizedMessageType(ErrorTstSmartEvent):
     pass
 
 
-class UnrecognizedActionToDo(ErrorTstSmartEvent):
-    """UnrecognizedActionToDo exception class."""
+class UnrecognizedCmd(ErrorTstSmartEvent):
+    """UnrecognizedCmd exception class."""
     pass
-
-
-###############################################################################
-# my_excepthook
-###############################################################################
-exception_error_msg = ''
-
-
-def my_excepthook(args):
-    global exception_error_msg
-    exception_error_msg = (f'SmartEvent excepthook: {args.exc_type}, '
-                           f'{args.exc_value}, {args.exc_traceback},'
-                           f' {args.thread}')
-    traceback.print_tb(args.exc_traceback)
-    logger.debug(exception_error_msg)
-    current_thread = threading.current_thread()
-    logger.debug(f'excepthook current thread is {current_thread}')
-    print(exception_error_msg)
-    raise Exception(f'SmartEvent thread test error: {exception_error_msg}')
 
 
 ###############################################################################
@@ -90,7 +71,7 @@ action_arg_list = [Action.MainWait, Action.MainSet,
 
 
 @pytest.fixture(params=action_arg_list)  # type: ignore
-def action1_arg(request: Any) -> Any:
+def action_arg1(request: Any) -> Any:
     """Using different reply messages.
 
     Args:
@@ -103,7 +84,7 @@ def action1_arg(request: Any) -> Any:
 
 
 @pytest.fixture(params=action_arg_list)  # type: ignore
-def action2_arg(request: Any) -> Any:
+def action_arg2(request: Any) -> Any:
     """Using different reply messages.
 
     Args:
@@ -154,7 +135,7 @@ code_arg_list = [None, 42]
 
 
 @pytest.fixture(params=code_arg_list)  # type: ignore
-def code1_arg(request: Any) -> Any:
+def code_arg1(request: Any) -> Any:
     """Using different codes.
 
     Args:
@@ -167,7 +148,7 @@ def code1_arg(request: Any) -> Any:
 
 
 @pytest.fixture(params=code_arg_list)  # type: ignore
-def code2_arg(request: Any) -> Any:
+def code_arg2(request: Any) -> Any:
     """Using different codes.
 
     Args:
@@ -182,11 +163,11 @@ def code2_arg(request: Any) -> Any:
 ###############################################################################
 # log_msg fixtures
 ###############################################################################
-log_msg_arg_list = [None, 'log msg1', 'log msg2']
+log_msg_arg_list = [None, 'log msg1']
 
 
 @pytest.fixture(params=log_msg_arg_list)  # type: ignore
-def log_msg1_arg(request: Any) -> Any:
+def log_msg_arg1(request: Any) -> Any:
     """Using different log messages.
 
     Args:
@@ -199,7 +180,7 @@ def log_msg1_arg(request: Any) -> Any:
 
 
 @pytest.fixture(params=log_msg_arg_list)  # type: ignore
-def log_msg2_arg(request: Any) -> Any:
+def log_msg_arg2(request: Any) -> Any:
     """Using different log messages.
 
     Args:
@@ -220,7 +201,8 @@ class TestSmartEventBasic:
     ###########################################################################
     # repr for SmartEvent
     ###########################################################################
-    def test_smart_event_repr(self) -> None:
+    def test_smart_event_repr(self,
+                              thread_exc: "ThreadExc") -> None:
         """test event with code repr."""
         smart_event = SmartEvent()
 
@@ -266,15 +248,11 @@ class TestSmartEventBasic:
 
         assert repr(smart_event4) == expected_repr_str
 
-
     ###########################################################################
     # test_smart_event_set_thread_alpha_first
     ###########################################################################
     def test_smart_event_set_thread_alpha_first(self) -> None:
         """Test set_thread alpha first."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
 
         alpha_t = threading.current_thread()
         beta_t = threading.Thread()
@@ -414,17 +392,11 @@ class TestSmartEventBasic:
         assert smart_event2.alpha.code is None
         assert smart_event2.beta.code is None
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
     ###########################################################################
     # test_smart_event_set_thread_beta_first
     ###########################################################################
     def test_smart_event_set_thread_beta_first(self) -> None:
         """Test set_thread beta first."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
 
         alpha_t = threading.current_thread()
         beta_t = threading.Thread()
@@ -521,17 +493,11 @@ class TestSmartEventBasic:
         assert smart_event.alpha.code is None
         assert smart_event.beta.code is None
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
     ###########################################################################
     # test_smart_event_set_threads_instantiate
     ###########################################################################
     def test_smart_event_set_threads_instantiate(self) -> None:
         """Test set_thread during instantiation."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
 
         alpha_t = threading.current_thread()
         beta_t = threading.Thread()
@@ -581,58 +547,11 @@ class TestSmartEventBasic:
         with pytest.raises(DuplicateThreadSpecified):
             smart_e6 = SmartEvent(alpha=alpha_t, beta=alpha_t)
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
-    ###########################################################################
-    # test_smart_event_sync
-    ###########################################################################
-    def test_smart_event_sync(self) -> None:
-        """Test set_thread with f1."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
-
-        def f1(s_event):
-            logger.debug('f1 beta entered')
-            s_event.sync(log_msg='f1 beta sync point 1')
-
-            s_event.wait()
-
-            logger.debug('f1 beta exiting')
-
-
-        logger.debug('mainline entered')
-        smart_event1 = SmartEvent(alpha=threading.current_thread())
-        f1_thread = threading.Thread(target=f1, args=(smart_event1,))
-        smart_event1.set_thread(beta=f1_thread)
-
-        logger.debug(f'id(smart_event1.alpha.event) = '
-                     f'{id(smart_event1.alpha.event)}')
-        logger.debug(f'id(smart_event1.beta.event) = '
-                     f'{id(smart_event1.beta.event)}')
-
-        f1_thread.start()
-
-        smart_event1.sync(log_msg='mainline sync point 1')
-
-        smart_event1.set()
-
-        f1_thread.join()
-
-        logger.debug('mainline exiting')
-
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
     ###########################################################################
     # test_smart_event_set_threads_f1
     ###########################################################################
     def test_smart_event_set_threads_f1(self) -> None:
         """Test set_thread with f1."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
 
         #######################################################################
         # mainline and f1 - mainline sets beta
@@ -798,9 +717,6 @@ class TestSmartEventBasic:
         del smart_event1
         del my_f1_thread
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
         #######################################################################
         # mainline and f2 - f2 sets beta
         #######################################################################
@@ -907,17 +823,11 @@ class TestSmartEventBasic:
         assert smart_event2.alpha.thread is alpha_t
         assert smart_event2.beta.thread is my_f2_thread
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
     ###########################################################################
     # test_smart_event_set_threads_thread_app
     ###########################################################################
     def test_smart_event_set_threads_thread_app(self) -> None:
         """Test set_thread with thread_app."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
 
         #######################################################################
         # mainline and ThreadApp - mainline sets beta
@@ -1043,17 +953,12 @@ class TestSmartEventBasic:
         assert smart_event2.alpha.thread is alpha_t
         assert smart_event2.beta.thread is my_tab_thread
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
     ###########################################################################
     # test_smart_event_set_threads_thread_event_app
     ###########################################################################
     def test_smart_event_set_threads_thread_event_app(self) -> None:
         """Test set_thread with thread_event_app."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
+
 
         #######################################################################
         # mainline and ThreadEventApp - mainline sets alpha and beta
@@ -1308,17 +1213,11 @@ class TestSmartEventBasic:
         assert my_te4_thread.alpha.thread is alpha_t
         assert my_te4_thread.beta.thread is my_te4_thread
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
     ###########################################################################
     # test_smart_event_set_threads_two_f_threads
     ###########################################################################
     def test_smart_event_set_threads_two_f_threads(self) -> None:
         """Test set_thread with thread_event_app."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
 
         #######################################################################
         # two threads - mainline sets alpha and beta
@@ -1382,9 +1281,6 @@ class TestSmartEventBasic:
         del fa1_thread
         del fb1_thread
         del smart_event_ab1
-
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
 
         #######################################################################
         # two threads - fa2 and fb2 set their own threads
@@ -1490,19 +1386,210 @@ class TestSmartEventBasic:
         assert smart_event_ab2.alpha.thread is fa2_thread
         assert smart_event_ab2.beta.thread is fb2_thread
 
-        # assert num_deadlocks[0] > 0
+###############################################################################
+# TestSetExc Class
+###############################################################################
+class TestSetExc:
+    ###########################################################################
+    # test_smart_event_sync_f1
+    ###########################################################################
+    def test_smart_event_set_exc_f1(self) -> None:
+        """Test set_thread with f1."""
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
+        def f1(s_event):
+            logger.debug('f1 beta entered')
 
+            s_event.sync(log_msg='f1 beta sync point 1')
+
+            while cmd[0] != Cmd.Exit:
+                cmd2[0] = Cmd.Exit
+                time.sleep(.2)
+
+            s_event.sync(log_msg='f1 beta sync point 2')
+
+            s_event.set(log_msg='f1 beta set 3')
+
+            s_event.sync(log_msg='f1 beta sync point 4')
+
+            logger.debug('f1 beta exiting 5')
+
+
+        logger.debug('mainline entered')
+        smart_event1 = SmartEvent(alpha=threading.current_thread())
+        f1_thread = threading.Thread(target=f1, args=(smart_event1,))
+        smart_event1.set_thread(beta=f1_thread)
+        f1_thread.start()
+
+        cmd = [0]
+        cmd2 = [0]
+        assert smart_event1.sync(log_msg='mainline sync point 1')
+
+        while cmd2[0] != Cmd.Exit:
+            time.sleep(.2)
+
+        smart_event1.beta.sync_wait = True
+        with pytest.raises(InconsistentFlagSettings):
+            smart_event1.set(log_msg='alpha error set 1a')
+        smart_event1.beta.sync_wait = False
+
+        smart_event1.beta.deadlock = True
+        with pytest.raises(InconsistentFlagSettings):
+            smart_event1.set(log_msg='alpha error set 1b')
+        smart_event1.beta.deadlock = False
+
+        smart_event1.beta.conflict = True
+        with pytest.raises(InconsistentFlagSettings):
+            smart_event1.set(log_msg='alpha error set 1c')
+        smart_event1.beta.conflict = False
+
+        smart_event1.beta.waiting = True
+        smart_event1.beta.conflict = True
+        with pytest.raises(InconsistentFlagSettings):
+            smart_event1.set(log_msg='alpha error set 1d')
+        smart_event1.beta.waiting = False
+        smart_event1.beta.conflict = False
+
+        cmd[0] = Cmd.Exit
+
+        smart_event1.sync(log_msg='mainline sync point 2')
+
+        smart_event1.wait(log_msg='mainline wait 3')
+
+        smart_event1.sync(log_msg='mainline sync point 4')
+
+        f1_thread.join()
+
+        with pytest.raises(RemoteThreadNotAlive):
+            smart_event1.set(log_msg='mainline sync point 5')
+
+        logger.debug('mainline exiting')
+
+###############################################################################
+# TestSync Class
+###############################################################################
+class TestSync:
+
+
+    ###########################################################################
+    # test_smart_event_sync_f1
+    ###########################################################################
+    def test_smart_event_sync_f1(self) -> None:
+        """Test set_thread with f1."""
+
+        def f1(s_event):
+            logger.debug('f1 beta entered')
+
+            # assert False
+
+            s_event.sync(log_msg='f1 beta sync point 1')
+
+            s_event.wait()
+
+            s_event.sync(log_msg='f1 beta sync point 2')
+
+            s_event.set()
+
+            s_event.sync(log_msg='f1 beta sync point 3')
+
+            s_event.sync(log_msg='f1 beta sync point 4')
+
+            s_event.wait()
+
+            logger.debug('f1 beta exiting')
+
+
+        logger.debug('mainline entered')
+        smart_event1 = SmartEvent(alpha=threading.current_thread())
+        f1_thread = threading.Thread(target=f1, args=(smart_event1,))
+        smart_event1.set_thread(beta=f1_thread)
+        f1_thread.start()
+
+        smart_event1.sync(log_msg='mainline sync point 1')
+
+        smart_event1.set()
+
+        smart_event1.sync(log_msg='mainline sync point 2')
+
+        smart_event1.wait()
+
+        smart_event1.sync(log_msg='mainline sync point 3')
+
+        smart_event1.set()
+
+        smart_event1.sync(log_msg='mainline sync point 4')
+
+        f1_thread.join()
+
+        # thread_exc.raise_exc()
+
+        logger.debug('mainline exiting')
+
+    ###########################################################################
+    # test_smart_event_sync_exc
+    ###########################################################################
+    def test_smart_event_sync_exc(self,
+                                 thread_exc: "ThreadExc") -> None:
+        """Test set_thread with f1."""
+
+        def f1(s_event):
+            logger.debug('f1 beta entered')
+
+            assert s_event.sync(log_msg='f1 beta sync point 1')
+
+            with pytest.raises(ConflictDeadlockDetected):
+                s_event.wait(log_msg='f1 beta wait 2')
+
+            assert s_event.sync(log_msg='f1 beta sync point 3')
+
+            s_event.set(log_msg='f1 beta set 4')
+
+            assert s_event.sync(log_msg='f1 beta sync point 5')
+
+            assert s_event.wait(log_msg='f1 beta wait 6')
+
+            time.sleep(3)  # delay mainline sync 7 for timeout
+
+            logger.debug('f1 beta exiting 8')
+
+
+        logger.debug('mainline entered')
+        smart_event1 = SmartEvent(alpha=threading.current_thread())
+        f1_thread = threading.Thread(target=f1, args=(smart_event1,))
+        smart_event1.set_thread(beta=f1_thread)
+        f1_thread.start()
+
+        assert smart_event1.sync(log_msg='mainline sync point 1')
+
+        with pytest.raises(ConflictDeadlockDetected):
+            smart_event1.sync(log_msg='mainline sync point 2')
+
+        assert smart_event1.sync(log_msg='mainline sync point 3')
+
+        assert smart_event1.wait(log_msg='mainline wait 4')
+
+        assert smart_event1.sync(log_msg='mainline sync point 5')
+
+        smart_event1.set(log_msg='mainline set 6')
+
+        assert not smart_event1.sync(log_msg='mainline sync point 7',
+                                     timeout=1)
+
+        f1_thread.join()
+
+        with pytest.raises(RemoteThreadNotAlive):
+            smart_event1.sync(log_msg='mainline sync point 8')
+
+        logger.debug('mainline exiting 9')
+
+###############################################################################
+# TestWaitClear Class
+###############################################################################
+class TestWaitClear:
     ###########################################################################
     # test_smart_event_f1_clear
     ###########################################################################
     def test_smart_event_f1_clear(self) -> None:
         """Test smart event timeout with f1 thread."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
 
         def f1(s_event):
             logger.debug('f1 entered')
@@ -1525,9 +1612,9 @@ class TestSmartEventBasic:
             s_event.set()
 
         smart_event = SmartEvent(alpha=threading.current_thread())
-        beta.thread = threading.Thread(target=f1, args=(smart_event,))
-        smart_event.set_thread(beta=beta.thread)
-        beta.thread.start()
+        beta_thread = threading.Thread(target=f1, args=(smart_event,))
+        smart_event.set_thread(beta=beta_thread)
+        beta_thread.start()
 
         time.sleep(3)
         smart_event.set()
@@ -1546,19 +1633,13 @@ class TestSmartEventBasic:
         assert 3 <= duration <= 4
         assert not smart_event.beta.event.is_set()
 
-        beta.thread.join()
-
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
+        beta_thread.join()
 
     ###########################################################################
     # test_smart_event_thread_app_clear
     ###########################################################################
     def test_smart_event_thread_app_clear(self) -> None:
         """Test smart event timeout with thread_app thread."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
 
         class MyThread(threading.Thread):
             def __init__(self, s_event: SmartEvent):
@@ -1569,17 +1650,21 @@ class TestSmartEventBasic:
             def run(self):
                 logger.debug('ThreadApp run entered')
 
+                assert not self.s_event.alpha.event.is_set()
+                assert not self.s_event.beta.event.is_set()
                 start_time = time.time()
                 assert self.s_event.wait()
                 duration = time.time() - start_time
                 assert 3 <= duration <= 4
-                assert not self.s_event.is_set()
+                assert not self.s_event.alpha.event.is_set()
+                assert not self.s_event.beta.event.is_set()
 
                 start_time = time.time()
                 assert self.s_event.wait()
                 duration = time.time() - start_time
                 assert 3 <= duration <= 4
-                assert not self.s_event.is_set()
+                assert not self.s_event.alpha.event.is_set()
+                assert not self.s_event.beta.event.is_set()
 
                 time.sleep(3)
                 self.s_event.set()
@@ -1600,27 +1685,36 @@ class TestSmartEventBasic:
         assert smart_event.wait()
         duration = time.time() - start_time
         assert 3 <= duration <= 4
-        assert not smart_event.is_set()
+        assert not smart_event.alpha.event.is_set()
+        assert not smart_event.beta.event.is_set()
 
         start_time = time.time()
         assert smart_event.wait()
         duration = time.time() - start_time
         assert 3 <= duration <= 4
-        assert not smart_event.is_set()
+        assert not smart_event.alpha.event.is_set()
+        assert not smart_event.beta.event.is_set()
 
         thread_app.join()
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
+###############################################################################
+# TestSmartEventTimeout Class
+###############################################################################
+class TestSmartEventTimeout:
 
     ###########################################################################
     # test_smart_event_f1_time_out
     ###########################################################################
     def test_smart_event_f1_time_out(self) -> None:
-        """Test smart event timeout with f1 thread."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
+        """Test smart event timeout with f1 thread.
+
+        Args:
+            thread_exc: exception capture fixture
+
+        Raises:
+            Exception: any uncaptured exception from a thread
+
+        """
 
         def f1(s_event):
             logger.debug('f1 entered')
@@ -1628,26 +1722,28 @@ class TestSmartEventBasic:
             time.sleep(4)
 
         smart_event = SmartEvent(alpha=threading.current_thread())
-        beta.thread = threading.Thread(target=f1, args=(smart_event,))
-        smart_event.set_thread(beta=beta.thread)
-        beta.thread.start()
+        beta_thread = threading.Thread(target=f1, args=(smart_event,))
+        smart_event.set_thread(beta=beta_thread)
+        beta_thread.start()
         time.sleep(3)
 
         assert not smart_event.wait(timeout=2)
 
-        beta.thread.join()
-
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
+        beta_thread.join()
 
     ###########################################################################
     # test_smart_event_thread_app_time_out
     ###########################################################################
     def test_smart_event_thread_app_time_out(self) -> None:
-        """Test smart event timeout with thread_app thread."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
+        """Test smart event timeout with thread_app thread.
+
+        Args:
+            thread_exc: exception capture fixture
+
+        Raises:
+            Exception: any uncaptured exception from a thread
+
+        """
 
         class MyThread(threading.Thread):
             def __init__(self, s_event: SmartEvent):
@@ -1670,49 +1766,51 @@ class TestSmartEventBasic:
 
         thread_app.join()
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
+###############################################################################
+# TestSmartEventCode Class
+###############################################################################
+class TestSmartEventCode:
 
     ###########################################################################
     # test_smart_event_f1_event_code
     ###########################################################################
     def test_smart_event_f1_event_code(self) -> None:
         """Test smart event code with f1 thread."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
-
         def f1(s_event):
             logger.debug('f1 entered')
-            assert s_event.code is None
+            assert not s_event.code
+            s_event.sync(log_msg='beta sync point 1')
             assert s_event.wait(timeout=2)
             assert s_event.code == 42
-            time.sleep(4)
             s_event.set('forty-two')
+            s_event.sync(log_msg='beta sync point 2')
 
         smart_event = SmartEvent(threading.current_thread())
-        beta.thread = threading.Thread(target=f1, args=(smart_event,))
-        smart_event.set_thread(beta=beta.thread)
-        beta.thread.start()
-        time.sleep(1)
+        beta_thread = threading.Thread(target=f1, args=(smart_event,))
+        smart_event.set_thread(beta=beta_thread)
+        beta_thread.start()
+        smart_event.sync(log_msg='mainline sync point 1')
         smart_event.set(code=42)
 
         assert smart_event.wait()
         assert smart_event.get_code() == 'forty_two'
+        smart_event.sync(log_msg='mainline sync point 2')
 
-        beta.thread.join()
-
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
+        beta_thread.join()
 
     ###########################################################################
     # test_smart_event_thread_app_event_code
     ###########################################################################
     def test_smart_event_thread_app_event_code(self) -> None:
-        """Test smart event code with thread_app thread."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
+        """Test smart event code with thread_app thread.
+
+        Args:
+            thread_exc: exception capture fixture
+
+        Raises:
+            Exception: any uncaptured exception from a thread
+
+        """
 
         class MyThread(threading.Thread):
             def __init__(self, s_event: SmartEvent):
@@ -1723,35 +1821,40 @@ class TestSmartEventBasic:
             def run(self):
                 logger.debug('ThreadApp run entered')
                 assert self.s_event.get_code() is None
-                assert self.s_event.wait(timeout=2)
-                assert self.s_event.code == 42
+                assert not self.s_event.wait(timeout=2, log_msg='beta wait 1')
+                self.s_event.sync(log_msg='beta sync point 2')
+                self.s_event.sync(log_msg='beta sync point 3')
+                assert self.s_event.alpha.event.is_set()
+                assert self.s_event.beta.code == 42
                 time.sleep(4)
                 self.s_event.set(code='forty-two')
 
-        smart_event = SmartEvent(apha=threading.current_thread())
+        smart_event = SmartEvent(alpha=threading.current_thread())
         thread_app = MyThread(smart_event)
         thread_app.start()
 
-        time.sleep(3)
-
+        smart_event.sync(log_msg='mainline sync point 2')
         smart_event.set(code=42)
+        smart_event.sync(log_msg='mainline sync point 2')
 
         assert smart_event.wait()
         assert smart_event.get_code() == 'forty-two'
 
         thread_app.join()
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
     ###########################################################################
     # test_smart_event_thread_event_app_event_code
     ###########################################################################
     def test_smart_event_thread_event_app_event_code(self) -> None:
-        """Test smart event code with thread_event_app thread."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
+        """Test smart event code with thread_event_app thread.
+
+        Args:
+            thread_exc: exception capture fixture
+
+        Raises:
+            Exception: any uncaptured exception from a thread
+
+        """
 
         class MyThread(threading.Thread, SmartEvent):
             def __init__(self,
@@ -1779,22 +1882,25 @@ class TestSmartEventBasic:
 
         thread_event_app.join()
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
+###############################################################################
+# TestSmartEventLogger Class
+###############################################################################
+class TestSmartEventLogger:
 
     ###########################################################################
     # test_smart_event_f1_event_logger
     ###########################################################################
-    def test_smart_event_f1_event_logger(self, caplog) -> None:
+    def test_smart_event_f1_event_logger(self,
+                                         caplog) -> None:
         """Test smart event logger with f1 thread.
 
         Args:
             caplog: fixture to capture log messages
 
+        Raises:
+            Exception: any uncaptured exception from a thread
+
         """
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
 
         def f1(s_event):
             logger.debug('f1 entered')
@@ -1803,15 +1909,15 @@ class TestSmartEventBasic:
             s_event.set(log_msg='post mainline 4')
 
         smart_event = SmartEvent(alpha=threading.current_thread())
-        beta.thread = threading.Thread(target=f1, args=(smart_event,))
-        smart_event.set_thread(beta=beta.thread)
-        beta.thread.start()
+        beta_thread = threading.Thread(target=f1, args=(smart_event,))
+        smart_event.set_thread(beta=beta_thread)
+        beta_thread.start()
         time.sleep(1)
-        smart_event.set(log_msg=f'post thread {beta.thread.name} 2')
+        smart_event.set(log_msg=f'post thread {beta_thread.name} 2')
 
         assert smart_event.wait(log_msg='wait for post from thread 3')
 
-        beta.thread.join()
+        beta_thread.join()
 
         log_found = 0
         for record in caplog.records:
@@ -1820,17 +1926,19 @@ class TestSmartEventBasic:
 
         assert log_found == 1
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
     ###########################################################################
     # test_smart_event_thread_app_event_logger
     ###########################################################################
     def test_smart_event_thread_app_event_logger(self) -> None:
-        """Test smart event logger with thread_app thread."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
+        """Test smart event logger with thread_app thread.
+
+        Args:
+            thread_exc: exception capture fixture
+
+        Raises:
+            Exception: any uncaptured exception from a thread
+
+        """
 
         class MyThread(threading.Thread):
             def __init__(self, s_event: SmartEvent):
@@ -1850,23 +1958,25 @@ class TestSmartEventBasic:
 
         time.sleep(3)
 
-        smart_event.set(log_msg=f'post thread {beta.thread.name} 2')
+        smart_event.set(log_msg=f'post thread {smart_event.beta.name} 2')
 
         assert smart_event.wait(log_msg='wait for post from thread 3')
 
         thread_app.join()
 
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
     ###########################################################################
     # test_smart_event_thread_event_app_event_logger
     ###########################################################################
     def test_smart_event_thread_event_app_event_logger(self) -> None:
-        """Test smart event logger with thread_event_app thread."""
-        global exception_error_msg
-        exception_error_msg = ''
-        threading.excepthook = my_excepthook
+        """Test smart event logger with thread_event_app thread.
+
+        Args:
+            thread_exc: exception capture fixture
+
+        Raises:
+            Exception: any uncaptured exception from a thread
+
+        """
 
         class MyThread(threading.Thread, SmartEvent):
             def __init__(self,
@@ -1885,15 +1995,12 @@ class TestSmartEventBasic:
 
         time.sleep(3)
 
-        thread_event_app.set(log_msg=f'post thread {beta.thread.name} 2')
+        thread_event_app.set(log_msg=f'post thread '
+                                     f'{thread_event_app.beta.name} 2')
 
         assert thread_event_app.wait(log_msg='wait for post from thread 3')
 
         thread_event_app.join()
-
-        if exception_error_msg:
-            raise Exception(f'{exception_error_msg}')
-
 
 ###############################################################################
 # TestCombos Class
@@ -1903,451 +2010,169 @@ class TestCombos:
     # test_smart_event_thread_app_combos
     ###########################################################################
     def test_smart_event_thread_app_combos(self,
-                                           action1_arg: Any,
-                                           msg_arg1: Any,
-                                           num_msg1_arg: int,
-                                           action2_arg: Any,
-                                           msg_arg2: Any,
-                                           num_msg2_arg: int
-                                           ) -> None:
+                                           action_arg1: Any,
+                                           timeout_arg1: Any,
+                                           code_arg1: Any,
+                                           log_msg_arg1: Any,
+                                           action_arg2: Any,
+                                           timeout_arg2: Any,
+                                           # code_arg2: Any,
+                                           # log_msg_arg2: Any,
+                                           thread_exc: "ExcHook" ) -> None:
         """Test the SmartEvent with ThreadApp combos.
 
         Args:
-            action1_arg: the action to do for first batch
-            msg_arg1: the messages to be sent for first batch
-            num_msg1_arg: the number of messages to be sent for first batch
-            action2_arg: the action to do for second batch
-            msg_arg2: the messages to be sent for second batch
-            num_msg2_arg: the number of messages to be sent for second batch
+            action_arg1: first action
+            timeout_arg1: whether to specify timeout
+            code_arg1: whether to set and recv a code
+            log_msg_arg1: whether to specify a log message
+            action_arg2: second action
+            timeout_arg2: whether to specify timeout
+            code_arg2: whether to set and recv a code
+            log_msg_arg2: whether to specify a log message
 
         Raises:
             IncorrectActionSpecified: The Action is not recognized
 
         """
+        # class SmartEventApp(threading.Thread):
+        #     def __init__(self,
+        #                  smart_event: SmartEvent) -> None:
+        #         super().__init__()
+        #         self.smart_event = smart_event
+        #
+        #     def run(self):
+        #         """Thread to send and receive messages.
+        #
+        #         Raises:
+        #             UnrecognizedCmd: SmartEventApp received an
+        #                                       unrecognized action
+        #         """
+        #         logger.debug('SmartEventApp run started')
 
 
-
-
-        def get_exp_recv_msg(msg) -> Any:
-            """Return the expected recv msg give the send msg.
-
-            Args:
-                msg: msg that is sent
-
-            Returns:
-                msg to be used to verify what was received
-
-            Raises:
-                UnrecognizedMessageType: The message type is not int, str,
-                                         or float
-            """
-            if isinstance(msg, int):
-                return msg * 10
-
-            if isinstance(msg, str):
-                ret_value = 0
-                for letter in msg:
-                    ret_value += ord(letter)
-                return ret_value
-
-            if isinstance(msg, float):
-                return math.ceil(msg) + 10
-
-            raise UnrecognizedMessageType('The message type is not int, str,'
-                                          'or float')
-
-        class SmartEventApp(threading.Thread):
-            def __init__(self,
-                         action_event: threading.Event,
-                         complete_event: threading.Event) -> None:
-                super().__init__()
-                self.smart_event = SmartEvent()
-                self.action_event = action_event
-                self.action_to_do = [0]
-                self.complete_event = complete_event
-                self.msgs = [0]
-                self.exc = None
-
-            def run(self):
-                """Thread to send and receive messages.
-
-                Raises:
-                    UnrecognizedActionToDo: SmartEventApp received an
-                                              unrecognized action
-                """
-                try:
-                    logger.debug('SmartEventApp run started')
-                    self.smart_event.set_child_thread_id()
-                    while True:
-                        logger.debug('SmartEventApp about to wait on action '
-                                     'event')
-                        self.action_event.wait()
-                        self.action_event.clear()
-                        if self.action_to_do[0] == 'send':
-                            logger.debug('SmartEventApp doing send')
-                            for msg in self.msgs:
-                                self.smart_event.send(msg)
-                                logger.debug('SmartEventApp sent '
-                                             f'message {msg}')
-                            self.complete_event.set()
-                        elif self.action_to_do[0] == 'pause_send':
-                            logger.debug('SmartEventApp doing pause_send')
-                            time.sleep(1)
-                            for msg in self.msgs:
-                                self.smart_event.send(msg)
-                                logger.debug('SmartEventApp sent '
-                                             f'message {msg}')
-                            self.complete_event.set()
-                        elif self.action_to_do[0] == 'recv_reply':
-                            logger.debug('SmartEventApp doing recv_reply')
-                            logger.debug('SmartEventApp msgs = '
-                                         f'{self.msgs}')
-                            for msg in self.msgs:
-                                recv_msg = self.smart_event.recv()
-                                logger.debug('SmartEventApp received message '
-                                             f'{recv_msg}')
-                                assert recv_msg == msg
-                                reply_msg = get_exp_recv_msg(msg)
-                                self.smart_event.send(reply_msg)
-                            self.complete_event.set()
-                        elif self.action_to_do[0] == 'recv_verify':
-                            logger.debug('SmartEventApp doing recv_verify')
-                            for msg in self.msgs:
-                                recv_msg = self.smart_event.recv()
-                                logger.debug('SmartEventApp received message '
-                                             f'{recv_msg}')
-                                test_msg = get_exp_recv_msg(msg)
-                                assert recv_msg == test_msg
-                            self.complete_event.set()
-                        elif self.action_to_do[0] == 'send_recv':
-                            logger.debug('SmartEventApp doing send_recv')
-                            for msg in self.msgs:
-                                recv_msg = self.smart_event.send_recv(msg)
-                                exp_recv_msg = get_exp_recv_msg(msg)
-                                assert recv_msg == exp_recv_msg
-                            self.complete_event.set()
-                        elif self.action_to_do[0] == 'exit':
-                            logger.debug('SmartEventApp doing exit')
-                            break
-                        else:
-                            raise UnrecognizedActionToDo('SmartEventApp '
-                                                         'received an '
-                                                         'unrecognized action')
-                except Exception as e:
-                    self.exc = e
-
-            def send_msg(self, msg):
-                """Send message.
-
-                Args:
-                    msg: message to send
-                """
-                self.smart_event.send(msg)
-
-            def recv_msg(self) -> Any:
-                """Receive message.
-
-                Returns:
-                    message received
-                """
-                return self.smart_event.recv()
-
-            def send_recv_msg(self, msg) -> Any:
-                """Send message and receive response.
-
-                Args:
-                    msg: message to send
-
-                Returns:
-                    message received
-                """
-                return self.smart_event.send_recv(msg)
-
-        def f1(in_smart_event: SmartEvent,
-               action_event: threading.Event,
-               action_to_do: List[Any],
-               complete_event: threading.Event,
-               msgs: List[Any],
-               exc1: List[Any]) -> None:
-            """Thread to send or receive messages.
-
-            Args:
-                in_smart_event: instance of SmartEvent class
-                action_event: event to wait on for action to perform
-                action_to_do: send, recv, send_recv, or done
-                complete_event: event to set when done with action
-                msgs: list of message that are to be sent
-                exc1: list to be set with exception
-
-            Raises:
-                UnrecognizedActionToDo: Thread received an unrecognized action
-                Exception: any exception in thread
-            """
-            try:
-                logger.debug('thread f1 started')
-                while True:
-                    logger.debug('thread f1 about to wait on action event')
-                    action_event.wait()
-                    action_event.clear()
-                    if action_to_do[0] == 'send':
-                        logger.debug('thread f1 doing send')
-                        for msg in msgs:
-                            in_smart_event.send(msg)
-                            logger.debug(f'thread f1 sent message {msg}')
-                        complete_event.set()
-                    elif action_to_do[0] == 'pause_send':
-                        logger.debug('thread f1 doing pause_send')
-                        time.sleep(1)
-                        for msg in msgs:
-                            in_smart_event.send(msg)
-                            logger.debug(f'thread f1 sent message {msg}')
-                        complete_event.set()
-                    elif action_to_do[0] == 'recv_reply':
-                        logger.debug('thread f1 doing recv_reply')
-                        logger.debug(f'thread f1 msgs = {msgs}')
-                        for msg in msgs:
-                            recv_msg = in_smart_event.recv()
-                            logger.debug('thread f1 received message '
-                                         f'{recv_msg}')
-                            assert recv_msg == msg
-                            reply_msg = get_exp_recv_msg(msg)
-                            in_smart_event.send(reply_msg)
-                        complete_event.set()
-                    elif action_to_do[0] == 'recv_verify':
-                        logger.debug('thread f1 doing recv_verify')
-                        for msg in msgs:
-                            recv_msg = in_smart_event.recv()
-                            logger.debug('thread f1 received message '
-                                         f'{recv_msg}')
-                            test_msg = get_exp_recv_msg(msg)
-                            assert recv_msg == test_msg
-                        complete_event.set()
-                    elif action_to_do[0] == 'send_recv':
-                        logger.debug('thread f1 doing send_recv')
-                        for msg in msgs:
-                            recv_msg = in_smart_event.send_recv(msg)
-                            exp_recv_msg = get_exp_recv_msg(msg)
-                            assert recv_msg == exp_recv_msg
-                        complete_event.set()
-                    elif action_to_do[0] == 'exit':
-                        logger.debug('thread f1 doing exit')
-                        break
-                    else:
-                        raise UnrecognizedActionToDo('Thread received an '
-                                                     'unrecognized action')
-            except Exception as f1_e:
-                exc1[0] = f1_e
 
         smart_event = SmartEvent()
-        thread_action_event = SmartEvent()  # threading.Event()
-        thread_actions = [0]
-        thread_complete_event = SmartEvent()  # threading.Event()
-        send_msgs = [0]
-        exc = [None]
+        cmd_to_thread = [0]
+        cmd_to_mainline = [0]
+        cmd_log = [0]
+        cmd_timeout = [0]
+        cmd_timeout_result = [False]
 
-        f1_thread = threading.Thread(target=f1,
+        f1_thread = threading.Thread(target=self.thread_func1,
                                      args=(smart_event,
-                                           thread_action_event,
-                                           thread_actions,
-                                           thread_complete_event,
-                                           send_msgs,
-                                           exc))
+                                           cmd_to_thread,
+                                           cmd_to_mainline,
+                                           cmd_log,
+                                           cmd_timeout,
+                                           cmd_timeout_result))
 
-        logger.debug('main about to start f1 thread')
+        logger.debug('mainline about to start thread_func1')
         f1_thread.start()
-
-        logger.debug('main about to start SmartEventApp')
-        app_action_event = threading.Event()
-        app_complete_event = threading.Event()
-        smart_event_app = SmartEventApp(app_action_event, app_complete_event)
-        smart_event_app.start()
-
-        super_msgs = []
-        msg_list = []
-        for i in range(num_msg1_arg):
-            msg_list.append(msg_arg1[i])
-        super_msgs.append(msg_list)
-        msg_list = []
-        for i in range(num_msg2_arg):
-            msg_list.append(msg_arg2[i])
-        super_msgs.append(msg_list)
-        logger.debug(f'main super_msgs {super_msgs}')
 
         #######################################################################
         # action loop
         #######################################################################
         actions = []
-        actions.append(action1_arg)
-        actions.append(action2_arg)
+        actions.append(action_arg1)
+        actions.append(action_arg2)
         for action in actions:
-            _ = send_msgs.pop(0)
-            send_msgs.extend(super_msgs.pop(0))
-            smart_event_app.msgs = send_msgs
-            if action == Action.MainSend:
-                logger.debug('main starting Action.MainSend')
-                logger.debug(f'main send_msgs = {send_msgs}')
-                for msg in send_msgs:
-                    logger.debug(f'main sending msg {msg}')
-                    smart_event.send(msg)
-                    smart_event_app.send_msg(msg)
-                thread_actions[0] = 'recv_reply'
-                thread_action_event.set()
-                smart_event_app.action_to_do[0] = 'recv_reply'
-                smart_event_app.action_event.set()
-                if exc[0]:
-                    raise exc[0]
-                if smart_event_app.exc:
-                    raise smart_event_app.exc
-                for msg in send_msgs:
-                    exp_recv_msg = get_exp_recv_msg(msg)
-                    recv_msg = smart_event.recv()
-                    assert recv_msg == exp_recv_msg
-                    recv_msg = smart_event_app.recv_msg()
-                    assert recv_msg == exp_recv_msg
-                thread_complete_event.wait()
-                thread_complete_event.clear()
-                smart_event_app.complete_event.wait()
-                smart_event_app.complete_event.clear()
-            elif action == Action.MainRecv:
-                logger.debug('main starting Action.MainRecv')
-                thread_actions[0] = 'pause_send'
-                thread_action_event.set()
-                smart_event_app.action_to_do[0] = 'pause_send'
-                smart_event_app.action_event.set()
-                if exc[0]:
-                    raise exc[0]
-                if smart_event_app.exc:
-                    raise smart_event_app.exc
-                for msg in send_msgs:
-                    recv_msg = smart_event.recv()
-                    assert recv_msg == msg
-                    recv_msg = smart_event_app.recv_msg()
-                    assert recv_msg == msg
-                    reply_msg = get_exp_recv_msg(msg)
-                    smart_event.send(reply_msg)
-                    smart_event_app.send_msg(reply_msg)
-                thread_complete_event.wait()
-                thread_complete_event.clear()
-                smart_event_app.complete_event.wait()
-                smart_event_app.complete_event.clear()
-                thread_actions[0] = 'recv_verify'
-                thread_action_event.set()
-                smart_event_app.action_to_do[0] = 'recv_verify'
-                smart_event_app.action_event.set()
-                thread_complete_event.wait()
-                thread_complete_event.clear()
-                smart_event_app.complete_event.wait()
-                smart_event_app.complete_event.clear()
-            elif action == Action.ThreadSend:
-                logger.debug('main starting Action.ThreadSend')
-                thread_actions[0] = 'send'
-                thread_action_event.set()
-                smart_event_app.action_to_do[0] = 'send'
-                smart_event_app.action_event.set()
-                time.sleep(1)
-                if exc[0]:
-                    raise exc[0]
-                if smart_event_app.exc:
-                    raise smart_event_app.exc
-                for msg in send_msgs:
-                    recv_msg = smart_event.recv()
-                    assert recv_msg == msg
-                    recv_msg = smart_event_app.recv_msg()
-                    assert recv_msg == msg
-                    reply_msg = get_exp_recv_msg(msg)
-                    smart_event.send(reply_msg)
-                    smart_event_app.send_msg(reply_msg)
-                thread_complete_event.wait()
-                thread_complete_event.clear()
-                smart_event_app.complete_event.wait()
-                smart_event_app.complete_event.clear()
-                thread_actions[0] = 'recv_verify'
-                thread_action_event.set()
-                smart_event_app.action_to_do[0] = 'recv_verify'
-                smart_event_app.action_event.set()
-                thread_complete_event.wait()
-                thread_complete_event.clear()
-                smart_event_app.complete_event.wait()
-                smart_event_app.complete_event.clear()
-            elif action == Action.ThreadRecv:
-                logger.debug('main starting Action.ThreadRecv')
-                thread_actions[0] = 'recv_reply'
-                thread_action_event.set()
-                smart_event_app.action_to_do[0] = 'recv_reply'
-                smart_event_app.action_event.set()
-                time.sleep(1)
-                if exc[0]:
-                    raise exc[0]
-                if smart_event_app.exc:
-                    raise smart_event_app.exc
-                for msg in send_msgs:
-                    smart_event.send(msg)
-                    smart_event_app.send_msg(msg)
-                for msg in send_msgs:
-                    exp_recv_msg = get_exp_recv_msg(msg)
-                    recv_msg = smart_event.recv()
-                    assert recv_msg == exp_recv_msg
-                    recv_msg = smart_event_app.recv_msg()
-                    assert recv_msg == exp_recv_msg
-                thread_complete_event.wait()
-                thread_complete_event.clear()
-                smart_event_app.complete_event.wait()
-                smart_event_app.complete_event.clear()
-            elif action == Action.MainSendRecv:
-                logger.debug('main starting Action.MainSendRecv')
-                thread_actions[0] = 'recv_reply'
-                thread_action_event.set()
-                smart_event_app.action_to_do[0] = 'recv_reply'
-                smart_event_app.action_event.set()
-                if exc[0]:
-                    raise exc[0]
-                if smart_event_app.exc:
-                    raise smart_event_app.exc
-                for msg in send_msgs:
-                    exp_recv_msg = get_exp_recv_msg(msg)
-                    recv_msg = smart_event.send_recv(msg)
-                    assert recv_msg == exp_recv_msg
-                    recv_msg = smart_event_app.send_recv_msg(msg)
-                    assert recv_msg == exp_recv_msg
-                thread_complete_event.wait()
-                thread_complete_event.clear()
-                smart_event_app.complete_event.wait()
-                smart_event_app.complete_event.clear()
-            elif action == Action.ThreadSendRecv:
-                logger.debug('main starting Action.ThreadSendRecv')
-                thread_actions[0] = 'send_recv'
-                thread_action_event.set()
-                smart_event_app.action_to_do[0] = 'send_recv'
-                smart_event_app.action_event.set()
-                time.sleep(1)
-                if exc[0]:
-                    raise exc[0]
-                if smart_event_app.exc:
-                    raise smart_event_app.exc
-                for msg in send_msgs:
-                    recv_msg = smart_event.recv()
-                    assert recv_msg == msg
-                    recv_msg = smart_event_app.recv_msg()
-                    assert recv_msg == msg
-                    reply_msg = get_exp_recv_msg(msg)
-                    smart_event.send(reply_msg)
-                    smart_event_app.send_msg(reply_msg)
-                thread_complete_event.wait()
-                thread_complete_event.clear()
-                smart_event_app.complete_event.wait()
-                smart_event_app.complete_event.clear()
+            if action == Action.MainWait:
+                logger.debug('main starting Action.MainWait')
+
+            elif action == Action.MainSet:
+                logger.debug('main starting Action.MainSet')
+                smart_event.set()
+                cmd_to_thread[0] = Cmd.Wait
+
+            elif action == Action.ThreadWait:
+                logger.debug('main starting Action.ThreadWait')
+
+            elif action == Action.ThreadSet:
+                logger.debug('main starting Action.ThreadSet')
+
             else:
                 raise IncorrectActionSpecified('The Action is not recognized')
 
-        logger.debug('main completed all actions')
-        thread_actions[0] = 'exit'
-        thread_action_event.set()
-        f1_thread.join()
-        if exc[0]:
-            raise exc[0]
+            while True:
+                if cmd_to_mainline[0] == Cmd.Exit:
+                    break
+                thread_exc.raise_exc_if_one()  # detect thread error
+                time.sleep(0.2)
 
-        smart_event_app.action_to_do[0] = 'exit'
-        smart_event_app.action_event.set()
-        smart_event_app.join()
-        if smart_event_app.exc:
-            raise smart_event_app.exc
+        logger.debug('main completed all actions')
+        cmd_to_thread[0] = Cmd.Exit
+
+        f1_thread.join()
+
+###############################################################################
+# thread_func1
+###############################################################################
+    def thread_func1(self,
+                     s_event: SmartEvent,
+                     cmd_to_thread: List[Any],
+                     cmd_to_mainline: List[Any],
+                     cmd_log: List[Any],
+                     cmd_timeout: List[Any],
+                     cmd_timeout_result: List[Any]
+                     ) -> None:
+
+        """Thread to test SmartEvent scenarios.
+
+        Args:
+            s_event: instance of SmartEvent
+            cmd_to_thread: command from mainline to this thread to perform
+            cmd_to_mainline: command from this thread to mainline to perform
+            cmd_log: specifies whether to issue a log_msg
+            cmd_timeout: specifies whether to issue a timeout
+            cmd_timeout_result: specifies whether a timeout times out
+
+        Raises:
+            UnrecognizedCmd: Thread received an unrecognized command
+
+        """
+        logger.debug('thread_func1 beta started')
+        while True:
+            if cmd_to_thread[0] == Cmd.Wait:
+                cmd_to_thread[0] = 0
+                logger.debug('thread_func1 doing wait')
+                if not cmd_log[0] and not cmd_timeout[0]:
+                    s_event.wait()
+                elif not cmd_log[0] and cmd_timeout[0]:
+                    if cmd_timeout_result[0]:
+                        assert s_event.wait(timeout=cmd_timeout[0])
+                    else:
+                        start_time = time.time()
+                        assert not s_event.wait(timeout=cmd_timeout[0])
+                        assert (cmd_timeout[0]
+                                    < (time.time() - start_time)
+                                    < (cmd_timeout[0] + .5))
+
+                elif cmd_log[0] and not cmd_timeout[0]:
+                    assert s_event.wait(log_msg=cmd_log[0])
+
+                elif cmd_log[0] and cmd_timeout[0]:
+                    if cmd_timeout_result[0]:
+                        assert s_event.wait(log_msg=cmd_log[0],
+                                            timeout=cmd_timeout[0])
+                    else:
+                        start_time = time.time()
+                        assert not s_event.wait(timeout=cmd_timeout[0],
+                                                log_msg=cmd_log[0])
+                        assert (cmd_timeout[0]
+                                < (time.time() - start_time)
+                                < (cmd_timeout[0] + .5))
+
+                cmd_to_mainline[0] = Cmd.Exit
+
+            elif cmd_to_thread[0] == Cmd.Exit:
+                logger.debug('thread_func1 beta exiting')
+                break
+
+            # elif cmd_to_thread[0] == 0:
+            #     time.sleep(0.2)
+
+            else:
+                raise UnrecognizedCmd('Thread received an unrecognized cmd')
+
+            time.sleep(0.2)

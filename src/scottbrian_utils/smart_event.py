@@ -426,7 +426,7 @@ class SmartEvent:
 
         if log_msg:
             caller_info = get_formatted_call_sequence(latest=1, depth=1)
-            logger.debug(f'{caller_info} {log_msg}')
+            logger.debug(f'wait entered {caller_info} {log_msg}')
 
 
         logger.debug(f'{current.name} about to enter wait loop')
@@ -444,13 +444,15 @@ class SmartEvent:
                     current.waiting = False
                     current.sync_wait = False
                     remote.sync_event.clear()  # be ready for next wait
-                    return ret_code
+                    # return ret_code
+                    break
             else:
                 ret_code = remote.event.wait(timeout=t_out)
                 if ret_code:
                     current.waiting = False
                     remote.event.clear()  # be ready for next wait
-                    return ret_code
+                    # return ret_code
+                    break
 
             # We need to do the following checks while locked to prevent
             # either thread from setting the other thread's flags AFTER
@@ -467,13 +469,17 @@ class SmartEvent:
                             current.waiting = False
                             current.sync_wait = False
                             remote.sync_event.clear()  # be ready 4 next sync
-                            return True
+                            ret_code = True
+                            break
+                            # return True
                     else:
                         if remote.event.is_set():
                             current.waiting = False
                             current.sync_wait = False
                             remote.event.clear()  # be ready for next wait
-                            return True
+                            ret_code = True
+                            break
+                            # return True
 
                     # Check for error conditions first before checking
                     # whether the remote is alive. If the remote detects a
@@ -572,14 +578,16 @@ class SmartEvent:
                             f'Call sequence: {get_formatted_call_sequence()}')
 
                     if timeout and (timeout < (time.time() - start_time)):
-                        logger.debug(f'{current.name} timeout out'
+                        logger.debug(f'{current.name} timeout out '
                                      'with current.waiting = '
                                      f'{current.waiting} and ' 
                                      f'current.sync_wait = '
                                      f'{current.sync_wait}')
                         current.waiting = False
                         current.sync_wait = False
-                        return False
+                        ret_code = False
+                        break
+                        # return False
                 # finally:
                 #     lmsg = (f'cw={current.waiting} '
                 #             f'csw={current.sync_wait} '
@@ -587,6 +595,11 @@ class SmartEvent:
                 #             f'reis={remote.event.is_set()} ')
                 #
                 #     logger.debug(f'{current.name} finally {lmsg}')
+        if log_msg:
+            caller_info = get_formatted_call_sequence(latest=1, depth=1)
+            logger.debug(f'wait exiting {caller_info} {log_msg}')
+
+        return ret_code
 
     ###########################################################################
     # set
@@ -633,7 +646,8 @@ class SmartEvent:
 
         if log_msg:  # if caller specified a log message to issue
             # we want the prior 2 callers (latest=1, depth=2)
-            logger.debug(f'{get_formatted_call_sequence(latest=1, depth=2)} '
+            logger.debug('set entered '
+                         f'{get_formatted_call_sequence(latest=1, depth=2)} '
                          f'{log_msg}')
 
         while True:
@@ -677,9 +691,15 @@ class SmartEvent:
 
                     logger.debug(f'{current.name} about to set event')
                     current.event.set()  # wake remote thread
-                    return
+                    break
 
             time.sleep(0.2)
+
+        if log_msg:  # if caller specified a log message to issue
+            # we want the prior 2 callers (latest=1, depth=2)
+            logger.debug('set exiting '
+                         f'{get_formatted_call_sequence(latest=1, depth=2)} '
+                         f'{log_msg}')
 
     ###########################################################################
     # get_code
@@ -776,8 +796,7 @@ class SmartEvent:
                        and self.alpha.thread.is_alive()
                        and self.beta.thread.is_alive()):
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} raising '
-                                 'WaitUntilTimeout')
+                    logger.debug(f'raising  WaitUntilTimeout')
                     raise WaitUntilTimeout(
                         'The wait_until method timed out. '
                         f'Call sequence: {get_formatted_call_sequence()}')
