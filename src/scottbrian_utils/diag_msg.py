@@ -136,6 +136,30 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
             except (AttributeError, KeyError):
                 pass
 
+        # The following handles the case where the method is in a class
+        # that is itself defined within a function. Unfortunately, we are
+        # unable to find the class for a static function.
+        if not cls_name:  # did not find it yet
+            for obj_name, obj in frame.f_locals.items():
+                try:
+                    # print('\nobj.__class__.__dict__', obj.__class__.__dict__)
+                    # print('\nobj.__class__.__dict__[func_name]',
+                    #       obj.__class__.__dict__[func_name])
+                    if obj.__class__.__dict__[func_name].__code__ is code:
+                        cls_name = obj.__class__.__name__
+                        break
+                except (AttributeError, KeyError):
+                    pass
+
+                try:
+                    if obj.__class__.__dict__[func_name].__func__.__code__ \
+                            is code:
+                        cls_name = obj.__class__.__name__
+                        break
+                except (AttributeError, KeyError):
+                    pass
+
+
     return CallerInfo(mod_name, cls_name, func_name, frame.f_lineno)
 
 

@@ -2152,14 +2152,12 @@ class TestSmartEventLogger:
     ###########################################################################
     # test_smart_event_thread_app_event_logger
     ###########################################################################
-    def test_smart_event_thread_app_event_logger(self) -> None:
+    def test_smart_event_thread_app_event_logger(self,
+                                                 caplog) -> None:
         """Test smart event logger with thread_app thread.
 
         Args:
-            thread_exc: exception capture fixture
-
-        Raises:
-            Exception: any uncaptured exception from a thread
+            caplog: fixture to capture log messages
 
         """
 
@@ -2171,33 +2169,152 @@ class TestSmartEventLogger:
 
             def run(self):
                 logger.debug('ThreadApp run entered')
-                assert self.s_event.wait(log_msg='wait for mainline to post 1')
-                time.sleep(4)
-                self.s_event.set(log_msg='post mainline 4')
+                self.s_event.sync(log_msg='beta sync point 1')
 
+                assert self.s_event.wait(log_msg='wait 12')
+
+                self.s_event.sync(log_msg='beta sync point 2')
+
+                self.s_event.wait_until(WUCond.RemoteWaiting)
+
+                self.s_event.set(code='forty-two', log_msg='post mainline 34')
+
+                self.s_event.sync(log_msg='beta sync point 3')
+                self.s_event.sync(log_msg='beta sync point 4')
+
+        logger.debug('mainline starting')
         smart_event = SmartEvent(alpha=threading.current_thread())
         thread_app = MyThread(smart_event)
         thread_app.start()
+        smart_event.wait_until(WUCond.ThreadsReady)
 
-        time.sleep(3)
+        smart_event.sync(log_msg='mainline sync point 1')
 
-        smart_event.set(log_msg=f'post thread {smart_event.beta.name} 2')
+        smart_event.wait_until(WUCond.RemoteWaiting)
 
-        assert smart_event.wait(log_msg='wait for post from thread 3')
+        smart_event.set(log_msg=f'post thread {smart_event.beta.name} 23',
+                        code=42)
+
+        smart_event.sync(log_msg='mainline sync point 2')
+
+        assert smart_event.wait(log_msg='wait for post from thread 34')
+
+        smart_event.sync(log_msg='mainline sync point 3')
+        smart_event.sync(log_msg='mainline sync point 4')
 
         thread_app.join()
+
+        logger.debug('mainline all tests complete')
+
+        #######################################################################
+        # verify log messages
+        #######################################################################
+        ml_log_seq = ('test_smart_event.py::TestSmartEventLogger.'
+                      'test_smart_event_thread_app_event_logger:[0-9]* ')
+
+        beta_log_seq = ('test_smart_event.py::MyThread.run:[0-9]* ')
+
+        ml_sync_enter_log_prefix = ('sync entered ' + ml_log_seq)
+
+        ml_sync_exit_log_prefix = ('sync exiting ' + ml_log_seq)
+
+        ml_wait_enter_log_prefix = ('wait entered ' + ml_log_seq)
+
+        ml_wait_exit_log_prefix = ('wait exiting ' + ml_log_seq)
+
+        ml_set_enter_log_prefix = ('set entered with code: 42 ' + ml_log_seq)
+
+        ml_set_exit_log_prefix = ('set exiting ' + ml_log_seq)
+
+        beta_sync_enter_log_prefix = ('sync entered ' + beta_log_seq)
+
+        beta_sync_exit_log_prefix = ('sync exiting ' + beta_log_seq)
+
+        beta_wait_enter_log_prefix = ('wait entered ' + beta_log_seq)
+
+        beta_wait_exit_log_prefix = ('wait exiting ' + beta_log_seq)
+
+        beta_set_enter_log_prefix = ('set entered with code: forty-two '
+                                     + beta_log_seq)
+
+        beta_set_exit_log_prefix = ('set exiting ' + beta_log_seq)
+
+
+        exp_log_msgs = [
+            re.compile('mainline starting'),
+            re.compile('mainline all tests complete'),
+
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 1'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 1'),
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 2'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 2'),
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 3'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 3'),
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 4'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 4'),
+
+            re.compile(ml_wait_enter_log_prefix
+                       + 'wait for post from thread 34'),
+            re.compile(ml_wait_exit_log_prefix
+                       + 'wait for post from thread 34'),
+
+            re.compile(ml_set_enter_log_prefix + 'post thread beta 23'),
+            re.compile(ml_set_exit_log_prefix + 'post thread beta 23'),
+
+            re.compile('ThreadApp run entered'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 1'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 1'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 2'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 2'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 3'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 3'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 4'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 4'),
+
+            re.compile(beta_wait_enter_log_prefix + 'wait 12'),
+            re.compile(beta_wait_exit_log_prefix + 'wait 12'),
+
+            re.compile(beta_set_enter_log_prefix + 'post mainline 34'),
+            re.compile(beta_set_exit_log_prefix + 'post mainline 34'),
+                        ]
+
+        log_records_found = 0
+        caplog_recs = []
+        for record in caplog.records:
+            caplog_recs.append(record.msg)
+
+        for idx, record in enumerate(caplog.records):
+            # print(record.msg)
+            # print(exp_log_msgs)
+            for idx2, l_msg in enumerate(exp_log_msgs):
+                if l_msg.match(record.msg):
+                    # print(l_msg.match(record.msg))
+                    exp_log_msgs.pop(idx2)
+                    caplog_recs.remove(record.msg)
+                    log_records_found += 1
+                    break
+
+        print(f'\nlog_records_found: {log_records_found} of {len(caplog.records)}')
+
+        print('*' * 20)
+        for log_msg in caplog_recs:
+            print(log_msg)
+
+        print('*' * 20)
+        for exp_lm in exp_log_msgs:
+            print(exp_lm)
+
+        assert not exp_log_msgs
+        assert log_records_found == len(caplog.records)
 
     ###########################################################################
     # test_smart_event_thread_event_app_event_logger
     ###########################################################################
-    def test_smart_event_thread_event_app_event_logger(self) -> None:
+    def test_smart_event_thread_event_app_event_logger(self, caplog) -> None:
         """Test smart event logger with thread_event_app thread.
 
         Args:
-            thread_exc: exception capture fixture
-
-        Raises:
-            Exception: any uncaptured exception from a thread
+            caplog: fixture to capture log messages
 
         """
 
@@ -2209,21 +2326,138 @@ class TestSmartEventLogger:
 
             def run(self):
                 logger.debug('ThreadApp run entered')
-                assert self.wait(log_msg='wait for mainline to post 1')
-                time.sleep(4)
-                self.set(log_msg='post mainline 4')
+                self.sync(log_msg='beta sync point 1')
 
+                assert self.wait(log_msg='wait for mainline to post 12')
+
+                self.sync(log_msg='beta sync point 2')
+
+                self.wait_until(WUCond.RemoteWaiting)
+
+                self.set(log_msg='post mainline 23')
+
+                self.sync(log_msg='beta sync point 3')
+
+        logger.debug('mainline starting')
         thread_event_app = MyThread(alpha=threading.current_thread())
         thread_event_app.start()
 
-        time.sleep(3)
+        thread_event_app.wait_until(WUCond.ThreadsReady)
+
+        thread_event_app.sync(log_msg='mainline sync point 1')
+
+        thread_event_app.wait_until(WUCond.RemoteWaiting)
 
         thread_event_app.set(log_msg=f'post thread '
-                                     f'{thread_event_app.beta.name} 2')
+                                     f'{thread_event_app.beta.name} 12')
 
-        assert thread_event_app.wait(log_msg='wait for post from thread 3')
+        thread_event_app.sync(log_msg='mainline sync point 2')
+
+        assert thread_event_app.wait(log_msg='wait for post from thread 23')
+
+        thread_event_app.sync(log_msg='mainline sync point 3')
 
         thread_event_app.join()
+
+        logger.debug('mainline all tests complete')
+
+        #######################################################################
+        # verify log messages
+        #######################################################################
+        ml_log_seq = ('test_smart_event.py::TestSmartEventLogger.'
+                      'test_smart_event_thread_event_app_event_logger:[0-9]* ')
+
+        beta_log_seq = ('test_smart_event.py::MyThread.run:[0-9]* ')
+
+        ml_sync_enter_log_prefix = ('sync entered ' + ml_log_seq)
+
+        ml_sync_exit_log_prefix = ('sync exiting ' + ml_log_seq)
+
+        ml_wait_enter_log_prefix = ('wait entered ' + ml_log_seq)
+
+        ml_wait_exit_log_prefix = ('wait exiting ' + ml_log_seq)
+
+        ml_set_enter_log_prefix = ('set entered ' + ml_log_seq)
+
+        ml_set_exit_log_prefix = ('set exiting ' + ml_log_seq)
+
+        beta_sync_enter_log_prefix = ('sync entered ' + beta_log_seq)
+
+        beta_sync_exit_log_prefix = ('sync exiting ' + beta_log_seq)
+
+        beta_wait_enter_log_prefix = ('wait entered ' + beta_log_seq)
+
+        beta_wait_exit_log_prefix = ('wait exiting ' + beta_log_seq)
+
+        beta_set_enter_log_prefix = ('set entered ' + beta_log_seq)
+
+        beta_set_exit_log_prefix = ('set exiting ' + beta_log_seq)
+
+
+        exp_log_msgs = [
+            re.compile('mainline starting'),
+            re.compile('mainline all tests complete'),
+
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 1'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 1'),
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 2'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 2'),
+            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 3'),
+            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 3'),
+
+            re.compile(ml_wait_enter_log_prefix
+                       + 'wait for post from thread 23'),
+            re.compile(ml_wait_exit_log_prefix
+                       + 'wait for post from thread 23'),
+
+            re.compile(ml_set_enter_log_prefix + 'post thread beta 12'),
+            re.compile(ml_set_exit_log_prefix + 'post thread beta 12'),
+
+            re.compile('ThreadApp run entered'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 1'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 1'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 2'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 2'),
+            re.compile(beta_sync_enter_log_prefix + 'beta sync point 3'),
+            re.compile(beta_sync_exit_log_prefix + 'beta sync point 3'),
+
+            re.compile(beta_wait_enter_log_prefix
+                       + 'wait for mainline to post 12'),
+            re.compile(beta_wait_exit_log_prefix
+                       + 'wait for mainline to post 12'),
+
+            re.compile(beta_set_enter_log_prefix + 'post mainline 23'),
+            re.compile(beta_set_exit_log_prefix + 'post mainline 23'),
+                        ]
+
+        log_records_found = 0
+        caplog_recs = []
+        for record in caplog.records:
+            caplog_recs.append(record.msg)
+
+        for idx, record in enumerate(caplog.records):
+            # print(record.msg)
+            # print(exp_log_msgs)
+            for idx2, l_msg in enumerate(exp_log_msgs):
+                if l_msg.match(record.msg):
+                    # print(l_msg.match(record.msg))
+                    exp_log_msgs.pop(idx2)
+                    caplog_recs.remove(record.msg)
+                    log_records_found += 1
+                    break
+
+        print(f'\nlog_records_found: {log_records_found} of {len(caplog.records)}')
+
+        print('*' * 20)
+        for log_msg in caplog_recs:
+            print(log_msg)
+
+        print('*' * 20)
+        for exp_lm in exp_log_msgs:
+            print(exp_lm)
+
+        assert not exp_log_msgs
+        assert log_records_found == len(caplog.records)
 
 ###############################################################################
 # TestCombos Class
