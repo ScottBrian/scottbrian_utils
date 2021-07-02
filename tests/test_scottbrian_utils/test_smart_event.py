@@ -56,20 +56,24 @@ class UnrecognizedCmd(ErrorTstSmartEvent):
 ###############################################################################
 # Cmd Constants
 ###############################################################################
-Cmd = Enum('Cmd', 'Wait Set Exit')
+Cmd = Enum('Cmd', 'Wait Wait_TOT Wait_TOF Set Exit')
 
 ###############################################################################
 # Action
 ###############################################################################
 Action = Enum('Action',
               'MainWait MainSet '
-              'ThreadWait ThreadSet ')
+              'ThreadWait ThreadWait_TOT ThreadWait_TOF ThreadSet ')
 
 ###############################################################################
 # action_arg fixtures
 ###############################################################################
-action_arg_list = [Action.MainWait, Action.MainSet,
-                   Action.ThreadWait, Action.ThreadSet]
+action_arg_list = [Action.MainWait,
+                   Action.MainSet,
+                   Action.ThreadWait,
+                   Action.ThreadWait_TOT,
+                   Action.ThreadWait_TOF,
+                   Action.ThreadSet]
 
 
 @pytest.fixture(params=action_arg_list)  # type: ignore
@@ -1995,6 +1999,7 @@ class TestSmartEventCode:
 
         thread_event_app.join()
 
+
 ###############################################################################
 # TestSmartEventLogger Class
 ###############################################################################
@@ -2459,6 +2464,7 @@ class TestSmartEventLogger:
         assert not exp_log_msgs
         assert log_records_found == len(caplog.records)
 
+
 ###############################################################################
 # TestCombos Class
 ###############################################################################
@@ -2468,14 +2474,13 @@ class TestCombos:
     ###########################################################################
     def test_smart_event_thread_app_combos(self,
                                            action_arg1: Any,
-                                           timeout_arg1: Any,
                                            code_arg1: Any,
                                            log_msg_arg1: Any,
                                            action_arg2: Any,
-                                           timeout_arg2: Any,
                                            # code_arg2: Any,
                                            # log_msg_arg2: Any,
-                                           thread_exc: "ExcHook" ) -> None:
+                                           caplog: Any,
+                                           thread_exc: "ExcHook") -> None:
         """Test the SmartEvent with ThreadApp combos.
 
         Args:
@@ -2487,6 +2492,8 @@ class TestCombos:
             timeout_arg2: whether to specify timeout
             code_arg2: whether to set and recv a code
             log_msg_arg2: whether to specify a log message
+            caplog: fixture to capture log messages
+            thread_exc: intercepts thread exceptions
 
         Raises:
             IncorrectActionSpecified: The Action is not recognized
@@ -2507,52 +2514,106 @@ class TestCombos:
         #         """
         #         logger.debug('SmartEventApp run started')
 
-
-
-        smart_event = SmartEvent()
+        logger.debug('mainline entered')
+        smart_event = SmartEvent(alpha=threading.current_thread())
         cmd_to_thread = [0]
         cmd_to_mainline = [0]
-        cmd_log = [0]
-        cmd_timeout = [0]
-        cmd_timeout_result = [False]
+        cmd_log = [log_msg_arg1]
+        cmd_code = [code_arg1]
+        thread_log_msgs = []
+        thread_wait_log_msgs = []
+        thread_set_log_msgs = []
 
         f1_thread = threading.Thread(target=self.thread_func1,
                                      args=(smart_event,
                                            cmd_to_thread,
                                            cmd_to_mainline,
                                            cmd_log,
-                                           cmd_timeout,
-                                           cmd_timeout_result))
-
+                                           cmd_code,
+                                           thread_log_msgs,
+                                           thread_wait_log_msgs,
+                                           thread_set_log_msgs))
+        smart_event.set_thread(beta=f1_thread)
         logger.debug('mainline about to start thread_func1')
         f1_thread.start()
+        smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
 
         #######################################################################
         # action loop
         #######################################################################
         actions = []
+        main_log_msgs = []
         actions.append(action_arg1)
         actions.append(action_arg2)
         for action in actions:
+
             if action == Action.MainWait:
+                main_log_msgs.append('main starting Action.MainWait')
                 logger.debug('main starting Action.MainWait')
+                cmd_to_thread[0] = Cmd.Set
+                assert smart_event.wait()
+                if code_arg1:
+                    assert smart_event.alpha.code == code_arg1
+                    assert code_arg1 == smart_event.get_code()
 
             elif action == Action.MainSet:
+                main_log_msgs.append('main starting Action.MainSet')
                 logger.debug('main starting Action.MainSet')
-                smart_event.set()
+                if code_arg1:
+                    smart_event.set(code=code_arg1)
+                    assert smart_event.beta.code == code_arg1
+                else:
+                    smart_event.set()
+
+
                 cmd_to_thread[0] = Cmd.Wait
 
             elif action == Action.ThreadWait:
+                main_log_msgs.append('main starting Action.ThreadWait')
                 logger.debug('main starting Action.ThreadWait')
+                cmd_to_thread[0] = Cmd.Wait
+                smart_event.wait_until(WUCond.RemoteWaiting)
+                if code_arg1:
+                    smart_event.set(code=code_arg1)
+                    assert smart_event.beta.code == code_arg1
+                else:
+                    smart_event.set()
+
+
+            elif action == Action.ThreadWait_TOT:
+                main_log_msgs.append('main starting Action.ThreadWait_TOT')
+                logger.debug('main starting Action.ThreadWait_TOT')
+                cmd_to_thread[0] = Cmd.Wait_TOT
+                smart_event.wait_until(WUCond.RemoteWaiting)
+                time.sleep(0.3)
+                if code_arg1:
+                    smart_event.set(code=code_arg1)
+                    assert smart_event.beta.code == code_arg1
+                else:
+                    smart_event.set()
+
+            elif action == Action.ThreadWait_TOF:
+                main_log_msgs.append('main starting Action.ThreadWait_TOF')
+                logger.debug('main starting Action.ThreadWait_TOF')
+                cmd_to_thread[0] = Cmd.Wait_TOF
+                smart_event.wait_until(WUCond.RemoteWaiting)
 
             elif action == Action.ThreadSet:
+                main_log_msgs.append('main starting Action.ThreadSet')
                 logger.debug('main starting Action.ThreadSet')
+                cmd_to_thread[0] = Cmd.Set
+                smart_event.wait_until(WUCond.RemoteSet)
+                assert smart_event.wait()
+                if code_arg1:
+                    assert smart_event.alpha.code == code_arg1
+                    assert code_arg1 == smart_event.get_code()
 
             else:
                 raise IncorrectActionSpecified('The Action is not recognized')
 
             while True:
                 if cmd_to_mainline[0] == Cmd.Exit:
+                    cmd_to_mainline[0] = 0
                     break
                 thread_exc.raise_exc_if_one()  # detect thread error
                 time.sleep(0.2)
@@ -2562,6 +2623,124 @@ class TestCombos:
 
         f1_thread.join()
 
+        if not log_msg_arg1:
+            return
+
+        #######################################################################
+        # verify log messages
+        #######################################################################
+        ml_log_seq = ('test_smart_event.py::TestCombos.'
+                      'test_smart_event_thread_app_combos:[0-9]* ')
+
+        beta_log_seq = ('test_smart_event.py::TestCombos.thread_func1:[0-9]* ')
+
+        ml_sync_enter_log_prefix = ('sync entered ' + ml_log_seq)
+
+        ml_sync_exit_log_prefix = ('sync exiting ' + ml_log_seq)
+
+        ml_wait_enter_log_prefix = ('wait entered ' + ml_log_seq)
+
+        ml_wait_exit_log_prefix = ('wait exiting ' + ml_log_seq)
+
+        ml_set_enter_log_prefix = ('set entered ' + ml_log_seq)
+
+        ml_set_exit_log_prefix = ('set exiting ' + ml_log_seq)
+
+        beta_sync_enter_log_prefix = ('sync entered ' + beta_log_seq)
+
+        beta_sync_exit_log_prefix = ('sync exiting ' + beta_log_seq)
+
+        beta_wait_enter_log_prefix = ('wait entered ' + beta_log_seq)
+
+        beta_wait_exit_log_prefix = ('wait exiting ' + beta_log_seq)
+
+        beta_set_enter_log_prefix = ('set entered ' + beta_log_seq)
+
+        beta_set_enter_wc_log_prefix = (f'set entered with code: {code_arg1} '
+                                        + beta_log_seq)
+
+        beta_set_exit_log_prefix = ('set exiting ' + beta_log_seq)
+
+        exp_log_msgs = [
+            re.compile('mainline entered'),
+            re.compile('main completed all actions'),
+            re.compile('mainline about to start thread_func1'),
+            re.compile(main_log_msgs[0]),
+            re.compile(main_log_msgs[1]),
+
+            # re.compile(ml_sync_enter_log_prefix + 'mainline sync point 1'),
+            # re.compile(ml_sync_exit_log_prefix + 'mainline sync point 1'),
+            # re.compile(ml_sync_enter_log_prefix + 'mainline sync point 2'),
+            # re.compile(ml_sync_exit_log_prefix + 'mainline sync point 2'),
+            # re.compile(ml_sync_enter_log_prefix + 'mainline sync point 3'),
+            # re.compile(ml_sync_exit_log_prefix + 'mainline sync point 3'),
+
+            # re.compile(ml_wait_enter_log_prefix
+            #            + 'wait for post from thread 23'),
+            # re.compile(ml_wait_exit_log_prefix
+            #            + 'wait for post from thread 23'),
+
+            # re.compile(ml_set_enter_log_prefix + 'post thread beta 12'),
+            # re.compile(ml_set_exit_log_prefix + 'post thread beta 12'),
+
+            ###################################################################
+            # Thread log messages
+            ###################################################################
+            re.compile('thread_func1 beta started')
+            # re.compile(beta_sync_enter_log_prefix + 'beta sync point 1'),
+            # re.compile(beta_sync_exit_log_prefix + 'beta sync point 1'),
+            # re.compile(beta_sync_enter_log_prefix + 'beta sync point 2'),
+            # re.compile(beta_sync_exit_log_prefix + 'beta sync point 2'),
+            # re.compile(beta_sync_enter_log_prefix + 'beta sync point 3'),
+            # re.compile(beta_sync_exit_log_prefix + 'beta sync point 3'),
+                         ]
+
+        for lmsg in thread_wait_log_msgs:
+            exp_log_msgs.append(re.compile(beta_wait_enter_log_prefix + lmsg))
+            exp_log_msgs.append(re.compile(beta_wait_exit_log_prefix + lmsg))
+
+        for lmsg in thread_set_log_msgs:
+            if code_arg1:
+                exp_log_msgs.append(re.compile(beta_set_enter_wc_log_prefix
+                                               + lmsg))
+            else:
+                exp_log_msgs.append(re.compile(beta_set_enter_log_prefix
+                                               + lmsg))
+
+            exp_log_msgs.append(re.compile(beta_set_exit_log_prefix + lmsg))
+
+        for lmsg in thread_log_msgs:
+            exp_log_msgs.append(re.compile(lmsg))
+
+        log_records_found = 0
+        caplog_recs = []
+        for record in caplog.records:
+            caplog_recs.append(record.msg)
+
+        for idx, record in enumerate(caplog.records):
+            # print(record.msg)
+            # print(exp_log_msgs)
+            for idx2, l_msg in enumerate(exp_log_msgs):
+                if l_msg.match(record.msg):
+                    # print(l_msg.match(record.msg))
+                    exp_log_msgs.pop(idx2)
+                    caplog_recs.remove(record.msg)
+                    log_records_found += 1
+                    break
+
+        print(f'\nlog_records_found: {log_records_found} of {len(caplog.records)}')
+
+        print(('*' * 8) + ' remaining unmatched log records ' + ('*' * 8))
+        for log_msg in caplog_recs:
+            print(log_msg)
+
+        print(('*' * 8) + ' remaining expected log records ' + ('*' * 8))
+        for exp_lm in exp_log_msgs:
+            print(exp_lm)
+
+        assert not exp_log_msgs
+        assert log_records_found == len(caplog.records)
+
 ###############################################################################
 # thread_func1
 ###############################################################################
@@ -2570,8 +2749,10 @@ class TestCombos:
                      cmd_to_thread: List[Any],
                      cmd_to_mainline: List[Any],
                      cmd_log: List[Any],
-                     cmd_timeout: List[Any],
-                     cmd_timeout_result: List[Any]
+                     cmd_code: List[Any],
+                     thread_log_msgs: List[str],
+                     thread_wait_log_msgs: List[str],
+                     thread_set_log_msgs: List[str]
                      ) -> None:
 
         """Thread to test SmartEvent scenarios.
@@ -2581,8 +2762,10 @@ class TestCombos:
             cmd_to_thread: command from mainline to this thread to perform
             cmd_to_mainline: command from this thread to mainline to perform
             cmd_log: specifies whether to issue a log_msg
-            cmd_timeout: specifies whether to issue a timeout
-            cmd_timeout_result: specifies whether a timeout times out
+            cmd_code: specifies whether to issue a code on the set
+            thread_log_msgs: used to collect expected log messages
+            thread_wait_log_msgs: used to collect expected wait log messages
+            thread_set_log_msgs: used to collect expected set log messages
 
         Raises:
             UnrecognizedCmd: Thread received an unrecognized command
@@ -2592,42 +2775,75 @@ class TestCombos:
         while True:
             if cmd_to_thread[0] == Cmd.Wait:
                 cmd_to_thread[0] = 0
-                logger.debug('thread_func1 doing wait')
-                if not cmd_log[0] and not cmd_timeout[0]:
-                    s_event.wait()
-                elif not cmd_log[0] and cmd_timeout[0]:
-                    if cmd_timeout_result[0]:
-                        assert s_event.wait(timeout=cmd_timeout[0])
-                    else:
-                        start_time = time.time()
-                        assert not s_event.wait(timeout=cmd_timeout[0])
-                        assert (cmd_timeout[0]
-                                    < (time.time() - start_time)
-                                    < (cmd_timeout[0] + .5))
-
-                elif cmd_log[0] and not cmd_timeout[0]:
+                thread_log_msgs.append('thread_func1 doing Wait')
+                logger.debug('thread_func1 doing Wait')
+                if cmd_log[0]:
+                    thread_wait_log_msgs.append(cmd_log[0])
                     assert s_event.wait(log_msg=cmd_log[0])
+                else:
+                    assert s_event.wait()
+                if cmd_code[0]:
+                    assert s_event.beta.code == cmd_code[0]
+                    assert cmd_code[0] == s_event.get_code()
+                cmd_to_mainline[0] = Cmd.Exit
 
-                elif cmd_log[0] and cmd_timeout[0]:
-                    if cmd_timeout_result[0]:
-                        assert s_event.wait(log_msg=cmd_log[0],
-                                            timeout=cmd_timeout[0])
+            elif cmd_to_thread[0] == Cmd.Wait_TOT:
+                cmd_to_thread[0] = 0
+                thread_log_msgs.append('thread_func1 doing Wait_TOT')
+                logger.debug('thread_func1 doing Wait_TOT')
+                if cmd_log[0]:
+                    thread_wait_log_msgs.append(cmd_log[0])
+                    assert s_event.wait(log_msg=cmd_log[0])
+                else:
+                    assert s_event.wait()
+                if cmd_code[0]:
+                    assert s_event.beta.code == cmd_code[0]
+                    assert cmd_code[0] == s_event.get_code()
+                cmd_to_mainline[0] = Cmd.Exit
+
+            elif cmd_to_thread[0] == Cmd.Wait_TOF:
+                cmd_to_thread[0] = 0
+                thread_log_msgs.append('thread_func1 doing Wait_TOF')
+                thread_log_msgs.append(f'{s_event.beta.name} timeout '
+                                       'out with current.waiting = True '
+                                       'and current.sync_wait = False')
+                logger.debug('thread_func1 doing Wait_TOF')
+                start_time = time.time()
+                if cmd_log[0]:
+                    thread_wait_log_msgs.append(cmd_log[0])
+                    assert not s_event.wait(timeout=0.5,
+                                            log_msg=cmd_log[0])
+                else:
+                    assert not s_event.wait(timeout=0.5)
+                assert 0.5 < (time.time() - start_time) < 0.75
+                cmd_to_mainline[0] = Cmd.Exit
+
+            elif cmd_to_thread[0] == Cmd.Set:
+                cmd_to_thread[0] = 0
+                thread_log_msgs.append('thread_func1 beta doing Set')
+                logger.debug('thread_func1 beta doing Set')
+                if cmd_code[0]:
+                    if cmd_log[0]:
+                        thread_set_log_msgs.append(cmd_log[0])
+                        s_event.set(code=cmd_code[0], log_msg=cmd_log[0])
                     else:
-                        start_time = time.time()
-                        assert not s_event.wait(timeout=cmd_timeout[0],
-                                                log_msg=cmd_log[0])
-                        assert (cmd_timeout[0]
-                                < (time.time() - start_time)
-                                < (cmd_timeout[0] + .5))
-
+                        s_event.set(code=cmd_code[0])
+                    assert s_event.alpha.code == cmd_code[0]
+                else:
+                    if cmd_log[0]:
+                        thread_set_log_msgs.append(cmd_log[0])
+                        s_event.set(log_msg=cmd_log[0])
+                    else:
+                        s_event.set()
                 cmd_to_mainline[0] = Cmd.Exit
 
             elif cmd_to_thread[0] == Cmd.Exit:
+                thread_log_msgs.append('thread_func1 beta exiting')
                 logger.debug('thread_func1 beta exiting')
                 break
 
-            # elif cmd_to_thread[0] == 0:
-            #     time.sleep(0.2)
+            elif cmd_to_thread[0] == 0:
+                time.sleep(0.2)
 
             else:
                 raise UnrecognizedCmd('Thread received an unrecognized cmd')
