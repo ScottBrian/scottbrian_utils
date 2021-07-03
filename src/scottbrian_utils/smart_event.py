@@ -369,10 +369,14 @@ class SmartEvent:
 
         Args:
             log_msg: log msg to log
-            timeout: number of seconds to allow for wait
+            timeout: number of seconds to allow for wait to complete
 
         Returns:
-            True is the wait was successful, False if it timed out
+            True if timeout was not specified, or if it was specified and
+              the wait request completed within the specified number of
+              seconds. False if timeout was specified and the wait
+              request did not complete within the specified number of
+              seconds.
 
         Raises:
             RemoteThreadNotAlive: The wait service has detected that the
@@ -578,11 +582,10 @@ class SmartEvent:
                         f'Call sequence: {get_formatted_call_sequence()}')
 
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} timeout out '
-                                 'with current.waiting = '
+                    logger.debug(f'{current.name} timeout out of a wait '
+                                 'request with current.waiting = '
                                  f'{current.waiting} and '
-                                 f'current.sync_wait = '
-                                 f'{current.sync_wait}')
+                                 f'current.sync_wait = {current.sync_wait}')
                     current.waiting = False
                     current.sync_wait = False
                     ret_code = False
@@ -599,12 +602,21 @@ class SmartEvent:
     ###########################################################################
     def set(self, *,
             log_msg: Optional[str] = None,
-            code: Optional[Any] = None) -> None:
+            timeout: Optional[Union[int, float]] = None,
+            code: Optional[Any] = None) -> bool:
         """Set on event.
 
         Args:
             log_msg: log msg to log
+            timeout: number of seconds to allow for set to complete
             code: code that waiter can retrieve with get_code
+
+        Returns:
+            True if timeout was not specified, or if it was specified and
+              the set request completed within the specified number of
+              seconds. False if timeout was specified and the set
+              request did not complete within the specified number of
+              seconds.
 
         Raises:
             RemoteThreadNotAlive: The set service has detected that the
@@ -636,6 +648,7 @@ class SmartEvent:
                          f'{get_formatted_call_sequence(latest=1, depth=1)} '
                          f'{log_msg}')
 
+        start_time = time.time()
         while True:
             with self._wait_check_lock:
                 if not remote.thread.is_alive():
@@ -683,6 +696,18 @@ class SmartEvent:
                     #     f'{current.name} about to set event {code_msg} '
                     #     f'{get_formatted_call_sequence(latest=1, depth=2)} ')
                     current.event.set()  # wake remote thread
+                    ret_code = True
+                    break
+
+                if timeout and (timeout < (time.time() - start_time)):
+                    logger.debug(f'{current.name} timeout out of a set '
+                                 'request with current.event.is_set() = '
+                                 f'{current.event.is_set()} and '
+                                 f'remote.deadlock = '
+                                 f'{remote.deadlock}')
+                    current.waiting = False
+                    current.sync_wait = False
+                    ret_code = False
                     break
 
             time.sleep(0.2)
@@ -692,6 +717,7 @@ class SmartEvent:
             logger.debug('set exiting '
                          f'{get_formatted_call_sequence(latest=1, depth=1)} '
                          f'{log_msg}')
+        return ret_code
 
     ###########################################################################
     # get_code
