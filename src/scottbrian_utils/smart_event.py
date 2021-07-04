@@ -187,6 +187,8 @@ class SmartEvent:
         self._both_threads_set = False
         self._sync_detected = False
         self._deadlock_detected = False
+        self.sync_cleanup = False
+        self.debug_logging_enabled = logger.isEnabledFor(logging.DEBUG)
 
         self.alpha = SmartEvent.ThreadEvent(name='alpha',
                                             event=threading.Event(),
@@ -319,6 +321,10 @@ class SmartEvent:
         Returns:
             True is the sync was successful, False if it timed out
 
+        Raises:
+            RemoteThreadNotAlive: The sync service has detected that '
+                                  remote thread is not alive.
+
         :Example: instantiate a SmartEvent and sync the threads
 
         >>> from scottbrian_utils.smart_event import SmartEvent
@@ -335,8 +341,8 @@ class SmartEvent:
 
         """
         current, remote = self._get_current_remote()
-
-        if log_msg:
+        caller_info = ''
+        if log_msg and self.debug_logging_enabled:
             caller_info = get_formatted_call_sequence(latest=1, depth=1)
             logger.debug(f'sync entered {caller_info} {log_msg}')
 
@@ -348,16 +354,44 @@ class SmartEvent:
         # else:
         #     self.set()
         #     ret_value = self.wait(timeout=timeout)  # , sync=True)
-
+        start_time = time.time()
         current.waiting = True
         current.sync_wait = True
-        ret_value = self.wait(timeout=timeout)
+        ret_code = self.wait(timeout=timeout)
+        if ret_code:
+            # Flip the cleanup flag. If it was False, then we
+            # will set it to True and then wait for the remote
+            # to set it back to False which will mean that
+            # both threads have reset the waiting, sync_wait,
+            # and event flags. If it was true, then the remote
+            # did the flip and we will flip it to false.
+            with self._wait_check_lock:
+                self.sync_cleanup = not self.sync_cleanup
+            while self.sync_cleanup:
+                with self._wait_check_lock:
+                    if not self.sync_cleanup:
+                        break  # all done
+                    if not remote.thread.is_alive():
+                        logger.debug(
+                            f'{current.name} raising '
+                            'RemoteThreadNotAlive')
+                        raise RemoteThreadNotAlive(
+                            'The sync service has detected that '
+                            f'{remote.name} thread is not alive. '
+                            f'Call sequence: {get_formatted_call_sequence()}')
 
-        if log_msg:
-            caller_info = get_formatted_call_sequence(latest=1, depth=1)
-            logger.debug(f'sync exiting {caller_info} {log_msg}')
+                    if timeout and (timeout < (time.time() - start_time)):
+                        logger.debug(f'{current.name} timeout of a sync '
+                                     'request.')
+                        ret_code = False
+                        break
+                time.sleep(0.1)
 
-        return ret_value
+        if log_msg and self.debug_logging_enabled:
+            logger.debug(f'sync exiting with ret_code {ret_code} '
+                         f'{caller_info} {log_msg}')
+
+        return ret_code
 
     ###########################################################################
     # wait
@@ -416,7 +450,8 @@ class SmartEvent:
             t_out = 0.1
             current.timeout_specified = False
 
-        if log_msg:
+        caller_info = ''
+        if log_msg and self.debug_logging_enabled:
             caller_info = get_formatted_call_sequence(latest=1, depth=1)
             logger.debug(f'wait entered {caller_info} {log_msg}')
 
@@ -582,7 +617,7 @@ class SmartEvent:
                         f'Call sequence: {get_formatted_call_sequence()}')
 
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} timeout out of a wait '
+                    logger.debug(f'{current.name} timeout of a wait '
                                  'request with current.waiting = '
                                  f'{current.waiting} and '
                                  f'current.sync_wait = {current.sync_wait}')
@@ -591,9 +626,9 @@ class SmartEvent:
                     ret_code = False
                     break
 
-        if log_msg:
-            caller_info = get_formatted_call_sequence(latest=1, depth=1)
-            logger.debug(f'wait exiting {caller_info} {log_msg}')
+        if log_msg and self.debug_logging_enabled:
+            logger.debug(f'wait exiting with ret_code {ret_code} '
+                         f'{caller_info} {log_msg}')
 
         return ret_code
 
@@ -642,11 +677,13 @@ class SmartEvent:
         """
         current, remote = self._get_current_remote()
         code_msg = f' with code: {code} ' if code else ' '
-        if log_msg:  # if caller specified a log message to issue
-            # we want the prior 2 callers (latest=1, depth=2)
+
+        # if caller specified a log message to issue
+        caller_info = ''
+        if log_msg and self.debug_logging_enabled:
+            caller_info = get_formatted_call_sequence(latest=1, depth=1)
             logger.debug(f'set entered{code_msg}'
-                         f'{get_formatted_call_sequence(latest=1, depth=1)} '
-                         f'{log_msg}')
+                         f'{caller_info} {log_msg}')
 
         start_time = time.time()
         while True:
@@ -700,7 +737,7 @@ class SmartEvent:
                     break
 
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} timeout out of a set '
+                    logger.debug(f'{current.name} timeout of a set '
                                  'request with current.event.is_set() = '
                                  f'{current.event.is_set()} and '
                                  f'remote.deadlock = '
@@ -712,11 +749,10 @@ class SmartEvent:
 
             time.sleep(0.2)
 
-        if log_msg:  # if caller specified a log message to issue
-            # we want the prior 2 callers (latest=1, depth=2)
-            logger.debug('set exiting '
-                         f'{get_formatted_call_sequence(latest=1, depth=1)} '
-                         f'{log_msg}')
+        # if caller specified a log message to issue
+        if log_msg and self.debug_logging_enabled:
+            logger.debug(f'set exiting with ret_code {ret_code} '
+                         f'{caller_info} {log_msg}')
         return ret_code
 
     ###########################################################################
