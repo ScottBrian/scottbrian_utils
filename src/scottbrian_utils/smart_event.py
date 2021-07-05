@@ -322,7 +322,10 @@ class SmartEvent:
             True is the sync was successful, False if it timed out
 
         Raises:
-            RemoteThreadNotAlive: The sync service has detected that '
+            ConflictDeadlockDetected: A sync request was made by one
+                                        thread and a wait request was made
+                                        by the other thread.
+            RemoteThreadNotAlive: The sync service has detected that
                                   remote thread is not alive.
 
         :Example: instantiate a SmartEvent and sync the threads
@@ -355,37 +358,83 @@ class SmartEvent:
         #     self.set()
         #     ret_value = self.wait(timeout=timeout)  # , sync=True)
         start_time = time.time()
-        current.waiting = True
-        current.sync_wait = True
-        ret_code = self.wait(timeout=timeout)
-        if ret_code:
-            # Flip the cleanup flag. If it was False, then we
-            # will set it to True and then wait for the remote
-            # to set it back to False which will mean that
-            # both threads have reset the waiting, sync_wait,
-            # and event flags. If it was true, then the remote
-            # did the flip and we will flip it to false.
-            with self._wait_check_lock:
-                self.sync_cleanup = not self.sync_cleanup
-            while self.sync_cleanup:
-                with self._wait_check_lock:
-                    if not self.sync_cleanup:
-                        break  # all done
-                    if not remote.thread.is_alive():
-                        logger.debug(
-                            f'{current.name} raising '
-                            'RemoteThreadNotAlive')
-                        raise RemoteThreadNotAlive(
-                            'The sync service has detected that '
-                            f'{remote.name} thread is not alive. '
-                            f'Call sequence: {get_formatted_call_sequence()}')
+        with self._wait_check_lock:
+            current.sync_wait = True
 
-                    if timeout and (timeout < (time.time() - start_time)):
-                        logger.debug(f'{current.name} timeout of a sync '
-                                     'request.')
-                        ret_code = False
+        #######################################################################
+        # States:
+        # remote.waiting and not remote sync_wait amd not sync_cleanup
+        # is normal wait. Raise Conflict if not timeout on either side.
+        #
+        # remote.waiting and not remote sync_wait and sync_cleanup is
+        # remote in cleanup waiting for us to set sync_cleanup to False
+        #
+        # remote.waiting and remote.sync_wait and not sync_cleanup is remote
+        # waiting to see us in sync_wait
+        #
+        # remote.waiting and remote.sync_wait and sync_cleanup is we saw
+        # remote in sync_wait and flipped sync_cleanup to True
+        #
+        ret_code = True
+        while True:
+            with self._wait_check_lock:
+                if current.sync_wait:  # we are phase 1
+                    if remote.sync_wait:  # remote in phase 1
+                        # we now go to phase 2
+                        current.sync_wait = False
+                        self.sync_cleanup = True
+                    elif self.sync_cleanup:  # remote in phase 2
+                        current.sync_wait = False
+                        self.sync_cleanup = False
                         break
-                time.sleep(0.1)
+                else:  # we are phase 2
+                    if not self.sync_cleanup:  # remote exited phase 2
+                        break
+
+                if not remote.thread.is_alive():
+                    current.sync_wait = False
+                    logger.debug(f'{current.name} raising '
+                                 f'RemoteThreadNotAlive')
+                    raise RemoteThreadNotAlive(
+                        'The sync service has detected that '
+                        f'{remote.name} thread is not alive. '
+                        f'Call sequence: {get_formatted_call_sequence()}')
+
+                if (current.deadlock
+                        or (remote.waiting
+                            and not current.event.is_set()
+                            and not remote.deadlock
+                            and not remote.timeout_specified
+                            and not current.timeout_specified)):
+                    logger.debug(
+                        f'{current.name} raising '
+                        'ConflictDeadlockDetected. '
+                        f'current.deadlock = {current.deadlock}, '
+                        f'remote.waiting = {remote.waiting}, '
+                        f'current.event.is_set() = {current.event.is_set()}, '
+                        f'remote.deadlock = {remote.deadlock}, '
+                        f'remote.timeout_specified = '
+                        f'{remote.timeout_specified}, '
+                        f'current.timeout_specified = '
+                        f'{current.timeout_specified}')
+                    if not current.deadlock:
+                        remote.deadlock = True
+                        remote.conflict = True
+                    current.sync_wait = False
+                    current.deadlock = False
+                    current.conflict = False
+                    raise ConflictDeadlockDetected(
+                        'A sync request was made by thread '
+                        f'{current.name} and a wait request was '
+                        f'made by thread  {remote.name}.')
+
+                if timeout and (timeout < (time.time() - start_time)):
+                    logger.debug(f'{current.name} timeout of a sync '
+                                 'request.')
+                    current.sync_wait = False
+                    ret_code = False
+                    break
+            time.sleep(0.1)
 
         if log_msg and self.debug_logging_enabled:
             logger.debug(f'sync exiting with ret_code {ret_code} '
@@ -455,38 +504,16 @@ class SmartEvent:
             caller_info = get_formatted_call_sequence(latest=1, depth=1)
             logger.debug(f'wait entered {caller_info} {log_msg}')
 
-        #  logger.debug(f'{current.name} about to enter wait loop')
         current.waiting = True
-        current_set_remote_sync_event = False
         start_time = time.time()
-        # cases for current is doing sync_wait:
-        # if current sees beta not waiting, OK - needs time to catch up
-        # if current sees beta waiting and event is set - OK - needs time
-        # if current sees beta waiting and event not set - hopeless
+
         while True:
-            if current.sync_wait:
-                ret_code = remote.sync_event.wait(timeout=t_out)
-                if ret_code and current_set_remote_sync_event:
-                    # Set the waiting and sync_waiting flags under lock.
-                    # They are checked by remote under lock and the remote
-                    # could get confused is either flag is set to False
-                    # before the other is set to False. See below where
-                    # remote_is_sync_waiting and remote_is_normal_waiting
-                    # are set. Also, see set InconsistentFlagSettings.
-                    with self._wait_check_lock:
-                        current.waiting = False
-                        current.sync_wait = False
-                        remote.sync_event.clear()  # be ready for next wait
-                    # return ret_code
-                    break
-            else:
-                ret_code = remote.event.wait(timeout=t_out)
-                if ret_code:
-                    with self._wait_check_lock:
-                        current.waiting = False
-                        remote.event.clear()  # be ready for next wait
-                    # return ret_code
-                    break
+            ret_code = remote.event.wait(timeout=t_out)
+            # if ret_code:
+            #     with self._wait_check_lock:
+            #         current.waiting = False
+            #         remote.event.clear()  # be ready for next wait
+            #     break
 
             # We need to do the following checks while locked to prevent
             # either thread from setting the other thread's flags AFTER
@@ -495,30 +522,18 @@ class SmartEvent:
             # request.
             with self._wait_check_lock:
                 # Now that we have the lock we need to determine whether
-                # we were set between the call getting the
-                if current.sync_wait:
-                    if (remote.sync_event.is_set()
-                            and current_set_remote_sync_event):
-                        current.waiting = False
-                        current.sync_wait = False
-                        remote.sync_event.clear()  # be ready 4 next sync
-                        ret_code = True
-                        break
-                        # return True
-                else:
-                    if remote.event.is_set():
-                        current.waiting = False
-                        current.sync_wait = False
-                        remote.event.clear()  # be ready for next wait
-                        ret_code = True
-                        break
-                        # return True
+                # we were set between the call and getting the lock
+                if ret_code or remote.event.is_set():
+                    current.waiting = False
+                    remote.event.clear()  # be ready for next wait
+                    ret_code = True
+                    break
 
                 # Check for error conditions first before checking
                 # whether the remote is alive. If the remote detects a
                 # deadlock or conflict issue, it will set the current
                 # sides bit and then raise an error and will likely be
-                # gone when we check. we want to raise the same error on
+                # gone when we check. We want to raise the same error on
                 # this side.
 
                 # current.deadlock is set only by the remote. So, if
@@ -537,62 +552,30 @@ class SmartEvent:
                 # it for now.
                 remote_is_normal_waiting = False
                 remote_is_sync_waiting = False
-                raise_deadlock = False
-                raise_conflict = False
-                if remote.waiting and not remote.deadlock:
-                    if remote.sync_wait:
-                        if not current.sync_event.is_set():
-                            remote_is_sync_waiting = True
-                    else:
-                        if not remote.event.is_set():
-                            remote_is_normal_waiting = True
 
-                if not current.deadlock:
-                    if current.sync_wait:
-                        if (remote_is_normal_waiting and
-                                not (current.timeout_specified
-                                     or remote.timeout_specified)):
-                            remote.deadlock = True
-                            remote.conflict = True
-                            raise_conflict = True
-                        elif (remote_is_sync_waiting
-                                and not current_set_remote_sync_event):
-                            current.sync_event.set()
-                            current_set_remote_sync_event = True
+                if (remote.waiting
+                        and not remote.deadlock
+                        and not remote.event.is_set()):
+                    remote_is_normal_waiting = True
 
-                    else:
-                        if (remote_is_sync_waiting and
-                                not (current.timeout_specified
-                                     or remote.timeout_specified)):
-                            remote.deadlock = True
-                            remote.conflict = True
-                            raise_conflict = True
-                        elif (remote_is_normal_waiting and
-                                not (current.timeout_specified
-                                     or remote.timeout_specified)):
-                            remote.deadlock = True
-                            remote.conflict = False
-                            raise_deadlock = True
-                else:
-                    if current.conflict:
-                        raise_conflict = True
-                    else:
-                        raise_deadlock = True
+                if (remote.sync_wait
+                        and not remote.deadlock
+                        and not self.sync_cleanup):
+                    remote_is_sync_waiting = True
 
-                if raise_deadlock:
+                if (not (current.deadlock
+                         or current.conflict
+                         or current.timeout_specified
+                         or remote.timeout_specified)):
+                    if remote_is_sync_waiting:
+                        remote.conflict = True
+                        current.conflict = True
+                    elif remote_is_normal_waiting:
+                        remote.deadlock = True
+                        current.deadlock = True
+
+                if current.conflict:
                     current.waiting = False
-                    current.sync_wait = False
-                    current.deadlock = False
-                    current.conflict = False
-                    logger.debug(f'{current.name} raising '
-                                 'WaitDeadlockDetected')
-                    raise WaitDeadlockDetected(
-                        'Both threads are deadlocked, each waiting on '
-                        'the other to set their event.')
-                elif raise_conflict:
-                    current.waiting = False
-                    current.sync_wait = False
-                    current.deadlock = False
                     current.conflict = False
                     logger.debug(
                         f'{current.name} raising '
@@ -605,9 +588,17 @@ class SmartEvent:
                         'thread did not make a matching sync '
                         'request.')
 
+                if current.deadlock:
+                    current.waiting = False
+                    current.deadlock = False
+                    logger.debug(f'{current.name} raising '
+                                 'WaitDeadlockDetected')
+                    raise WaitDeadlockDetected(
+                        'Both threads are deadlocked, each waiting on '
+                        'the other to set their event.')
+
                 if not remote.thread.is_alive():
                     current.waiting = False
-                    current.sync_wait = False
                     logger.debug(
                         f'{current.name} raising '
                         'RemoteThreadNotAlive')
@@ -622,7 +613,6 @@ class SmartEvent:
                                  f'{current.waiting} and '
                                  f'current.sync_wait = {current.sync_wait}')
                     current.waiting = False
-                    current.sync_wait = False
                     ret_code = False
                     break
 
@@ -696,16 +686,16 @@ class SmartEvent:
                         'thread is not alive. '
                         f'Call sequence: {get_formatted_call_sequence()}')
 
-                # error cases
-                # 1) waiting False and sync_wait True
-                # 2) waiting False and deadlock True
-                # 3) waiting False and conflict True
-                # 4) deadlock False and conflict True
-                if (((not remote.waiting)
-                        and (remote.sync_wait
-                             or remote.deadlock
-                             or remote.conflict))
-                        or (remote.conflict and not remote.deadlock)):
+                # error cases for remote flags
+                # 1) both waiting and sync_wait
+                # 2) waiting False and deadlock or conflict are True
+                # 3) sync_wait False and deadlock or conflict are True
+                # 4) sync_wait and deadlock
+                # 5) deadlock True and conflict True
+                if ((remote.deadlock and remote.conflict)
+                        or (remote.waiting and remote.sync_wait)
+                        or ((remote.deadlock or remote.conflict)
+                            and not (remote.waiting or remote.sync_wait))):
                     logger.debug(f'{current.name} raising '
                                  'InconsistentFlagSettings. '
                                  f'waiting: {remote.waiting}, '
@@ -742,8 +732,8 @@ class SmartEvent:
                                  f'{current.event.is_set()} and '
                                  f'remote.deadlock = '
                                  f'{remote.deadlock}')
-                    current.waiting = False
-                    current.sync_wait = False
+                    # current.waiting = False
+                    # current.sync_wait = False
                     ret_code = False
                     break
 
