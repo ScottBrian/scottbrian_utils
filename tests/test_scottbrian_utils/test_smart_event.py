@@ -1581,9 +1581,25 @@ class TestSync:
 
             assert s_event.wait(log_msg='f1 beta wait 6')
 
-            time.sleep(3)  # delay mainline sync 7 for timeout
+            s_event.wait_until(WUCond.RemoteWaiting)
 
-            logger.debug('f1 beta exiting 8')
+            s_event.set()
+
+            assert s_event.sync(log_msg='f1 beta sync point 8')
+
+            # while not s_event.alpha.sync_wait:
+            #     time.sleep(.1)
+            #
+            # # trick alpha into thinking it is sync_wait
+            # s_event.alpha.sync_wait = False
+            # s_event.alpha.sync_cleanup = True
+
+            with pytest.raises(ConflictDeadlockDetected):
+                s_event.wait(log_msg='f1 beta wait 89')
+
+            assert s_event.sync(log_msg='f1 beta sync point 9')
+
+            logger.debug('f1 beta exiting 10')
 
         logger.debug('mainline entered')
         smart_event1 = SmartEvent(alpha=threading.current_thread())
@@ -1592,6 +1608,16 @@ class TestSync:
         f1_thread.start()
 
         assert smart_event1.sync(log_msg='mainline sync point 1')
+
+        smart_event1.wait_until(WUCond.RemoteWaiting)
+
+        # set remote.waiting to False to trick the following sync to not
+        # see tha the remote is waiting so that the sync does not detect
+        # the confict first. This will allow the remote to see the
+        # conflict first and set the conflict bits so we can see that
+        # section of code as executed in the coverage report.
+
+        smart_event1.beta.waiting = False
 
         with pytest.raises(ConflictDeadlockDetected):
             smart_event1.sync(log_msg='mainline sync point 2')
@@ -1605,12 +1631,22 @@ class TestSync:
         smart_event1.set(log_msg='mainline set 6')
 
         assert not smart_event1.sync(log_msg='mainline sync point 7',
-                                     timeout=1)
+                                     timeout=0.5)
+
+        assert smart_event1.wait()
+
+        assert smart_event1.sync(log_msg='mainline sync point 8')
+
+        # ensure we see conflict first
+        with pytest.raises(ConflictDeadlockDetected):
+            smart_event1.sync(log_msg='mainline sync point 10')
+
+        assert smart_event1.sync(log_msg='f1 beta sync point 9')
 
         f1_thread.join()
 
         with pytest.raises(RemoteThreadNotAlive):
-            smart_event1.sync(log_msg='mainline sync point 8')
+            smart_event1.sync(log_msg='mainline sync point 10')
 
         logger.debug('mainline exiting 9')
 
@@ -1831,8 +1867,7 @@ class TestSmartEventTimeout:
             s_event.sync(log_msg='f1 beta sync point 7')
 
             # this wait will clear the flag - use timeout to prevent f1 beta
-            # sync
-            # from raising ConflictDeadlockDetected
+            # sync from raising ConflictDeadlockDetected
             assert s_event.wait(log_msg='f1 beta wait 67',
                                 timeout=1)
 
@@ -2926,10 +2961,10 @@ class TestCombos:
                 raise IncorrectActionSpecified('The Action is not recognized')
 
             while True:
+                thread_exc.raise_exc_if_one()  # detect thread error
                 if cmd_to_mainline[0] == Cmd.Exit:
                     cmd_to_mainline[0] = 0
                     break
-                thread_exc.raise_exc_if_one()  # detect thread error
                 time.sleep(0.2)
 
         logger.debug('main completed all actions')
@@ -3014,7 +3049,6 @@ class TestCombos:
             ###################################################################
             # Thread log messages
             ###################################################################
-            re.compile('thread_func1 beta started')
             # re.compile(beta_sync_enter_log_prefix + 'beta sync point 1'),
             # re.compile(beta_sync_exit_log_prefix + 'beta sync point 1'),
             # re.compile(beta_sync_enter_log_prefix + 'beta sync point 2'),
@@ -3141,9 +3175,16 @@ class TestCombos:
             UnrecognizedCmd: Thread received an unrecognized command
 
         """
-        logger.debug('thread_func1 beta started')
+        l_msg = f'thread_func1 beta started with cmd: {cmd_to_thread[0]}'
+        thread_log_msgs.append(l_msg)
+        logger.debug(l_msg)
         while True:
-            if cmd_to_thread[0] == Cmd.Wait:
+            cmd_to_check = cmd_to_thread[0]
+            if cmd_to_check:  # command other than spin
+                l_msg = f'thread_func1 received cmd: {cmd_to_check}'
+                thread_log_msgs.append(l_msg)
+                logger.debug(l_msg)
+            if cmd_to_check == Cmd.Wait:
                 cmd_to_thread[0] = 0
                 l_msg = 'thread_func1 doing Wait'
                 thread_log_msgs.append(l_msg)
@@ -3159,7 +3200,7 @@ class TestCombos:
 
                 cmd_to_mainline[0] = Cmd.Exit
 
-            elif cmd_to_thread[0] == Cmd.Wait_TOT:
+            elif cmd_to_check == Cmd.Wait_TOT:
                 cmd_to_thread[0] = 0
                 l_msg = 'thread_func1 doing Wait_TOT'
                 thread_log_msgs.append(l_msg)
@@ -3175,7 +3216,7 @@ class TestCombos:
 
                 cmd_to_mainline[0] = Cmd.Exit
 
-            elif cmd_to_thread[0] == Cmd.Wait_TOF:
+            elif cmd_to_check == Cmd.Wait_TOF:
                 cmd_to_thread[0] = 0
                 l_msg = 'thread_func1 doing Wait_TOF'
                 thread_log_msgs.append(l_msg)
@@ -3195,7 +3236,7 @@ class TestCombos:
 
                 cmd_to_mainline[0] = Cmd.Exit
 
-            elif cmd_to_thread[0] == Cmd.Wait_Clear:
+            elif cmd_to_check == Cmd.Wait_Clear:
                 cmd_to_thread[0] = 0
                 l_msg = 'thread_func1 doing Wait_Clear'
                 thread_log_msgs.append(l_msg)
@@ -3212,7 +3253,7 @@ class TestCombos:
 
                 cmd_to_mainline[0] = Cmd.Exit
 
-            elif cmd_to_thread[0] == Cmd.Sync:
+            elif cmd_to_check == Cmd.Sync:
                 cmd_to_thread[0] = 0
                 l_msg = 'thread_func1 beta doing Sync'
                 thread_log_msgs.append(l_msg)
@@ -3226,7 +3267,7 @@ class TestCombos:
 
                 cmd_to_mainline[0] = Cmd.Exit
 
-            elif cmd_to_thread[0] == Cmd.Set:
+            elif cmd_to_check == Cmd.Set:
                 cmd_to_thread[0] = 0
                 l_msg = 'thread_func1 beta doing Set'
                 thread_log_msgs.append(l_msg)
@@ -3248,13 +3289,13 @@ class TestCombos:
 
                 cmd_to_mainline[0] = Cmd.Exit
 
-            elif cmd_to_thread[0] == Cmd.Exit:
+            elif cmd_to_check == Cmd.Exit:
                 l_msg = 'thread_func1 beta exiting'
                 thread_log_msgs.append(l_msg)
                 logger.debug(l_msg)
                 break
 
-            elif cmd_to_thread[0] == 0:
+            elif cmd_to_check == 0:
                 time.sleep(0.2)
 
             else:
