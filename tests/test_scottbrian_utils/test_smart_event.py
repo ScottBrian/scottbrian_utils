@@ -2804,7 +2804,7 @@ class TestCombos:
             elif action == Action.MainSync_TOF:
                 l_msg = 'main starting Action.MainSync_TOF'
                 main_log_msgs.append(l_msg)
-                main_log_msgs.append(f'alpha timeout of a sync request.')
+                main_log_msgs.append('alpha timeout of a sync request.')
                 logger.debug(l_msg)
 
                 if cmd_log[0]:

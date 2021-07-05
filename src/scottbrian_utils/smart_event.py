@@ -404,6 +404,7 @@ class SmartEvent:
                         or (remote.waiting
                             and not current.event.is_set()
                             and not remote.deadlock
+                            and not remote.conflict
                             and not remote.timeout_specified
                             and not current.timeout_specified)):
                     logger.debug(
@@ -418,7 +419,6 @@ class SmartEvent:
                         f'current.timeout_specified = '
                         f'{current.timeout_specified}')
                     if not current.deadlock:
-                        remote.deadlock = True
                         remote.conflict = True
                     current.sync_wait = False
                     current.deadlock = False
@@ -509,11 +509,6 @@ class SmartEvent:
 
         while True:
             ret_code = remote.event.wait(timeout=t_out)
-            # if ret_code:
-            #     with self._wait_check_lock:
-            #         current.waiting = False
-            #         remote.event.clear()  # be ready for next wait
-            #     break
 
             # We need to do the following checks while locked to prevent
             # either thread from setting the other thread's flags AFTER
@@ -550,27 +545,19 @@ class SmartEvent:
                 # in a new wait and the remote has not yet woken up to
                 # deal with the earlier deadlock. We can simply ignore
                 # it for now.
-                remote_is_normal_waiting = False
-                remote_is_sync_waiting = False
 
-                if (remote.waiting
-                        and not remote.deadlock
-                        and not remote.event.is_set()):
-                    remote_is_normal_waiting = True
-
-                if (remote.sync_wait
-                        and not remote.deadlock
-                        and not self.sync_cleanup):
-                    remote_is_sync_waiting = True
-
-                if (not (current.deadlock
-                         or current.conflict
-                         or current.timeout_specified
-                         or remote.timeout_specified)):
-                    if remote_is_sync_waiting:
+                if not (current.deadlock
+                        or current.conflict
+                        or current.timeout_specified
+                        or remote.timeout_specified):
+                    if (remote.sync_wait
+                            and not (remote.deadlock
+                                     or self.sync_cleanup)):
                         remote.conflict = True
                         current.conflict = True
-                    elif remote_is_normal_waiting:
+                    elif (remote.waiting
+                            and not (remote.deadlock
+                                     or remote.event.is_set())):
                         remote.deadlock = True
                         current.deadlock = True
 
