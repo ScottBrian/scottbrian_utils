@@ -883,12 +883,19 @@ class TestSmartEventBasic:
 
                 with pytest.raises(WaitUntilTimeout):
                     self.s_event.wait_until(WUCond.RemoteSet, timeout=0.009)
-                time.sleep(2)
-                self.s_event.wait_until(WUCond.RemoteSet, timeout=0.009)
+                self.s_event.sync(log_msg='beta run sync point 1')
+                self.s_event.wait_until(WUCond.RemoteSet, timeout=5)
                 self.s_event.wait_until(WUCond.RemoteSet)
-                assert self.s_event.wait()
-                time.sleep(1)
+
+                assert self.s_event.wait(log_msg='beta run wait 12')
+
+                self.s_event.sync(log_msg='beta run sync point 2')
+                self.s_event.sync(log_msg='beta run sync point 3')
+
                 self.s_event.set()
+
+                self.s_event.sync(log_msg='beta run sync point 4')
+                logger.debug('beta run exiting 45')
 
         alpha_t = threading.current_thread()
         smart_event1 = SmartEvent(alpha=alpha_t)
@@ -897,15 +904,23 @@ class TestSmartEventBasic:
         my_taa_thread.start()
 
         smart_event1.wait_until(WUCond.ThreadsReady)
-        time.sleep(1)
-        smart_event1.set()
+
+        smart_event1.sync(log_msg='mainline sync point 1')
+
+        assert smart_event1.set(log_msg='mainline set 12')
+
+        smart_event1.sync(log_msg='mainline sync point 2')
 
         with pytest.raises(WaitUntilTimeout):
             smart_event1.wait_until(WUCond.RemoteSet, timeout=0.009)
-        time.sleep(2)
-        smart_event1.wait_until(WUCond.RemoteSet, timeout=0.009)
+
+        smart_event1.sync(log_msg='mainline sync point 3')
+
+        smart_event1.wait_until(WUCond.RemoteSet, timeout=5)
         smart_event1.wait_until(WUCond.RemoteSet)
-        assert smart_event1.wait()
+
+        assert smart_event1.wait(log_msg='mainline wait 34')
+        smart_event1.sync(log_msg='mainline sync point 4')
 
         my_taa_thread.join()
 
@@ -1587,15 +1602,23 @@ class TestSync:
 
             assert s_event.sync(log_msg='f1 beta sync point 8')
 
-            # while not s_event.alpha.sync_wait:
-            #     time.sleep(.1)
-            #
-            # # trick alpha into thinking it is sync_wait
-            # s_event.alpha.sync_wait = False
-            # s_event.alpha.sync_cleanup = True
+            while not s_event.alpha.sync_wait:
+                time.sleep(.1)
+
+            # trick alpha into seeing conflict first by making beta
+            # think alpha is waiting instead of sync_wait
+            with s_event._wait_check_lock:
+                s_event.alpha.sync_wait = False
+                s_event.sync_cleanup = True
+            # pre-set to get beta thinking alpha is set and waiting and will
+            # eventually leave (i.e., not a deadlock)
+            s_event.set()
+            s_event.alpha.waiting = True
 
             with pytest.raises(ConflictDeadlockDetected):
                 s_event.wait(log_msg='f1 beta wait 89')
+
+            s_event.sync_cleanup = False
 
             assert s_event.sync(log_msg='f1 beta sync point 9')
 
@@ -1637,11 +1660,14 @@ class TestSync:
 
         assert smart_event1.sync(log_msg='mainline sync point 8')
 
-        # ensure we see conflict first
+        # thread will ensure we see conflict first
         with pytest.raises(ConflictDeadlockDetected):
             smart_event1.sync(log_msg='mainline sync point 10')
 
-        assert smart_event1.sync(log_msg='f1 beta sync point 9')
+        logger.debug('mainline about to issue wait to clear trick preset')
+        smart_event1.wait()  # clear the trick pre-set from beta
+
+        assert smart_event1.sync(log_msg='mainline sync point 9')
 
         f1_thread.join()
 
@@ -1713,57 +1739,102 @@ class TestWaitClear:
         """Test smart event timeout with thread_app thread."""
 
         class MyThread(threading.Thread):
-            def __init__(self, s_event: SmartEvent):
+            def __init__(self,
+                         s_event: SmartEvent,
+                         start_time: List[Any]) -> None:
                 super().__init__()
                 self.s_event = s_event
                 self.s_event.set_thread(beta=self)
+                self.start_time = start_time
 
             def run(self):
                 logger.debug('ThreadApp run entered')
 
                 assert not self.s_event.alpha.event.is_set()
                 assert not self.s_event.beta.event.is_set()
-                start_time = time.time()
-                assert self.s_event.wait()
-                duration = time.time() - start_time
+
+                self.s_event.sync(log_msg='beta run sync point 1')
+
+                self.start_time[0] = time.time()
+                self.s_event.sync(log_msg='beta run sync point 2')
+
+                assert self.s_event.wait(log_msg='beta run wait 23')
+
+                duration = time.time() - self.start_time[0]
                 assert 3 <= duration <= 4
+
                 assert not self.s_event.alpha.event.is_set()
                 assert not self.s_event.beta.event.is_set()
 
-                start_time = time.time()
-                assert self.s_event.wait()
-                duration = time.time() - start_time
+                self.s_event.sync(log_msg='beta run sync point 3')
+                self.start_time[0] = time.time()
+                self.s_event.sync(log_msg='beta run sync point 4')
+
+                assert self.s_event.wait(log_msg='beta run wait 45')
+                duration = time.time() - self.start_time[0]
                 assert 3 <= duration <= 4
+
                 assert not self.s_event.alpha.event.is_set()
                 assert not self.s_event.beta.event.is_set()
+                self.s_event.sync(log_msg='beta run sync point 5')
+                self.s_event.sync(log_msg='beta run sync point 6')
 
-                time.sleep(3)
-                self.s_event.set()
-                time.sleep(3)
-                self.s_event.set()
+                while time.time() - start_time[0] < 3:
+                    time.sleep(0.1)
+                self.s_event.set(log_msg='beta run set 67')
 
+                self.s_event.sync(log_msg='beta run sync point 7')
+                self.s_event.sync(log_msg='beta run sync point 8')
+
+                while time.time() - start_time[0] < 3:
+                    time.sleep(0.1)
+                self.s_event.set(log_msg='beta run set 89')
+
+                self.s_event.sync(log_msg='beta run sync point 9')
+                logger.debug('beta run exiting 910')
+
+        start_time = [0]
         smart_event = SmartEvent(alpha=threading.current_thread())
-        thread_app = MyThread(smart_event)
+        thread_app = MyThread(smart_event, start_time)
         thread_app.start()
 
-        time.sleep(3)
-        smart_event.set()
-        time.sleep(3)
-        smart_event.set()
+        smart_event.wait_until(WUCond.ThreadsReady)
+        smart_event.sync(log_msg='mainline sync point 1')
+        smart_event.sync(log_msg='mainline sync point 2')
 
-        start_time = time.time()
+        while time.time() - start_time[0] < 3:
+            time.sleep(0.1)
+
+        smart_event.set(log_msg='mainline set 23')
+
+        smart_event.sync(log_msg='mainline sync point 3')
+        smart_event.sync(log_msg='mainline sync point 4')
+        while time.time() - start_time[0] < 3:
+            time.sleep(0.1)
+
+        smart_event.set(log_msg='mainline set 45')
+        smart_event.sync(log_msg='mainline sync point 5')
+        start_time[0] = time.time()
+        smart_event.sync(log_msg='mainline sync point 6')
+
         assert smart_event.wait()
-        duration = time.time() - start_time
+        duration = time.time() - start_time[0]
         assert 3 <= duration <= 4
+
         assert not smart_event.alpha.event.is_set()
         assert not smart_event.beta.event.is_set()
 
-        start_time = time.time()
-        assert smart_event.wait()
-        duration = time.time() - start_time
+        smart_event.sync(log_msg='mainline sync point 7')
+        start_time[0] = time.time()
+        smart_event.sync(log_msg='mainline sync point 8')
+
+        assert smart_event.wait(log_msg='mainline sync point 89')
+        duration = time.time() - start_time[0]
         assert 3 <= duration <= 4
+
         assert not smart_event.alpha.event.is_set()
         assert not smart_event.beta.event.is_set()
+        smart_event.sync(log_msg='mainline sync point 9')
 
         thread_app.join()
 

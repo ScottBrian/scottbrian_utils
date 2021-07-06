@@ -10,6 +10,8 @@
    :maxdepth: 4
    :caption: API Reference:
 
+   smart_event <smart_event_link>
+
    throttle <throttle_link>
 
    diag_msg <diag_msg_link>

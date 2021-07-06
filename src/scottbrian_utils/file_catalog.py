@@ -352,7 +352,7 @@ class FileCatalog:
         fieldnames = self.catalog.keys()
 
         with open(saved_cat_path, 'w', newline='') as csv_file:
-            writer = csv.DictWriter(csv_file,
+            writer = csv.DictWriter(csv_file,               # type: ignore
                                     fieldnames=fieldnames)  # type: ignore
             writer.writeheader()
             writer.writerow(self.catalog)

@@ -9,11 +9,11 @@ or more threads with the added feature of being able to recognize
 when a thread has ended. This helps solves a problem where either:
 
   1) a mainline application waits forever on an event that will never be set
-     because the thread that was supposed to set it has ended with an
-     exception.
+     because the thread that was supposed to set it has ended, either
+     voluntarily or because of an exception.
   2) a thread started by mainline waits forever on an event that will never be
-     set because mainline, which was supposed to set it, has ended with an
-     exception.
+     set because mainline, which was supposed to set it, has ended, either
+     voluntarily or because of an exception.
 
 
 :Example: create a SmartEvent for mainline and a thread to use
@@ -134,18 +134,6 @@ WUCond = Enum('WUCond',
 
 
 ###############################################################################
-# ThreadEvent Class
-###############################################################################
-# @dataclass
-# class ThreadEvent:
-#     thread: threading.Thread = None
-#     event: threading.Event = threading.Event()
-#     code: Any = None
-#     waiting: bool = False
-#     sync_wait: bool = False
-
-
-###############################################################################
 # SmartEvent class
 ###############################################################################
 class SmartEvent:
@@ -226,6 +214,124 @@ class SmartEvent:
             parms += f'{comma_space}beta={repr(self.beta.thread)}'
 
         return f'{classname}({parms})'
+
+    ###########################################################################
+    # get_code
+    ###########################################################################
+    def get_code(self) -> Any:
+        """Get code from last set.
+
+        Returns:
+            The code set by the thread that did the set event
+
+        :Example: instantiate SmartEvent and set event that function waits on
+
+        >>> from scottbrian_utils.smart_event import SmartEvent
+        >>> import threading
+        >>> def f1(smart_event: SmartEvent) -> None:
+        ...     smart_event.wait()
+        ...     print(smart_event.get_code())
+
+        >>> a_smart_event = SmartEvent(alpha=threading.current_thread())
+        >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
+        >>> a_smart_event.set_thread(beta=f1_thread)
+        >>> f1_thread.start()
+        >>> a_smart_event.wait_until(WUCond.ThreadsReady)
+        >>> a_smart_event.set(code=42)
+        42
+
+        >>> f1_thread.join()
+
+        """
+        current, _ = self._get_current_remote()
+        return current.code
+
+    ###########################################################################
+    # set
+    ###########################################################################
+    def set(self, *,
+            log_msg: Optional[str] = None,
+            timeout: Optional[Union[int, float]] = None,
+            code: Optional[Any] = None) -> bool:
+        """Set on event.
+
+        Args:
+            log_msg: log msg to log
+            timeout: number of seconds to allow for set to complete
+            code: code that waiter can retrieve with get_code
+
+        Returns:
+            True if timeout was not specified, or if it was specified and
+              the set request completed within the specified number of
+              seconds. False if timeout was specified and the set
+              request did not complete within the specified number of
+              seconds.
+
+        :Example: instantiate SmartEvent and set event that function waits on
+
+        >>> from scottbrian_utils.smart_event import SmartEvent
+        >>> import threading
+        >>> def f1(smart_event: SmartEvent) -> None:
+        ...     smart_event.wait()
+
+        >>> a_smart_event = SmartEvent(alpha=threading.current_thread())
+        >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
+        >>> a_smart_event.set_thread(beta=f1_thread)
+        >>> f1_thread.start()
+        >>> a_smart_event..wait_until(WUCond.ThreadsReady)
+        >>> a_smart_event.set()
+        >>> f1_thread.join()
+
+        """
+        current, remote = self._get_current_remote()
+        code_msg = f' with code: {code} ' if code else ' '
+
+        # if caller specified a log message to issue
+        caller_info = ''
+        if log_msg and self.debug_logging_enabled:
+            caller_info = get_formatted_call_sequence(latest=1, depth=1)
+            logger.debug(f'set entered{code_msg}'
+                         f'{caller_info} {log_msg}')
+
+        start_time = time.time()
+        while True:
+            with self._wait_check_lock:
+                self._check_remote(current, remote)
+                # cases where we loop until remote is ready
+                # 1) remote waiting and event already set
+                # 2) remote waiting and deadlock
+                # 3) remote not waiting and event set
+
+                # cases where we do the set:
+                # 1) remote is not waiting and event not set
+                # 2) remote is waiting and event not set and not
+                #    deadlock and not conflict
+                # 3) remote is sync waiting and event not set
+                if not (current.event.is_set()
+                        or remote.deadlock
+                        or (remote.conflict and remote.waiting)):
+                    if code:  # if caller specified a code for remote thread
+                        remote.code = code
+                    current.event.set()  # wake remote thread
+                    ret_code = True
+                    break
+
+                if timeout and (timeout < (time.time() - start_time)):
+                    logger.debug(f'{current.name} timeout of a set '
+                                 'request with current.event.is_set() = '
+                                 f'{current.event.is_set()} and '
+                                 f'remote.deadlock = '
+                                 f'{remote.deadlock}')
+                    ret_code = False
+                    break
+
+            time.sleep(0.2)
+
+        # if caller specified a log message to issue
+        if log_msg and self.debug_logging_enabled:
+            logger.debug(f'set exiting with ret_code {ret_code} '
+                         f'{caller_info} {log_msg}')
+        return ret_code
 
     ###########################################################################
     # set_thread
@@ -467,6 +573,7 @@ class SmartEvent:
         >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
         >>> a_smart_event.set_thread(beta=f1_thread)
         >>> f1_thread.start()
+        >>> a_smart_event.wait_until(WUCond.ThreadsReady)
         >>> a_smart_event.wait()
         >>> f1_thread.join()
 
@@ -536,12 +643,14 @@ class SmartEvent:
                                      or remote.conflict)):
                         remote.conflict = True
                         current.conflict = True
+                        logger.debug(f'{current.name} detected conflict')
                     elif (remote.waiting
-                            and not (remote.event.is_set()
+                            and not (current.event.is_set()
                                      or remote.deadlock
                                      or remote.conflict)):
                         remote.deadlock = True
                         current.deadlock = True
+                        logger.debug(f'{current.name} detected deadlock')
 
                 if current.conflict:
                     current.waiting = False
@@ -582,168 +691,6 @@ class SmartEvent:
                          f'{caller_info} {log_msg}')
 
         return ret_code
-
-    ###########################################################################
-    # set
-    ###########################################################################
-    def set(self, *,
-            log_msg: Optional[str] = None,
-            timeout: Optional[Union[int, float]] = None,
-            code: Optional[Any] = None) -> bool:
-        """Set on event.
-
-        Args:
-            log_msg: log msg to log
-            timeout: number of seconds to allow for set to complete
-            code: code that waiter can retrieve with get_code
-
-        Returns:
-            True if timeout was not specified, or if it was specified and
-              the set request completed within the specified number of
-              seconds. False if timeout was specified and the set
-              request did not complete within the specified number of
-              seconds.
-
-        :Example: instantiate SmartEvent and set event that function waits on
-
-        >>> from scottbrian_utils.smart_event import SmartEvent
-        >>> import threading
-        >>> def f1(smart_event: SmartEvent) -> None:
-        ...     smart_event.wait()
-
-        >>> a_smart_event = SmartEvent(alpha=threading.current_thread())
-        >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
-        >>> a_smart_event.set_thread(beta=f1_thread)
-        >>> f1_thread.start()
-        >>> time.sleep(1)
-        >>> a_smart_event.set()
-        >>> f1_thread.join()
-
-        """
-        current, remote = self._get_current_remote()
-        code_msg = f' with code: {code} ' if code else ' '
-
-        # if caller specified a log message to issue
-        caller_info = ''
-        if log_msg and self.debug_logging_enabled:
-            caller_info = get_formatted_call_sequence(latest=1, depth=1)
-            logger.debug(f'set entered{code_msg}'
-                         f'{caller_info} {log_msg}')
-
-        start_time = time.time()
-        while True:
-            with self._wait_check_lock:
-                self._check_remote(current, remote)
-                # cases where we loop until remote is ready
-                # 1) remote waiting and event already set
-                # 2) remote waiting and deadlock
-                # 3) remote not waiting and event set
-
-                # cases where we do the set:
-                # 1) remote is not waiting and event not set
-                # 2) remote is waiting and event not set and not
-                #    deadlock and not conflict
-                # 3) remote is sync waiting and event not set
-                if not (current.event.is_set()
-                        or remote.deadlock
-                        or (remote.conflict and remote.waiting)):
-                    if code:  # if caller specified a code for remote thread
-                        remote.code = code
-                    current.event.set()  # wake remote thread
-                    ret_code = True
-                    break
-
-                if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} timeout of a set '
-                                 'request with current.event.is_set() = '
-                                 f'{current.event.is_set()} and '
-                                 f'remote.deadlock = '
-                                 f'{remote.deadlock}')
-                    ret_code = False
-                    break
-
-            time.sleep(0.2)
-
-        # if caller specified a log message to issue
-        if log_msg and self.debug_logging_enabled:
-            logger.debug(f'set exiting with ret_code {ret_code} '
-                         f'{caller_info} {log_msg}')
-        return ret_code
-
-    ###########################################################################
-    # get_code
-    ###########################################################################
-    def _check_remote(self,
-                      current: ThreadEvent,
-                      remote: ThreadEvent) -> None:
-        """Check the remote flags for consitency and whether remote is alive.
-
-        Args:
-            current: contains flags for this thread
-            remote: contains flags for remote thread
-
-        Raises:
-            InconsistentFlagSettings: The remote ThreadEvent flag settings
-                                        are not valid.
-            RemoteThreadNotAlive: The set service has detected that the
-                                    alpha or beta thread is not alive
-
-        """
-        # error cases for remote flags
-        # 1) both waiting and sync_wait
-        # 2) waiting False and deadlock or conflict are True
-        # 3) sync_wait False and deadlock or conflict are True
-        # 4) sync_wait and deadlock
-        # 5) deadlock True and conflict True
-        if ((remote.deadlock and remote.conflict)
-                or (remote.waiting and remote.sync_wait)
-                or ((remote.deadlock or remote.conflict)
-                    and not (remote.waiting or remote.sync_wait))):
-            logger.debug(f'{current.name} raising '
-                         'InconsistentFlagSettings. '
-                         f'waiting: {remote.waiting}, '
-                         f'sync_wait: {remote.sync_wait}, '
-                         f'deadlock: {remote.deadlock}, '
-                         f'conflict: {remote.conflict}, ')
-            raise InconsistentFlagSettings(
-                'The remote SmartEvent flag settings are not valid.')
-
-        if not remote.thread.is_alive():
-            logger.debug(f'{current.name} raising '
-                         'RemoteThreadNotAlive.'
-                         f'Call sequence: {get_formatted_call_sequence()}')
-            raise RemoteThreadNotAlive(
-                f'The current thread has detected that {remote.name} '
-                'thread is not alive.')
-
-    ###########################################################################
-    # get_code
-    ###########################################################################
-    def get_code(self) -> Any:
-        """Get code from last set.
-
-        Returns:
-            The code set by the thread that did the set event
-
-        :Example: instantiate SmartEvent and set event that function
-        waits on
-
-        >>> from scottbrian_utils.smart_event import SmartEvent
-        >>> import threading
-        >>> def f1(smart_event: SmartEvent) -> None:
-        ...     smart_event.wait()
-
-        >>> a_smart_event = SmartEvent(alpha=threading.current_thread())
-        >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
-        >>> a_smart_event.set_thread(beta=f1_thread)
-        >>> f1_thread.start()
-        >>> time.sleep(1)
-        >>> a_smart_event.set()
-        >>> f1_thread.join()
-
-        """
-        current, _ = self._get_current_remote()
-        return current.code
 
     ###########################################################################
     # wait_until
@@ -856,6 +803,53 @@ class SmartEvent:
                         f'Call sequence: {get_formatted_call_sequence(1,1)}')
 
                 time.sleep(t_out)
+
+    ###########################################################################
+    # _check_remote
+    ###########################################################################
+    def _check_remote(self,
+                      current: ThreadEvent,
+                      remote: ThreadEvent) -> None:
+        """Check the remote flags for consitency and whether remote is alive.
+
+        Args:
+            current: contains flags for this thread
+            remote: contains flags for remote thread
+
+        Raises:
+            InconsistentFlagSettings: The remote ThreadEvent flag settings
+                                        are not valid.
+            RemoteThreadNotAlive: The set service has detected that the
+                                    alpha or beta thread is not alive
+
+        """
+        # error cases for remote flags
+        # 1) both waiting and sync_wait
+        # 2) waiting False and deadlock or conflict are True
+        # 3) sync_wait False and deadlock or conflict are True
+        # 4) sync_wait and deadlock
+        # 5) deadlock True and conflict True
+        if ((remote.deadlock and remote.conflict)
+                or (remote.waiting and remote.sync_wait)
+                or ((remote.deadlock or remote.conflict)
+                    and not (remote.waiting or remote.sync_wait))):
+            logger.debug(f'{current.name} raising '
+                         'InconsistentFlagSettings. '
+                         f'waiting: {remote.waiting}, '
+                         f'sync_wait: {remote.sync_wait}, '
+                         f'deadlock: {remote.deadlock}, '
+                         f'conflict: {remote.conflict}, ')
+            raise InconsistentFlagSettings(
+                f'Thread {current.name} detected remote {remote.name} '
+                f'SmartEvent flag settings are not valid.')
+
+        if not remote.thread.is_alive():
+            logger.debug(f'{current.name} raising '
+                         'RemoteThreadNotAlive.'
+                         f'Call sequence: {get_formatted_call_sequence()}')
+            raise RemoteThreadNotAlive(
+                f'The current thread has detected that {remote.name} '
+                'thread is not alive.')
 
     ###########################################################################
     # _get_current_remote

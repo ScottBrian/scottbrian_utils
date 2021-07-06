@@ -127,8 +127,14 @@ Release History
 * 1.2.0
     * Added diag_msg
 
-* 1.3.0
+* 2.0.0
+    * Added smart_event
+    * Added thread_comm
     * Added @throttle
+    * changed get_formatted_call_sequence and diag_msg
+      (both in diag_msg.py) to skip getting class info
+      unless requested
+    * dropped support for python 3.6 and 3.7
 
 Meta
 ====

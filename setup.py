@@ -39,16 +39,15 @@ setup(
           'Intended Audience :: Developers',
           'Topic :: Utilities',
           'Programming Language :: Python :: 3',
-          'Programming Language :: Python :: 3.6',
-          'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: 3.8',
+          'Programming Language :: Python :: 3.9',
           'Operating System :: POSIX :: Linux'
                   ],
       project_urls={
           'Documentation': 'https://scottbrian-utils.readthedocs.io/en'
                            '/latest/',
           'Source': 'https://github.com/ScottBrian/scottbrian_utils.git'},
-      python_requires='>=3.6',
+      python_requires='>=3.8',
       packages=find_packages('src'),
       package_dir={'': 'src'},
       install_requires=['typing-extensions', 'wrapt'],
