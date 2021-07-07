@@ -41,11 +41,12 @@ The smart_event module contains:
 
     1) SmartEvent class with methods:
 
-       a. wait
+       a. get_code
        b. set
-       c. clear
-       d. is_waiting
-       e. is_set
+       c. set_thread
+       d. sync
+       e. wait
+       f. wait_until
 
 """
 import time
@@ -253,7 +254,7 @@ class SmartEvent:
             log_msg: Optional[str] = None,
             timeout: Optional[Union[int, float]] = None,
             code: Optional[Any] = None) -> bool:
-        """Set on event.
+        """Set an event waited upon, either now or later, by the remote thread.
 
         Args:
             log_msg: log msg to log
@@ -261,11 +262,28 @@ class SmartEvent:
             code: code that waiter can retrieve with get_code
 
         Returns:
-            True if timeout was not specified, or if it was specified and
-              the set request completed within the specified number of
-              seconds. False if timeout was specified and the set
+            * ``True`` if *timeout* was not specified, or if it was specified
+              and the ``set()`` request completed within the specified
+              number of seconds.
+            * ``False`` if *timeout* was specified and the ``set()``
               request did not complete within the specified number of
               seconds.
+
+        Notes:
+
+            1) A ``set()`` request can be done on an event that is not yet
+               being waited upon. This is referred as a **pre-set**. The
+               remote thread doing a ``wait()`` request on a **pre-set** event
+               will be completed immediatly.
+            2) If the ``set()`` request sees that the event has already been
+               set, it will loop and wait for the event to be cleared under the
+               assumption that the event was previously **pre-set** and a
+               wait is imminent. The ``wait()`` will clear the event and the
+               ``set()`` request will simply set it again as a **pre-set** and
+               return.
+            3) If one thread makes a ``set()`` request and the other thread
+               becomes not alive, the ``set()`` request raises a
+               **RemoteThreadNotAlive** error.
 
         :Example: instantiate SmartEvent and set event that function waits on
 
@@ -297,16 +315,53 @@ class SmartEvent:
         while True:
             with self._wait_check_lock:
                 self._check_remote(current, remote)
-                # cases where we loop until remote is ready
-                # 1) remote waiting and event already set
-                # 2) remote waiting and deadlock
-                # 3) remote not waiting and event set
+                ###############################################################
+                # Cases where we loop until remote is ready:
+                # 1) Remote waiting and event already set. This is a case
+                #    where the remote was previously set and has not yet been
+                #    given control to exit the wait. If and when that
+                #    happens, this set will complete as a pre-set.
+                # 2) Remote waiting and deadlock. The remote was flagged as
+                #    being in a deadlock and has not been given control to
+                #    raise the WaitDeadlockDetected error. The remote could
+                #    recover, in which case this set will complete, or the
+                #    thread could become inactive, in which case set will see
+                #    that and raise (via _check_remote method) the
+                #    RemoteThreadNotAlive error.
+                # 3) Remote not waiting and event set. This case
+                #    indicates that a set was previously done ahead of the
+                #    wait as a pre-set. In that case an eventual wait is
+                #    expected to be requested by the remote thread to clear
+                #    the flag at which time this set will succeed in doing a
+                #    pre-set.
+                ###############################################################
 
-                # cases where we do the set:
-                # 1) remote is not waiting and event not set
-                # 2) remote is waiting and event not set and not
-                #    deadlock and not conflict
-                # 3) remote is sync waiting and event not set
+                ###############################################################
+                # Cases where we do the set:
+                # 1) Remote is waiting, event is not set, and neither deadlock
+                #    nor conflict flags are True. This is the most expected
+                #    case in a normally running system where the remote
+                #    thread put something in action and is now waiting on a
+                #    response (via the set) that the action is complete.
+                # 2) Remote is not waiting, not sync_wait, and event not
+                #    set. This is a case where we will do a pre-set and the
+                #    remote is expected to do the wait momentarily.
+                # 3) Remote is not waiting, but is sync waiting, and event not
+                #    set. This case is identical to case 2 from a set
+                #    perspective since the sync_wait does not interfere with
+                #    the event that the set operates on. So, we will so
+                #    a pre-set and the expectation in that this
+                #    thread will then complete the sync with the remote
+                #    who will next do a wait against the pre-set. The
+                #    vertical time line for both sides could be
+                #    represented as such:
+                #
+                #        Current Thread                   Remote Thread
+                #                                           sync
+                #              set
+                #              sync
+                #                                           wait
+                ###############################################################
                 if not (current.event.is_set()
                         or remote.deadlock
                         or (remote.conflict and remote.waiting)):
@@ -349,19 +404,25 @@ class SmartEvent:
                      which event is to be set or waited on.
 
         Raises:
-            NeitherAlphaNorBetaSpecified:  One of alpha or beta must be
-                                             specified for a set_threads
+            NeitherAlphaNorBetaSpecified:  One of **alpha** or **beta** must be
+                                             specified for a ``set_threads()``
                                              request.
-            IncorrectThreadSpecified: The alpha and beta arguments must be of
-                                        type threading.Thread.
-            DuplicateThreadSpecified: The alpha and beta arguments must be
-                                        for separate and distinct objects of
-                                        type threading.Thread.
-            ThreadAlreadySet: The set_thread method detected that the
+            IncorrectThreadSpecified: The **alpha** and **beta** arguments must
+                                        be of type *threading.Thread*.
+            DuplicateThreadSpecified: The **alpha** and **beta** arguments
+                                        must be for separate and distinct
+                                        objects of type **threading.Thread**.
+            ThreadAlreadySet: The ``set_thread()`` method detected that the
                                 specified thread has already been set to
                                 either a different or the same input thread.
 
-        :Example: instantiate a SmartEvent and set the alpha thread
+        Notes:
+            1) The **alpha** and **beta** threads can be set when the
+               ``SmartEvent()`` is instantiated or via the ``set_thread()``
+               method. Any combination may be used, but once set, neither
+               thread can be set again, including to its original value.
+
+        :Example: instantiate a ``SmartEvent()`` and set the *alpha* thread
 
         >>> from scottbrian_utils.smart_event import SmartEvent
         >>> smart_event = SmartEvent()
@@ -415,19 +476,42 @@ class SmartEvent:
     def sync(self, *,
              log_msg: Optional[str] = None,
              timeout: Optional[Union[int, float]] = None) -> bool:
-        """Sync up the threads.
+        """Sync up with the remote thread via a matching sync request.
+
+        A ``sync()`` request made by the current thread waits until the remote
+        thread makes a matching ``sync()`` request at which point both
+        ``sync()`` requests are completed and control returned.
 
         Args:
             log_msg: log msg to log
             timeout: number of seconds to allow for sync to happen
 
         Returns:
-            True is the sync was successful, False if it timed out
+            * ``True`` if **timeout** was not specified, or if it was
+              specified and the ``sync()`` request completed within the
+              specified number of seconds.
+            * ``False`` if **timeout** was specified and the ``sync()``
+              request did not complete within the specified number of
+              seconds.
 
         Raises:
-            ConflictDeadlockDetected: A sync request was made by one
-                                        thread and a wait request was made
-                                        by the other thread.
+            ConflictDeadlockDetected: A ``sync()`` request was made by one
+                                        thread and a ``wait()`` request was
+                                        made by the other thread.
+
+        Notes:
+            1) If one thread makes a ``sync()`` request without **timeout**
+               specified, and the other thread makes a ``wait()`` request to
+               an event that was not **pre-set**, also without **timeout**
+               specified, then both threads will recognize and raise a
+               **ConflictDeadlockDetected** error. This is needed since
+               neither the ``sync()`` request nor the ``wait()`` request has
+               any chance of completing. The ``sync()`` request is waiting for
+               a matching ``sync()`` request and the ``wait()`` request is
+               waiting for a matching ``set()`` request.
+            2) If one thread makes a ``sync()`` request and the other thread
+               becomes not alive, the ``sync()`` request raises a
+               **RemoteThreadNotAlive** error.
 
         :Example: instantiate a SmartEvent and sync the threads
 
@@ -544,22 +628,45 @@ class SmartEvent:
             timeout: number of seconds to allow for wait to complete
 
         Returns:
-            True if timeout was not specified, or if it was specified and
-              the wait request completed within the specified number of
-              seconds. False if timeout was specified and the wait
+            * ``True`` if *timeout* was not specified, or if it was specified
+              and the ``wait()`` request completed within the specified
+              number of seconds.
+            * ``False`` if *timeout* was specified and the ``wait()``
               request did not complete within the specified number of
               seconds.
 
         Raises:
             WaitDeadlockDetected: Both threads are deadlocked, each waiting
                                     on the other to set their event.
-            ConflictDeadlockDetected: A sync request was made by
-                                                  the current thread but the
-                                                  but the remote thread
-                                                  detected deadlock instead
-                                                  which indicates that the
-                                                  remote thread did not make a
-                                                  matching sync request.
+            ConflictDeadlockDetected: A ``sync()`` request was made by
+                                        the current thread but the
+                                        but the remote thread
+                                        detected deadlock instead
+                                        which indicates that the
+                                        remote thread did not make a
+                                        matching ``sync()`` request.
+
+        Notes:
+            1) If one thread makes a ``sync()`` request without **timeout**
+               specified, and the other thread makes a ``wait()`` request to
+               an event that was not **pre-set**, also without **timeout**
+               specified, then both threads will recognize and raise a
+               **ConflictDeadlockDetected** error. This is needed since
+               neither the ``sync()`` request nor the ``wait()`` request has
+               any chance of completing. The ``sync()`` request is waiting for
+               a matching ``sync()`` request and the ``wait()`` request is
+               waiting for a matching ``set()`` request.
+            2) If one thread makes a ``wait()`` request to an event that
+               has not been **pre-set**, and without **timeout**
+               specified, and the other thread makes a ``wait()`` request to
+               an event that was not **pre-set**, also without **timeout**
+               specified, then both threads will recognize and raise a
+               **WaitDeadlockDetected** error. This is needed since neither
+               ``wait()`` request has any chance of completing as each
+               ``wait()`` request is waiting for a matching ``set()`` request.
+            3) If one thread makes a ``wait()`` request and the other thread
+               becomes not alive, the ``wait()`` request raises a
+               **RemoteThreadNotAlive** error.
 
         :Example: instantiate a SmartEvent and wait for function to set
 

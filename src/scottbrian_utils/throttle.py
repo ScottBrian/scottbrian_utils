@@ -229,45 +229,46 @@ class Throttle:
                         the interval specified by seconds.
             seconds: The number of seconds in which the number of requests
                        specified in requests can be made.
-            mode: Specifies one of four modes for the throttle.
-                    1) mode=Throttle.MODE_ASYNC specifies asynchronous mode.
-                       With asynchoneous throttling,
-                       each request is placed on a queue and control returns
-                       to the caller. A separate thread then executes each
-                       request at a steady interval to acheieve the specified
-                       number of requests per the specified number of seconds.
-                       Since the caller is given back control, any return
-                       values from the request must be handled by an
-                       established protocol between the caller and the request,
-                       (e.g., a callback method).
-                    2) mode=Throttle.MODE_SYNC specifies synchonous mode.
-                       For synchronous throttling, the caller may be blocked to
-                       delay the request in order to achieve the the specified
-                       number of requests per the specified number of seconds.
-                       Since the request is handled synchronously on the same
-                       thread, any return value from the request will be
-                       immediately returned to the caller when the request
-                       completes.
-                    3) mode=Throttle.MODE_SYNC_EC specifies synchronous mode
-                       using an early arrival algorithm.
-                       For synchronous throttleing with the early
-                       arrival algorithm, some number of requests are sent
-                       immediatly without delay even though they may have
-                       arrived at a quicker pace than that allowed by the
-                       the requests and seconds specification. An early_count
-                       specification is required when mode
-                       Throttle.MODE_SYNC_EC
-                       is specified. See the early_count parameter for details.
-                    4) mode=Throttle.MODE_SYNC_LB specifies synchronous mode
-                       using a leaky bucket algorithm.
-                       For synchronous throttleing with the leaky bucket
-                       algorithm, some number of requests are sent
-                       immediatly without delay even though they may have
-                       arrived at a quicker pace than that allowed by the
-                       the requests and seconds specification. A
-                       lb_threshold specification is required when mode
-                       Throttle.MODE_SYNC_LB is specified. See the
-                       lb_threshold parameter for details.
+            mode: Specifies one of four modes for the throttle:
+
+                1) **mode=Throttle.MODE_ASYNC** specifies asynchronous mode.
+                   With asynchoneous throttling,
+                   each request is placed on a queue and control returns
+                   to the caller. A separate thread then executes each
+                   request at a steady interval to acheieve the specified
+                   number of requests per the specified number of seconds.
+                   Since the caller is given back control, any return
+                   values from the request must be handled by an
+                   established protocol between the caller and the request,
+                   (e.g., a callback method).
+                2) **mode=Throttle.MODE_SYNC** specifies synchonous mode.
+                   For synchronous throttling, the caller may be blocked to
+                   delay the request in order to achieve the the specified
+                   number of requests per the specified number of seconds.
+                   Since the request is handled synchronously on the same
+                   thread, any return value from the request will be
+                   immediately returned to the caller when the request
+                   completes.
+                3) **mode=Throttle.MODE_SYNC_EC** specifies synchronous mode
+                   using an early arrival algorithm.
+                   For synchronous throttleing with the early
+                   arrival algorithm, some number of requests are sent
+                   immediatly without delay even though they may have
+                   arrived at a quicker pace than that allowed by the
+                   the requests and seconds specification. An early_count
+                   specification is required when mode
+                   Throttle.MODE_SYNC_EC
+                   is specified. See the early_count parameter for details.
+                4) **mode=Throttle.MODE_SYNC_LB** specifies synchronous mode
+                   using a leaky bucket algorithm.
+                   For synchronous throttleing with the leaky bucket
+                   algorithm, some number of requests are sent
+                   immediatly without delay even though they may have
+                   arrived at a quicker pace than that allowed by the
+                   the requests and seconds specification. A
+                   lb_threshold specification is required when mode
+                   Throttle.MODE_SYNC_LB is specified. See the
+                   lb_threshold parameter for details.
             async_q_size: Specifies the size of the request
                             queue for async requests. When the request
                             queue is totaly populated, any additional
@@ -330,30 +331,6 @@ class Throttle:
             MissingLbThresholdSpecification: lb_threshold is required for
                                                mode Throttle.MODE_SYNC_LB.
 
-
-        States and processing for mode Throttle.MODE_ASYNC:
-
-            The Throttle is initialized with an empty async_q and the
-            scheduler thread is started and ready to receive work. The
-            starting state is 'active'.
-
-            1) state: active
-               a) send_request called (directly or via decorated func call):
-                  1) request is queued to the async_q
-                  2) state remains 'active'
-               b) start_shutdown called:
-                  1) state is changed to 'shutdown'
-                  2) scheduler removes but does not schedule async_q items
-                  3) scheduler exits
-                  4) control returns after scheduler thread returns
-            2) state: shutdown
-               a) send_request called (directly or via decorated func call):
-                  1) request is ignored  (i.e, not queued to async_q)
-               b) start_shutdown called (non-decorator only):
-                  1) state remains 'shutdown'
-                  2) control returns immediately
-
-
         :Example: instantiate an async throttle for 1 request per second
 
         >>> from scottbrian_utils.throttle import Throttle
@@ -394,6 +371,34 @@ class Throttle:
 
 
         """
+        #######################################################################
+        # States and processing for mode Throttle.MODE_ASYNC:
+        #
+        #     The Throttle is initialized with an empty async_q and the
+        #     scheduler thread is started and ready to receive work. The
+        #     starting state is 'active'.
+        #
+        #     1) state: active
+        #        a) send_request called (directly or via decorated func call):
+        #           1) request is queued to the async_q
+        #           2) state remains 'active'
+        #        b) start_shutdown called:
+        #           1) state is changed to 'shutdown'
+        #           2) Any new requests are rejected. For "soft" shutdown,
+        #           scheduler schedules the remaining requests currently
+        #           queued on the async_q with the normal interval. With
+        #           "hard" shutdown, the scheduler removes and discards and
+        #           remaining requests on the async_q.
+        #           3) scheduler exits
+        #           4) control returns after scheduler thread returns
+        #     2) state: shutdown
+        #        a) send_request called (directly or via decorated func call):
+        #           1) request is ignored  (i.e, not queued to async_q)
+        #        b) start_shutdown called (non-decorator only):
+        #           1) state remains 'shutdown'
+        #           2) control returns immediately
+        #######################################################################
+
         #######################################################################
         # determine whether we are throttle decorator
         #######################################################################
@@ -846,44 +851,46 @@ def throttle(wrapped: Optional[F] = None, *,
                     the interval specified by seconds.
         seconds: The number of seconds in which the number of requests
                    specified in requests can be made.
-        mode: Specifies one of four modes for the throttle.
-              1) mode=Throttle.MODE_ASYNC specifies asynchronous mode.
-                 With asynchoneous throttling,
-                 each request is placed on a queue and control returns
-                 to the caller. A separate thread then executes each
-                 request at a steady interval to acheieve the specified
-                 number of requests per the specified number of seconds.
-                 Since the caller is given back control, any return
-                 values from the request must be handled by an
-                 established protocol between the caller and the request,
-                 (e.g., a callback method).
-              2) mode=Throttle.MODE_SYNC specifies synchonous mode.
-                 For synchronous throttling, the caller may be blocked to
-                 delay the request in order to achieve the the specified
-                 number of requests per the specified number of seconds.
-                 Since the request is handled synchronously on the same
-                 thread, any return value from the request will be
-                 immediately returned to the caller when the request
-                 completes.
-              3) mode=Throttle.MODE_SYNC_EC specifies synchronous mode
-                 using an early arrival algorithm.
-                 For synchronous throttleing with the early
-                 arrival algorithm, some number of requests are sent
-                 immediatly without delay even though they may have
-                 arrived at a quicker pace than that allowed by the
-                 the requests and seconds specification. An early_count
-                 specification is required when mode Throttle.MODE_SYNC_EC
-                 is specified. See the early_count parameter for details.
-              4) mode=Throttle.MODE_SYNC_LB specifies synchronous mode
-                 using a leaky bucket algorithm.
-                 For synchronous throttleing with the leaky bucket
-                 algorithm, some number of requests are sent
-                 immediatly without delay even though they may have
-                 arrived at a quicker pace than that allowed by the
-                 the requests and seconds specification. A
-                 lb_threshold specification is required when mode
-                 Throttle.MODE_SYNC_LB is specified. See the
-                 lb_threshold parameter for details.
+        mode: Specifies one of four modes for the throttle:
+
+            1) **mode=Throttle.MODE_ASYNC** specifies asynchronous mode.
+               With asynchoneous throttling,
+               each request is placed on a queue and control returns
+               to the caller. A separate thread then executes each
+               request at a steady interval to acheieve the specified
+               number of requests per the specified number of seconds.
+               Since the caller is given back control, any return
+               values from the request must be handled by an
+               established protocol between the caller and the request,
+               (e.g., a callback method).
+            2) **mode=Throttle.MODE_SYNC** specifies synchonous mode.
+               For synchronous throttling, the caller may be blocked to
+               delay the request in order to achieve the the specified
+               number of requests per the specified number of seconds.
+               Since the request is handled synchronously on the same
+               thread, any return value from the request will be
+               immediately returned to the caller when the request
+               completes.
+            3) **mode=Throttle.MODE_SYNC_EC** specifies synchronous mode
+               using an early arrival algorithm.
+               For synchronous throttleing with the early
+               arrival algorithm, some number of requests are sent
+               immediatly without delay even though they may have
+               arrived at a quicker pace than that allowed by the
+               the requests and seconds specification. An early_count
+               specification is required when mode Throttle.MODE_SYNC_EC
+               is specified. See the early_count parameter for details.
+            4) **mode=Throttle.MODE_SYNC_LB** specifies synchronous mode
+               using a leaky bucket algorithm.
+               For synchronous throttleing with the leaky bucket
+               algorithm, some number of requests are sent
+               immediatly without delay even though they may have
+               arrived at a quicker pace than that allowed by the
+               the requests and seconds specification. A
+               lb_threshold specification is required when mode
+               Throttle.MODE_SYNC_LB is specified. See the
+               lb_threshold parameter for details.
+
         async_q_size: Specifies the size of the request
                         queue for async requests. When the request
                         queue is totaly populated, any additional
@@ -921,30 +928,6 @@ def throttle(wrapped: Optional[F] = None, *,
         request to be scheduled in accordance with the specified limits, or,
         for all other modes, delays the request as needed in accordance with
         the specified limits.
-
-    States and processing for mode Throttle.MODE_ASYNC:
-
-        The Throttle is initialized with an empty async_q and the
-        scheduler thread is started and ready to receive work. The
-        starting state is 'active'.
-
-        1) state: active
-           a) send_request called (directly or via decorated func call):
-              1) request is queued to the async_q
-              2) state remains 'active'
-           b) start_shutdown called:
-              1) state is changed to 'shutdown'
-              2) scheduler removes but does not schedule async_q items
-              3) scheduler exits
-              4) control returns after scheduler thread returns
-        2) state: shutdown
-           a) send_request called (directly or via decorated func call):
-              1) request is ignored  (i.e, not queued to async_q)
-           b) start_shutdown called:
-              1) state remains 'shutdown'
-              2) control returns immediately
-
-
 
         :Example: wrap a function with an async throttle for 1 request per
                   second

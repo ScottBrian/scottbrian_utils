@@ -8,10 +8,11 @@ Intro
 This is a collection of generally useful functions for use with any application.
 
 1. The @throttle decorator allows you to throttle service requests to avoid exceeding a stated limit.
-2. The diag_msg function allows you to print a message with the time and caller sequence added for you.
-3. The FileCatalog item allows you to map file names to their paths.
-4. The @time_box decorator allows you to print start, stop, and execution times.
-5. The print_flower_box_msg function allows you to print text in a flower box (i.e., surrounded by asterisks).
+2. SmartEvent allows you to wait and set an event between two threads and detect when a thread becomes inactive.
+3. The diag_msg function allows you to print a message with the time and caller sequence added for you.
+4. The FileCatalog item allows you to map file names to their paths.
+5. The @time_box decorator allows you to print start, stop, and execution times.
+6. The print_flower_box_msg function allows you to print text in a flower box (i.e., surrounded by asterisks).
 
 With **@throttle** you can decorate a function to avoid exceeding a stated limit, such as 1 request per second,
 or 20 requests per minute.
