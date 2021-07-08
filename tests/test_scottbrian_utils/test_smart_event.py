@@ -2385,9 +2385,9 @@ class TestSmartEventLogger:
         beta_wait_exit_log_prefix = (r'wait\(\) exiting with ret_code True '
                                      + beta_log_seq)
 
-        beta_set_enter_log_prefix = (r'resume\(\) entered ' + beta_log_seq)
+        beta_resume_enter_log_prefix = (r'resume\(\) entered ' + beta_log_seq)
 
-        beta_set_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
+        beta_resume_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
                                     + beta_log_seq)
 
         exp_log_msgs = [
@@ -2424,8 +2424,8 @@ class TestSmartEventLogger:
             re.compile(beta_wait_exit_log_prefix
                        + 'wait for mainline to post 12'),
 
-            re.compile(beta_set_enter_log_prefix + 'post mainline 23'),
-            re.compile(beta_set_exit_log_prefix + 'post mainline 23'),
+            re.compile(beta_resume_enter_log_prefix + 'post mainline 23'),
+            re.compile(beta_resume_exit_log_prefix + 'post mainline 23'),
                         ]
 
         log_records_found = 0
@@ -2548,10 +2548,10 @@ class TestSmartEventLogger:
         beta_wait_exit_log_prefix = (r'wait\(\) exiting with ret_code True '
                                      + beta_log_seq)
 
-        beta_set_enter_log_prefix = (r'resume\(\) entered with code: forty-two '
+        beta_resume_enter_log_prefix = (r'resume\(\) entered with code: forty-two '
                                      + beta_log_seq)
 
-        beta_set_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
+        beta_resume_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
                                     + beta_log_seq)
 
         exp_log_msgs = [
@@ -2588,8 +2588,8 @@ class TestSmartEventLogger:
             re.compile(beta_wait_enter_log_prefix + 'wait 12'),
             re.compile(beta_wait_exit_log_prefix + 'wait 12'),
 
-            re.compile(beta_set_enter_log_prefix + 'post mainline 34'),
-            re.compile(beta_set_exit_log_prefix + 'post mainline 34'),
+            re.compile(beta_resume_enter_log_prefix + 'post mainline 34'),
+            re.compile(beta_resume_exit_log_prefix + 'post mainline 34'),
                         ]
 
         log_records_found = 0
@@ -2709,9 +2709,9 @@ class TestSmartEventLogger:
         beta_wait_exit_log_prefix = (r'wait\(\) exiting with ret_code True '
                                      + beta_log_seq)
 
-        beta_set_enter_log_prefix = (r'resume\(\) entered ' + beta_log_seq)
+        beta_resume_enter_log_prefix = (r'resume\(\) entered ' + beta_log_seq)
 
-        beta_set_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
+        beta_resume_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
                                     + beta_log_seq)
 
         exp_log_msgs = [
@@ -2746,8 +2746,8 @@ class TestSmartEventLogger:
             re.compile(beta_wait_exit_log_prefix
                        + 'wait for mainline to post 12'),
 
-            re.compile(beta_set_enter_log_prefix + 'post mainline 23'),
-            re.compile(beta_set_exit_log_prefix + 'post mainline 23'),
+            re.compile(beta_resume_enter_log_prefix + 'post mainline 23'),
+            re.compile(beta_resume_exit_log_prefix + 'post mainline 23'),
                         ]
 
         log_records_found = 0
@@ -2810,21 +2810,6 @@ class TestCombos:
             IncorrectActionSpecified: The Action is not recognized
 
         """
-        # class SmartEventApp(threading.Thread):
-        #     def __init__(self,
-        #                  smart_event: SmartEvent) -> None:
-        #         super().__init__()
-        #         self.smart_event = smart_event
-        #
-        #     def run(self):
-        #         """Thread to send and receive messages.
-        #
-        #         Raises:
-        #             UnrecognizedCmd: SmartEventApp received an
-        #                                       unrecognized action
-        #         """
-        #         logger.debug('SmartEventApp run started')
-
         l_msg = 'mainline entered'
         logger.debug(l_msg)
         smart_event = SmartEvent(alpha=threading.current_thread())
@@ -2907,6 +2892,116 @@ class TestCombos:
                                  thread_log_msgs=thread_log_msgs)
 
     ###########################################################################
+    # test_smart_event_thread_f1_combos
+    ###########################################################################
+    def test_smart_event_f1_f2_combos(self,
+                                      action_arg1: Any,
+                                      code_arg1: Any,
+                                      log_msg_arg1: Any,
+                                      action_arg2: Any,
+                                      caplog: Any,
+                                      thread_exc: Any) -> None:
+        """Test the SmartEvent with f1 anf f2 combos.
+
+        Args:
+            action_arg1: first action
+            code_arg1: whether to set and recv a code
+            log_msg_arg1: whether to specify a log message
+            action_arg2: second action
+            caplog: fixture to capture log messages
+            thread_exc: intercepts thread exceptions
+
+        Raises:
+            IncorrectActionSpecified: The Action is not recognized
+
+        """
+        l_msg = 'mainline entered'
+        logger.debug(l_msg)
+        smart_event = SmartEvent()
+        cmd_to_thread = [0]
+        cmd_to_mainline = [0]
+        cmd_log = [log_msg_arg1]
+        cmd_code = [code_arg1]
+
+        main_log_msgs = [l_msg]
+        main_sync_t_log_msgs = []
+        main_sync_f_log_msgs = []
+
+        thread_log_msgs = []
+        thread_wait_t_log_msgs = []
+        thread_wait_f_log_msgs = []
+        thread_sync_t_log_msgs = []
+        thread_sync_f_log_msgs = []
+        thread_set_t_log_msgs = []
+        thread_set_f_log_msgs = []
+
+        f1_thread = threading.Thread(target=thread_func1,
+                                     args=(smart_event,
+                                           cmd_to_thread,
+                                           cmd_to_mainline,
+                                           cmd_log,
+                                           cmd_code,
+                                           thread_log_msgs,
+                                           thread_wait_t_log_msgs,
+                                           thread_wait_f_log_msgs,
+                                           thread_sync_t_log_msgs,
+                                           thread_sync_f_log_msgs,
+                                           thread_set_t_log_msgs,
+                                           thread_set_f_log_msgs))
+
+        f2_thread = threading.Thread(target=self.action_loop,
+                                     args=(smart_event,
+                                           action_arg1,
+                                           action_arg2,
+                                           main_log_msgs,
+                                           cmd_to_mainline,
+                                           cmd_to_thread,
+                                           cmd_log,
+                                           cmd_code,
+                                           main_sync_t_log_msgs,
+                                           main_sync_f_log_msgs,
+                                           thread_log_msgs,
+                                           thread_exc))
+        smart_event.register_thread(alpha=f2_thread, beta=f1_thread)
+        l_msg = 'mainline about to start thread_func1'
+        main_log_msgs.append(l_msg)
+        logger.debug(l_msg)
+        f1_thread.start()
+        f2_thread.start()
+        smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
+
+        l_msg = 'main completed all actions'
+        main_log_msgs.append(l_msg)
+        logger.debug(l_msg)
+
+        f2_thread.join()
+        cmd_to_thread[0] = Cmd.Exit
+
+        f1_thread.join()
+
+
+        if log_msg_arg1:
+            ml_log_seq = ('test_smart_event.py::TestCombos.'
+                          'action_loop:[0-9]* ')
+
+            beta_log_seq = (
+                'test_smart_event.py::thread_func1:[0-9]* ')
+            self.verify_log_msgs(caplog=caplog,
+                                 cmd_code=cmd_code,
+                                 ml_log_seq=ml_log_seq,
+                                 beta_log_seq=beta_log_seq,
+                                 main_log_msgs=main_log_msgs,
+                                 main_sync_t_log_msgs=main_sync_t_log_msgs,
+                                 main_sync_f_log_msgs=main_sync_f_log_msgs,
+                                 thread_wait_t_log_msgs=thread_wait_t_log_msgs,
+                                 thread_wait_f_log_msgs=thread_wait_f_log_msgs,
+                                 thread_sync_t_log_msgs=thread_sync_t_log_msgs,
+                                 thread_sync_f_log_msgs=thread_sync_f_log_msgs,
+                                 thread_set_t_log_msgs=thread_set_t_log_msgs,
+                                 thread_set_f_log_msgs=thread_set_f_log_msgs,
+                                 thread_log_msgs=thread_log_msgs)
+
+    ###########################################################################
     # test_smart_event_thread_thread_app_combos
     ###########################################################################
     def test_smart_event_thread_app_combos(self,
@@ -2931,6 +3026,7 @@ class TestCombos:
 
         """
         class SmartEventApp(threading.Thread):
+            """SmartEventApp class with thread."""
             def __init__(self,
                          smart_event: SmartEvent,
                          cmd_to_thread: List[Any],
@@ -2945,6 +3041,23 @@ class TestCombos:
                          thread_set_t_log_msgs: List[str],
                          thread_set_f_log_msgs: List[str]
                          ) -> None:
+                """Initialize the object.
+
+                Args:
+                    smart_event: the smart event to use
+                    cmd_to_thread: command given to thread
+                    cmd_to_mainline: commands back to mainline
+                    cmd_log: log message to issue
+                    cmd_code: resume code to use
+                    thread_log_msgs: log messages collected to verify
+                    thread_wait_t_log_msgs: log messages collected to verify
+                    thread_wait_f_log_msgs: log messages collected to verify
+                    thread_sync_t_log_msgs: log messages collected to verify
+                    thread_sync_f_log_msgs: log messages collected to verify
+                    thread_set_t_log_msgs: log messages collected to verify
+                    thread_set_f_log_msgs: log messages collected to verify
+
+                """
                 super().__init__()
                 self.smart_event = smart_event
                 self.cmd_to_thread=cmd_to_thread
@@ -2960,12 +3073,7 @@ class TestCombos:
                 self.thread_set_f_log_msgs=thread_set_f_log_msgs
 
             def run(self):
-                """Thread to send and receive messages.
-
-                Raises:
-                    UnrecognizedCmd: SmartEventApp received an
-                                              unrecognized action
-                """
+                """Thread to send and receive messages."""
                 l_msg = 'SmartEventApp run started'
                 self.thread_log_msgs.append(l_msg)
                 logger.debug(l_msg)
@@ -3019,6 +3127,7 @@ class TestCombos:
                                   thread_sync_f_log_msgs,
                                   thread_set_t_log_msgs,
                                   thread_set_f_log_msgs)
+
         smart_event.register_thread(beta=f1_thread)
         l_msg = 'mainline about to start SmartEventApp'
         main_log_msgs.append(l_msg)
@@ -3067,6 +3176,179 @@ class TestCombos:
                                  thread_set_f_log_msgs=thread_set_f_log_msgs,
                                  thread_log_msgs=thread_log_msgs)
 
+    ###########################################################################
+    # test_smart_event_thread_thread_app_combos
+    ###########################################################################
+    def test_smart_event_thread_event_app_combos(self,
+                                                 action_arg1: Any,
+                                                 code_arg1: Any,
+                                                 log_msg_arg1: Any,
+                                                 action_arg2: Any,
+                                                 caplog: Any,
+                                                 thread_exc: Any) -> None:
+        """Test the SmartEvent with ThreadApp combos.
+
+        Args:
+            action_arg1: first action
+            code_arg1: whether to set and recv a code
+            log_msg_arg1: whether to specify a log message
+            action_arg2: second action
+            caplog: fixture to capture log messages
+            thread_exc: intercepts thread exceptions
+
+        Raises:
+            IncorrectActionSpecified: The Action is not recognized
+
+        """
+        class SmartEventApp(threading.Thread, SmartEvent):
+            """SmartEventApp class with thread and event."""
+            def __init__(self,
+                         cmd_to_thread: List[Any],
+                         cmd_to_mainline: List[Any],
+                         cmd_log: List[Any],
+                         cmd_code: List[Any],
+                         thread_log_msgs: List[str],
+                         thread_wait_t_log_msgs: List[str],
+                         thread_wait_f_log_msgs: List[str],
+                         thread_sync_t_log_msgs: List[str],
+                         thread_sync_f_log_msgs: List[str],
+                         thread_set_t_log_msgs: List[str],
+                         thread_set_f_log_msgs: List[str]
+                         ) -> None:
+                """Initialize the object.
+
+                Args:
+                    cmd_to_thread: command given to thread
+                    cmd_to_mainline: commands back to mainline
+                    cmd_log: log message to issue
+                    cmd_code: resume code to use
+                    thread_log_msgs: log messages collected to verify
+                    thread_wait_t_log_msgs: log messages collected to verify
+                    thread_wait_f_log_msgs: log messages collected to verify
+                    thread_sync_t_log_msgs: log messages collected to verify
+                    thread_sync_f_log_msgs: log messages collected to verify
+                    thread_set_t_log_msgs: log messages collected to verify
+                    thread_set_f_log_msgs: log messages collected to verify
+
+                """
+                threading.Thread.__init__(self)
+                SmartEvent.__init__(self,
+                                    alpha=threading.current_thread(),
+                                    beta=self)
+
+                self.cmd_to_thread = cmd_to_thread
+                self.cmd_to_mainline = cmd_to_mainline
+                self.cmd_log = cmd_log
+                self.cmd_code = cmd_code
+                self.thread_log_msgs = thread_log_msgs
+                self.thread_wait_t_log_msgs = thread_wait_t_log_msgs
+                self.thread_wait_f_log_msgs = thread_wait_f_log_msgs
+                self.thread_sync_t_log_msgs = thread_sync_t_log_msgs
+                self.thread_sync_f_log_msgs = thread_sync_f_log_msgs
+                self.thread_set_t_log_msgs = thread_set_t_log_msgs
+                self.thread_set_f_log_msgs = thread_set_f_log_msgs
+
+            def run(self):
+                """Thread to send and receive messages."""
+                l_msg = 'SmartEventApp run started'
+                self.thread_log_msgs.append(l_msg)
+                logger.debug(l_msg)
+                thread_func1(
+                    s_event=self,
+                    cmd_to_thread=self.cmd_to_thread,
+                    cmd_to_mainline=self.cmd_to_mainline,
+                    cmd_log=self.cmd_log,
+                    cmd_code=self.cmd_code,
+                    thread_log_msgs=self.thread_log_msgs,
+                    thread_wait_t_log_msgs=self.thread_wait_t_log_msgs,
+                    thread_wait_f_log_msgs=self.thread_wait_f_log_msgs,
+                    thread_sync_t_log_msgs=self.thread_sync_t_log_msgs,
+                    thread_sync_f_log_msgs=self.thread_sync_f_log_msgs,
+                    thread_set_t_log_msgs=self.thread_set_t_log_msgs,
+                    thread_set_f_log_msgs=self.thread_set_f_log_msgs)
+
+                l_msg = 'SmartEventApp run exiting'
+                self.thread_log_msgs.append(l_msg)
+                logger.debug(l_msg)
+
+        l_msg = 'mainline entered'
+        logger.debug(l_msg)
+
+        cmd_to_thread = [0]
+        cmd_to_mainline = [0]
+        cmd_log = [log_msg_arg1]
+        cmd_code = [code_arg1]
+
+        main_log_msgs = [l_msg]
+        main_sync_t_log_msgs = []
+        main_sync_f_log_msgs = []
+
+        thread_log_msgs = []
+        thread_wait_t_log_msgs = []
+        thread_wait_f_log_msgs = []
+        thread_sync_t_log_msgs = []
+        thread_sync_f_log_msgs = []
+        thread_set_t_log_msgs = []
+        thread_set_f_log_msgs = []
+
+        f1_thread = SmartEventApp(cmd_to_thread,
+                                  cmd_to_mainline,
+                                  cmd_log,
+                                  cmd_code,
+                                  thread_log_msgs,
+                                  thread_wait_t_log_msgs,
+                                  thread_wait_f_log_msgs,
+                                  thread_sync_t_log_msgs,
+                                  thread_sync_f_log_msgs,
+                                  thread_set_t_log_msgs,
+                                  thread_set_f_log_msgs)
+
+        l_msg = 'mainline about to start SmartEventApp'
+        main_log_msgs.append(l_msg)
+        logger.debug(l_msg)
+        f1_thread.start()
+        f1_thread.wait_until(WUCond.ThreadsReady, timeout=1)
+
+        self.action_loop(smart_event=f1_thread,
+                         action1=action_arg1,
+                         action2=action_arg2,
+                         main_log_msgs=main_log_msgs,
+                         cmd_to_mainline=cmd_to_mainline,
+                         cmd_to_thread=cmd_to_thread,
+                         cmd_log=cmd_log,
+                         cmd_code=cmd_code,
+                         main_sync_t_log_msgs=main_sync_t_log_msgs,
+                         main_sync_f_log_msgs=main_sync_f_log_msgs,
+                         thread_log_msgs=thread_log_msgs,
+                         thread_exc1=thread_exc)
+
+        l_msg = 'main completed all actions'
+        main_log_msgs.append(l_msg)
+        logger.debug(l_msg)
+        cmd_to_thread[0] = Cmd.Exit
+
+        f1_thread.join()
+
+        if log_msg_arg1:
+            ml_log_seq = ('test_smart_event.py::TestCombos.'
+                          'action_loop:[0-9]* ')
+
+            beta_log_seq = (
+                'test_smart_event.py::thread_func1:[0-9]* ')
+            self.verify_log_msgs(caplog=caplog,
+                                 cmd_code=cmd_code,
+                                 ml_log_seq=ml_log_seq,
+                                 beta_log_seq=beta_log_seq,
+                                 main_log_msgs=main_log_msgs,
+                                 main_sync_t_log_msgs=main_sync_t_log_msgs,
+                                 main_sync_f_log_msgs=main_sync_f_log_msgs,
+                                 thread_wait_t_log_msgs=thread_wait_t_log_msgs,
+                                 thread_wait_f_log_msgs=thread_wait_f_log_msgs,
+                                 thread_sync_t_log_msgs=thread_sync_t_log_msgs,
+                                 thread_sync_f_log_msgs=thread_sync_f_log_msgs,
+                                 thread_set_t_log_msgs=thread_set_t_log_msgs,
+                                 thread_set_f_log_msgs=thread_set_f_log_msgs,
+                                 thread_log_msgs=thread_log_msgs)
 
     ###########################################################################
     # verify log messages
@@ -3119,16 +3401,16 @@ class TestCombos:
         beta_wait_exit_f_log_prefix = (r'wait\(\) exiting with ret_code False '
                                        + beta_log_seq)
 
-        beta_set_enter_log_prefix = (r'resume\(\) entered ' + beta_log_seq)
+        beta_resume_enter_log_prefix = (r'resume\(\) entered ' + beta_log_seq)
 
-        beta_set_enter_wc_log_prefix = (r'resume\(\) entered with '
-                                        f'code: {code_arg1} '
+        beta_resume_enter_wc_log_prefix = (r'resume\(\) entered with '
+                                        f'code: {cmd_code[0]} '
                                         + beta_log_seq)
 
-        beta_set_exit_t_log_prefix = (r'resume\(\) exiting with ret_code True '
+        beta_resume_exit_t_log_prefix = (r'resume\(\) exiting with ret_code True '
                                       + beta_log_seq)
 
-        beta_set_exit_f_log_prefix = (r'resume\(\) exiting with ret_code False '
+        beta_resume_exit_f_log_prefix = (r'resume\(\) exiting with ret_code False '
                                       + beta_log_seq)
 
         exp_log_msgs = []
@@ -3191,23 +3473,23 @@ class TestCombos:
 
         for lmsg in thread_set_t_log_msgs:
             if cmd_code[0]:
-                exp_log_msgs.append(re.compile(beta_set_enter_wc_log_prefix
+                exp_log_msgs.append(re.compile(beta_resume_enter_wc_log_prefix
                                                + lmsg))
             else:
-                exp_log_msgs.append(re.compile(beta_set_enter_log_prefix
+                exp_log_msgs.append(re.compile(beta_resume_enter_log_prefix
                                                + lmsg))
 
-            exp_log_msgs.append(re.compile(beta_set_exit_t_log_prefix + lmsg))
+            exp_log_msgs.append(re.compile(beta_resume_exit_t_log_prefix + lmsg))
 
         for lmsg in thread_set_f_log_msgs:
             if cmd_code[0]:
-                exp_log_msgs.append(re.compile(beta_set_enter_wc_log_prefix
+                exp_log_msgs.append(re.compile(beta_resume_enter_wc_log_prefix
                                                + lmsg))
             else:
-                exp_log_msgs.append(re.compile(beta_set_enter_log_prefix
+                exp_log_msgs.append(re.compile(beta_resume_enter_log_prefix
                                                + lmsg))
 
-            exp_log_msgs.append(re.compile(beta_set_exit_f_log_prefix + lmsg))
+            exp_log_msgs.append(re.compile(beta_resume_exit_f_log_prefix + lmsg))
 
         for lmsg in thread_log_msgs:
             exp_log_msgs.append(re.compile(lmsg))
@@ -3259,6 +3541,24 @@ class TestCombos:
                     thread_log_msgs: List[str],
                     thread_exc1: Any
                     ) -> None:
+        """Actions to perform with the thread.
+
+        Args:
+            smart_event: smart event to test
+            action1: first smart event request to do
+            action2: second smart event request to do
+            main_log_msgs: log messages collect to verify
+            cmd_to_mainline: command from thread to mainline
+            cmd_to_thread: command from mainline to thread
+            cmd_log: log message to issue with request
+            cmd_code: resume code to use
+            main_sync_t_log_msgs: log messages collect to verify
+            main_sync_f_log_msgs: log messages collect to verify
+            thread_log_msgs: log messages collect to verify
+            thread_exc1: contains any uncaptured errors from thread
+
+        """
+        smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
         actions = []
         actions.append(action1)
         actions.append(action2)
@@ -3471,6 +3771,7 @@ def thread_func1(s_event: SmartEvent,
     l_msg = f'thread_func1 beta started with cmd: {cmd_to_thread[0]}'
     thread_log_msgs.append(l_msg)
     logger.debug(l_msg)
+    s_event.wait_until(WUCond.ThreadsReady, timeout=1)
     while True:
         cmd_to_check = cmd_to_thread[0]
         if cmd_to_check:  # command other than spin

@@ -6,11 +6,11 @@ SmartEvent
 
 You can use the SmartEvent class to coordinate activities between two
 threads. We will call these threads alpha and beta. The coordination is
-accomplished using either of two services: ``wait()``/``resume()`` and
+accomplished using either of two schemes: ``wait()``/``resume()`` and
 ``sync()``.
 
 With the ``wait()``/``resume()`` scheme, one thread typically gives another
-thread a task to do and then does a ``wait()'' until the other thread
+thread a task to do and then does a ``wait()`` until the other thread
 signals that the task is complete by doing a ``resume()``.  It does not matter
 which thread does the waiting and which thread aoes the resumimg, as long as
 one thread's ``wait()`` is matched by the other thread with a ``resume()``.
@@ -282,9 +282,9 @@ class SmartEvent:
     # register_thread
     ###########################################################################
     def register_thread(self, *,
-                   alpha: Optional[threading.Thread] = None,
-                   beta: Optional[threading.Thread] = None
-                   ) -> None:
+                        alpha: Optional[threading.Thread] = None,
+                        beta: Optional[threading.Thread] = None
+                        ) -> None:
         """Register alpha and/or beta thread.
 
         Args:
@@ -383,7 +383,6 @@ class SmartEvent:
               seconds.
 
         Notes:
-
             1) A ``resume()`` request can be done on an event that is not yet
                being waited upon. This is referred as a **pre-resume**. The
                remote thread doing a ``wait()`` request on a **pre-resume**
@@ -844,8 +843,8 @@ class SmartEvent:
 
         Args:
             cond: specifies to either wait for:
-                1) both threads to be registered and alive
-                   (WUCond.ThreadsReady)
+
+                1) both threads registered and alive (WUCond.ThreadsReady)
                 2) the remote to call ``wait()`` (WUCond.RemoteWaiting)
                 3) the remote to call ``resume()`` (WUCond.RemoteWaiting)
             timeout: number of seconds to allow for wait_until to succeed
