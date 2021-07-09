@@ -4,7 +4,7 @@ from enum import Enum
 import time
 
 import pytest
-from typing import Any, cast, List
+from typing import Any, cast, List, Optional
 import threading
 import re
 
@@ -2182,7 +2182,7 @@ class TestSmartEventCode:
                 assert self.s_event.get_code() == 42
 
                 self.s_event.resume(log_msg='beta set 4',
-                                 code='forty-two')
+                                    code='forty-two')
 
         smart_event = SmartEvent(alpha=threading.current_thread())
         thread_app = MyThread(smart_event)
@@ -2315,148 +2315,68 @@ class TestSmartEventLogger:
 
         """
 
-        def f1(s_event):
+        def f1(s_event, exp_log_msgs):
+            exp_log_msgs.add_msg('f1 entered')
             logger.debug('f1 entered')
 
+            exp_log_msgs.add_beta_sync_msg('beta sync point 1')
             s_event.sync(log_msg='beta sync point 1')
 
+            exp_log_msgs.add_beta_wait_msg('wait for mainline to post 12')
             assert s_event.wait(log_msg='wait for mainline to post 12')
 
+            exp_log_msgs.add_beta_sync_msg('beta sync point 2')
             s_event.sync(log_msg='beta sync point 2')
 
+            exp_log_msgs.add_beta_resume_msg('post mainline 23')
             s_event.resume(log_msg='post mainline 23')
 
+            exp_log_msgs.add_beta_sync_msg('beta sync point 3')
             s_event.sync(log_msg='beta sync point 3')
+
+            exp_log_msgs.add_beta_sync_msg('beta sync point 4')
             s_event.sync(log_msg='beta sync point 4')
 
-        logger.debug('mainline started')
+        alpha_call_seq = ('test_smart_event.py::TestSmartEventLogger.'
+                          'test_smart_event_f1_event_logger')
+        beta_call_seq = ('test_smart_event.py::f1')
+        exp_log_msgs = ExpLogMsgs(alpha_call_seq, beta_call_seq)
+        l_msg = 'mainline started'
+        exp_log_msgs.add_msg(l_msg)
+        logger.debug(l_msg)
+
         smart_event = SmartEvent(alpha=threading.current_thread())
-        beta_thread = threading.Thread(target=f1, args=(smart_event,))
+        beta_thread = threading.Thread(target=f1, args=(smart_event,
+                                                        exp_log_msgs))
         smart_event.register_thread(beta=beta_thread)
         beta_thread.start()
         smart_event.wait_until(WUCond.ThreadsReady)
 
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 1')
         smart_event.sync(log_msg='mainline sync point 1')
         smart_event.wait_until(WUCond.RemoteWaiting)
 
+        exp_log_msgs.add_alpha_resume_msg('post beta 12')
         smart_event.resume(log_msg='post beta 12')
 
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 2')
         smart_event.sync(log_msg='mainline sync point 2')
+
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 3')
         smart_event.sync(log_msg='mainline sync point 3')
 
+        exp_log_msgs.add_alpha_wait_msg('wait for pre-post 23')
         assert smart_event.wait(log_msg='wait for pre-post 23')
 
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 4')
         smart_event.sync(log_msg='mainline sync point 4')
 
         beta_thread.join()
 
+        exp_log_msgs.add_msg('mainline all tests complete')
         logger.debug('mainline all tests complete')
 
-        #######################################################################
-        # verify log messages
-        #######################################################################
-        ml_log_seq = ('test_smart_event.py::TestSmartEventLogger.'
-                      'test_smart_event_f1_event_logger:[0-9]* ')
-
-        beta_log_seq = ('test_smart_event.py::f1:[0-9]* ')
-
-        ml_sync_enter_log_prefix = (r'sync\(\) entered ' + ml_log_seq)
-
-        ml_sync_exit_log_prefix = (r'sync\(\) exiting with ret_code True '
-                                   + ml_log_seq)
-
-        ml_wait_enter_log_prefix = (r'wait\(\) entered ' + ml_log_seq)
-
-        ml_wait_exit_log_prefix = (r'wait\(\) exiting with ret_code True '
-                                   + ml_log_seq)
-
-        ml_set_enter_log_prefix = (r'resume\(\) entered ' + ml_log_seq)
-
-        ml_set_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
-                                  + ml_log_seq)
-
-        beta_sync_enter_log_prefix = (r'sync\(\) entered ' + beta_log_seq)
-
-        beta_sync_exit_log_prefix = (r'sync\(\) exiting with ret_code True '
-                                     + beta_log_seq)
-
-        beta_wait_enter_log_prefix = (r'wait\(\) entered ' + beta_log_seq)
-
-        beta_wait_exit_log_prefix = (r'wait\(\) exiting with ret_code True '
-                                     + beta_log_seq)
-
-        beta_resume_enter_log_prefix = (r'resume\(\) entered ' + beta_log_seq)
-
-        beta_resume_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
-                                    + beta_log_seq)
-
-        exp_log_msgs = [
-            re.compile('mainline started'),
-            re.compile('mainline all tests complete'),
-
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 1'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 1'),
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 2'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 2'),
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 3'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 3'),
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 4'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 4'),
-
-            re.compile(ml_wait_enter_log_prefix + 'wait for pre-post 23'),
-            re.compile(ml_wait_exit_log_prefix + 'wait for pre-post 23'),
-
-            re.compile(ml_set_enter_log_prefix + 'post beta 12'),
-            re.compile(ml_set_exit_log_prefix + 'post beta 12'),
-
-            re.compile('f1 entered'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 1'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 1'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 2'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 2'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 3'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 3'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 4'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 4'),
-
-            re.compile(beta_wait_enter_log_prefix
-                       + 'wait for mainline to post 12'),
-            re.compile(beta_wait_exit_log_prefix
-                       + 'wait for mainline to post 12'),
-
-            re.compile(beta_resume_enter_log_prefix + 'post mainline 23'),
-            re.compile(beta_resume_exit_log_prefix + 'post mainline 23'),
-                        ]
-
-        log_records_found = 0
-        caplog_recs = []
-        for record in caplog.records:
-            caplog_recs.append(record.msg)
-
-        for idx, record in enumerate(caplog.records):
-            # print(record.msg)
-            # print(exp_log_msgs)
-            for idx2, l_msg in enumerate(exp_log_msgs):
-                if l_msg.match(record.msg):
-                    # print(l_msg.match(record.msg))
-                    exp_log_msgs.pop(idx2)
-                    caplog_recs.remove(record.msg)
-                    log_records_found += 1
-                    break
-
-        print(f'\nlog_records_found: '
-              f'{log_records_found} of {len(caplog.records)}')
-
-        print(('*' * 8) + ' remaining unmatched log records ' + ('*' * 8))
-        for log_msg in caplog_recs:
-            print(log_msg)
-
-        print(('*' * 8) + ' remaining expected log records ' + ('*' * 8))
-        for exp_lm in exp_log_msgs:
-            print(exp_lm)
-
-        assert not exp_log_msgs
-        assert log_records_found == len(caplog.records)
+        exp_log_msgs.verify_log_msgs(caplog)
 
     ###########################################################################
     # test_smart_event_thread_app_event_logger
@@ -2471,156 +2391,83 @@ class TestSmartEventLogger:
         """
 
         class MyThread(threading.Thread):
-            def __init__(self, s_event: SmartEvent):
+            def __init__(self,
+                         s_event: SmartEvent,
+                         exp_log_msgs: ExpLogMsgs):
                 super().__init__()
                 self.s_event = s_event
                 self.s_event.register_thread(beta=self)
+                self.exp_log_msgs = exp_log_msgs
 
             def run(self):
-                logger.debug('ThreadApp run entered')
+                l_msg = 'ThreadApp run entered'
+                self.exp_log_msgs.add_msg(l_msg)
+                logger.debug(l_msg)
+
+                self.exp_log_msgs.add_beta_sync_msg('beta sync point 1')
                 self.s_event.sync(log_msg='beta sync point 1')
 
+                self.exp_log_msgs.add_beta_wait_msg('wait 12')
                 assert self.s_event.wait(log_msg='wait 12')
 
+                self.exp_log_msgs.add_beta_sync_msg('beta sync point 2')
                 self.s_event.sync(log_msg='beta sync point 2')
 
                 self.s_event.wait_until(WUCond.RemoteWaiting)
 
-                self.s_event.resume(code='forty-two', log_msg='post mainline 34')
+                self.exp_log_msgs.add_beta_resume_msg('post mainline 34',
+                                                      True, 'forty-two')
+                self.s_event.resume(code='forty-two',
+                                    log_msg='post mainline 34')
 
+                self.exp_log_msgs.add_beta_sync_msg('beta sync point 3')
                 self.s_event.sync(log_msg='beta sync point 3')
+
+                self.exp_log_msgs.add_beta_sync_msg('beta sync point 4')
                 self.s_event.sync(log_msg='beta sync point 4')
 
-        logger.debug('mainline starting')
+        alpha_call_seq = ('test_smart_event.py::TestSmartEventLogger.'
+                          'test_smart_event_thread_app_event_logger')
+
+        beta_call_seq = 'test_smart_event.py::MyThread.run'
+        exp_log_msgs = ExpLogMsgs(alpha_call_seq, beta_call_seq)
+        l_msg = 'mainline starting'
+        exp_log_msgs.add_msg(l_msg)
+        logger.debug(l_msg)
+
         smart_event = SmartEvent(alpha=threading.current_thread())
-        thread_app = MyThread(smart_event)
+        thread_app = MyThread(smart_event, exp_log_msgs)
         thread_app.start()
         smart_event.wait_until(WUCond.ThreadsReady)
 
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 1')
         smart_event.sync(log_msg='mainline sync point 1')
 
         smart_event.wait_until(WUCond.RemoteWaiting)
 
+        exp_log_msgs.add_alpha_resume_msg(
+            f'post thread {smart_event.beta.name} 23', True, 42)
         smart_event.resume(log_msg=f'post thread {smart_event.beta.name} 23',
-                        code=42)
+                           code=42)
 
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 2')
         smart_event.sync(log_msg='mainline sync point 2')
 
+        exp_log_msgs.add_alpha_wait_msg('wait for post from thread 34')
         assert smart_event.wait(log_msg='wait for post from thread 34')
 
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 3')
         smart_event.sync(log_msg='mainline sync point 3')
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 4')
         smart_event.sync(log_msg='mainline sync point 4')
 
         thread_app.join()
 
+        l_msg = 'mainline all tests complete'
+        exp_log_msgs.add_msg(l_msg)
         logger.debug('mainline all tests complete')
 
-        #######################################################################
-        # verify log messages
-        #######################################################################
-        ml_log_seq = ('test_smart_event.py::TestSmartEventLogger.'
-                      'test_smart_event_thread_app_event_logger:[0-9]* ')
-
-        beta_log_seq = ('test_smart_event.py::MyThread.run:[0-9]* ')
-
-        ml_sync_enter_log_prefix = (r'sync\(\) entered ' + ml_log_seq)
-
-        ml_sync_exit_log_prefix = (r'sync\(\) exiting with ret_code True '
-                                   + ml_log_seq)
-
-        ml_wait_enter_log_prefix = (r'wait\(\) entered ' + ml_log_seq)
-
-        ml_wait_exit_log_prefix = (r'wait\(\) exiting with ret_code True '
-                                   + ml_log_seq)
-
-        ml_set_enter_log_prefix = (r'resume\(\) entered with code: 42 ' + ml_log_seq)
-
-        ml_set_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
-                                  + ml_log_seq)
-
-        beta_sync_enter_log_prefix = (r'sync\(\) entered ' + beta_log_seq)
-
-        beta_sync_exit_log_prefix = (r'sync\(\) exiting with ret_code True '
-                                     + beta_log_seq)
-
-        beta_wait_enter_log_prefix = (r'wait\(\) entered ' + beta_log_seq)
-
-        beta_wait_exit_log_prefix = (r'wait\(\) exiting with ret_code True '
-                                     + beta_log_seq)
-
-        beta_resume_enter_log_prefix = (r'resume\(\) entered with code: forty-two '
-                                     + beta_log_seq)
-
-        beta_resume_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
-                                    + beta_log_seq)
-
-        exp_log_msgs = [
-            re.compile('mainline starting'),
-            re.compile('mainline all tests complete'),
-
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 1'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 1'),
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 2'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 2'),
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 3'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 3'),
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 4'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 4'),
-
-            re.compile(ml_wait_enter_log_prefix
-                       + 'wait for post from thread 34'),
-            re.compile(ml_wait_exit_log_prefix
-                       + 'wait for post from thread 34'),
-
-            re.compile(ml_set_enter_log_prefix + 'post thread beta 23'),
-            re.compile(ml_set_exit_log_prefix + 'post thread beta 23'),
-
-            re.compile('ThreadApp run entered'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 1'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 1'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 2'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 2'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 3'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 3'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 4'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 4'),
-
-            re.compile(beta_wait_enter_log_prefix + 'wait 12'),
-            re.compile(beta_wait_exit_log_prefix + 'wait 12'),
-
-            re.compile(beta_resume_enter_log_prefix + 'post mainline 34'),
-            re.compile(beta_resume_exit_log_prefix + 'post mainline 34'),
-                        ]
-
-        log_records_found = 0
-        caplog_recs = []
-        for record in caplog.records:
-            caplog_recs.append(record.msg)
-
-        for idx, record in enumerate(caplog.records):
-            # print(record.msg)
-            # print(exp_log_msgs)
-            for idx2, l_msg in enumerate(exp_log_msgs):
-                if l_msg.match(record.msg):
-                    # print(l_msg.match(record.msg))
-                    exp_log_msgs.pop(idx2)
-                    caplog_recs.remove(record.msg)
-                    log_records_found += 1
-                    break
-
-        print(f'\nlog_records_found: '
-              f'{log_records_found} of {len(caplog.records)}')
-
-        print(('*' * 8) + ' remaining unmatched log records ' + ('*' * 8))
-        for log_msg in caplog_recs:
-            print(log_msg)
-
-        print(('*' * 8) + ' remaining expected log records ' + ('*' * 8))
-        for exp_lm in exp_log_msgs:
-            print(exp_lm)
-
-        assert not exp_log_msgs
-        assert log_records_found == len(caplog.records)
+        exp_log_msgs.verify_log_msgs(caplog)
 
     ###########################################################################
     # test_smart_event_thread_event_app_event_logger
@@ -2635,150 +2482,74 @@ class TestSmartEventLogger:
 
         class MyThread(threading.Thread, SmartEvent):
             def __init__(self,
-                         alpha: threading.Thread):
+                         alpha: threading.Thread,
+                         exp_log_msgs: ExpLogMsgs):
                 threading.Thread.__init__(self)
                 SmartEvent.__init__(self, alpha=alpha, beta=self)
+                self.exp_log_msgs = exp_log_msgs
 
             def run(self):
+                self.exp_log_msgs.add_msg('ThreadApp run entered')
                 logger.debug('ThreadApp run entered')
+
+                self.exp_log_msgs.add_beta_sync_msg('beta sync point 1')
                 self.sync(log_msg='beta sync point 1')
 
+                self.exp_log_msgs.add_beta_wait_msg(
+                    'wait for mainline to post 12')
                 assert self.wait(log_msg='wait for mainline to post 12')
 
+                self.exp_log_msgs.add_beta_sync_msg('beta sync point 2')
                 self.sync(log_msg='beta sync point 2')
 
                 self.wait_until(WUCond.RemoteWaiting)
 
+                self.exp_log_msgs.add_beta_resume_msg('post mainline 23')
                 self.resume(log_msg='post mainline 23')
 
+                self.exp_log_msgs.add_beta_sync_msg('beta sync point 3')
                 self.sync(log_msg='beta sync point 3')
 
-        logger.debug('mainline starting')
-        thread_event_app = MyThread(alpha=threading.current_thread())
+        alpha_call_seq = ('test_smart_event.py::TestSmartEventLogger.'
+                          'test_smart_event_thread_event_app_event_logger')
+
+        beta_call_seq = 'test_smart_event.py::MyThread.run'
+        exp_log_msgs = ExpLogMsgs(alpha_call_seq, beta_call_seq)
+        l_msg = 'mainline starting'
+        exp_log_msgs.add_msg(l_msg)
+        logger.debug(l_msg)
+
+        thread_event_app = MyThread(alpha=threading.current_thread(),
+                                    exp_log_msgs=exp_log_msgs)
         thread_event_app.start()
 
         thread_event_app.wait_until(WUCond.ThreadsReady)
 
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 1')
         thread_event_app.sync(log_msg='mainline sync point 1')
 
         thread_event_app.wait_until(WUCond.RemoteWaiting)
 
+        exp_log_msgs.add_alpha_resume_msg(
+            f'post thread {thread_event_app.beta.name} 12')
         thread_event_app.resume(log_msg=f'post thread '
-                                     f'{thread_event_app.beta.name} 12')
+                                f'{thread_event_app.beta.name} 12')
 
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 2')
         thread_event_app.sync(log_msg='mainline sync point 2')
 
+        exp_log_msgs.add_alpha_wait_msg('wait for post from thread 23')
         assert thread_event_app.wait(log_msg='wait for post from thread 23')
 
+        exp_log_msgs.add_alpha_sync_msg('mainline sync point 3')
         thread_event_app.sync(log_msg='mainline sync point 3')
 
         thread_event_app.join()
 
+        exp_log_msgs.add_msg('mainline all tests complete')
         logger.debug('mainline all tests complete')
 
-        #######################################################################
-        # verify log messages
-        #######################################################################
-        ml_log_seq = ('test_smart_event.py::TestSmartEventLogger.'
-                      'test_smart_event_thread_event_app_event_logger:[0-9]* ')
-
-        beta_log_seq = ('test_smart_event.py::MyThread.run:[0-9]* ')
-
-        ml_sync_enter_log_prefix = (r'sync\(\) entered ' + ml_log_seq)
-
-        ml_sync_exit_log_prefix = (r'sync\(\) exiting with ret_code True '
-                                   + ml_log_seq)
-
-        ml_wait_enter_log_prefix = (r'wait\(\) entered ' + ml_log_seq)
-
-        ml_wait_exit_log_prefix = (r'wait\(\) exiting with ret_code True '
-                                   + ml_log_seq)
-
-        ml_set_enter_log_prefix = (r'resume\(\) entered ' + ml_log_seq)
-
-        ml_set_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
-                                  + ml_log_seq)
-
-        beta_sync_enter_log_prefix = (r'sync\(\) entered ' + beta_log_seq)
-
-        beta_sync_exit_log_prefix = (r'sync\(\) exiting with ret_code True '
-                                     + beta_log_seq)
-
-        beta_wait_enter_log_prefix = (r'wait\(\) entered ' + beta_log_seq)
-
-        beta_wait_exit_log_prefix = (r'wait\(\) exiting with ret_code True '
-                                     + beta_log_seq)
-
-        beta_resume_enter_log_prefix = (r'resume\(\) entered ' + beta_log_seq)
-
-        beta_resume_exit_log_prefix = (r'resume\(\) exiting with ret_code True '
-                                    + beta_log_seq)
-
-        exp_log_msgs = [
-            re.compile('mainline starting'),
-            re.compile('mainline all tests complete'),
-
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 1'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 1'),
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 2'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 2'),
-            re.compile(ml_sync_enter_log_prefix + 'mainline sync point 3'),
-            re.compile(ml_sync_exit_log_prefix + 'mainline sync point 3'),
-
-            re.compile(ml_wait_enter_log_prefix
-                       + 'wait for post from thread 23'),
-            re.compile(ml_wait_exit_log_prefix
-                       + 'wait for post from thread 23'),
-
-            re.compile(ml_set_enter_log_prefix + 'post thread beta 12'),
-            re.compile(ml_set_exit_log_prefix + 'post thread beta 12'),
-
-            re.compile('ThreadApp run entered'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 1'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 1'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 2'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 2'),
-            re.compile(beta_sync_enter_log_prefix + 'beta sync point 3'),
-            re.compile(beta_sync_exit_log_prefix + 'beta sync point 3'),
-
-            re.compile(beta_wait_enter_log_prefix
-                       + 'wait for mainline to post 12'),
-            re.compile(beta_wait_exit_log_prefix
-                       + 'wait for mainline to post 12'),
-
-            re.compile(beta_resume_enter_log_prefix + 'post mainline 23'),
-            re.compile(beta_resume_exit_log_prefix + 'post mainline 23'),
-                        ]
-
-        log_records_found = 0
-        caplog_recs = []
-        for record in caplog.records:
-            caplog_recs.append(record.msg)
-
-        for idx, record in enumerate(caplog.records):
-            # print(record.msg)
-            # print(exp_log_msgs)
-            for idx2, l_msg in enumerate(exp_log_msgs):
-                if l_msg.match(record.msg):
-                    # print(l_msg.match(record.msg))
-                    exp_log_msgs.pop(idx2)
-                    caplog_recs.remove(record.msg)
-                    log_records_found += 1
-                    break
-
-        print(f'\nlog_records_found: '
-              f'{log_records_found} of {len(caplog.records)}')
-
-        print(('*' * 8) + ' remaining unmatched log records ' + ('*' * 8))
-        for log_msg in caplog_recs:
-            print(log_msg)
-
-        print(('*' * 8) + ' remaining expected log records ' + ('*' * 8))
-        for exp_lm in exp_log_msgs:
-            print(exp_lm)
-
-        assert not exp_log_msgs
-        assert log_records_found == len(caplog.records)
+        exp_log_msgs.verify_log_msgs(caplog)
 
 
 ###############################################################################
@@ -2806,29 +2577,19 @@ class TestCombos:
             caplog: fixture to capture log messages
             thread_exc: intercepts thread exceptions
 
-        Raises:
-            IncorrectActionSpecified: The Action is not recognized
-
         """
+        alpha_call_seq = ('test_smart_event.py::TestCombos.action_loop')
+        beta_call_seq = ('test_smart_event.py::thread_func1')
+        exp_log_msgs = ExpLogMsgs(alpha_call_seq, beta_call_seq)
         l_msg = 'mainline entered'
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
+
         smart_event = SmartEvent(alpha=threading.current_thread())
         cmd_to_thread = [0]
         cmd_to_mainline = [0]
         cmd_log = [log_msg_arg1]
         cmd_code = [code_arg1]
-
-        main_log_msgs = [l_msg]
-        main_sync_t_log_msgs = []
-        main_sync_f_log_msgs = []
-
-        thread_log_msgs = []
-        thread_wait_t_log_msgs = []
-        thread_wait_f_log_msgs = []
-        thread_sync_t_log_msgs = []
-        thread_sync_f_log_msgs = []
-        thread_set_t_log_msgs = []
-        thread_set_f_log_msgs = []
 
         f1_thread = threading.Thread(target=thread_func1,
                                      args=(smart_event,
@@ -2836,60 +2597,35 @@ class TestCombos:
                                            cmd_to_mainline,
                                            cmd_log,
                                            cmd_code,
-                                           thread_log_msgs,
-                                           thread_wait_t_log_msgs,
-                                           thread_wait_f_log_msgs,
-                                           thread_sync_t_log_msgs,
-                                           thread_sync_f_log_msgs,
-                                           thread_set_t_log_msgs,
-                                           thread_set_f_log_msgs))
+                                           exp_log_msgs))
         smart_event.register_thread(beta=f1_thread)
         l_msg = 'mainline about to start thread_func1'
-        main_log_msgs.append(l_msg)
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
+
         f1_thread.start()
         smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
 
         self.action_loop(smart_event=smart_event,
                          action1=action_arg1,
                          action2=action_arg2,
-                         main_log_msgs=main_log_msgs,
+                         exp_log_msgs=exp_log_msgs,
                          cmd_to_mainline=cmd_to_mainline,
                          cmd_to_thread=cmd_to_thread,
                          cmd_log=cmd_log,
                          cmd_code=cmd_code,
-                         main_sync_t_log_msgs=main_sync_t_log_msgs,
-                         main_sync_f_log_msgs=main_sync_f_log_msgs,
-                         thread_log_msgs=thread_log_msgs,
                          thread_exc1=thread_exc)
 
         l_msg = 'main completed all actions'
-        main_log_msgs.append(l_msg)
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
+
         cmd_to_thread[0] = Cmd.Exit
 
         f1_thread.join()
 
         if log_msg_arg1:
-            ml_log_seq = ('test_smart_event.py::TestCombos.'
-                          'action_loop:[0-9]* ')
-
-            beta_log_seq = (
-                'test_smart_event.py::thread_func1:[0-9]* ')
-            self.verify_log_msgs(caplog=caplog,
-                                 cmd_code=cmd_code,
-                                 ml_log_seq=ml_log_seq,
-                                 beta_log_seq=beta_log_seq,
-                                 main_log_msgs=main_log_msgs,
-                                 main_sync_t_log_msgs=main_sync_t_log_msgs,
-                                 main_sync_f_log_msgs=main_sync_f_log_msgs,
-                                 thread_wait_t_log_msgs=thread_wait_t_log_msgs,
-                                 thread_wait_f_log_msgs=thread_wait_f_log_msgs,
-                                 thread_sync_t_log_msgs=thread_sync_t_log_msgs,
-                                 thread_sync_f_log_msgs=thread_sync_f_log_msgs,
-                                 thread_set_t_log_msgs=thread_set_t_log_msgs,
-                                 thread_set_f_log_msgs=thread_set_f_log_msgs,
-                                 thread_log_msgs=thread_log_msgs)
+            exp_log_msgs.verify_log_msgs(caplog=caplog)
 
     ###########################################################################
     # test_smart_event_thread_f1_combos
@@ -2911,29 +2647,19 @@ class TestCombos:
             caplog: fixture to capture log messages
             thread_exc: intercepts thread exceptions
 
-        Raises:
-            IncorrectActionSpecified: The Action is not recognized
-
         """
+        alpha_call_seq = ('test_smart_event.py::TestCombos.action_loop')
+        beta_call_seq = ('test_smart_event.py::thread_func1')
+        exp_log_msgs = ExpLogMsgs(alpha_call_seq, beta_call_seq)
         l_msg = 'mainline entered'
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
+
         smart_event = SmartEvent()
         cmd_to_thread = [0]
         cmd_to_mainline = [0]
         cmd_log = [log_msg_arg1]
         cmd_code = [code_arg1]
-
-        main_log_msgs = [l_msg]
-        main_sync_t_log_msgs = []
-        main_sync_f_log_msgs = []
-
-        thread_log_msgs = []
-        thread_wait_t_log_msgs = []
-        thread_wait_f_log_msgs = []
-        thread_sync_t_log_msgs = []
-        thread_sync_f_log_msgs = []
-        thread_set_t_log_msgs = []
-        thread_set_f_log_msgs = []
 
         f1_thread = threading.Thread(target=thread_func1,
                                      args=(smart_event,
@@ -2941,37 +2667,29 @@ class TestCombos:
                                            cmd_to_mainline,
                                            cmd_log,
                                            cmd_code,
-                                           thread_log_msgs,
-                                           thread_wait_t_log_msgs,
-                                           thread_wait_f_log_msgs,
-                                           thread_sync_t_log_msgs,
-                                           thread_sync_f_log_msgs,
-                                           thread_set_t_log_msgs,
-                                           thread_set_f_log_msgs))
+                                           exp_log_msgs))
 
         f2_thread = threading.Thread(target=self.action_loop,
                                      args=(smart_event,
                                            action_arg1,
                                            action_arg2,
-                                           main_log_msgs,
+                                           exp_log_msgs,
                                            cmd_to_mainline,
                                            cmd_to_thread,
                                            cmd_log,
                                            cmd_code,
-                                           main_sync_t_log_msgs,
-                                           main_sync_f_log_msgs,
-                                           thread_log_msgs,
                                            thread_exc))
         smart_event.register_thread(alpha=f2_thread, beta=f1_thread)
         l_msg = 'mainline about to start thread_func1'
-        main_log_msgs.append(l_msg)
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
+
         f1_thread.start()
         f2_thread.start()
         smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
 
         l_msg = 'main completed all actions'
-        main_log_msgs.append(l_msg)
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
 
         f2_thread.join()
@@ -2979,27 +2697,8 @@ class TestCombos:
 
         f1_thread.join()
 
-
         if log_msg_arg1:
-            ml_log_seq = ('test_smart_event.py::TestCombos.'
-                          'action_loop:[0-9]* ')
-
-            beta_log_seq = (
-                'test_smart_event.py::thread_func1:[0-9]* ')
-            self.verify_log_msgs(caplog=caplog,
-                                 cmd_code=cmd_code,
-                                 ml_log_seq=ml_log_seq,
-                                 beta_log_seq=beta_log_seq,
-                                 main_log_msgs=main_log_msgs,
-                                 main_sync_t_log_msgs=main_sync_t_log_msgs,
-                                 main_sync_f_log_msgs=main_sync_f_log_msgs,
-                                 thread_wait_t_log_msgs=thread_wait_t_log_msgs,
-                                 thread_wait_f_log_msgs=thread_wait_f_log_msgs,
-                                 thread_sync_t_log_msgs=thread_sync_t_log_msgs,
-                                 thread_sync_f_log_msgs=thread_sync_f_log_msgs,
-                                 thread_set_t_log_msgs=thread_set_t_log_msgs,
-                                 thread_set_f_log_msgs=thread_set_f_log_msgs,
-                                 thread_log_msgs=thread_log_msgs)
+            exp_log_msgs.verify_log_msgs(caplog=caplog)
 
     ###########################################################################
     # test_smart_event_thread_thread_app_combos
@@ -3021,9 +2720,6 @@ class TestCombos:
             caplog: fixture to capture log messages
             thread_exc: intercepts thread exceptions
 
-        Raises:
-            IncorrectActionSpecified: The Action is not recognized
-
         """
         class SmartEventApp(threading.Thread):
             """SmartEventApp class with thread."""
@@ -3033,13 +2729,7 @@ class TestCombos:
                          cmd_to_mainline: List[Any],
                          cmd_log: List[Any],
                          cmd_code: List[Any],
-                         thread_log_msgs: List[str],
-                         thread_wait_t_log_msgs: List[str],
-                         thread_wait_f_log_msgs: List[str],
-                         thread_sync_t_log_msgs: List[str],
-                         thread_sync_f_log_msgs: List[str],
-                         thread_set_t_log_msgs: List[str],
-                         thread_set_f_log_msgs: List[str]
+                         exp_log_msgs: ExpLogMsgs
                          ) -> None:
                 """Initialize the object.
 
@@ -3049,33 +2739,21 @@ class TestCombos:
                     cmd_to_mainline: commands back to mainline
                     cmd_log: log message to issue
                     cmd_code: resume code to use
-                    thread_log_msgs: log messages collected to verify
-                    thread_wait_t_log_msgs: log messages collected to verify
-                    thread_wait_f_log_msgs: log messages collected to verify
-                    thread_sync_t_log_msgs: log messages collected to verify
-                    thread_sync_f_log_msgs: log messages collected to verify
-                    thread_set_t_log_msgs: log messages collected to verify
-                    thread_set_f_log_msgs: log messages collected to verify
+                    exp_log_msgs: container for expected log messages
 
                 """
                 super().__init__()
                 self.smart_event = smart_event
-                self.cmd_to_thread=cmd_to_thread
-                self.cmd_to_mainline=cmd_to_mainline
-                self.cmd_log=cmd_log
-                self.cmd_code=cmd_code
-                self.thread_log_msgs=thread_log_msgs
-                self.thread_wait_t_log_msgs=thread_wait_t_log_msgs
-                self.thread_wait_f_log_msgs=thread_wait_f_log_msgs
-                self.thread_sync_t_log_msgs=thread_sync_t_log_msgs
-                self.thread_sync_f_log_msgs=thread_sync_f_log_msgs
-                self.thread_set_t_log_msgs=thread_set_t_log_msgs
-                self.thread_set_f_log_msgs=thread_set_f_log_msgs
+                self.cmd_to_thread = cmd_to_thread
+                self.cmd_to_mainline = cmd_to_mainline
+                self.cmd_log = cmd_log
+                self.cmd_code = cmd_code
+                self.exp_log_msgs = exp_log_msgs
 
             def run(self):
                 """Thread to send and receive messages."""
                 l_msg = 'SmartEventApp run started'
-                self.thread_log_msgs.append(l_msg)
+                self.exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
                 thread_func1(
                     s_event=self.smart_event,
@@ -3083,98 +2761,59 @@ class TestCombos:
                     cmd_to_mainline=self.cmd_to_mainline,
                     cmd_log=self.cmd_log,
                     cmd_code=self.cmd_code,
-                    thread_log_msgs=self.thread_log_msgs,
-                    thread_wait_t_log_msgs=self.thread_wait_t_log_msgs,
-                    thread_wait_f_log_msgs=self.thread_wait_f_log_msgs,
-                    thread_sync_t_log_msgs=self.thread_sync_t_log_msgs,
-                    thread_sync_f_log_msgs=self.thread_sync_f_log_msgs,
-                    thread_set_t_log_msgs=self.thread_set_t_log_msgs,
-                    thread_set_f_log_msgs=self.thread_set_f_log_msgs)
+                    exp_log_msgs=self.exp_log_msgs)
 
                 l_msg = 'SmartEventApp run exiting'
-                self.thread_log_msgs.append(l_msg)
+                self.exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
+        alpha_call_seq = ('test_smart_event.py::TestCombos.action_loop')
+        beta_call_seq = ('test_smart_event.py::thread_func1')
+        exp_log_msgs = ExpLogMsgs(alpha_call_seq, beta_call_seq)
         l_msg = 'mainline entered'
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
+
         smart_event = SmartEvent(alpha=threading.current_thread())
         cmd_to_thread = [0]
         cmd_to_mainline = [0]
         cmd_log = [log_msg_arg1]
         cmd_code = [code_arg1]
 
-        main_log_msgs = [l_msg]
-        main_sync_t_log_msgs = []
-        main_sync_f_log_msgs = []
-
-        thread_log_msgs = []
-        thread_wait_t_log_msgs = []
-        thread_wait_f_log_msgs = []
-        thread_sync_t_log_msgs = []
-        thread_sync_f_log_msgs = []
-        thread_set_t_log_msgs = []
-        thread_set_f_log_msgs = []
-
         f1_thread = SmartEventApp(smart_event,
                                   cmd_to_thread,
                                   cmd_to_mainline,
                                   cmd_log,
                                   cmd_code,
-                                  thread_log_msgs,
-                                  thread_wait_t_log_msgs,
-                                  thread_wait_f_log_msgs,
-                                  thread_sync_t_log_msgs,
-                                  thread_sync_f_log_msgs,
-                                  thread_set_t_log_msgs,
-                                  thread_set_f_log_msgs)
+                                  exp_log_msgs)
 
         smart_event.register_thread(beta=f1_thread)
         l_msg = 'mainline about to start SmartEventApp'
-        main_log_msgs.append(l_msg)
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
+
         f1_thread.start()
         smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
 
         self.action_loop(smart_event=smart_event,
                          action1=action_arg1,
                          action2=action_arg2,
-                         main_log_msgs=main_log_msgs,
+                         exp_log_msgs=exp_log_msgs,
                          cmd_to_mainline=cmd_to_mainline,
                          cmd_to_thread=cmd_to_thread,
                          cmd_log=cmd_log,
                          cmd_code=cmd_code,
-                         main_sync_t_log_msgs=main_sync_t_log_msgs,
-                         main_sync_f_log_msgs=main_sync_f_log_msgs,
-                         thread_log_msgs=thread_log_msgs,
                          thread_exc1=thread_exc)
 
         l_msg = 'main completed all actions'
-        main_log_msgs.append(l_msg)
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
         cmd_to_thread[0] = Cmd.Exit
 
         f1_thread.join()
 
         if log_msg_arg1:
-            ml_log_seq = ('test_smart_event.py::TestCombos.'
-                          'action_loop:[0-9]* ')
-
-            beta_log_seq = (
-                'test_smart_event.py::thread_func1:[0-9]* ')
-            self.verify_log_msgs(caplog=caplog,
-                                 cmd_code=cmd_code,
-                                 ml_log_seq=ml_log_seq,
-                                 beta_log_seq=beta_log_seq,
-                                 main_log_msgs=main_log_msgs,
-                                 main_sync_t_log_msgs=main_sync_t_log_msgs,
-                                 main_sync_f_log_msgs=main_sync_f_log_msgs,
-                                 thread_wait_t_log_msgs=thread_wait_t_log_msgs,
-                                 thread_wait_f_log_msgs=thread_wait_f_log_msgs,
-                                 thread_sync_t_log_msgs=thread_sync_t_log_msgs,
-                                 thread_sync_f_log_msgs=thread_sync_f_log_msgs,
-                                 thread_set_t_log_msgs=thread_set_t_log_msgs,
-                                 thread_set_f_log_msgs=thread_set_f_log_msgs,
-                                 thread_log_msgs=thread_log_msgs)
+            exp_log_msgs.verify_log_msgs(caplog=caplog)
 
     ###########################################################################
     # test_smart_event_thread_thread_app_combos
@@ -3196,9 +2835,6 @@ class TestCombos:
             caplog: fixture to capture log messages
             thread_exc: intercepts thread exceptions
 
-        Raises:
-            IncorrectActionSpecified: The Action is not recognized
-
         """
         class SmartEventApp(threading.Thread, SmartEvent):
             """SmartEventApp class with thread and event."""
@@ -3207,13 +2843,7 @@ class TestCombos:
                          cmd_to_mainline: List[Any],
                          cmd_log: List[Any],
                          cmd_code: List[Any],
-                         thread_log_msgs: List[str],
-                         thread_wait_t_log_msgs: List[str],
-                         thread_wait_f_log_msgs: List[str],
-                         thread_sync_t_log_msgs: List[str],
-                         thread_sync_f_log_msgs: List[str],
-                         thread_set_t_log_msgs: List[str],
-                         thread_set_f_log_msgs: List[str]
+                         exp_log_msgs: ExpLogMsgs
                          ) -> None:
                 """Initialize the object.
 
@@ -3222,13 +2852,7 @@ class TestCombos:
                     cmd_to_mainline: commands back to mainline
                     cmd_log: log message to issue
                     cmd_code: resume code to use
-                    thread_log_msgs: log messages collected to verify
-                    thread_wait_t_log_msgs: log messages collected to verify
-                    thread_wait_f_log_msgs: log messages collected to verify
-                    thread_sync_t_log_msgs: log messages collected to verify
-                    thread_sync_f_log_msgs: log messages collected to verify
-                    thread_set_t_log_msgs: log messages collected to verify
-                    thread_set_f_log_msgs: log messages collected to verify
+                    exp_log_msgs: container for expected log messages
 
                 """
                 threading.Thread.__init__(self)
@@ -3240,18 +2864,12 @@ class TestCombos:
                 self.cmd_to_mainline = cmd_to_mainline
                 self.cmd_log = cmd_log
                 self.cmd_code = cmd_code
-                self.thread_log_msgs = thread_log_msgs
-                self.thread_wait_t_log_msgs = thread_wait_t_log_msgs
-                self.thread_wait_f_log_msgs = thread_wait_f_log_msgs
-                self.thread_sync_t_log_msgs = thread_sync_t_log_msgs
-                self.thread_sync_f_log_msgs = thread_sync_f_log_msgs
-                self.thread_set_t_log_msgs = thread_set_t_log_msgs
-                self.thread_set_f_log_msgs = thread_set_f_log_msgs
+                self.exp_log_msgs = exp_log_msgs
 
             def run(self):
                 """Thread to send and receive messages."""
                 l_msg = 'SmartEventApp run started'
-                self.thread_log_msgs.append(l_msg)
+                self.exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
                 thread_func1(
                     s_event=self,
@@ -3259,19 +2877,17 @@ class TestCombos:
                     cmd_to_mainline=self.cmd_to_mainline,
                     cmd_log=self.cmd_log,
                     cmd_code=self.cmd_code,
-                    thread_log_msgs=self.thread_log_msgs,
-                    thread_wait_t_log_msgs=self.thread_wait_t_log_msgs,
-                    thread_wait_f_log_msgs=self.thread_wait_f_log_msgs,
-                    thread_sync_t_log_msgs=self.thread_sync_t_log_msgs,
-                    thread_sync_f_log_msgs=self.thread_sync_f_log_msgs,
-                    thread_set_t_log_msgs=self.thread_set_t_log_msgs,
-                    thread_set_f_log_msgs=self.thread_set_f_log_msgs)
+                    exp_log_msgs=self.exp_log_msgs)
 
                 l_msg = 'SmartEventApp run exiting'
-                self.thread_log_msgs.append(l_msg)
+                self.exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
+        alpha_call_seq = ('test_smart_event.py::TestCombos.action_loop')
+        beta_call_seq = ('test_smart_event.py::thread_func1')
+        exp_log_msgs = ExpLogMsgs(alpha_call_seq, beta_call_seq)
         l_msg = 'mainline entered'
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
 
         cmd_to_thread = [0]
@@ -3279,32 +2895,14 @@ class TestCombos:
         cmd_log = [log_msg_arg1]
         cmd_code = [code_arg1]
 
-        main_log_msgs = [l_msg]
-        main_sync_t_log_msgs = []
-        main_sync_f_log_msgs = []
-
-        thread_log_msgs = []
-        thread_wait_t_log_msgs = []
-        thread_wait_f_log_msgs = []
-        thread_sync_t_log_msgs = []
-        thread_sync_f_log_msgs = []
-        thread_set_t_log_msgs = []
-        thread_set_f_log_msgs = []
-
         f1_thread = SmartEventApp(cmd_to_thread,
                                   cmd_to_mainline,
                                   cmd_log,
                                   cmd_code,
-                                  thread_log_msgs,
-                                  thread_wait_t_log_msgs,
-                                  thread_wait_f_log_msgs,
-                                  thread_sync_t_log_msgs,
-                                  thread_sync_f_log_msgs,
-                                  thread_set_t_log_msgs,
-                                  thread_set_f_log_msgs)
+                                  exp_log_msgs)
 
         l_msg = 'mainline about to start SmartEventApp'
-        main_log_msgs.append(l_msg)
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
         f1_thread.start()
         f1_thread.wait_until(WUCond.ThreadsReady, timeout=1)
@@ -3312,217 +2910,22 @@ class TestCombos:
         self.action_loop(smart_event=f1_thread,
                          action1=action_arg1,
                          action2=action_arg2,
-                         main_log_msgs=main_log_msgs,
+                         exp_log_msgs=exp_log_msgs, 
                          cmd_to_mainline=cmd_to_mainline,
                          cmd_to_thread=cmd_to_thread,
                          cmd_log=cmd_log,
                          cmd_code=cmd_code,
-                         main_sync_t_log_msgs=main_sync_t_log_msgs,
-                         main_sync_f_log_msgs=main_sync_f_log_msgs,
-                         thread_log_msgs=thread_log_msgs,
                          thread_exc1=thread_exc)
 
         l_msg = 'main completed all actions'
-        main_log_msgs.append(l_msg)
+        exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
         cmd_to_thread[0] = Cmd.Exit
 
         f1_thread.join()
 
         if log_msg_arg1:
-            ml_log_seq = ('test_smart_event.py::TestCombos.'
-                          'action_loop:[0-9]* ')
-
-            beta_log_seq = (
-                'test_smart_event.py::thread_func1:[0-9]* ')
-            self.verify_log_msgs(caplog=caplog,
-                                 cmd_code=cmd_code,
-                                 ml_log_seq=ml_log_seq,
-                                 beta_log_seq=beta_log_seq,
-                                 main_log_msgs=main_log_msgs,
-                                 main_sync_t_log_msgs=main_sync_t_log_msgs,
-                                 main_sync_f_log_msgs=main_sync_f_log_msgs,
-                                 thread_wait_t_log_msgs=thread_wait_t_log_msgs,
-                                 thread_wait_f_log_msgs=thread_wait_f_log_msgs,
-                                 thread_sync_t_log_msgs=thread_sync_t_log_msgs,
-                                 thread_sync_f_log_msgs=thread_sync_f_log_msgs,
-                                 thread_set_t_log_msgs=thread_set_t_log_msgs,
-                                 thread_set_f_log_msgs=thread_set_f_log_msgs,
-                                 thread_log_msgs=thread_log_msgs)
-
-    ###########################################################################
-    # verify log messages
-    ###########################################################################
-    def verify_log_msgs(self,
-                        caplog: Any,
-                        cmd_code: List[Any],
-                        ml_log_seq: str,
-                        beta_log_seq: str,
-                        main_log_msgs: List[str],
-                        main_sync_t_log_msgs: List[str],
-                        main_sync_f_log_msgs: List[str],
-                        thread_wait_t_log_msgs: List[str],
-                        thread_wait_f_log_msgs: List[str],
-                        thread_sync_t_log_msgs: List[str],
-                        thread_sync_f_log_msgs: List[str],
-                        thread_set_t_log_msgs: List[str],
-                        thread_set_f_log_msgs: List[str],
-                        thread_log_msgs: List[str]):
-
-        ml_sync_enter_log_prefix = (r'sync\(\) entered ' + ml_log_seq)
-
-        ml_sync_exit_t_log_prefix = (r'sync\(\) exiting with ret_code True '
-                                     + ml_log_seq)
-
-        ml_sync_exit_f_log_prefix = (r'sync\(\) exiting with ret_code False '
-                                     + ml_log_seq)
-        #
-        # ml_wait_enter_log_prefix = (r'wait\(\) entered ' + ml_log_seq)
-        #
-        # ml_wait_exit_log_prefix = (r'wait\(\) exiting ' + ml_log_seq)
-        #
-        # ml_set_enter_log_prefix = (r'resume\(\) entered ' + ml_log_seq)
-        #
-        # ml_set_exit_log_prefix = (r'resume\(\) exiting ' + ml_log_seq)
-        #
-        beta_sync_enter_log_prefix = (r'sync\(\) entered ' + beta_log_seq)
-
-        beta_sync_exit_t_log_prefix = (r'sync\(\) exiting with ret_code True '
-                                       + beta_log_seq)
-
-        beta_sync_exit_f_log_prefix = (r'sync\(\) exiting with ret_code False '
-                                       + beta_log_seq)
-
-        beta_wait_enter_log_prefix = (r'wait\(\) entered ' + beta_log_seq)
-
-        beta_wait_exit_t_log_prefix = (r'wait\(\) exiting with ret_code True '
-                                       + beta_log_seq)
-
-        beta_wait_exit_f_log_prefix = (r'wait\(\) exiting with ret_code False '
-                                       + beta_log_seq)
-
-        beta_resume_enter_log_prefix = (r'resume\(\) entered ' + beta_log_seq)
-
-        beta_resume_enter_wc_log_prefix = (r'resume\(\) entered with '
-                                        f'code: {cmd_code[0]} '
-                                        + beta_log_seq)
-
-        beta_resume_exit_t_log_prefix = (r'resume\(\) exiting with ret_code True '
-                                      + beta_log_seq)
-
-        beta_resume_exit_f_log_prefix = (r'resume\(\) exiting with ret_code False '
-                                      + beta_log_seq)
-
-        exp_log_msgs = []
-            # re.compile('mainline entered'),
-            # re.compile('main completed all actions'),
-            # re.compile('mainline about to start thread_func1'),
-
-            # re.compile(ml_sync_enter_log_prefix + 'mainline sync point 1'),
-            # re.compile(ml_sync_exit_log_prefix + 'mainline sync point 1'),
-            # re.compile(ml_sync_enter_log_prefix + 'mainline sync point 2'),
-            # re.compile(ml_sync_exit_log_prefix + 'mainline sync point 2'),
-            # re.compile(ml_sync_enter_log_prefix + 'mainline sync point 3'),
-            # re.compile(ml_sync_exit_log_prefix + 'mainline sync point 3'),
-
-            # re.compile(ml_wait_enter_log_prefix
-            #            + 'wait for post from thread 23'),
-            # re.compile(ml_wait_exit_log_prefix
-            #            + 'wait for post from thread 23'),
-
-            # re.compile(ml_set_enter_log_prefix + 'post thread beta 12'),
-            # re.compile(ml_set_exit_log_prefix + 'post thread beta 12'),
-
-            ###################################################################
-            # Thread log messages
-            ###################################################################
-            # re.compile(beta_sync_enter_log_prefix + 'beta sync point 1'),
-            # re.compile(beta_sync_exit_log_prefix + 'beta sync point 1'),
-            # re.compile(beta_sync_enter_log_prefix + 'beta sync point 2'),
-            # re.compile(beta_sync_exit_log_prefix + 'beta sync point 2'),
-            # re.compile(beta_sync_enter_log_prefix + 'beta sync point 3'),
-            # re.compile(beta_sync_exit_log_prefix + 'beta sync point 3'),
-
-        for lmsg in main_log_msgs:
-            exp_log_msgs.append(re.compile(lmsg))
-
-        for lmsg in main_sync_t_log_msgs:
-            exp_log_msgs.append(re.compile(ml_sync_enter_log_prefix + lmsg))
-            exp_log_msgs.append(re.compile(ml_sync_exit_t_log_prefix + lmsg))
-
-        for lmsg in main_sync_f_log_msgs:
-            exp_log_msgs.append(re.compile(ml_sync_enter_log_prefix + lmsg))
-            exp_log_msgs.append(re.compile(ml_sync_exit_f_log_prefix + lmsg))
-
-        for lmsg in thread_wait_t_log_msgs:
-            exp_log_msgs.append(re.compile(beta_wait_enter_log_prefix + lmsg))
-            exp_log_msgs.append(re.compile(beta_wait_exit_t_log_prefix + lmsg))
-
-        for lmsg in thread_wait_f_log_msgs:
-            exp_log_msgs.append(re.compile(beta_wait_enter_log_prefix + lmsg))
-            exp_log_msgs.append(re.compile(beta_wait_exit_f_log_prefix +
-                                           lmsg))
-
-        for lmsg in thread_sync_t_log_msgs:
-            exp_log_msgs.append(re.compile(beta_sync_enter_log_prefix + lmsg))
-            exp_log_msgs.append(re.compile(beta_sync_exit_t_log_prefix + lmsg))
-
-        for lmsg in thread_sync_f_log_msgs:
-            exp_log_msgs.append(re.compile(beta_sync_enter_log_prefix + lmsg))
-            exp_log_msgs.append(re.compile(beta_sync_exit_f_log_prefix + lmsg))
-
-        for lmsg in thread_set_t_log_msgs:
-            if cmd_code[0]:
-                exp_log_msgs.append(re.compile(beta_resume_enter_wc_log_prefix
-                                               + lmsg))
-            else:
-                exp_log_msgs.append(re.compile(beta_resume_enter_log_prefix
-                                               + lmsg))
-
-            exp_log_msgs.append(re.compile(beta_resume_exit_t_log_prefix + lmsg))
-
-        for lmsg in thread_set_f_log_msgs:
-            if cmd_code[0]:
-                exp_log_msgs.append(re.compile(beta_resume_enter_wc_log_prefix
-                                               + lmsg))
-            else:
-                exp_log_msgs.append(re.compile(beta_resume_enter_log_prefix
-                                               + lmsg))
-
-            exp_log_msgs.append(re.compile(beta_resume_exit_f_log_prefix + lmsg))
-
-        for lmsg in thread_log_msgs:
-            exp_log_msgs.append(re.compile(lmsg))
-
-        log_records_found = 0
-        caplog_recs = []
-        for record in caplog.records:
-            caplog_recs.append(record.msg)
-
-        for idx, record in enumerate(caplog.records):
-            # print(record.msg)
-            # print(exp_log_msgs)
-            for idx2, l_msg in enumerate(exp_log_msgs):
-                if l_msg.match(record.msg):
-                    # print(l_msg.match(record.msg))
-                    exp_log_msgs.pop(idx2)
-                    caplog_recs.remove(record.msg)
-                    log_records_found += 1
-                    break
-
-        print(f'\nlog_records_found: '
-              f'{log_records_found} of {len(caplog.records)}')
-
-        print(('*' * 8) + ' remaining unmatched log records ' + ('*' * 8))
-        for log_msg in caplog_recs:
-            print(log_msg)
-
-        print(('*' * 8) + ' remaining expected log records ' + ('*' * 8))
-        for exp_lm in exp_log_msgs:
-            print(exp_lm)
-
-        assert not exp_log_msgs
-        assert log_records_found == len(caplog.records)
+            exp_log_msgs.verify_log_msgs(caplog=caplog)
 
     ###########################################################################
     # action loop
@@ -3531,14 +2934,11 @@ class TestCombos:
                     smart_event: SmartEvent,
                     action1: Any,
                     action2: Any,
-                    main_log_msgs: List[str],
+                    exp_log_msgs: Any,
                     cmd_to_mainline: List[Any],
                     cmd_to_thread: List[Any],
                     cmd_log: List[Any],
                     cmd_code: List[Any],
-                    main_sync_t_log_msgs: List[str],
-                    main_sync_f_log_msgs: List[str],
-                    thread_log_msgs: List[str],
                     thread_exc1: Any
                     ) -> None:
         """Actions to perform with the thread.
@@ -3547,15 +2947,15 @@ class TestCombos:
             smart_event: smart event to test
             action1: first smart event request to do
             action2: second smart event request to do
-            main_log_msgs: log messages collect to verify
+            exp_log_msgs: container for expected log messages
             cmd_to_mainline: command from thread to mainline
             cmd_to_thread: command from mainline to thread
             cmd_log: log message to issue with request
             cmd_code: resume code to use
-            main_sync_t_log_msgs: log messages collect to verify
-            main_sync_f_log_msgs: log messages collect to verify
-            thread_log_msgs: log messages collect to verify
             thread_exc1: contains any uncaptured errors from thread
+
+        Raises:
+            IncorrectActionSpecified: The Action is not recognized
 
         """
         smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
@@ -3566,8 +2966,9 @@ class TestCombos:
 
             if action == Action.MainWait:
                 l_msg = 'main starting Action.MainWait'
-                main_log_msgs.append(l_msg)
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
+
                 cmd_to_thread[0] = Cmd.Set
                 assert smart_event.wait()
                 if cmd_code[0]:
@@ -3576,26 +2977,26 @@ class TestCombos:
 
             elif action == Action.MainSync:
                 l_msg = 'main starting Action.MainSync'
-                main_log_msgs.append(l_msg)
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
                 cmd_to_thread[0] = Cmd.Sync
 
                 if cmd_log[0]:
-                    main_sync_t_log_msgs.append(cmd_log[0])
+                    exp_log_msgs.add_alpha_sync_msg(cmd_log[0], True)
                     assert smart_event.sync(log_msg=cmd_log[0])
                 else:
                     assert smart_event.sync()
 
             elif action == Action.MainSync_TOT:
                 l_msg = 'main starting Action.MainSync_TOT'
-                main_log_msgs.append(l_msg)
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
                 cmd_to_thread[0] = Cmd.Sync
 
                 if cmd_log[0]:
-                    main_sync_t_log_msgs.append(cmd_log[0])
+                    exp_log_msgs.add_alpha_sync_msg(cmd_log[0], True)
                     assert smart_event.sync(timeout=5,
                                             log_msg=cmd_log[0])
                 else:
@@ -3603,12 +3004,13 @@ class TestCombos:
 
             elif action == Action.MainSync_TOF:
                 l_msg = 'main starting Action.MainSync_TOF'
-                main_log_msgs.append(l_msg)
-                main_log_msgs.append('alpha timeout of a sync request.')
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
+                l_msg = r'alpha timeout of a sync\(\) request.'
+                exp_log_msgs.add_msg(l_msg)
 
                 if cmd_log[0]:
-                    main_sync_f_log_msgs.append(cmd_log[0])
+                    exp_log_msgs.add_alpha_sync_msg(cmd_log[0], False)
                     assert not smart_event.sync(timeout=0.3,
                                                 log_msg=cmd_log[0])
                 else:
@@ -3618,7 +3020,7 @@ class TestCombos:
 
             elif action == Action.MainSet:
                 l_msg = 'main starting Action.MainSet'
-                main_log_msgs.append(l_msg)
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
                 if cmd_code[0]:
                     assert smart_event.resume(code=cmd_code[0])
@@ -3632,7 +3034,7 @@ class TestCombos:
 
             elif action == Action.MainSet_TOT:
                 l_msg = 'main starting Action.MainSet_TOT'
-                main_log_msgs.append(l_msg)
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
                 if cmd_code[0]:
                     assert smart_event.resume(code=cmd_code[0], timeout=0.5)
@@ -3646,12 +3048,13 @@ class TestCombos:
 
             elif action == Action.MainSet_TOF:
                 l_msg = 'main starting Action.MainSet_TOF'
-                main_log_msgs.append(l_msg)
-                thread_log_msgs.append(f'{smart_event.alpha.name} timeout '
-                                       r'of a resume\(\) request with '
-                                       r'current.event.is_set\(\) = True and '
-                                       'remote.deadlock = False')
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
+                l_msg = (f'{smart_event.alpha.name} timeout '
+                         r'of a resume\(\) request with '
+                         r'current.event.is_set\(\) = True and '
+                         'remote.deadlock = False')
+                exp_log_msgs.add_msg(l_msg)
 
                 assert not smart_event.alpha.event.is_set()
                 # pre-set to set flag
@@ -3666,7 +3069,8 @@ class TestCombos:
 
                 if cmd_code[0]:
                     start_time = time.time()
-                    assert not smart_event.resume(code=cmd_code[0], timeout=0.3)
+                    assert not smart_event.resume(code=cmd_code[0],
+                                                  timeout=0.3)
                     assert 0.3 <= (time.time() - start_time) <= 0.5
                     assert smart_event.beta.code == cmd_code[0]
                 else:
@@ -3681,8 +3085,9 @@ class TestCombos:
 
             elif action == Action.ThreadWait:
                 l_msg = 'main starting Action.ThreadWait'
-                main_log_msgs.append(l_msg)
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
+
                 cmd_to_thread[0] = Cmd.Wait
                 smart_event.wait_until(WUCond.RemoteWaiting)
                 if cmd_code[0]:
@@ -3693,8 +3098,9 @@ class TestCombos:
 
             elif action == Action.ThreadWait_TOT:
                 l_msg = 'main starting Action.ThreadWait_TOT'
-                main_log_msgs.append(l_msg)
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
+
                 cmd_to_thread[0] = Cmd.Wait_TOT
                 smart_event.wait_until(WUCond.RemoteWaiting)
                 time.sleep(0.3)
@@ -3706,22 +3112,23 @@ class TestCombos:
 
             elif action == Action.ThreadWait_TOF:
                 l_msg = 'main starting Action.ThreadWait_TOF'
-                main_log_msgs.append(l_msg)
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
+
                 cmd_to_thread[0] = Cmd.Wait_TOF
                 smart_event.wait_until(WUCond.RemoteWaiting)
 
             elif action == Action.ThreadSet:
                 l_msg = 'main starting Action.ThreadSet'
-                main_log_msgs.append(l_msg)
+                exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
+
                 cmd_to_thread[0] = Cmd.Set
                 smart_event.wait_until(WUCond.RemoteResume)
                 assert smart_event.wait()
                 if cmd_code[0]:
                     assert smart_event.alpha.code == cmd_code[0]
                     assert cmd_code[0] == smart_event.get_code()
-
             else:
                 raise IncorrectActionSpecified('The Action is not recognized')
 
@@ -3732,6 +3139,7 @@ class TestCombos:
                     break
                 time.sleep(0.2)
 
+
 ###############################################################################
 # thread_func1
 ###############################################################################
@@ -3740,13 +3148,7 @@ def thread_func1(s_event: SmartEvent,
                  cmd_to_mainline: List[Any],
                  cmd_log: List[Any],
                  cmd_code: List[Any],
-                 thread_log_msgs: List[str],
-                 thread_wait_t_log_msgs: List[str],
-                 thread_wait_f_log_msgs: List[str],
-                 thread_sync_t_log_msgs: List[str],
-                 thread_sync_f_log_msgs: List[str],
-                 thread_set_t_log_msgs: List[str],
-                 thread_set_f_log_msgs: List[str]
+                 exp_log_msgs: Any,
                  ) -> None:
     """Thread to test SmartEvent scenarios.
 
@@ -3756,35 +3158,30 @@ def thread_func1(s_event: SmartEvent,
         cmd_to_mainline: command from this thread to mainline to perform
         cmd_log: specifies whether to issue a log_msg
         cmd_code: specifies whether to issue a code on the set
-        thread_log_msgs: used to collect expected log messages
-        thread_wait_t_log_msgs: collects expected wait True log messages
-        thread_wait_f_log_msgs: collects expected wait False log messages
-        thread_sync_t_log_msgs: collects expected sync True log messages
-        thread_sync_f_log_msgs: collects expected sync False log messages
-        thread_set_t_log_msgs: collects expected set True log messages
-        thread_set_f_log_msgs: collects expected set False log messages
+        exp_log_msgs: expected log messages
 
     Raises:
         UnrecognizedCmd: Thread received an unrecognized command
 
     """
     l_msg = f'thread_func1 beta started with cmd: {cmd_to_thread[0]}'
-    thread_log_msgs.append(l_msg)
+    exp_log_msgs.add_msg(l_msg)
     logger.debug(l_msg)
+
     s_event.wait_until(WUCond.ThreadsReady, timeout=1)
     while True:
         cmd_to_check = cmd_to_thread[0]
         if cmd_to_check:  # command other than spin
             l_msg = f'thread_func1 received cmd: {cmd_to_check}'
-            thread_log_msgs.append(l_msg)
+            exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
         if cmd_to_check == Cmd.Wait:
             cmd_to_thread[0] = 0
             l_msg = 'thread_func1 doing Wait'
-            thread_log_msgs.append(l_msg)
+            exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
             if cmd_log[0]:
-                thread_wait_t_log_msgs.append(cmd_log[0])
+                exp_log_msgs.add_beta_wait_msg(cmd_log[0], True)
                 assert s_event.wait(log_msg=cmd_log[0])
             else:
                 assert s_event.wait()
@@ -3797,10 +3194,10 @@ def thread_func1(s_event: SmartEvent,
         elif cmd_to_check == Cmd.Wait_TOT:
             cmd_to_thread[0] = 0
             l_msg = 'thread_func1 doing Wait_TOT'
-            thread_log_msgs.append(l_msg)
+            exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
             if cmd_log[0]:
-                thread_wait_t_log_msgs.append(cmd_log[0])
+                exp_log_msgs.add_beta_wait_msg(cmd_log[0], True)
                 assert s_event.wait(log_msg=cmd_log[0])
             else:
                 assert s_event.wait()
@@ -3813,15 +3210,16 @@ def thread_func1(s_event: SmartEvent,
         elif cmd_to_check == Cmd.Wait_TOF:
             cmd_to_thread[0] = 0
             l_msg = 'thread_func1 doing Wait_TOF'
-            thread_log_msgs.append(l_msg)
-            thread_log_msgs.append(f'{s_event.beta.name} timeout '
-                                   'of a wait request with '
-                                   'current.waiting = True '
-                                   'and current.sync_wait = False')
+            exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
+            l_msg = (f'{s_event.beta.name} timeout of a '
+                     r'wait\(\) request with '
+                     'current.waiting = True and current.sync_wait = False')
+            exp_log_msgs.add_msg(l_msg)
+
             start_time = time.time()
             if cmd_log[0]:
-                thread_wait_f_log_msgs.append(cmd_log[0])
+                exp_log_msgs.add_beta_wait_msg(cmd_log[0], False)
                 assert not s_event.wait(timeout=0.5,
                                         log_msg=cmd_log[0])
             else:
@@ -3833,10 +3231,10 @@ def thread_func1(s_event: SmartEvent,
         elif cmd_to_check == Cmd.Wait_Clear:
             cmd_to_thread[0] = 0
             l_msg = 'thread_func1 doing Wait_Clear'
-            thread_log_msgs.append(l_msg)
+            exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
             if cmd_log[0]:
-                thread_wait_t_log_msgs.append(cmd_log[0])
+                exp_log_msgs.add_beta_wait_msg(cmd_log[0], True)
                 assert s_event.wait(log_msg=cmd_log[0])
             else:
                 assert s_event.wait()
@@ -3850,11 +3248,11 @@ def thread_func1(s_event: SmartEvent,
         elif cmd_to_check == Cmd.Sync:
             cmd_to_thread[0] = 0
             l_msg = 'thread_func1 beta doing Sync'
-            thread_log_msgs.append(l_msg)
+            exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
 
             if cmd_log[0]:
-                thread_sync_t_log_msgs.append(cmd_log[0])
+                exp_log_msgs.add_beta_sync_msg(cmd_log[0], True)
                 assert s_event.sync(log_msg=cmd_log[0])
             else:
                 assert s_event.sync()
@@ -3864,19 +3262,21 @@ def thread_func1(s_event: SmartEvent,
         elif cmd_to_check == Cmd.Set:
             cmd_to_thread[0] = 0
             l_msg = 'thread_func1 beta doing Set'
-            thread_log_msgs.append(l_msg)
+            exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
             if cmd_code[0]:
                 if cmd_log[0]:
-                    thread_set_t_log_msgs.append(cmd_log[0])
+                    exp_log_msgs.add_beta_resume_msg(cmd_log[0],
+                                                     True,
+                                                     cmd_code[0])
                     assert s_event.resume(code=cmd_code[0],
-                                       log_msg=cmd_log[0])
+                                          log_msg=cmd_log[0])
                 else:
                     assert s_event.resume(code=cmd_code[0])
                 assert s_event.alpha.code == cmd_code[0]
             else:
                 if cmd_log[0]:
-                    thread_set_t_log_msgs.append(cmd_log[0])
+                    exp_log_msgs.add_beta_resume_msg(cmd_log[0], True)
                     assert s_event.resume(log_msg=cmd_log[0])
                 else:
                     assert s_event.resume()
@@ -3885,7 +3285,7 @@ def thread_func1(s_event: SmartEvent,
 
         elif cmd_to_check == Cmd.Exit:
             l_msg = 'thread_func1 beta exiting'
-            thread_log_msgs.append(l_msg)
+            exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
             break
 
@@ -3896,3 +3296,212 @@ def thread_func1(s_event: SmartEvent,
             raise UnrecognizedCmd('Thread received an unrecognized cmd')
 
         time.sleep(0.2)
+
+
+###############################################################################
+# ExpLogMsg class
+###############################################################################
+class ExpLogMsgs:
+    """Expected Log Messages Class."""
+
+    def __init__(self,
+                 alpha_call_seq: str,
+                 beta_call_seq: str) -> None:
+        """Initialize object.
+
+        Args:
+             alpha_call_seq: expected alpha call seq for log messages
+             beta_call_seq: expected beta call seq for log messages
+
+        """
+        self.exp_alpha_call_seq = alpha_call_seq + ':[0-9]* '
+        self.exp_beta_call_seq = beta_call_seq + ':[0-9]* '
+        self.sync_req = r'sync\(\) '
+        self.resume_req = r'resume\(\) '
+        self.wait_req = r'wait\(\) '
+        self.entered_str = 'entered '
+        self.with_code = 'with code: '
+        self.exit_str = 'exiting with ret_code '
+        self.expected_messages = []
+
+    def add_req_msg(self,
+                    l_msg: str,
+                    who: str,
+                    req: str,
+                    ret_code: bool,
+                    code: Optional[Any] = None
+                    ) -> None:
+        """Add an expected request message to the expected log messages.
+
+        Args:
+            l_msg: message to add
+            who: either 'alpha or 'beta'
+            req: one of 'sync', 'resume', or 'wait'
+            ret_code: bool
+            code: code for resume or None
+
+        """
+        l_enter_msg = req + r'\(\) entered '
+        if code is not None:
+            l_enter_msg += f'with code: {code} '
+
+        l_exit_msg = req + r'\(\) exiting with ret_code '
+        if ret_code:
+            l_exit_msg += 'True '
+        else:
+            l_exit_msg += 'False '
+
+        if who == 'alpha':
+            l_enter_msg += self.exp_alpha_call_seq + l_msg
+            l_exit_msg += self.exp_alpha_call_seq + l_msg
+        else:
+            l_enter_msg += self.exp_beta_call_seq + l_msg
+            l_exit_msg += self.exp_beta_call_seq + l_msg
+
+        self.expected_messages.append(re.compile(l_enter_msg))
+        self.expected_messages.append(re.compile(l_exit_msg))
+
+    def add_msg(self, l_msg: str) -> None:
+        """Add a general message to the expected log messages.
+        
+        Args:
+            l_msg: message to add
+        """
+        self.expected_messages.append(re.compile(l_msg))
+
+    def add_alpha_sync_msg(self,
+                           l_msg: str,
+                           ret_code: Optional[bool] = True) -> None:
+        """Add alpha sync message to expected log messages.
+
+        Args:
+            l_msg: log message to add
+            ret_code: True or False
+
+        """
+        self.add_req_msg(l_msg=l_msg,
+                         who='alpha',
+                         req='sync',
+                         ret_code=ret_code)
+
+    def add_alpha_resume_msg(self,
+                             l_msg: str,
+                             ret_code: Optional[bool] = True,
+                             code: Optional[Any] = None) -> None:
+        """Add alpha resume message to expected log messages.
+
+        Args:
+            l_msg: log message to add
+            ret_code: True or False
+            code: code to add to message
+
+        """
+        self.add_req_msg(l_msg=l_msg,
+                         who='alpha',
+                         req='resume',
+                         ret_code=ret_code,
+                         code=code)
+
+    def add_alpha_wait_msg(self,
+                           l_msg: str,
+                           ret_code: Optional[bool] = True) -> None:
+        """Add alpha wait message to expected log messages.
+
+        Args:
+            l_msg: log message to add
+            ret_code: True or False
+
+        """
+        self.add_req_msg(l_msg=l_msg,
+                         who='alpha',
+                         req='wait',
+                         ret_code=ret_code)
+
+    def add_beta_sync_msg(self,
+                          l_msg: str,
+                          ret_code: Optional[bool] = True) -> None:
+        """Add beta sync message to expected log messages.
+
+        Args:
+            l_msg: log message to add
+            ret_code: True or False
+
+        """
+        self.add_req_msg(l_msg=l_msg,
+                         who='beta',
+                         req='sync',
+                         ret_code=ret_code)
+
+    def add_beta_resume_msg(self,
+                            l_msg: str,
+                            ret_code: Optional[bool] = True,
+                            code: Optional[Any] = None) -> None:
+        """Add beta resume message to expected log messages.
+
+        Args:
+            l_msg: log message to add
+            ret_code: True or False
+            code: code to add to message
+
+        """
+        self.add_req_msg(l_msg=l_msg,
+                         who='beta',
+                         req='resume',
+                         ret_code=ret_code,
+                         code=code)
+
+    def add_beta_wait_msg(self,
+                          l_msg: str,
+                          ret_code: Optional[bool] = True) -> None:
+        """Add beta wait message to expected log messages.
+
+        Args:
+            l_msg: log message to add
+            ret_code: True or False
+
+        """
+        self.add_req_msg(l_msg=l_msg,
+                         who='beta',
+                         req='wait',
+                         ret_code=ret_code)
+
+    ###########################################################################
+    # verify log messages
+    ###########################################################################
+    def verify_log_msgs(self,
+                        caplog: Any) -> None:
+        """Verify that each log message issued is as expected.
+
+        Args:
+            caplog: pytest fixture that captures log messages
+
+        """
+        log_records_found = 0
+        caplog_recs = []
+        for record in caplog.records:
+            caplog_recs.append(record.msg)
+
+        for idx, record in enumerate(caplog.records):
+            # print(record.msg)
+            # print(self.exp_log_msgs)
+            for idx2, l_msg in enumerate(self.expected_messages):
+                if l_msg.match(record.msg):
+                    # print(l_msg.match(record.msg))
+                    self.expected_messages.pop(idx2)
+                    caplog_recs.remove(record.msg)
+                    log_records_found += 1
+                    break
+
+        print(f'\nlog_records_found: '
+              f'{log_records_found} of {len(caplog.records)}')
+
+        print(('*' * 8) + ' remaining unmatched log records ' + ('*' * 8))
+        for log_msg in caplog_recs:
+            print(log_msg)
+
+        print(('*' * 8) + ' remaining expected log records ' + ('*' * 8))
+        for exp_lm in self.expected_messages:
+            print(exp_lm)
+
+        assert not self.expected_messages
+        assert log_records_found == len(caplog.records)

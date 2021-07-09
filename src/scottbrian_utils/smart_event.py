@@ -5,9 +5,12 @@ SmartEvent
 =============
 
 You can use the SmartEvent class to coordinate activities between two
-threads. We will call these threads alpha and beta. The coordination is
-accomplished using either of two schemes: ``wait()``/``resume()`` and
-``sync()``.
+threads. We will call these threads alpha and beta, and we will use the
+terms current and remote when talking abut actions on one thread relative to
+the other. The coordination is accomplished using either of two schemes:
+
+    1) ``wait()`` and ``resume()`` requests
+    2) ``sync()`` requests.
 
 With the ``wait()``/``resume()`` scheme, one thread typically gives another
 thread a task to do and then does a ``wait()`` until the other thread
@@ -632,7 +635,7 @@ class SmartEvent:
                 self._check_remote(current, remote)
 
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} timeout of a sync '
+                    logger.debug(f'{current.name} timeout of a sync() '
                                  'request.')
                     current.sync_wait = False
                     ret_code = False
@@ -818,7 +821,7 @@ class SmartEvent:
                 self._check_remote(current, remote)
 
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} timeout of a wait '
+                    logger.debug(f'{current.name} timeout of a wait() '
                                  'request with current.waiting = '
                                  f'{current.waiting} and '
                                  f'current.sync_wait = {current.sync_wait}')
@@ -843,11 +846,12 @@ class SmartEvent:
 
         Args:
             cond: specifies to either wait for:
-
                 1) both threads registered and alive (WUCond.ThreadsReady)
                 2) the remote to call ``wait()`` (WUCond.RemoteWaiting)
                 3) the remote to call ``resume()`` (WUCond.RemoteWaiting)
             timeout: number of seconds to allow for wait_until to succeed
+
+        # noqa: DAR101
 
         Raises:
             WaitUntilTimeout: The wait_until method timed out.

@@ -301,6 +301,8 @@ class Throttle:
                             lb_threshold will effectively cause all requests
                             that are early to be delayed.
 
+        # noqa: DAR101
+
         Raises:
             IncorrectRequestsSpecified: The requests specification must be
                                           a positive integer greater than
@@ -923,6 +925,8 @@ def throttle(wrapped: Optional[F] = None, *,
                         lb_threshold will effectively cause all requests
                         that are early to be delayed.
 
+    # noqa: DAR101
+
     Returns:
         A callable function that, for mode Throttle.MODE_ASYNC, queues the
         request to be scheduled in accordance with the specified limits, or,
@@ -999,7 +1003,7 @@ def throttle(wrapped: Optional[F] = None, *,
         ...     return b * 7
 
 
-        """
+    """
     # ========================================================================
     #  The following code covers cases where throttle is used with or without
     #  the pie character, where the decorated function has or does not have
