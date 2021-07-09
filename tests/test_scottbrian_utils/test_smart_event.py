@@ -2,10 +2,11 @@
 
 from enum import Enum
 import time
-
+from dataclasses import dataclass
 import pytest
-from typing import Any, cast, List, Optional
+from typing import Any, cast, List, Optional, Union
 import threading
+import queue
 import re
 
 from scottbrian_utils.smart_event import (SmartEvent,
@@ -54,7 +55,8 @@ class UnrecognizedCmd(ErrorTstSmartEvent):
 ###############################################################################
 # Cmd Constants
 ###############################################################################
-Cmd = Enum('Cmd', 'Wait Wait_TOT Wait_TOF Wait_Clear Set Sync Exit')
+Cmd = Enum('Cmd', 'Wait Wait_TOT Wait_TOF Wait_Clear Set Sync Exit '
+                  'Next_Action')
 
 ###############################################################################
 # Action
@@ -222,6 +224,25 @@ def log_msg_arg2(request: Any) -> Any:
         The params values are returned one at a time
     """
     return cast(int, request.param)
+
+
+###############################################################################
+# log_enabled fixtures
+###############################################################################
+log_enabled_list = [True, False]
+
+
+@pytest.fixture(params=log_enabled_list)  # type: ignore
+def log_enabled_arg(request: Any) -> bool:
+    """Using different log messages.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(bool, request.param)
 
 
 ###############################################################################
@@ -1281,7 +1302,7 @@ class TestSmartEventBasic:
             my_fb_thread = threading.current_thread()
             assert s_event.beta.thread is my_fb_thread
 
-            logger.debug('fb1 about to set')
+            logger.debug('fb1 about to resume')
             s_event.resume()
             s_event.wait()
 
@@ -2203,7 +2224,6 @@ class TestSmartEventCode:
     ###########################################################################
     def test_smart_event_thread_event_app_event_code(self) -> None:
         """Test smart event code with thread_event_app thread."""
-
         class MyThread(threading.Thread, SmartEvent):
             def __init__(self,
                          alpha: threading.Thread) -> None:
@@ -2307,14 +2327,15 @@ class TestSmartEventLogger:
     # test_smart_event_f1_event_logger
     ###########################################################################
     def test_smart_event_f1_event_logger(self,
-                                         caplog) -> None:
+                                         caplog,
+                                         log_enabled_arg) -> None:
         """Test smart event logger with f1 thread.
 
         Args:
             caplog: fixture to capture log messages
+            log_enabled_arg: fixture to indicate whether log is enabled
 
         """
-
         def f1(s_event, exp_log_msgs):
             exp_log_msgs.add_msg('f1 entered')
             logger.debug('f1 entered')
@@ -2336,6 +2357,9 @@ class TestSmartEventLogger:
 
             exp_log_msgs.add_beta_sync_msg('beta sync point 4')
             s_event.sync(log_msg='beta sync point 4')
+
+        if not log_enabled_arg:
+            logger.setLevel(logging.INFO)
 
         alpha_call_seq = ('test_smart_event.py::TestSmartEventLogger.'
                           'test_smart_event_f1_event_logger')
@@ -2376,20 +2400,21 @@ class TestSmartEventLogger:
         exp_log_msgs.add_msg('mainline all tests complete')
         logger.debug('mainline all tests complete')
 
-        exp_log_msgs.verify_log_msgs(caplog)
+        exp_log_msgs.verify_log_msgs(caplog, log_enabled_arg)
 
     ###########################################################################
     # test_smart_event_thread_app_event_logger
     ###########################################################################
     def test_smart_event_thread_app_event_logger(self,
-                                                 caplog) -> None:
+                                                 caplog,
+                                                 log_enabled_arg) -> None:
         """Test smart event logger with thread_app thread.
 
         Args:
             caplog: fixture to capture log messages
+            log_enabled_arg: fixture to indicate whether log is enabled
 
         """
-
         class MyThread(threading.Thread):
             def __init__(self,
                          s_event: SmartEvent,
@@ -2425,6 +2450,9 @@ class TestSmartEventLogger:
 
                 self.exp_log_msgs.add_beta_sync_msg('beta sync point 4')
                 self.s_event.sync(log_msg='beta sync point 4')
+
+        if not log_enabled_arg:
+            logger.setLevel(logging.INFO)
 
         alpha_call_seq = ('test_smart_event.py::TestSmartEventLogger.'
                           'test_smart_event_thread_app_event_logger')
@@ -2467,19 +2495,22 @@ class TestSmartEventLogger:
         exp_log_msgs.add_msg(l_msg)
         logger.debug('mainline all tests complete')
 
-        exp_log_msgs.verify_log_msgs(caplog)
+        exp_log_msgs.verify_log_msgs(caplog, log_enabled_arg)
 
     ###########################################################################
     # test_smart_event_thread_event_app_event_logger
     ###########################################################################
-    def test_smart_event_thread_event_app_event_logger(self, caplog) -> None:
+    def test_smart_event_thread_event_app_event_logger(self,
+                                                       caplog,
+                                                       log_enabled_arg
+                                                       ) -> None:
         """Test smart event logger with thread_event_app thread.
 
         Args:
             caplog: fixture to capture log messages
+            log_enabled_arg: fixture to indicate whether log is enabled
 
         """
-
         class MyThread(threading.Thread, SmartEvent):
             def __init__(self,
                          alpha: threading.Thread,
@@ -2509,6 +2540,9 @@ class TestSmartEventLogger:
 
                 self.exp_log_msgs.add_beta_sync_msg('beta sync point 3')
                 self.sync(log_msg='beta sync point 3')
+
+        if not log_enabled_arg:
+            logger.setLevel(logging.INFO)
 
         alpha_call_seq = ('test_smart_event.py::TestSmartEventLogger.'
                           'test_smart_event_thread_event_app_event_logger')
@@ -2549,7 +2583,7 @@ class TestSmartEventLogger:
         exp_log_msgs.add_msg('mainline all tests complete')
         logger.debug('mainline all tests complete')
 
-        exp_log_msgs.verify_log_msgs(caplog)
+        exp_log_msgs.verify_log_msgs(caplog, log_enabled_arg)
 
 
 ###############################################################################
@@ -2585,18 +2619,16 @@ class TestCombos:
         exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
 
+        cmds = Cmds()
+
         smart_event = SmartEvent(alpha=threading.current_thread())
-        cmd_to_thread = [0]
-        cmd_to_mainline = [0]
-        cmd_log = [log_msg_arg1]
-        cmd_code = [code_arg1]
+        
+        cmds.l_msg = log_msg_arg1
+        cmds.r_code = code_arg1
 
         f1_thread = threading.Thread(target=thread_func1,
                                      args=(smart_event,
-                                           cmd_to_thread,
-                                           cmd_to_mainline,
-                                           cmd_log,
-                                           cmd_code,
+                                           cmds,
                                            exp_log_msgs))
         smart_event.register_thread(beta=f1_thread)
         l_msg = 'mainline about to start thread_func1'
@@ -2609,18 +2641,15 @@ class TestCombos:
         self.action_loop(smart_event=smart_event,
                          action1=action_arg1,
                          action2=action_arg2,
+                         cmds=cmds,
                          exp_log_msgs=exp_log_msgs,
-                         cmd_to_mainline=cmd_to_mainline,
-                         cmd_to_thread=cmd_to_thread,
-                         cmd_log=cmd_log,
-                         cmd_code=cmd_code,
                          thread_exc1=thread_exc)
 
         l_msg = 'main completed all actions'
         exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
 
-        cmd_to_thread[0] = Cmd.Exit
+        cmds.queue_cmd('beta', Cmd.Exit)
 
         f1_thread.join()
 
@@ -2655,29 +2684,23 @@ class TestCombos:
         exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
 
+        cmds = Cmds()
+
         smart_event = SmartEvent()
-        cmd_to_thread = [0]
-        cmd_to_mainline = [0]
-        cmd_log = [log_msg_arg1]
-        cmd_code = [code_arg1]
+        cmds.l_msg = log_msg_arg1
+        cmds.r_code = code_arg1
 
         f1_thread = threading.Thread(target=thread_func1,
                                      args=(smart_event,
-                                           cmd_to_thread,
-                                           cmd_to_mainline,
-                                           cmd_log,
-                                           cmd_code,
+                                           cmds,
                                            exp_log_msgs))
 
         f2_thread = threading.Thread(target=self.action_loop,
                                      args=(smart_event,
                                            action_arg1,
                                            action_arg2,
+                                           cmds,
                                            exp_log_msgs,
-                                           cmd_to_mainline,
-                                           cmd_to_thread,
-                                           cmd_log,
-                                           cmd_code,
                                            thread_exc))
         smart_event.register_thread(alpha=f2_thread, beta=f1_thread)
         l_msg = 'mainline about to start thread_func1'
@@ -2693,7 +2716,7 @@ class TestCombos:
         logger.debug(l_msg)
 
         f2_thread.join()
-        cmd_to_thread[0] = Cmd.Exit
+        cmds.queue_cmd('beta', Cmd.Exit)
 
         f1_thread.join()
 
@@ -2725,29 +2748,20 @@ class TestCombos:
             """SmartEventApp class with thread."""
             def __init__(self,
                          smart_event: SmartEvent,
-                         cmd_to_thread: List[Any],
-                         cmd_to_mainline: List[Any],
-                         cmd_log: List[Any],
-                         cmd_code: List[Any],
+                         cmds: Cmds,
                          exp_log_msgs: ExpLogMsgs
                          ) -> None:
                 """Initialize the object.
 
                 Args:
                     smart_event: the smart event to use
-                    cmd_to_thread: command given to thread
-                    cmd_to_mainline: commands back to mainline
-                    cmd_log: log message to issue
-                    cmd_code: resume code to use
+                    cmds: commands for beta to do
                     exp_log_msgs: container for expected log messages
 
                 """
                 super().__init__()
                 self.smart_event = smart_event
-                self.cmd_to_thread = cmd_to_thread
-                self.cmd_to_mainline = cmd_to_mainline
-                self.cmd_log = cmd_log
-                self.cmd_code = cmd_code
+                self.cmds = cmds
                 self.exp_log_msgs = exp_log_msgs
 
             def run(self):
@@ -2757,10 +2771,7 @@ class TestCombos:
                 logger.debug(l_msg)
                 thread_func1(
                     s_event=self.smart_event,
-                    cmd_to_thread=self.cmd_to_thread,
-                    cmd_to_mainline=self.cmd_to_mainline,
-                    cmd_log=self.cmd_log,
-                    cmd_code=self.cmd_code,
+                    cmds=self.cmds,
                     exp_log_msgs=self.exp_log_msgs)
 
                 l_msg = 'SmartEventApp run exiting'
@@ -2774,17 +2785,15 @@ class TestCombos:
         exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
 
+        cmds = Cmds()
+
         smart_event = SmartEvent(alpha=threading.current_thread())
-        cmd_to_thread = [0]
-        cmd_to_mainline = [0]
-        cmd_log = [log_msg_arg1]
-        cmd_code = [code_arg1]
+        
+        cmds.l_msg = log_msg_arg1
+        cmds.r_code = code_arg1
 
         f1_thread = SmartEventApp(smart_event,
-                                  cmd_to_thread,
-                                  cmd_to_mainline,
-                                  cmd_log,
-                                  cmd_code,
+                                  cmds,
                                   exp_log_msgs)
 
         smart_event.register_thread(beta=f1_thread)
@@ -2798,17 +2807,14 @@ class TestCombos:
         self.action_loop(smart_event=smart_event,
                          action1=action_arg1,
                          action2=action_arg2,
+                         cmds=cmds,
                          exp_log_msgs=exp_log_msgs,
-                         cmd_to_mainline=cmd_to_mainline,
-                         cmd_to_thread=cmd_to_thread,
-                         cmd_log=cmd_log,
-                         cmd_code=cmd_code,
                          thread_exc1=thread_exc)
 
         l_msg = 'main completed all actions'
         exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
-        cmd_to_thread[0] = Cmd.Exit
+        cmds.queue_cmd('beta', Cmd.Exit)
 
         f1_thread.join()
 
@@ -2839,19 +2845,13 @@ class TestCombos:
         class SmartEventApp(threading.Thread, SmartEvent):
             """SmartEventApp class with thread and event."""
             def __init__(self,
-                         cmd_to_thread: List[Any],
-                         cmd_to_mainline: List[Any],
-                         cmd_log: List[Any],
-                         cmd_code: List[Any],
+                         cmds: Cmds,
                          exp_log_msgs: ExpLogMsgs
                          ) -> None:
                 """Initialize the object.
 
                 Args:
-                    cmd_to_thread: command given to thread
-                    cmd_to_mainline: commands back to mainline
-                    cmd_log: log message to issue
-                    cmd_code: resume code to use
+                    cmds: commands for beta to do
                     exp_log_msgs: container for expected log messages
 
                 """
@@ -2860,10 +2860,7 @@ class TestCombos:
                                     alpha=threading.current_thread(),
                                     beta=self)
 
-                self.cmd_to_thread = cmd_to_thread
-                self.cmd_to_mainline = cmd_to_mainline
-                self.cmd_log = cmd_log
-                self.cmd_code = cmd_code
+                self.cmds = cmds
                 self.exp_log_msgs = exp_log_msgs
 
             def run(self):
@@ -2873,10 +2870,7 @@ class TestCombos:
                 logger.debug(l_msg)
                 thread_func1(
                     s_event=self,
-                    cmd_to_thread=self.cmd_to_thread,
-                    cmd_to_mainline=self.cmd_to_mainline,
-                    cmd_log=self.cmd_log,
-                    cmd_code=self.cmd_code,
+                    cmds=self.cmds,
                     exp_log_msgs=self.exp_log_msgs)
 
                 l_msg = 'SmartEventApp run exiting'
@@ -2890,15 +2884,12 @@ class TestCombos:
         exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
 
-        cmd_to_thread = [0]
-        cmd_to_mainline = [0]
-        cmd_log = [log_msg_arg1]
-        cmd_code = [code_arg1]
+        cmds = Cmds()
 
-        f1_thread = SmartEventApp(cmd_to_thread,
-                                  cmd_to_mainline,
-                                  cmd_log,
-                                  cmd_code,
+        cmds.l_msg = log_msg_arg1
+        cmds.r_code = code_arg1
+
+        f1_thread = SmartEventApp(cmds,
                                   exp_log_msgs)
 
         l_msg = 'mainline about to start SmartEventApp'
@@ -2910,17 +2901,14 @@ class TestCombos:
         self.action_loop(smart_event=f1_thread,
                          action1=action_arg1,
                          action2=action_arg2,
-                         exp_log_msgs=exp_log_msgs, 
-                         cmd_to_mainline=cmd_to_mainline,
-                         cmd_to_thread=cmd_to_thread,
-                         cmd_log=cmd_log,
-                         cmd_code=cmd_code,
+                         cmds=cmds,
+                         exp_log_msgs=exp_log_msgs,
                          thread_exc1=thread_exc)
 
         l_msg = 'main completed all actions'
         exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
-        cmd_to_thread[0] = Cmd.Exit
+        cmds.queue_cmd('beta', Cmd.Exit)
 
         f1_thread.join()
 
@@ -2934,11 +2922,8 @@ class TestCombos:
                     smart_event: SmartEvent,
                     action1: Any,
                     action2: Any,
+                    cmds: Any,
                     exp_log_msgs: Any,
-                    cmd_to_mainline: List[Any],
-                    cmd_to_thread: List[Any],
-                    cmd_log: List[Any],
-                    cmd_code: List[Any],
                     thread_exc1: Any
                     ) -> None:
         """Actions to perform with the thread.
@@ -2947,11 +2932,8 @@ class TestCombos:
             smart_event: smart event to test
             action1: first smart event request to do
             action2: second smart event request to do
+            cmds: contains cmd queues and other test args
             exp_log_msgs: container for expected log messages
-            cmd_to_mainline: command from thread to mainline
-            cmd_to_thread: command from mainline to thread
-            cmd_log: log message to issue with request
-            cmd_code: resume code to use
             thread_exc1: contains any uncaptured errors from thread
 
         Raises:
@@ -2969,22 +2951,22 @@ class TestCombos:
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
-                cmd_to_thread[0] = Cmd.Set
+                cmds.queue_cmd('beta', Cmd.Set)
                 assert smart_event.wait()
-                if cmd_code[0]:
-                    assert smart_event.alpha.code == cmd_code[0]
-                    assert cmd_code[0] == smart_event.get_code()
+                if cmds.r_code:
+                    assert smart_event.alpha.code == cmds.r_code
+                    assert cmds.r_code == smart_event.get_code()
 
             elif action == Action.MainSync:
                 l_msg = 'main starting Action.MainSync'
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
-                cmd_to_thread[0] = Cmd.Sync
+                cmds.queue_cmd('beta', Cmd.Sync)
 
-                if cmd_log[0]:
-                    exp_log_msgs.add_alpha_sync_msg(cmd_log[0], True)
-                    assert smart_event.sync(log_msg=cmd_log[0])
+                if cmds.l_msg:
+                    exp_log_msgs.add_alpha_sync_msg(cmds.l_msg, True)
+                    assert smart_event.sync(log_msg=cmds.l_msg)
                 else:
                     assert smart_event.sync()
 
@@ -2993,12 +2975,12 @@ class TestCombos:
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
-                cmd_to_thread[0] = Cmd.Sync
+                cmds.queue_cmd('beta', Cmd.Sync)
 
-                if cmd_log[0]:
-                    exp_log_msgs.add_alpha_sync_msg(cmd_log[0], True)
+                if cmds.l_msg:
+                    exp_log_msgs.add_alpha_sync_msg(cmds.l_msg, True)
                     assert smart_event.sync(timeout=5,
-                                            log_msg=cmd_log[0])
+                                            log_msg=cmds.l_msg)
                 else:
                     assert smart_event.sync(timeout=5)
 
@@ -3009,42 +2991,47 @@ class TestCombos:
                 l_msg = r'alpha timeout of a sync\(\) request.'
                 exp_log_msgs.add_msg(l_msg)
 
-                if cmd_log[0]:
-                    exp_log_msgs.add_alpha_sync_msg(cmd_log[0], False)
+                if cmds.l_msg:
+                    exp_log_msgs.add_alpha_sync_msg(cmds.l_msg, False)
                     assert not smart_event.sync(timeout=0.3,
-                                                log_msg=cmd_log[0])
+                                                log_msg=cmds.l_msg)
                 else:
                     assert not smart_event.sync(timeout=0.3)
 
-                cmd_to_mainline[0] = Cmd.Exit
+                # for this case, we did not tell beta to do anything, so
+                # we need to tell ourselves to go to next action.
+                # Note that we could use a continue, but we also want
+                # to check for thread exception which is what we do
+                # at the bottom
+                cmds.queue_cmd('alpha', Cmd.Next_Action)
 
             elif action == Action.MainSet:
                 l_msg = 'main starting Action.MainSet'
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
-                if cmd_code[0]:
-                    assert smart_event.resume(code=cmd_code[0])
-                    assert smart_event.beta.code == cmd_code[0]
+                if cmds.r_code:
+                    assert smart_event.resume(code=cmds.r_code)
+                    assert smart_event.beta.code == cmds.r_code
                 else:
                     assert smart_event.resume()
                     assert not smart_event.beta.code
 
                 assert smart_event.alpha.event.is_set()
-                cmd_to_thread[0] = Cmd.Wait
+                cmds.queue_cmd('beta', Cmd.Wait)
 
             elif action == Action.MainSet_TOT:
                 l_msg = 'main starting Action.MainSet_TOT'
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
-                if cmd_code[0]:
-                    assert smart_event.resume(code=cmd_code[0], timeout=0.5)
-                    assert smart_event.beta.code == cmd_code[0]
+                if cmds.r_code:
+                    assert smart_event.resume(code=cmds.r_code, timeout=0.5)
+                    assert smart_event.beta.code == cmds.r_code
                 else:
                     assert smart_event.resume(timeout=0.5)
                     assert not smart_event.beta.code
 
                 assert smart_event.alpha.event.is_set()
-                cmd_to_thread[0] = Cmd.Wait
+                cmds.queue_cmd('beta', Cmd.Wait)
 
             elif action == Action.MainSet_TOF:
                 l_msg = 'main starting Action.MainSet_TOF'
@@ -3058,21 +3045,21 @@ class TestCombos:
 
                 assert not smart_event.alpha.event.is_set()
                 # pre-set to set flag
-                if cmd_code[0]:
-                    assert smart_event.resume(code=cmd_code[0])
-                    assert smart_event.beta.code == cmd_code[0]
+                if cmds.r_code:
+                    assert smart_event.resume(code=cmds.r_code)
+                    assert smart_event.beta.code == cmds.r_code
                 else:
                     assert smart_event.resume()
                     assert not smart_event.beta.code
 
                 assert smart_event.alpha.event.is_set()
 
-                if cmd_code[0]:
+                if cmds.r_code:
                     start_time = time.time()
-                    assert not smart_event.resume(code=cmd_code[0],
+                    assert not smart_event.resume(code=cmds.r_code,
                                                   timeout=0.3)
                     assert 0.3 <= (time.time() - start_time) <= 0.5
-                    assert smart_event.beta.code == cmd_code[0]
+                    assert smart_event.beta.code == cmds.r_code
                 else:
                     start_time = time.time()
                     assert not smart_event.resume(timeout=0.5)
@@ -3081,18 +3068,19 @@ class TestCombos:
 
                 assert smart_event.alpha.event.is_set()
 
-                cmd_to_thread[0] = Cmd.Wait_Clear  # tell thread to clear wait
+                # tell thread to clear wait
+                cmds.queue_cmd('beta', Cmd.Wait_Clear)
 
             elif action == Action.ThreadWait:
                 l_msg = 'main starting Action.ThreadWait'
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
-                cmd_to_thread[0] = Cmd.Wait
+                cmds.queue_cmd('beta', Cmd.Wait)
                 smart_event.wait_until(WUCond.RemoteWaiting)
-                if cmd_code[0]:
-                    smart_event.resume(code=cmd_code[0])
-                    assert smart_event.beta.code == cmd_code[0]
+                if cmds.r_code:
+                    smart_event.resume(code=cmds.r_code)
+                    assert smart_event.beta.code == cmds.r_code
                 else:
                     smart_event.resume()
 
@@ -3101,12 +3089,12 @@ class TestCombos:
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
-                cmd_to_thread[0] = Cmd.Wait_TOT
+                cmds.queue_cmd('beta', Cmd.Wait_TOT)
                 smart_event.wait_until(WUCond.RemoteWaiting)
                 time.sleep(0.3)
-                if cmd_code[0]:
-                    smart_event.resume(code=cmd_code[0])
-                    assert smart_event.beta.code == cmd_code[0]
+                if cmds.r_code:
+                    smart_event.resume(code=cmds.r_code)
+                    assert smart_event.beta.code == cmds.r_code
                 else:
                     smart_event.resume()
 
@@ -3115,7 +3103,7 @@ class TestCombos:
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
-                cmd_to_thread[0] = Cmd.Wait_TOF
+                cmds.queue_cmd('beta', Cmd.Wait_TOF)
                 smart_event.wait_until(WUCond.RemoteWaiting)
 
             elif action == Action.ThreadSet:
@@ -3123,92 +3111,88 @@ class TestCombos:
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
-                cmd_to_thread[0] = Cmd.Set
+                cmds.queue_cmd('beta', Cmd.Set)
                 smart_event.wait_until(WUCond.RemoteResume)
                 assert smart_event.wait()
-                if cmd_code[0]:
-                    assert smart_event.alpha.code == cmd_code[0]
-                    assert cmd_code[0] == smart_event.get_code()
+                if cmds.r_code:
+                    assert smart_event.alpha.code == cmds.r_code
+                    assert cmds.r_code == smart_event.get_code()
             else:
                 raise IncorrectActionSpecified('The Action is not recognized')
 
             while True:
                 thread_exc1.raise_exc_if_one()  # detect thread error
-                if cmd_to_mainline[0] == Cmd.Exit:
-                    cmd_to_mainline[0] = 0
+                alpha_cmd = cmds.get_cmd('alpha')
+                if alpha_cmd == Cmd.Next_Action:
                     break
-                time.sleep(0.2)
+                else:
+                    raise UnrecognizedCmd
+
 
 
 ###############################################################################
 # thread_func1
 ###############################################################################
 def thread_func1(s_event: SmartEvent,
-                 cmd_to_thread: List[Any],
-                 cmd_to_mainline: List[Any],
-                 cmd_log: List[Any],
-                 cmd_code: List[Any],
+                 cmds: any,
                  exp_log_msgs: Any,
                  ) -> None:
     """Thread to test SmartEvent scenarios.
 
     Args:
         s_event: instance of SmartEvent
-        cmd_to_thread: command from mainline to this thread to perform
-        cmd_to_mainline: command from this thread to mainline to perform
-        cmd_log: specifies whether to issue a log_msg
-        cmd_code: specifies whether to issue a code on the set
+        cmds: commands to do
         exp_log_msgs: expected log messages
 
     Raises:
         UnrecognizedCmd: Thread received an unrecognized command
 
     """
-    l_msg = f'thread_func1 beta started with cmd: {cmd_to_thread[0]}'
+    l_msg = f'thread_func1 beta started'
     exp_log_msgs.add_msg(l_msg)
     logger.debug(l_msg)
 
     s_event.wait_until(WUCond.ThreadsReady, timeout=1)
     while True:
-        cmd_to_check = cmd_to_thread[0]
+        cmd_to_check = cmds.get_cmd('beta')
+        if cmd_to_check == Cmd.Exit:
+            break
+
         if cmd_to_check:  # command other than spin
             l_msg = f'thread_func1 received cmd: {cmd_to_check}'
             exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
         if cmd_to_check == Cmd.Wait:
-            cmd_to_thread[0] = 0
             l_msg = 'thread_func1 doing Wait'
             exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
-            if cmd_log[0]:
-                exp_log_msgs.add_beta_wait_msg(cmd_log[0], True)
-                assert s_event.wait(log_msg=cmd_log[0])
+            if cmds.l_msg:
+                exp_log_msgs.add_beta_wait_msg(cmds.l_msg, True)
+                assert s_event.wait(log_msg=cmds.l_msg)
             else:
                 assert s_event.wait()
-            if cmd_code[0]:
-                assert s_event.beta.code == cmd_code[0]
-                assert cmd_code[0] == s_event.get_code()
+            if cmds.r_code:
+                assert s_event.beta.code == cmds.r_code
+                assert cmds.r_code == s_event.get_code()
 
-            cmd_to_mainline[0] = Cmd.Exit
+            cmds.queue_cmd('alpha', Cmd.Next_Action)
 
         elif cmd_to_check == Cmd.Wait_TOT:
-            cmd_to_thread[0] = 0
             l_msg = 'thread_func1 doing Wait_TOT'
             exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
-            if cmd_log[0]:
-                exp_log_msgs.add_beta_wait_msg(cmd_log[0], True)
-                assert s_event.wait(log_msg=cmd_log[0])
+            if cmds.l_msg:
+                exp_log_msgs.add_beta_wait_msg(cmds.l_msg, True)
+                assert s_event.wait(log_msg=cmds.l_msg)
             else:
                 assert s_event.wait()
-            if cmd_code[0]:
-                assert s_event.beta.code == cmd_code[0]
-                assert cmd_code[0] == s_event.get_code()
+            if cmds.r_code:
+                assert s_event.beta.code == cmds.r_code
+                assert cmds.r_code == s_event.get_code()
 
-            cmd_to_mainline[0] = Cmd.Exit
+            cmds.queue_cmd('alpha', Cmd.Next_Action)
 
         elif cmd_to_check == Cmd.Wait_TOF:
-            cmd_to_thread[0] = 0
             l_msg = 'thread_func1 doing Wait_TOF'
             exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
@@ -3218,85 +3202,73 @@ def thread_func1(s_event: SmartEvent,
             exp_log_msgs.add_msg(l_msg)
 
             start_time = time.time()
-            if cmd_log[0]:
-                exp_log_msgs.add_beta_wait_msg(cmd_log[0], False)
+            if cmds.l_msg:
+                exp_log_msgs.add_beta_wait_msg(cmds.l_msg, False)
                 assert not s_event.wait(timeout=0.5,
-                                        log_msg=cmd_log[0])
+                                        log_msg=cmds.l_msg)
             else:
                 assert not s_event.wait(timeout=0.5)
             assert 0.5 < (time.time() - start_time) < 0.75
 
-            cmd_to_mainline[0] = Cmd.Exit
+            cmds.queue_cmd('alpha', Cmd.Next_Action)
 
         elif cmd_to_check == Cmd.Wait_Clear:
-            cmd_to_thread[0] = 0
             l_msg = 'thread_func1 doing Wait_Clear'
             exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
-            if cmd_log[0]:
-                exp_log_msgs.add_beta_wait_msg(cmd_log[0], True)
-                assert s_event.wait(log_msg=cmd_log[0])
+            if cmds.l_msg:
+                exp_log_msgs.add_beta_wait_msg(cmds.l_msg, True)
+                assert s_event.wait(log_msg=cmds.l_msg)
             else:
                 assert s_event.wait()
 
-            if cmd_code[0]:
-                assert s_event.beta.code == cmd_code[0]
-                assert cmd_code[0] == s_event.get_code()
+            if cmds.r_code:
+                assert s_event.beta.code == cmds.r_code
+                assert cmds.r_code == s_event.get_code()
 
-            cmd_to_mainline[0] = Cmd.Exit
+            cmds.queue_cmd('alpha', Cmd.Next_Action)
 
         elif cmd_to_check == Cmd.Sync:
-            cmd_to_thread[0] = 0
             l_msg = 'thread_func1 beta doing Sync'
             exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
 
-            if cmd_log[0]:
-                exp_log_msgs.add_beta_sync_msg(cmd_log[0], True)
-                assert s_event.sync(log_msg=cmd_log[0])
+            if cmds.l_msg:
+                exp_log_msgs.add_beta_sync_msg(cmds.l_msg, True)
+                assert s_event.sync(log_msg=cmds.l_msg)
             else:
                 assert s_event.sync()
 
-            cmd_to_mainline[0] = Cmd.Exit
+            cmds.queue_cmd('alpha', Cmd.Next_Action)
 
         elif cmd_to_check == Cmd.Set:
-            cmd_to_thread[0] = 0
             l_msg = 'thread_func1 beta doing Set'
             exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
-            if cmd_code[0]:
-                if cmd_log[0]:
-                    exp_log_msgs.add_beta_resume_msg(cmd_log[0],
+            if cmds.r_code:
+                if cmds.l_msg:
+                    exp_log_msgs.add_beta_resume_msg(cmds.l_msg,
                                                      True,
-                                                     cmd_code[0])
-                    assert s_event.resume(code=cmd_code[0],
-                                          log_msg=cmd_log[0])
+                                                     cmds.r_code)
+                    assert s_event.resume(code=cmds.r_code,
+                                          log_msg=cmds.l_msg)
                 else:
-                    assert s_event.resume(code=cmd_code[0])
-                assert s_event.alpha.code == cmd_code[0]
+                    assert s_event.resume(code=cmds.r_code)
+                assert s_event.alpha.code == cmds.r_code
             else:
-                if cmd_log[0]:
-                    exp_log_msgs.add_beta_resume_msg(cmd_log[0], True)
-                    assert s_event.resume(log_msg=cmd_log[0])
+                if cmds.l_msg:
+                    exp_log_msgs.add_beta_resume_msg(cmds.l_msg, True)
+                    assert s_event.resume(log_msg=cmds.l_msg)
                 else:
                     assert s_event.resume()
 
-            cmd_to_mainline[0] = Cmd.Exit
-
-        elif cmd_to_check == Cmd.Exit:
-            l_msg = 'thread_func1 beta exiting'
-            exp_log_msgs.add_msg(l_msg)
-            logger.debug(l_msg)
-            break
-
-        elif cmd_to_check == 0:
-            time.sleep(0.2)
-
+            cmds.queue_cmd('alpha', Cmd.Next_Action)
         else:
             raise UnrecognizedCmd('Thread received an unrecognized cmd')
 
-        time.sleep(0.2)
-
+    l_msg = 'thread_func1 beta exiting'
+    exp_log_msgs.add_msg(l_msg)
+    logger.debug(l_msg)
 
 ###############################################################################
 # ExpLogMsg class
@@ -3363,7 +3335,7 @@ class ExpLogMsgs:
 
     def add_msg(self, l_msg: str) -> None:
         """Add a general message to the expected log messages.
-        
+
         Args:
             l_msg: message to add
         """
@@ -3469,11 +3441,13 @@ class ExpLogMsgs:
     # verify log messages
     ###########################################################################
     def verify_log_msgs(self,
-                        caplog: Any) -> None:
+                        caplog: Any,
+                        log_enabled_tf: bool) -> None:
         """Verify that each log message issued is as expected.
 
         Args:
             caplog: pytest fixture that captures log messages
+            log_enabled_tf: indicated whether log is enabled
 
         """
         log_records_found = 0
@@ -3503,5 +3477,89 @@ class ExpLogMsgs:
         for exp_lm in self.expected_messages:
             print(exp_lm)
 
-        assert not self.expected_messages
-        assert log_records_found == len(caplog.records)
+        if log_enabled_tf:
+            assert not self.expected_messages
+            assert log_records_found == len(caplog.records)
+        else:
+            assert self.expected_messages
+            assert log_records_found == 0
+
+
+###############################################################################
+# ThreadCmd Class
+###############################################################################
+class Cmds:
+    """Cmd class for testing."""
+    def __init__(self):
+        """Initialize the object."""
+        self.alpha_cmd = queue.Queue(maxsize=10)
+        self.beta_cmd = queue.Queue(maxsize=10)
+        self.l_msg: Any = None
+        self.r_code: Any = None
+        self.start_time: float = 0.0
+        self.previous_start_time: float = 0.0
+
+    def queue_cmd(self, who: str, cmd: Any) -> None:
+        """Place a cmd on the cmd queue for the specified who.
+
+        Args:
+            who: alpha when cmd is for alpha, beta when cmd is for beta
+            cmd: command to place on queue
+
+        """
+        if who == 'alpha':
+            self.alpha_cmd.put(cmd,
+                               block=True,
+                               timeout=0.5)
+        elif who == 'beta':
+            self.beta_cmd.put(cmd,
+                              block=True,
+                              timeout=0.5)
+        else:
+            raise ValueError
+
+    def get_cmd(self, who: str) -> Any:
+        """Get the next command for alpha to do.
+
+        Args:
+            who: alpha to get cmd for alpha to do, beta for cmd for beta to do
+
+        Returns:
+            the cmd to perform
+
+        """
+        while True:
+            try:
+                if who == 'alpha':
+                    cmd = self.alpha_cmd.get(block=True, timeout=0.1)
+                elif who == 'beta':
+                    cmd = self.beta_cmd.get(block=True, timeout=0.1)
+                else:
+                    raise ValueError
+                return cmd
+            except queue.Empty:
+                continue
+
+    def pause(self, seconds: Union[int, float]) -> None:
+        """Sleep for the number of input seconds relative to start_time.
+
+        Args:
+            seconds: number of seconds to pause
+
+        """
+        while self.start_time == self.previous_start_time:
+            time.sleep(0.1)
+
+        self.previous_start_time = self.start_time
+
+        remaining_seconds = seconds - self.seconds_from_start()
+        if remaining_seconds > 0:
+            time.sleep(remaining_seconds)
+
+    def seconds_from_start(self) -> float:
+        """Return the number of seconds from the start_time.
+
+        Returns:
+            number of seconds from the start_time
+        """
+        return time.time() - self.start_time
