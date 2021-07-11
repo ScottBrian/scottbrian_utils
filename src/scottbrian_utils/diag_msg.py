@@ -41,7 +41,16 @@ class CallerInfo(NamedTuple):
     func_name: str
     line_num: int
 
-
+# found this in tracing module - maybe need this here as well
+# if hasattr(sys, '_getframe'):
+#     currentframe = lambda: sys._getframe(3)
+# else: #pragma: no cover
+#     def currentframe():
+#         """Return the frame object for the caller's stack frame."""
+#         try:
+#             raise Exception
+#         except Exception:
+#             return sys.exc_info()[2].tb_frame.f_back
 ###############################################################################
 # diag_msg
 ###############################################################################
@@ -158,7 +167,6 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
                         break
                 except (AttributeError, KeyError):
                     pass
-
 
     return CallerInfo(mod_name, cls_name, func_name, frame.f_lineno)
 

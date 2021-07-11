@@ -90,9 +90,9 @@ from scottbrian_utils.diag_msg import get_formatted_call_sequence
 
 import logging
 
-logger = logging.getLogger(__name__)
-logging.getLogger(__name__).addHandler(logging.NullHandler())
-
+# logger = logging.getLogger(__name__)
+# logging.getLogger(__name__).addHandler(logging.NullHandler())
+# logger.setLevel(logging.INFO)
 
 ###############################################################################
 # SmartEvent class exceptions
@@ -204,8 +204,8 @@ class SmartEvent:
         self._sync_detected = False
         self._deadlock_detected = False
         self.sync_cleanup = False
-        self.debug_logging_enabled = logger.isEnabledFor(logging.DEBUG)
-
+        self.logger = logging.getLogger(__name__)
+        self.debug_logging_enabled = self.logger.isEnabledFor(logging.DEBUG)
         self.alpha = SmartEvent.ThreadEvent(name='alpha',
                                             event=threading.Event())
         self.beta = SmartEvent.ThreadEvent(name='beta',
@@ -323,7 +323,7 @@ class SmartEvent:
 
         """
         if not (alpha or beta):
-            logger.debug('raising NeitherAlphaNorBetaSpecified')
+            self.logger.debug('raising NeitherAlphaNorBetaSpecified')
             raise NeitherAlphaNorBetaSpecified(
                 'One of alpha or beta must be specified for a '
                 '``register_thread()`` request. '
@@ -331,7 +331,7 @@ class SmartEvent:
 
         if ((alpha and not isinstance(alpha, threading.Thread))
                 or (beta and not isinstance(beta, threading.Thread))):
-            logger.debug('raising IncorrectThreadSpecified')
+            self.logger.debug('raising IncorrectThreadSpecified')
             raise IncorrectThreadSpecified(
                 'The alpha and beta arguments must be of type '
                 'threading.Thread. '
@@ -340,7 +340,7 @@ class SmartEvent:
         if ((alpha and alpha is self.beta.thread)
                 or (beta and beta is self.alpha.thread)
                 or (alpha and (alpha is beta))):
-            logger.debug('raising DuplicateThreadSpecified')
+            self.logger.debug('raising DuplicateThreadSpecified')
             raise DuplicateThreadSpecified(
                 'The alpha and beta arguments must be be for separate '
                 'and distinct objects of type threading.Thread. '
@@ -348,7 +348,7 @@ class SmartEvent:
 
         if ((alpha and self.alpha.thread)
                 or (beta and self.beta.thread)):
-            logger.debug('raising ThreadAlreadyRegistered')
+            self.logger.debug('raising ThreadAlreadyRegistered')
             raise ThreadAlreadyRegistered(
                 'The ``register_thread()`` method detected that the specified '
                 'thread has already been registered to either a different or '
@@ -424,8 +424,8 @@ class SmartEvent:
         caller_info = ''
         if log_msg and self.debug_logging_enabled:
             caller_info = get_formatted_call_sequence(latest=1, depth=1)
-            logger.debug(f'resume() entered{code_msg}'
-                         f'{caller_info} {log_msg}')
+            self.logger.debug(f'resume() entered{code_msg}'
+                              f'{caller_info} {log_msg}')
 
         start_time = time.time()
         while True:
@@ -488,11 +488,11 @@ class SmartEvent:
                     break
 
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} timeout of a resume() '
-                                 'request with current.event.is_set() = '
-                                 f'{current.event.is_set()} and '
-                                 f'remote.deadlock = '
-                                 f'{remote.deadlock}')
+                    self.logger.debug(f'{current.name} timeout of a resume() '
+                                      'request with current.event.is_set() = '
+                                      f'{current.event.is_set()} and '
+                                      'remote.deadlock = '
+                                      f'{remote.deadlock}')
                     ret_code = False
                     break
 
@@ -500,8 +500,8 @@ class SmartEvent:
 
         # if caller specified a log message to issue
         if log_msg and self.debug_logging_enabled:
-            logger.debug(f'resume() exiting with ret_code {ret_code} '
-                         f'{caller_info} {log_msg}')
+            self.logger.debug(f'resume() exiting with ret_code {ret_code} '
+                              f'{caller_info} {log_msg}')
         return ret_code
 
     ###########################################################################
@@ -566,7 +566,7 @@ class SmartEvent:
         caller_info = ''
         if log_msg and self.debug_logging_enabled:
             caller_info = get_formatted_call_sequence(latest=1, depth=1)
-            logger.debug(f'sync() entered {caller_info} {log_msg}')
+            self.logger.debug(f'sync() entered {caller_info} {log_msg}')
 
         start_time = time.time()
         current.sync_wait = True
@@ -614,7 +614,7 @@ class SmartEvent:
                         current.conflict = True
 
                 if current.conflict:
-                    logger.debug(
+                    self.logger.debug(
                         f'{current.name} raising '
                         'ConflictDeadlockDetected. '
                         f'remote.waiting = {remote.waiting}, '
@@ -635,8 +635,8 @@ class SmartEvent:
                 self._check_remote(current, remote)
 
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} timeout of a sync() '
-                                 'request.')
+                    self.logger.debug(f'{current.name} timeout of a sync() '
+                                      'request.')
                     current.sync_wait = False
                     ret_code = False
                     break
@@ -644,8 +644,8 @@ class SmartEvent:
             time.sleep(0.1)
 
         if log_msg and self.debug_logging_enabled:
-            logger.debug(f'sync() exiting with ret_code {ret_code} '
-                         f'{caller_info} {log_msg}')
+            self.logger.debug(f'sync() exiting with ret_code {ret_code} '
+                              f'{caller_info} {log_msg}')
 
         return ret_code
 
@@ -733,7 +733,7 @@ class SmartEvent:
         caller_info = ''
         if log_msg and self.debug_logging_enabled:
             caller_info = get_formatted_call_sequence(latest=1, depth=1)
-            logger.debug(f'wait() entered {caller_info} {log_msg}')
+            self.logger.debug(f'wait() entered {caller_info} {log_msg}')
 
         current.waiting = True
         start_time = time.time()
@@ -786,21 +786,20 @@ class SmartEvent:
                                      or remote.conflict)):
                         remote.conflict = True
                         current.conflict = True
-                        logger.debug(f'{current.name} detected conflict')
+                        self.logger.debug(f'{current.name} detected conflict')
                     elif (remote.waiting
                             and not (current.event.is_set()
                                      or remote.deadlock
                                      or remote.conflict)):
                         remote.deadlock = True
                         current.deadlock = True
-                        logger.debug(f'{current.name} detected deadlock')
+                        self.logger.debug(f'{current.name} detected deadlock')
 
                 if current.conflict:
                     current.waiting = False
                     current.conflict = False
-                    logger.debug(
-                        f'{current.name} raising '
-                        'ConflictDeadlockDetected')
+                    self.logger.debug(f'{current.name} raising '
+                                      'ConflictDeadlockDetected')
                     raise ConflictDeadlockDetected(
                         'A sync request was made by thread '
                         f'{current.name} but remote thread '
@@ -812,8 +811,8 @@ class SmartEvent:
                 if current.deadlock:
                     current.waiting = False
                     current.deadlock = False
-                    logger.debug(f'{current.name} raising '
-                                 'WaitDeadlockDetected')
+                    self.logger.debug(f'{current.name} raising '
+                                      'WaitDeadlockDetected')
                     raise WaitDeadlockDetected(
                         'Both threads are deadlocked, each waiting on '
                         'the other to resume their event.')
@@ -821,17 +820,18 @@ class SmartEvent:
                 self._check_remote(current, remote)
 
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} timeout of a wait() '
-                                 'request with current.waiting = '
-                                 f'{current.waiting} and '
-                                 f'current.sync_wait = {current.sync_wait}')
+                    self.logger.debug(f'{current.name} timeout of a wait() '
+                                      'request with current.waiting = '
+                                      f'{current.waiting} and '
+                                      'current.sync_wait ='
+                                      f' {current.sync_wait}')
                     current.waiting = False
                     ret_code = False
                     break
 
         if log_msg and self.debug_logging_enabled:
-            logger.debug(f'wait() exiting with ret_code {ret_code} '
-                         f'{caller_info} {log_msg}')
+            self.logger.debug(f'wait() exiting with ret_code {ret_code} '
+                              f'{caller_info} {log_msg}')
 
         return ret_code
 
@@ -886,7 +886,7 @@ class SmartEvent:
                        and self.alpha.thread.is_alive()
                        and self.beta.thread.is_alive()):
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug('raising  WaitUntilTimeout')
+                    self.logger.debug('raising  WaitUntilTimeout')
                     raise WaitUntilTimeout(
                         'The wait_until method timed out. '
                         f'Call sequence: {get_formatted_call_sequence()}')
@@ -910,7 +910,8 @@ class SmartEvent:
                 self._check_remote(current, remote)
 
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} raising WaitUntilTimeout')
+                    self.logger.debug(f'{current.name} raising '
+                                      'WaitUntilTimeout')
                     raise WaitUntilTimeout(
                         'The wait_until method timed out. '
                         f'Call sequence: {get_formatted_call_sequence(1,1)}')
@@ -927,7 +928,8 @@ class SmartEvent:
                 self._check_remote(current, remote)
 
                 if timeout and (timeout < (time.time() - start_time)):
-                    logger.debug(f'{current.name} raising WaitUntilTimeout')
+                    self.logger.debug(f'{current.name} raising '
+                                      'WaitUntilTimeout')
                     raise WaitUntilTimeout(
                         'The wait_until method timed out. '
                         f'Call sequence: {get_formatted_call_sequence(1,1)}')
@@ -962,20 +964,21 @@ class SmartEvent:
                 or (remote.waiting and remote.sync_wait)
                 or ((remote.deadlock or remote.conflict)
                     and not (remote.waiting or remote.sync_wait))):
-            logger.debug(f'{current.name} raising '
-                         'InconsistentFlagSettings. '
-                         f'waiting: {remote.waiting}, '
-                         f'sync_wait: {remote.sync_wait}, '
-                         f'deadlock: {remote.deadlock}, '
-                         f'conflict: {remote.conflict}, ')
+            self.logger.debug(f'{current.name} raising '
+                              'InconsistentFlagSettings. '
+                              f'waiting: {remote.waiting}, '
+                              f'sync_wait: {remote.sync_wait}, '
+                              f'deadlock: {remote.deadlock}, '
+                              f'conflict: {remote.conflict}, ')
             raise InconsistentFlagSettings(
                 f'Thread {current.name} detected remote {remote.name} '
                 f'SmartEvent flag settings are not valid.')
 
         if not remote.thread.is_alive():
-            logger.debug(f'{current.name} raising '
-                         'RemoteThreadNotAlive.'
-                         f'Call sequence: {get_formatted_call_sequence()}')
+            self.logger.debug(f'{current.name} raising '
+                              'RemoteThreadNotAlive.'
+                              'Call sequence:'
+                              f' {get_formatted_call_sequence()}')
             raise RemoteThreadNotAlive(
                 f'The current thread has detected that {remote.name} '
                 'thread is not alive.')
@@ -1001,7 +1004,7 @@ class SmartEvent:
 
         """
         if not self._both_threads_registered:
-            logger.debug('raising BothAlphaBetaNotRegistered')
+            self.logger.debug('raising BothAlphaBetaNotRegistered')
             raise BothAlphaBetaNotRegistered(
                 'Both threads must be registered before any '
                 'SmartEvent services can be called. '
@@ -1014,7 +1017,7 @@ class SmartEvent:
             return self.beta, self.alpha
 
         else:
-            logger.debug('raising DetectedOpFromForeignThread')
+            self.logger.debug('raising DetectedOpFromForeignThread')
             raise DetectedOpFromForeignThread(
                 'Any SmartEvent services must be called from  either the '
                 'alpha or the beta thread registered at time of '
