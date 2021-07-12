@@ -5,45 +5,37 @@ SmartEvent
 =============
 
 You can use the SmartEvent class to coordinate activities between two
-threads. We will call these threads alpha and beta, and we will use the
-terms current and remote when talking abut actions on one thread relative to
-the other. The coordination is accomplished using either of two schemes:
+threads by using either of two schemes:
 
     1) ``wait()`` and ``resume()`` requests
     2) ``sync()`` requests.
 
-With the ``wait()``/``resume()`` scheme, one thread typically gives another
-thread a task to do and then does a ``wait()`` until the other thread
-signals that the task is complete by doing a ``resume()``.  It does not matter
-which thread does the waiting and which thread aoes the resumimg, as long as
-one thread's ``wait()`` is matched by the other thread with a ``resume()``.
-For example, alpha could do a ``wait()`` and beta the ``resume()'' in one
-section of code, and later on beta does the ``wait()'' with alpha doing the
-``resume()''. Also, the ``resume()`` can preceed the ``wait()'', known as a
-**pre-resume**, which will allow the ``wait()`` to proceed imediately.
+With ``wait()``/``resume()``, one thread typically gives another
+thread a task to do and then does a ``wait()``. When the other
+thread completes the task, it does a ``resume()`` to unblock the ``wait()``.
+It does not matter which role each thread has at any point as long as a
+``wait()`` by one thread is matched with a ``resume()`` by the other. Also,
+a ``resume()`` can preceed a ``wait()``, known as a **pre-resume**,
+which will simply allow the ``wait()`` to proceed imediately without blocking.
 
 The SmartEvent ``sync()`` request is used to ensure that two threads have
-each reached a processing sync-point, and are then allowed to
-proceed from that sync-point at the same time. The first thread to do the
-``sync()`` request is paused until the second thread does a matching
-``sync()`` request, at which time both threads are allowed to proceed.
+each reached a processing sync-point. The first thread to do a
+``sync()`` request is blocked until the second thread does a matching
+``sync()``, at which point both threads are allowed to proceed.
 
-One thing to consider is that when we talk of allowing one or both threads
-to proceed, the thread processing we are doing here is a multi-tasking
-and **not** multi-processing. So in reality, doing a ``resume()`` or a
-``sync()`` will not neccessarily cause the other thread to be given
-control, only that it is now eligible to be given control as determined by
-the python and/or the operating system.
+Note that the type of thread processing we are doing here is
+multi-tasking and **not** multi-processing. As such, only one thread runs
+at a time, with each thread be being given a slice of time. So, unblocking a
+thread with a ``resume()`` or a matching ``sync()`` does not
+neccessarily cause that thread to begin processing immediately - it will
+simply be unblocked and will run when it gets its slice of time.
 
 One of the important features of SmartEvent is that it will detect when a
-``wait()`` or ``sync()`` will not result in success because either the other
-thread becomes inactive or because the other thread has issued a ``wait()``
+``wait()`` or ``sync()`` will fail to complete because either the other
+thread has become inactive or because the other thread has issued a ``wait()``
 request which now places both threads in a deadlock. When this happens, a
 **RemoteThreadNotAlive**, **WaitDeadlockDetected**, or
 **ConflictDeadlockDetected** error will be raised.
-
-SmartEvent is easy to use - just instantiate it,register the alpha
-and beta threads, and its ready to go. Following are some examples.
 
 
 :Example: create a SmartEvent for mainline and a thread to use
@@ -51,20 +43,26 @@ and beta threads, and its ready to go. Following are some examples.
 >>> from scottbrian_utils.smart_event import SmartEvent
 >>> import threading
 >>> import time
+>>> def f1(s_event: SmartEvent) -> None:
+...     print('f1 beta entered - will do some work')
+...     time.sleep(3)  # simulate an i/o task being done
+...     print('f1 beta done - about to resume alpha')
+...     s_event.resume()
 >>> smart_event = SmartEvent(alpha=threading.current_thread())
->>> def f1(in_smart_event):
-...     try:
-...         time.sleep(3)
-...         in_smart_event.resume()
-...     except RemoteThreadNotAlive as e:
-...         print('mainline is not alive')
 >>> f1_thread = threading.Thread(target=f1, args=(smart_event,)
 >>> smart_event.register_thread(beta=f1_thread)
->>> f1_thread.start()
->>> try:
->>>     smart_event.wait()
->>> except RemoteThreadNotAlive:
->>>     print('Thread f1 is not alive')
+>>> print('alpha about to start the beta thread')
+>>> f1_thread.start()  # give beta a task to do
+>>> smart_event.pause_until(WUCond.ThreadsReady)  # ensure thread is alive
+>>> time.sleep(2)  # simulate doing some work
+>>> print('alpha about to wait for beta to complete')
+>>> smart_event.wait()  # wait for beta to complete its task
+>>> print('alpha back from wait')
+alpha about to start the beta thread
+f1 beta entered - will do some work
+alpha about to wait for beta to complete
+f1 beta done - about to resume alpha
+alpha back from wait
 
 
 The smart_event module contains:
@@ -76,7 +74,7 @@ The smart_event module contains:
        c. register_thread
        d. sync
        e. wait
-       f. wait_until
+       f. pause_until
 
 """
 import time
@@ -90,9 +88,6 @@ from scottbrian_utils.diag_msg import get_formatted_call_sequence
 
 import logging
 
-# logger = logging.getLogger(__name__)
-# logging.getLogger(__name__).addHandler(logging.NullHandler())
-# logger.setLevel(logging.INFO)
 
 ###############################################################################
 # SmartEvent class exceptions
@@ -138,7 +133,7 @@ class RemoteThreadNotAlive(SmartEventError):
 
 
 class WaitUntilTimeout(SmartEventError):
-    """SmartEvent exception for wait_until timeout."""
+    """SmartEvent exception for pause_until timeout."""
     pass
 
 
@@ -158,7 +153,7 @@ class InconsistentFlagSettings(SmartEventError):
 
 
 ###############################################################################
-# wait_until conditions
+# pause_until conditions
 ###############################################################################
 WUCond = Enum('WUCond',
               'ThreadsReady RemoteWaiting RemoteResume')
@@ -170,7 +165,7 @@ WUCond = Enum('WUCond',
 class SmartEvent:
     """Provides a coordination mechanism between two threads."""
 
-    WAIT_UNTIL_TIMEOUT: Final[int] = 16
+    pause_until_TIMEOUT: Final[int] = 16
 
     ###########################################################################
     # ThreadEvent Class
@@ -267,8 +262,8 @@ class SmartEvent:
         >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
         >>> a_smart_event.register_thread(beta=f1_thread)
         >>> f1_thread.start()
-        >>> a_smart_event.wait_until(WUCond.ThreadsReady)
-        >>> a_smart_event.wait_until(WUCond.RemoteWaiting)
+        >>> a_smart_event.pause_until(WUCond.ThreadsReady)
+        >>> a_smart_event.pause_until(WUCond.RemoteWaiting)
         >>> print('mainline about to resume f1')
         >>> a_smart_event.resume(code=42)
         >>> f1_thread.join()
@@ -412,7 +407,7 @@ class SmartEvent:
         >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
         >>> a_smart_event.register_thread(beta=f1_thread)
         >>> f1_thread.start()
-        >>> a_smart_event..wait_until(WUCond.ThreadsReady)
+        >>> a_smart_event..pause_until(WUCond.ThreadsReady)
         >>> a_smart_event.resume()
         >>> f1_thread.join()
 
@@ -716,7 +711,7 @@ class SmartEvent:
         >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
         >>> a_smart_event.register_thread(beta=f1_thread)
         >>> f1_thread.start()
-        >>> a_smart_event.wait_until(WUCond.ThreadsReady)
+        >>> a_smart_event.pause_until(WUCond.ThreadsReady)
         >>> a_smart_event.wait()
         >>> f1_thread.join()
 
@@ -836,9 +831,9 @@ class SmartEvent:
         return ret_code
 
     ###########################################################################
-    # wait_until
+    # pause_until
     ###########################################################################
-    def wait_until(self,
+    def pause_until(self,
                    cond: WUCond,
                    timeout: Optional[Union[int, float]] = None
                    ) -> None:
@@ -849,12 +844,12 @@ class SmartEvent:
                 1) both threads registered and alive (WUCond.ThreadsReady)
                 2) the remote to call ``wait()`` (WUCond.RemoteWaiting)
                 3) the remote to call ``resume()`` (WUCond.RemoteWaiting)
-            timeout: number of seconds to allow for wait_until to succeed
+            timeout: number of seconds to allow for pause_until to succeed
 
-        # noqa: DAR101
+        .. # noqa: DAR101
 
         Raises:
-            WaitUntilTimeout: The wait_until method timed out.
+            WaitUntilTimeout: The pause_until method timed out.
 
         :Example: instantiate SmartEvent and wait for ready
 
@@ -867,7 +862,7 @@ class SmartEvent:
         >>> a_smart_event = SmartEvent(alpha=threading.current_thread())
         >>> f1_thread = threading.Thread(target=f1, args=(a_smart_event,))
         >>> f1_thread.start()
-        >>> a_smart_event.wait_until(WUCond.ThreadsReady)
+        >>> a_smart_event.pause_until(WUCond.ThreadsReady)
         >>> a_smart_event.resume()
         >>> f1_thread.join()
 
@@ -888,7 +883,7 @@ class SmartEvent:
                 if timeout and (timeout < (time.time() - start_time)):
                     self.logger.debug('raising  WaitUntilTimeout')
                     raise WaitUntilTimeout(
-                        'The wait_until method timed out. '
+                        'The pause_until method timed out. '
                         f'Call sequence: {get_formatted_call_sequence()}')
                 time.sleep(t_out)
 
@@ -913,7 +908,7 @@ class SmartEvent:
                     self.logger.debug(f'{current.name} raising '
                                       'WaitUntilTimeout')
                     raise WaitUntilTimeout(
-                        'The wait_until method timed out. '
+                        'The pause_until method timed out. '
                         f'Call sequence: {get_formatted_call_sequence(1,1)}')
 
                 time.sleep(t_out)
@@ -931,7 +926,7 @@ class SmartEvent:
                     self.logger.debug(f'{current.name} raising '
                                       'WaitUntilTimeout')
                     raise WaitUntilTimeout(
-                        'The wait_until method timed out. '
+                        'The pause_until method timed out. '
                         f'Call sequence: {get_formatted_call_sequence(1,1)}')
 
                 time.sleep(t_out)

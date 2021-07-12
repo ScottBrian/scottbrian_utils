@@ -2,9 +2,8 @@
 
 from enum import Enum
 import time
-from dataclasses import dataclass
 import pytest
-from typing import Any, cast, List, Optional, Union
+from typing import Any, cast, Optional, Union
 import threading
 import queue
 import re
@@ -55,7 +54,7 @@ class UnrecognizedCmd(ErrorTstSmartEvent):
 ###############################################################################
 # Cmd Constants
 ###############################################################################
-Cmd = Enum('Cmd', 'Wait Wait_TOT Wait_TOF Wait_Clear Set Sync Exit '
+Cmd = Enum('Cmd', 'Wait Wait_TOT Wait_TOF Wait_Clear Resume Sync Exit '
                   'Next_Action')
 
 ###############################################################################
@@ -64,9 +63,9 @@ Cmd = Enum('Cmd', 'Wait Wait_TOT Wait_TOF Wait_Clear Set Sync Exit '
 Action = Enum('Action',
               'MainWait '
               'MainSync MainSync_TOT MainSync_TOF '
-              'MainSet MainSet_TOT MainSet_TOF '
+              'MainResume MainResume_TOT MainResume_TOF '
               'ThreadWait ThreadWait_TOT ThreadWait_TOF '
-              'ThreadSet ')
+              'ThreadResume ')
 
 ###############################################################################
 # action_arg fixtures
@@ -75,32 +74,32 @@ action_arg_list = [Action.MainWait,
                    Action.MainSync,
                    Action.MainSync_TOT,
                    Action.MainSync_TOF,
-                   Action.MainSet,
-                   Action.MainSet_TOT,
-                   Action.MainSet_TOF,
+                   Action.MainResume,
+                   Action.MainResume_TOT,
+                   Action.MainResume_TOF,
                    Action.ThreadWait,
                    Action.ThreadWait_TOT,
                    Action.ThreadWait_TOF,
-                   Action.ThreadSet]
+                   Action.ThreadResume]
 
 action_arg_list1 = [Action.MainWait
-                    # Action.MainSet,
-                    # Action.MainSet_TOT,
-                    # Action.MainSet_TOF,
+                    # Action.MainResume,
+                    # Action.MainResume_TOT,
+                    # Action.MainResume_TOF,
                     # Action.ThreadWait,
                     # Action.ThreadWait_TOT,
                     # Action.ThreadWait_TOF,
-                    # Action.ThreadSet
+                    # Action.ThreadResume
                     ]
 
 action_arg_list2 = [  # Action.MainWait,
-                    # Action.MainSet,
-                    # Action.MainSet_TOT,
-                    Action.MainSet_TOF
+                    # Action.MainResume,
+                    # Action.MainResume_TOT,
+                    Action.MainResume_TOF
                     # Action.ThreadWait,
                     # Action.ThreadWait_TOT,
                     # Action.ThreadWait_TOF,
-                    # Action.ThreadSet
+                    # Action.ThreadResume
                     ]
 
 
@@ -248,6 +247,74 @@ def log_enabled_arg(request: Any) -> bool:
 ###############################################################################
 # TestSmartEventBasic class to test SmartEvent methods
 ###############################################################################
+def outer_f1(s_event: SmartEvent) -> None:
+    """Outer function to test SmartEvent.
+
+    Args:
+        s_event: the SmartEvent to test
+
+    """
+    logger.debug('outer_f1 entered')
+    assert s_event.sync(log_msg='outer beta sync point 1')
+    assert s_event.wait(log_msg='outer f1 wait 12')
+    assert s_event.sync(log_msg='outer beta sync point 2')
+    assert s_event.resume(log_msg='outer f1 resume 23')
+    assert s_event.sync(log_msg='outer beta sync point 3')
+    logger.debug('outer f1 exiting')
+
+
+class OuterThreadApp(threading.Thread):
+    """Outer thread app for test."""
+    def __init__(self,
+                 s_event: SmartEvent):
+        """Initialize the object.
+
+        Args:
+            s_event: the smart event to test
+        """
+        super().__init__()
+        self.s_event = s_event
+
+    def run(self):
+        """Run the test."""
+        print('beta run started')
+        assert self.s_event.sync(log_msg='outer beta sync point 1')
+        assert self.s_event.wait(log_msg='outer f1 wait 12')
+        assert self.s_event.sync(log_msg='outer beta sync point 2')
+        assert self.s_event.resume(log_msg='outer f1 resume 23')
+        assert self.s_event.sync(log_msg='outer beta sync point 3')
+        logger.debug('beta run exiting')
+
+
+class OuterThreadEventApp(threading.Thread, SmartEvent):
+    """Outer thread event app for test."""
+    def __init__(self,
+                 alpha: threading.Thread):
+        """Initialize the object.
+
+        Args:
+            alpha: specifies the alpha thread object
+
+        """
+        threading.Thread.__init__(self)
+        SmartEvent.__init__(self, alpha=alpha)
+        with pytest.raises(WaitUntilTimeout):
+            self.pause_until(WUCond.ThreadsReady, timeout=0.005)
+        self.register_thread(beta=self)
+        with pytest.raises(WaitUntilTimeout):
+            self.pause_until(WUCond.ThreadsReady, timeout=0.001)
+
+    def run(self):
+        """Run the test."""
+        print('beta run started')
+        assert self.sync(log_msg='outer beta sync point 1')
+        assert self.wait(log_msg='outer f1 wait 12')
+        assert self.sync(log_msg='outer beta sync point 2')
+        assert self.resume(log_msg='outer f1 resume 23')
+        assert self.sync(log_msg='outer beta sync point 3')
+        logger.debug('beta run exiting')
+
+
 class TestSmartEventBasic:
     """Test class for SmartEvent basic tests."""
 
@@ -327,7 +394,7 @@ class TestSmartEventBasic:
         with pytest.raises(DuplicateThreadSpecified):
             smart_event = SmartEvent(alpha=alpha_t, beta=alpha_t)
 
-        # try wait, set, and wait_until without threads set
+        # try wait, resume, and pause_until without threads set
         with pytest.raises(BothAlphaBetaNotRegistered):
             smart_event.wait()
 
@@ -335,7 +402,7 @@ class TestSmartEventBasic:
             smart_event.resume()
 
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event.wait_until(WUCond.RemoteWaiting)
+            smart_event.pause_until(WUCond.RemoteWaiting)
 
         with pytest.raises(IncorrectThreadSpecified):
             smart_event.register_thread(alpha=3)  # type: ignore
@@ -358,7 +425,7 @@ class TestSmartEventBasic:
         assert smart_event.beta.thread is None
         assert smart_event._both_threads_registered is False
 
-        # try wait and set without threads set
+        # try wait and resume without threads set
         with pytest.raises(BothAlphaBetaNotRegistered):
             smart_event.wait()
 
@@ -366,7 +433,7 @@ class TestSmartEventBasic:
             smart_event.resume()
 
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event.wait_until(WUCond.RemoteWaiting)
+            smart_event.pause_until(WUCond.RemoteWaiting)
 
         # not OK to set alpha once set, even with same thread
         with pytest.raises(ThreadAlreadyRegistered):
@@ -439,7 +506,7 @@ class TestSmartEventBasic:
             smart_event2.get_code()
 
         with pytest.raises(DetectedOpFromForeignThread):
-            smart_event2.wait_until(WUCond.RemoteWaiting)
+            smart_event2.pause_until(WUCond.RemoteWaiting)
 
         assert smart_event2.alpha.thread is alpha_t2
         assert smart_event2.beta.thread is beta2
@@ -466,7 +533,7 @@ class TestSmartEventBasic:
         assert smart_event.alpha.code is None
         assert smart_event.beta.code is None
 
-        # try wait, set, and wait_until without threads set
+        # try wait, resume, and pause_until without threads set
         with pytest.raises(BothAlphaBetaNotRegistered):
             smart_event.wait()
 
@@ -474,7 +541,7 @@ class TestSmartEventBasic:
             smart_event.resume()
 
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event.wait_until(WUCond.RemoteWaiting)
+            smart_event.pause_until(WUCond.RemoteWaiting)
 
         with pytest.raises(IncorrectThreadSpecified):
             smart_event.register_thread(alpha=3)
@@ -512,7 +579,7 @@ class TestSmartEventBasic:
         assert smart_event.beta.thread is beta_t
         assert not smart_event._both_threads_registered
 
-        # try wait, set, and wait_until without threads set
+        # try wait, resume, and pause_until without threads set
         with pytest.raises(BothAlphaBetaNotRegistered):
             smart_event.wait()
 
@@ -520,7 +587,7 @@ class TestSmartEventBasic:
             smart_event.resume()
 
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event.wait_until(WUCond.RemoteWaiting)
+            smart_event.pause_until(WUCond.RemoteWaiting)
 
         smart_event.register_thread(alpha=alpha_t)
 
@@ -632,46 +699,46 @@ class TestSmartEventBasic:
                     break
 
                 logger.debug(f'thread_func1 received cmd: {beta_cmd}')
-            
+
                 if beta_cmd == Cmd.Wait:
                     assert s_event.wait()
 
-                elif beta_cmd == Cmd.Set:
+                elif beta_cmd == Cmd.Resume:
                     with pytest.raises(WaitUntilTimeout):
-                        s_event.wait_until(WUCond.RemoteWaiting, timeout=0.002)
+                        s_event.pause_until(WUCond.RemoteWaiting, timeout=0.002)
                     with pytest.raises(WaitUntilTimeout):
-                        s_event.wait_until(WUCond.RemoteWaiting, timeout=0.01)
+                        s_event.pause_until(WUCond.RemoteWaiting, timeout=0.01)
                     with pytest.raises(WaitUntilTimeout):
-                        s_event.wait_until(WUCond.RemoteWaiting, timeout=0.02)
+                        s_event.pause_until(WUCond.RemoteWaiting, timeout=0.02)
 
                     s_event.sync(log_msg='f1 beta sync point 2')
 
-                    s_event.wait_until(WUCond.RemoteWaiting)
-                    s_event.wait_until(WUCond.RemoteWaiting, timeout=0.001)
-                    s_event.wait_until(WUCond.RemoteWaiting, timeout=0.01)
-                    s_event.wait_until(WUCond.RemoteWaiting, timeout=0.02)
-                    s_event.wait_until(WUCond.RemoteWaiting, timeout=-0.02)
-                    s_event.wait_until(WUCond.RemoteWaiting, timeout=-1)
-                    s_event.wait_until(WUCond.RemoteWaiting, timeout=0)
+                    s_event.pause_until(WUCond.RemoteWaiting)
+                    s_event.pause_until(WUCond.RemoteWaiting, timeout=0.001)
+                    s_event.pause_until(WUCond.RemoteWaiting, timeout=0.01)
+                    s_event.pause_until(WUCond.RemoteWaiting, timeout=0.02)
+                    s_event.pause_until(WUCond.RemoteWaiting, timeout=-0.02)
+                    s_event.pause_until(WUCond.RemoteWaiting, timeout=-1)
+                    s_event.pause_until(WUCond.RemoteWaiting, timeout=0)
 
                     s_event.resume()
 
         def foreign1(s_event):
             logger.debug('foreign1 entered')
             with pytest.raises(WaitUntilTimeout):
-                s_event.wait_until(WUCond.ThreadsReady, timeout=0.002)
+                s_event.pause_until(WUCond.ThreadsReady, timeout=0.002)
             with pytest.raises(BothAlphaBetaNotRegistered):
-                s_event.wait_until(WUCond.RemoteWaiting, timeout=0.02)
+                s_event.pause_until(WUCond.RemoteWaiting, timeout=0.02)
 
             cmds.queue_cmd('alpha', Cmd.Exit)
 
-            logger.debug('foreign1 about to wait_until ThreadsReady')
-            s_event.wait_until(WUCond.ThreadsReady, timeout=10)
+            logger.debug('foreign1 about to pause_until ThreadsReady')
+            s_event.pause_until(WUCond.ThreadsReady, timeout=10)
 
             with pytest.raises(DetectedOpFromForeignThread):
-                s_event.wait_until(WUCond.RemoteWaiting, timeout=0.02)
+                s_event.pause_until(WUCond.RemoteWaiting, timeout=0.02)
             with pytest.raises(DetectedOpFromForeignThread):
-                s_event.wait_until(WUCond.RemoteWaiting)
+                s_event.pause_until(WUCond.RemoteWaiting)
             with pytest.raises(DetectedOpFromForeignThread):
                 s_event.wait()
             with pytest.raises(DetectedOpFromForeignThread):
@@ -697,55 +764,55 @@ class TestSmartEventBasic:
                                         args=(smart_event1,
                                               threading.current_thread()))
         with pytest.raises(WaitUntilTimeout):
-            smart_event1.wait_until(WUCond.ThreadsReady, timeout=0.002)
+            smart_event1.pause_until(WUCond.ThreadsReady, timeout=0.002)
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=-0.002)
+            smart_event1.pause_until(WUCond.RemoteWaiting, timeout=-0.002)
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0)
+            smart_event1.pause_until(WUCond.RemoteWaiting, timeout=0)
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.002)
+            smart_event1.pause_until(WUCond.RemoteWaiting, timeout=0.002)
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.2)
+            smart_event1.pause_until(WUCond.RemoteWaiting, timeout=0.2)
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event1.wait_until(WUCond.RemoteWaiting)
+            smart_event1.pause_until(WUCond.RemoteWaiting)
 
         _ = cmds.get_cmd('alpha')
 
-        logger.debug('mainline about to set beta thread')
+        logger.debug('mainline about to register beta thread')
         smart_event1.register_thread(beta=my_f1_thread)
-        logger.debug('mainline back from setting beta thread')
+        logger.debug('mainline back from registering beta thread')
 
         with pytest.raises(WaitUntilTimeout):
-            smart_event1.wait_until(WUCond.ThreadsReady, timeout=0.005)
+            smart_event1.pause_until(WUCond.ThreadsReady, timeout=0.005)
 
         my_f1_thread.start()
-        smart_event1.wait_until(WUCond.ThreadsReady, timeout=1)
+        smart_event1.pause_until(WUCond.ThreadsReady, timeout=1)
 
         smart_event1.sync(log_msg='mainline sync point 1')
 
-        logger.debug('about to wait_until RemoteWaiting')
+        logger.debug('about to pause_until RemoteWaiting')
         with pytest.raises(WaitUntilTimeout):
-            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.002)
+            smart_event1.pause_until(WUCond.RemoteWaiting, timeout=0.002)
         with pytest.raises(WaitUntilTimeout):
-            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.01)
+            smart_event1.pause_until(WUCond.RemoteWaiting, timeout=0.01)
         with pytest.raises(WaitUntilTimeout):
-            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.02)
+            smart_event1.pause_until(WUCond.RemoteWaiting, timeout=0.02)
         with pytest.raises(WaitUntilTimeout):
-            smart_event1.wait_until(WUCond.RemoteWaiting, timeout=1)
+            smart_event1.pause_until(WUCond.RemoteWaiting, timeout=1)
 
         cmds.queue_cmd('beta', Cmd.Wait)
 
-        smart_event1.wait_until(WUCond.RemoteWaiting)
-        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.001)
-        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.01)
-        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0.02)
-        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=-0.02)
-        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=-1)
-        smart_event1.wait_until(WUCond.RemoteWaiting, timeout=0)
+        smart_event1.pause_until(WUCond.RemoteWaiting)
+        smart_event1.pause_until(WUCond.RemoteWaiting, timeout=0.001)
+        smart_event1.pause_until(WUCond.RemoteWaiting, timeout=0.01)
+        smart_event1.pause_until(WUCond.RemoteWaiting, timeout=0.02)
+        smart_event1.pause_until(WUCond.RemoteWaiting, timeout=-0.02)
+        smart_event1.pause_until(WUCond.RemoteWaiting, timeout=-1)
+        smart_event1.pause_until(WUCond.RemoteWaiting, timeout=0)
 
         smart_event1.resume()
 
-        cmds.queue_cmd('beta', Cmd.Set)
+        cmds.queue_cmd('beta', Cmd.Resume)
 
         smart_event1.sync(log_msg='mainline sync point 2')
         assert smart_event1.wait()
@@ -761,7 +828,7 @@ class TestSmartEventBasic:
             smart_event1.wait()
 
         with pytest.raises(RemoteThreadNotAlive):
-            smart_event1.wait_until(WUCond.RemoteWaiting)
+            smart_event1.pause_until(WUCond.RemoteWaiting)
 
         with pytest.raises(RemoteThreadNotAlive):
             smart_event1.sync(log_msg='mainline sync point 3')
@@ -771,6 +838,102 @@ class TestSmartEventBasic:
 
         del smart_event1
         del my_f1_thread
+
+    ###########################################################################
+    # test_smart_event_outer_thread_f1
+    ###########################################################################
+    def test_smart_event_outer_thread_f1(self) -> None:
+        """Test simple sequence with outer thread f1."""
+        #######################################################################
+        # mainline
+        #######################################################################
+        logger.debug('mainline starting')
+
+        smart_event = SmartEvent(alpha=threading.current_thread())
+        f1_thread = threading.Thread(target=outer_f1, args=(smart_event,))
+
+        logger.debug('mainline about to register beta thread')
+        smart_event.register_thread(beta=f1_thread)
+
+        f1_thread.start()
+        smart_event.pause_until(WUCond.ThreadsReady)
+
+        smart_event.sync(log_msg='mainline sync point 1')
+
+        smart_event.resume(log_msg='alpha resume 12')
+
+        smart_event.sync(log_msg='mainline sync point 2')
+
+        smart_event.wait(log_msg='alpha wait 23')
+
+        smart_event.sync(log_msg='mainline sync point 3')
+
+        f1_thread.join()
+
+        logger.debug('mainline exiting')
+
+    ###########################################################################
+    # test_smart_event_outer_thread_app
+    ###########################################################################
+    def test_smart_event_outer_thread_app(self) -> None:
+        """Test simple sequence with outer thread app."""
+        #######################################################################
+        # mainline
+        #######################################################################
+        logger.debug('mainline starting')
+
+        smart_event = SmartEvent(alpha=threading.current_thread())
+        thread_app = OuterThreadApp(smart_event)
+
+        logger.debug('mainline about to register beta thread')
+        smart_event.register_thread(beta=thread_app)
+
+        thread_app.start()
+        smart_event.pause_until(WUCond.ThreadsReady)
+
+        smart_event.sync(log_msg='mainline sync point 1')
+
+        smart_event.resume(log_msg='alpha resume 12')
+
+        smart_event.sync(log_msg='mainline sync point 2')
+
+        smart_event.wait(log_msg='alpha wait 23')
+
+        smart_event.sync(log_msg='mainline sync point 3')
+
+        thread_app.join()
+
+        logger.debug('mainline exiting')
+
+    ###########################################################################
+    # test_smart_event_outer_thread_app
+    ###########################################################################
+    def test_smart_event_outer_thread_event_app(self) -> None:
+        """Test simple sequence with outer thread event app."""
+        #######################################################################
+        # mainline
+        #######################################################################
+        logger.debug('mainline starting')
+
+        thread_event_app = \
+            OuterThreadEventApp(threading.current_thread())
+
+        thread_event_app.start()
+        thread_event_app.pause_until(WUCond.ThreadsReady)
+
+        thread_event_app.sync(log_msg='mainline sync point 1')
+
+        thread_event_app.resume(log_msg='alpha resume 12')
+
+        thread_event_app.sync(log_msg='mainline sync point 2')
+
+        thread_event_app.wait(log_msg='alpha wait 23')
+
+        thread_event_app.sync(log_msg='mainline sync point 3')
+
+        thread_event_app.join()
+
+        logger.debug('mainline exiting')
 
     ###########################################################################
     # test_smart_event_register_threads_f1_part2
@@ -800,11 +963,11 @@ class TestSmartEventBasic:
 
             s_event.sync(log_msg='f2 thread sync point 2')
 
-            s_event.wait()  # clear the set that comes after the deadlock
+            s_event.wait()  # clear the resume that comes after the deadlock
 
             s_event.sync(log_msg='f2 thread sync point 3')
 
-            s_event.wait_until(WUCond.RemoteWaiting, timeout=2)
+            s_event.pause_until(WUCond.RemoteWaiting, timeout=2)
             with pytest.raises(WaitDeadlockDetected):
                 s_event.wait()
 
@@ -817,38 +980,38 @@ class TestSmartEventBasic:
         smart_event2 = SmartEvent(alpha=threading.current_thread())
 
         with pytest.raises(WaitUntilTimeout):
-            smart_event2.wait_until(WUCond.ThreadsReady, timeout=0.001)
+            smart_event2.pause_until(WUCond.ThreadsReady, timeout=0.001)
 
         my_f2_thread = threading.Thread(target=f2, args=(smart_event2,
                                                          alpha_t))
         with pytest.raises(WaitUntilTimeout):
-            smart_event2.wait_until(WUCond.ThreadsReady, timeout=0.01)
+            smart_event2.pause_until(WUCond.ThreadsReady, timeout=0.01)
 
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event2.wait_until(WUCond.RemoteWaiting, timeout=-0.002)
+            smart_event2.pause_until(WUCond.RemoteWaiting, timeout=-0.002)
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event2.wait_until(WUCond.RemoteWaiting, timeout=0)
+            smart_event2.pause_until(WUCond.RemoteWaiting, timeout=0)
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event2.wait_until(WUCond.RemoteWaiting, timeout=0.002)
+            smart_event2.pause_until(WUCond.RemoteWaiting, timeout=0.002)
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event2.wait_until(WUCond.RemoteWaiting, timeout=0.2)
+            smart_event2.pause_until(WUCond.RemoteWaiting, timeout=0.2)
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event2.wait_until(WUCond.RemoteWaiting)
+            smart_event2.pause_until(WUCond.RemoteWaiting)
 
         my_f2_thread.start()
 
         with pytest.raises(WaitUntilTimeout):
-            smart_event2.wait_until(WUCond.ThreadsReady, timeout=0.2)
+            smart_event2.pause_until(WUCond.ThreadsReady, timeout=0.2)
         with pytest.raises(BothAlphaBetaNotRegistered):
-            smart_event2.wait_until(WUCond.RemoteWaiting)
+            smart_event2.pause_until(WUCond.RemoteWaiting)
 
         cmds.queue_cmd('beta', Cmd.Exit)
 
-        smart_event2.wait_until(WUCond.ThreadsReady)
-        smart_event2.wait_until(WUCond.ThreadsReady, timeout=1)
-        smart_event2.wait_until(WUCond.ThreadsReady, timeout=0)
-        smart_event2.wait_until(WUCond.ThreadsReady, timeout=-1)
-        smart_event2.wait_until(WUCond.ThreadsReady, timeout=-2)
+        smart_event2.pause_until(WUCond.ThreadsReady)
+        smart_event2.pause_until(WUCond.ThreadsReady, timeout=1)
+        smart_event2.pause_until(WUCond.ThreadsReady, timeout=0)
+        smart_event2.pause_until(WUCond.ThreadsReady, timeout=-1)
+        smart_event2.pause_until(WUCond.ThreadsReady, timeout=-2)
 
         smart_event2.sync(log_msg='mainline sync point 1')
 
@@ -866,7 +1029,7 @@ class TestSmartEventBasic:
 
         smart_event2.sync(log_msg='mainline sync point 4')
 
-        assert smart_event2.wait()  # clear set
+        assert smart_event2.wait()  # clear resume
 
         my_f2_thread.join()
 
@@ -908,10 +1071,10 @@ class TestSmartEventBasic:
                 assert self.s_event.beta.thread is threading.current_thread()
 
                 with pytest.raises(WaitUntilTimeout):
-                    self.s_event.wait_until(WUCond.RemoteResume, timeout=0.009)
+                    self.s_event.pause_until(WUCond.RemoteResume, timeout=0.009)
                 self.s_event.sync(log_msg='beta run sync point 1')
-                self.s_event.wait_until(WUCond.RemoteResume, timeout=5)
-                self.s_event.wait_until(WUCond.RemoteResume)
+                self.s_event.pause_until(WUCond.RemoteResume, timeout=5)
+                self.s_event.pause_until(WUCond.RemoteResume)
 
                 assert self.s_event.wait(log_msg='beta run wait 12')
 
@@ -929,21 +1092,21 @@ class TestSmartEventBasic:
         smart_event1.register_thread(beta=my_taa_thread)
         my_taa_thread.start()
 
-        smart_event1.wait_until(WUCond.ThreadsReady)
+        smart_event1.pause_until(WUCond.ThreadsReady)
 
         smart_event1.sync(log_msg='mainline sync point 1')
 
-        assert smart_event1.resume(log_msg='mainline set 12')
+        assert smart_event1.resume(log_msg='mainline resume 12')
 
         smart_event1.sync(log_msg='mainline sync point 2')
 
         with pytest.raises(WaitUntilTimeout):
-            smart_event1.wait_until(WUCond.RemoteResume, timeout=0.009)
+            smart_event1.pause_until(WUCond.RemoteResume, timeout=0.009)
 
         smart_event1.sync(log_msg='mainline sync point 3')
 
-        smart_event1.wait_until(WUCond.RemoteResume, timeout=5)
-        smart_event1.wait_until(WUCond.RemoteResume)
+        smart_event1.pause_until(WUCond.RemoteResume, timeout=5)
+        smart_event1.pause_until(WUCond.RemoteResume)
 
         assert smart_event1.wait(log_msg='mainline wait 34')
         smart_event1.sync(log_msg='mainline sync point 4')
@@ -957,10 +1120,10 @@ class TestSmartEventBasic:
             smart_event1.wait()
 
         with pytest.raises(RemoteThreadNotAlive):
-            smart_event1.wait_until(WUCond.RemoteWaiting)
+            smart_event1.pause_until(WUCond.RemoteWaiting)
 
         with pytest.raises(RemoteThreadNotAlive):
-            smart_event1.wait_until(WUCond.RemoteResume)
+            smart_event1.pause_until(WUCond.RemoteResume)
 
         assert smart_event1.alpha.thread is alpha_t
         assert smart_event1.beta.thread is my_taa_thread
@@ -991,9 +1154,9 @@ class TestSmartEventBasic:
                 with pytest.raises(WaitDeadlockDetected):
                     self.s_event.wait()
                 assert self.s_event.wait()
-                self.s_event.wait_until(WUCond.ThreadsReady)
-                self.s_event.wait_until(WUCond.RemoteWaiting)
-                self.s_event.wait_until(WUCond.RemoteWaiting, timeout=2)
+                self.s_event.pause_until(WUCond.ThreadsReady)
+                self.s_event.pause_until(WUCond.RemoteWaiting)
+                self.s_event.pause_until(WUCond.RemoteWaiting, timeout=2)
 
                 self.s_event.resume()
 
@@ -1002,8 +1165,8 @@ class TestSmartEventBasic:
         my_tab_thread = MyThread2(smart_event2, alpha_t)
         my_tab_thread.start()
 
-        smart_event2.wait_until(WUCond.ThreadsReady)
-        smart_event2.wait_until(WUCond.RemoteWaiting)
+        smart_event2.pause_until(WUCond.ThreadsReady)
+        smart_event2.pause_until(WUCond.RemoteWaiting)
         with pytest.raises(WaitDeadlockDetected):
             smart_event2.wait()
         smart_event2.resume()
@@ -1018,10 +1181,10 @@ class TestSmartEventBasic:
             smart_event2.wait()
 
         with pytest.raises(RemoteThreadNotAlive):
-            smart_event2.wait_until(WUCond.RemoteWaiting)
+            smart_event2.pause_until(WUCond.RemoteWaiting)
 
         with pytest.raises(RemoteThreadNotAlive):
-            smart_event2.wait_until(WUCond.RemoteResume)
+            smart_event2.pause_until(WUCond.RemoteResume)
 
         assert smart_event2.alpha.thread is alpha_t
         assert smart_event2.beta.thread is my_tab_thread
@@ -1041,11 +1204,11 @@ class TestSmartEventBasic:
                 SmartEvent.__init__(self)
                 self.alpha_t1 = alpha_t1
                 with pytest.raises(WaitUntilTimeout):
-                    self.wait_until(WUCond.ThreadsReady, timeout=0.1)
+                    self.pause_until(WUCond.ThreadsReady, timeout=0.1)
 
             def run(self):
                 logger.debug('run started')
-                self.wait_until(WUCond.ThreadsReady, timeout=0.1)
+                self.pause_until(WUCond.ThreadsReady, timeout=0.1)
                 assert self.alpha.thread is self.alpha_t1
                 assert self.alpha.thread is alpha_t
                 assert self.beta.thread is self
@@ -1054,7 +1217,7 @@ class TestSmartEventBasic:
                 assert self.beta.thread is threading.current_thread()
 
                 assert self.wait()
-                self.wait_until(WUCond.RemoteWaiting, timeout=2)
+                self.pause_until(WUCond.RemoteWaiting, timeout=2)
                 with pytest.raises(WaitDeadlockDetected):
                     self.wait()
                 self.resume()
@@ -1064,21 +1227,21 @@ class TestSmartEventBasic:
 
         my_te1_thread = MyThreadEvent1(alpha_t)
         with pytest.raises(WaitUntilTimeout):
-            my_te1_thread.wait_until(WUCond.ThreadsReady, timeout=0.005)
+            my_te1_thread.pause_until(WUCond.ThreadsReady, timeout=0.005)
 
         my_te1_thread.register_thread(alpha=alpha_t)
         with pytest.raises(WaitUntilTimeout):
-            my_te1_thread.wait_until(WUCond.ThreadsReady, timeout=0.005)
+            my_te1_thread.pause_until(WUCond.ThreadsReady, timeout=0.005)
 
         my_te1_thread.register_thread(beta=my_te1_thread)
         with pytest.raises(WaitUntilTimeout):
-            my_te1_thread.wait_until(WUCond.ThreadsReady, timeout=0.005)
+            my_te1_thread.pause_until(WUCond.ThreadsReady, timeout=0.005)
 
         assert my_te1_thread.alpha.thread is alpha_t
         assert my_te1_thread.beta.thread is my_te1_thread
 
         my_te1_thread.start()
-        my_te1_thread.wait_until(WUCond.ThreadsReady)
+        my_te1_thread.pause_until(WUCond.ThreadsReady)
         my_te1_thread.resume()
         with pytest.raises(WaitDeadlockDetected):
             my_te1_thread.wait()
@@ -1094,10 +1257,10 @@ class TestSmartEventBasic:
             my_te1_thread.wait()
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te1_thread.wait_until(WUCond.RemoteWaiting)
+            my_te1_thread.pause_until(WUCond.RemoteWaiting)
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te1_thread.wait_until(WUCond.RemoteResume)
+            my_te1_thread.pause_until(WUCond.RemoteResume)
 
         assert my_te1_thread.alpha.thread is alpha_t
         assert my_te1_thread.beta.thread is my_te1_thread
@@ -1114,11 +1277,11 @@ class TestSmartEventBasic:
                 SmartEvent.__init__(self, beta=self)
                 self.alpha_t1 = alpha_t1
                 with pytest.raises(WaitUntilTimeout):
-                    self.wait_until(WUCond.ThreadsReady, timeout=0.005)
+                    self.pause_until(WUCond.ThreadsReady, timeout=0.005)
 
             def run(self):
                 logger.debug('run started')
-                self.wait_until(WUCond.ThreadsReady, timeout=0.005)
+                self.pause_until(WUCond.ThreadsReady, timeout=0.005)
                 assert self.alpha.thread is self.alpha_t1
                 assert self.alpha.thread is alpha_t
                 assert self.beta.thread is self
@@ -1133,15 +1296,15 @@ class TestSmartEventBasic:
 
         my_te2_thread = MyThreadEvent2(alpha_t)
         with pytest.raises(WaitUntilTimeout):
-            my_te2_thread.wait_until(WUCond.ThreadsReady, timeout=0.005)
+            my_te2_thread.pause_until(WUCond.ThreadsReady, timeout=0.005)
         my_te2_thread.register_thread(alpha=alpha_t)
         with pytest.raises(WaitUntilTimeout):
-            my_te2_thread.wait_until(WUCond.ThreadsReady, timeout=0.005)
+            my_te2_thread.pause_until(WUCond.ThreadsReady, timeout=0.005)
         my_te2_thread.start()
 
-        my_te2_thread.wait_until(WUCond.ThreadsReady)
+        my_te2_thread.pause_until(WUCond.ThreadsReady)
 
-        my_te2_thread.wait_until(WUCond.RemoteWaiting, timeout=2)
+        my_te2_thread.pause_until(WUCond.RemoteWaiting, timeout=2)
         with pytest.raises(WaitDeadlockDetected):
             my_te2_thread.wait()
 
@@ -1157,10 +1320,10 @@ class TestSmartEventBasic:
             my_te2_thread.wait()
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te2_thread.wait_until(WUCond.RemoteWaiting, timeout=2)
+            my_te2_thread.pause_until(WUCond.RemoteWaiting, timeout=2)
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te2_thread.wait_until(WUCond.RemoteResume, timeout=2)
+            my_te2_thread.pause_until(WUCond.RemoteResume, timeout=2)
 
         assert my_te2_thread.alpha.thread is alpha_t
         assert my_te2_thread.beta.thread is my_te2_thread
@@ -1176,15 +1339,15 @@ class TestSmartEventBasic:
                 threading.Thread.__init__(self)
                 SmartEvent.__init__(self, alpha=alpha_t)
                 with pytest.raises(WaitUntilTimeout):
-                    self.wait_until(WUCond.ThreadsReady, timeout=0.005)
+                    self.pause_until(WUCond.ThreadsReady, timeout=0.005)
                 self.register_thread(beta=self)
                 with pytest.raises(WaitUntilTimeout):
-                    self.wait_until(WUCond.ThreadsReady, timeout=0.001)
+                    self.pause_until(WUCond.ThreadsReady, timeout=0.001)
                 self.alpha_t1 = alpha_t1
 
             def run(self):
                 logger.debug('run started')
-                self.wait_until(WUCond.ThreadsReady, timeout=0.001)
+                self.pause_until(WUCond.ThreadsReady, timeout=0.001)
                 assert self.alpha.thread is self.alpha_t1
                 assert self.alpha.thread is alpha_t
                 assert self.beta.thread is self
@@ -1192,9 +1355,9 @@ class TestSmartEventBasic:
                 assert self.beta.thread is my_run_thread
                 assert self.beta.thread is threading.current_thread()
 
-                self.wait_until(WUCond.RemoteResume, timeout=2)
+                self.pause_until(WUCond.RemoteResume, timeout=2)
                 assert self.wait()
-                self.wait_until(WUCond.RemoteWaiting, timeout=2)
+                self.pause_until(WUCond.RemoteWaiting, timeout=2)
                 with pytest.raises(WaitDeadlockDetected):
                     self.wait()
                 self.resume()
@@ -1202,10 +1365,10 @@ class TestSmartEventBasic:
 
         my_te3_thread = MyThreadEvent3(alpha_t)
         with pytest.raises(WaitUntilTimeout):
-            my_te3_thread.wait_until(WUCond.ThreadsReady, timeout=0.005)
+            my_te3_thread.pause_until(WUCond.ThreadsReady, timeout=0.005)
         my_te3_thread.start()
 
-        my_te3_thread.wait_until(WUCond.ThreadsReady, timeout=2)
+        my_te3_thread.pause_until(WUCond.ThreadsReady, timeout=2)
         my_te3_thread.resume()
         with pytest.raises(WaitDeadlockDetected):
             my_te3_thread.wait()
@@ -1220,10 +1383,10 @@ class TestSmartEventBasic:
             my_te3_thread.wait(timeout=3)
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te3_thread.wait_until(WUCond.RemoteWaiting)
+            my_te3_thread.pause_until(WUCond.RemoteWaiting)
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te3_thread.wait_until(WUCond.RemoteResume)
+            my_te3_thread.pause_until(WUCond.RemoteResume)
 
         assert my_te3_thread.alpha.thread is alpha_t
         assert my_te3_thread.beta.thread is my_te3_thread
@@ -1239,12 +1402,12 @@ class TestSmartEventBasic:
                 threading.Thread.__init__(self)
                 SmartEvent.__init__(self, alpha=alpha_t, beta=self)
                 with pytest.raises(WaitUntilTimeout):
-                    self.wait_until(WUCond.ThreadsReady, timeout=0.001)
+                    self.pause_until(WUCond.ThreadsReady, timeout=0.001)
                 self.alpha_t1 = alpha_t1
 
             def run(self):
                 logger.debug('run started')
-                self.wait_until(WUCond.ThreadsReady, timeout=0.001)
+                self.pause_until(WUCond.ThreadsReady, timeout=0.001)
                 assert self.alpha.thread is self.alpha_t1
                 assert self.alpha.thread is alpha_t
                 assert self.beta.thread is self
@@ -1260,7 +1423,7 @@ class TestSmartEventBasic:
         my_te4_thread = MyThreadEvent4(alpha_t)
         my_te4_thread.start()
 
-        my_te4_thread.wait_until(WUCond.RemoteWaiting)
+        my_te4_thread.pause_until(WUCond.RemoteWaiting)
         with pytest.raises(WaitDeadlockDetected):
             my_te4_thread.wait()
 
@@ -1276,10 +1439,10 @@ class TestSmartEventBasic:
             my_te4_thread.wait()
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te4_thread.wait_until(WUCond.RemoteWaiting)
+            my_te4_thread.pause_until(WUCond.RemoteWaiting)
 
         with pytest.raises(RemoteThreadNotAlive):
-            my_te4_thread.wait_until(WUCond.RemoteResume)
+            my_te4_thread.pause_until(WUCond.RemoteResume)
 
         assert my_te4_thread.alpha.thread is alpha_t
         assert my_te4_thread.beta.thread is my_te4_thread
@@ -1296,7 +1459,7 @@ class TestSmartEventBasic:
             logger.debug('fa1 entered')
             my_fa_thread = threading.current_thread()
             assert s_event.alpha.thread is my_fa_thread
-            s_event.wait_until(WUCond.ThreadsReady)
+            s_event.pause_until(WUCond.ThreadsReady)
             logger.debug('fa1 about to wait')
             s_event.wait()
             logger.debug('fa1 back from wait')
@@ -1320,10 +1483,10 @@ class TestSmartEventBasic:
                 s_event.wait()
 
             with pytest.raises(RemoteThreadNotAlive):
-                s_event.wait_until(WUCond.RemoteWaiting)
+                s_event.pause_until(WUCond.RemoteWaiting)
 
             with pytest.raises(WaitUntilTimeout):
-                s_event.wait_until(WUCond.ThreadsReady, timeout=0.1)
+                s_event.pause_until(WUCond.ThreadsReady, timeout=0.1)
 
         cmds = Cmds()
         smart_event_ab1 = SmartEvent()
@@ -1360,7 +1523,7 @@ class TestSmartEventBasic:
             s_event.register_thread(alpha=my_fa_thread)
             assert s_event.alpha.thread is my_fa_thread
 
-            s_event.wait_until(WUCond.ThreadsReady)
+            s_event.pause_until(WUCond.ThreadsReady)
             logger.debug('fa2 about to deadlock')
             with pytest.raises(WaitDeadlockDetected):
                 logger.debug('fa2 about to wait')
@@ -1373,9 +1536,9 @@ class TestSmartEventBasic:
             # except WaitDeadlockDetected:
             #     num_deadlocks[0] += 1
 
-            logger.debug('fa2 about to wait_until')
-            s_event.wait_until(WUCond.ThreadsReady, timeout=2)
-            logger.debug('fa2 about to set')
+            logger.debug('fa2 about to pause_until')
+            s_event.pause_until(WUCond.ThreadsReady, timeout=2)
+            logger.debug('fa2 about to resume')
             s_event.resume()
 
             # logger.debug('fa2 about to wait')
@@ -1396,27 +1559,27 @@ class TestSmartEventBasic:
             s_event.register_thread(beta=threading.current_thread())
             assert s_event.beta.thread is my_fb_thread
 
-            s_event.wait_until(WUCond.ThreadsReady)
+            s_event.pause_until(WUCond.ThreadsReady)
             logger.debug('fb2 about to deadlock')
             with pytest.raises(WaitDeadlockDetected):
                 logger.debug('fb2 about to wait')
                 s_event.wait()
                 logger.debug('fb2 back from wait')
 
-            logger.debug('fb2 about to wait_until')
-            s_event.wait_until(WUCond.ThreadsReady, timeout=2)
+            logger.debug('fb2 about to pause_until')
+            s_event.pause_until(WUCond.ThreadsReady, timeout=2)
             logger.debug('fb2 about to wait')
             s_event.wait()
             s_event.resume()
 
             _ = cmds.get_cmd('beta')
 
-            logger.debug('fb2 about to try set for RemoteThreadNotAlive')
+            logger.debug('fb2 about to try resume for RemoteThreadNotAlive')
             with pytest.raises(RemoteThreadNotAlive):
                 s_event.resume()
 
             logger.debug('fb2 about to try wait for RemoteThreadNotAlive')
-            s_event.alpha.event.clear()  # undo the last set by fa1
+            s_event.alpha.event.clear()  # undo the last resume by fa1
             with pytest.raises(RemoteThreadNotAlive):
                 s_event.wait()
 
@@ -1441,14 +1604,14 @@ class TestSmartEventBasic:
 
 
 ###############################################################################
-# TestSetExc Class
+# TestResumeExc Class
 ###############################################################################
-class TestSetExc:
+class TestResumeExc:
     """Test SmartEvent resume() exceptions."""
     ###########################################################################
     # test_smart_event_sync_f1
     ###########################################################################
-    def test_smart_event_set_exc_f1(self) -> None:
+    def test_smart_event_resume_exc_f1(self) -> None:
         """Test register_thread with f1."""
 
         def f1(s_event):
@@ -1461,7 +1624,7 @@ class TestSetExc:
 
             s_event.sync(log_msg='f1 beta sync point 2')
 
-            s_event.resume(log_msg='f1 beta set 3')
+            s_event.resume(log_msg='f1 beta resume 3')
 
             s_event.sync(log_msg='f1 beta sync point 4')
 
@@ -1481,25 +1644,25 @@ class TestSetExc:
         smart_event1.beta.deadlock = True
         smart_event1.beta.conflict = True
         with pytest.raises(InconsistentFlagSettings):
-            smart_event1.resume(log_msg='alpha error set 1a')
+            smart_event1.resume(log_msg='alpha error resume 1a')
         smart_event1.beta.deadlock = False
         smart_event1.beta.conflict = False
 
         smart_event1.beta.waiting = True
         smart_event1.beta.sync_wait = True
         with pytest.raises(InconsistentFlagSettings):
-            smart_event1.resume(log_msg='alpha error set 1b')
+            smart_event1.resume(log_msg='alpha error resume 1b')
         smart_event1.beta.waiting = False
         smart_event1.beta.sync_wait = False
 
         smart_event1.beta.deadlock = True
         with pytest.raises(InconsistentFlagSettings):
-            smart_event1.resume(log_msg='alpha error set 1c')
+            smart_event1.resume(log_msg='alpha error resume 1c')
         smart_event1.beta.deadlock = False
 
         smart_event1.beta.conflict = True
         with pytest.raises(InconsistentFlagSettings):
-            smart_event1.resume(log_msg='alpha error set 1d')
+            smart_event1.resume(log_msg='alpha error resume 1d')
         smart_event1.beta.conflict = False
 
         cmds.queue_cmd('beta', 'go')
@@ -1598,13 +1761,13 @@ class TestSync:
 
             assert s_event.sync(log_msg='f1 beta sync point 3')
 
-            s_event.resume(log_msg='f1 beta set 4')
+            s_event.resume(log_msg='f1 beta resume 4')
 
             assert s_event.sync(log_msg='f1 beta sync point 5')
 
             assert s_event.wait(log_msg='f1 beta wait 6')
 
-            s_event.wait_until(WUCond.RemoteWaiting)
+            s_event.pause_until(WUCond.RemoteWaiting)
 
             s_event.resume()
 
@@ -1618,8 +1781,8 @@ class TestSync:
             with s_event._wait_check_lock:
                 s_event.alpha.sync_wait = False
                 s_event.sync_cleanup = True
-            # pre-set to get beta thinking alpha is set and waiting and will
-            # eventually leave (i.e., not a deadlock)
+            # pre-resume to get beta thinking alpha is resumed and waiting
+            # and will eventually leave (i.e., not a deadlock)
             s_event.resume()
             s_event.alpha.waiting = True
 
@@ -1640,7 +1803,7 @@ class TestSync:
 
         assert smart_event1.sync(log_msg='mainline sync point 1')
 
-        smart_event1.wait_until(WUCond.RemoteWaiting)
+        smart_event1.pause_until(WUCond.RemoteWaiting)
 
         # set remote.waiting to False to trick the following sync to not
         # see tha the remote is waiting so that the sync does not detect
@@ -1659,7 +1822,7 @@ class TestSync:
 
         assert smart_event1.sync(log_msg='mainline sync point 5')
 
-        smart_event1.resume(log_msg='mainline set 6')
+        smart_event1.resume(log_msg='mainline resume 6')
 
         assert not smart_event1.sync(log_msg='mainline sync point 7',
                                      timeout=0.5)
@@ -1672,8 +1835,8 @@ class TestSync:
         with pytest.raises(ConflictDeadlockDetected):
             smart_event1.sync(log_msg='mainline sync point 10')
 
-        logger.debug('mainline about to issue wait to clear trick preset')
-        smart_event1.wait()  # clear the trick pre-set from beta
+        logger.debug('mainline about to issue wait to clear trick pre-resume')
+        smart_event1.wait()  # clear the trick pre-resume from beta
 
         assert smart_event1.sync(log_msg='mainline sync point 9')
 
@@ -1689,7 +1852,7 @@ class TestSync:
 # TestWaitClear Class
 ###############################################################################
 class TestWaitClear:
-    """Test SmartEvent clearing of set flag."""
+    """Test SmartEvent clearing of event set flag."""
     ###########################################################################
     # test_smart_event_f1_clear
     ###########################################################################
@@ -1699,21 +1862,19 @@ class TestWaitClear:
         def f1(s_event):
             logger.debug('f1 entered')
 
-            cmds.start_clock()
+            cmds.start_clock(iter=1)
             assert s_event.wait()
             assert 2 <= cmds.duration() <= 3
             assert not s_event.alpha.event.is_set()
 
-            cmds.start_clock()
+            cmds.start_clock(iter=2)
             assert s_event.wait()
             assert 2 <= cmds.duration() <= 3
             assert not s_event.alpha.event.is_set()
 
-            smart_event.sync()
-
-            cmds.pause(2)
+            cmds.pause(2, iter=3)
             s_event.resume()
-            cmds.pause(2)
+            cmds.pause(2, iter=4)
             s_event.resume()
 
         cmds = Cmds()
@@ -1722,20 +1883,18 @@ class TestWaitClear:
         smart_event.register_thread(beta=beta_thread)
         beta_thread.start()
 
-        cmds.pause(2)
+        cmds.pause(2, iter=1)
         smart_event.resume()
 
-        cmds.pause(2)
+        cmds.pause(2, iter=2)
         smart_event.resume()
 
-        smart_event.sync()
-
-        cmds.start_clock()
+        cmds.start_clock(iter=3)
         assert smart_event.wait()
         assert 2 <= cmds.duration() <= 3
         assert not smart_event.beta.event.is_set()
 
-        cmds.start_clock()
+        cmds.start_clock(iter=4)
         assert smart_event.wait()
         assert 2 <= cmds.duration() <= 3
         assert not smart_event.beta.event.is_set()
@@ -1750,12 +1909,10 @@ class TestWaitClear:
 
         class MyThread(threading.Thread):
             def __init__(self,
-                         s_event: SmartEvent,
-                         start_time: List[Any]) -> None:
+                         s_event: SmartEvent) -> None:
                 super().__init__()
                 self.s_event = s_event
                 self.s_event.register_thread(beta=self)
-                self.start_time = start_time
 
             def run(self):
                 logger.debug('ThreadApp run entered')
@@ -1765,86 +1922,73 @@ class TestWaitClear:
 
                 self.s_event.sync(log_msg='beta run sync point 1')
 
-                self.start_time[0] = time.time()
+                cmds.start_clock(iter=1)
+
+                assert self.s_event.wait(log_msg='beta run wait 12')
+
+                assert 2 <= cmds.duration() <= 3
+
+                assert not self.s_event.alpha.event.is_set()
+                assert not self.s_event.beta.event.is_set()
+
                 self.s_event.sync(log_msg='beta run sync point 2')
+                cmds.start_clock(iter=2)
 
                 assert self.s_event.wait(log_msg='beta run wait 23')
-
-                duration = time.time() - self.start_time[0]
-                assert 3 <= duration <= 4
+                assert 2 <= cmds.duration() <= 3
 
                 assert not self.s_event.alpha.event.is_set()
                 assert not self.s_event.beta.event.is_set()
-
                 self.s_event.sync(log_msg='beta run sync point 3')
-                self.start_time[0] = time.time()
+
+                cmds.pause(2, iter=3)
+                self.s_event.resume(log_msg='beta run resume 34')
+
                 self.s_event.sync(log_msg='beta run sync point 4')
 
-                assert self.s_event.wait(log_msg='beta run wait 45')
-                duration = time.time() - self.start_time[0]
-                assert 3 <= duration <= 4
+                cmds.pause(2, iter=4)
+                self.s_event.resume(log_msg='beta run resume 45')
 
-                assert not self.s_event.alpha.event.is_set()
-                assert not self.s_event.beta.event.is_set()
                 self.s_event.sync(log_msg='beta run sync point 5')
-                self.s_event.sync(log_msg='beta run sync point 6')
-
-                while time.time() - start_time[0] < 3:
-                    time.sleep(0.1)
-                self.s_event.resume(log_msg='beta run set 67')
-
-                self.s_event.sync(log_msg='beta run sync point 7')
-                self.s_event.sync(log_msg='beta run sync point 8')
-
-                while time.time() - start_time[0] < 3:
-                    time.sleep(0.1)
-                self.s_event.resume(log_msg='beta run set 89')
-
-                self.s_event.sync(log_msg='beta run sync point 9')
                 logger.debug('beta run exiting 910')
 
-        start_time = [0]
+        cmds = Cmds()
         smart_event = SmartEvent(alpha=threading.current_thread())
-        thread_app = MyThread(smart_event, start_time)
+        thread_app = MyThread(smart_event)
         thread_app.start()
 
-        smart_event.wait_until(WUCond.ThreadsReady)
+        smart_event.pause_until(WUCond.ThreadsReady)
         smart_event.sync(log_msg='mainline sync point 1')
+
+        cmds.pause(2, iter=1)
+
+        smart_event.resume(log_msg='mainline resume 12')
+
         smart_event.sync(log_msg='mainline sync point 2')
 
-        while time.time() - start_time[0] < 3:
-            time.sleep(0.1)
+        cmds.pause(2, iter=2)
 
-        smart_event.resume(log_msg='mainline set 23')
-
+        smart_event.resume(log_msg='mainline resume 23')
         smart_event.sync(log_msg='mainline sync point 3')
+        cmds.start_clock(iter=3)
+
+        assert smart_event.wait(log_msg='mainline wait 34')
+
+        assert 2 <= cmds.duration() <= 3
+
+        assert not smart_event.alpha.event.is_set()
+        assert not smart_event.beta.event.is_set()
+
         smart_event.sync(log_msg='mainline sync point 4')
-        while time.time() - start_time[0] < 3:
-            time.sleep(0.1)
+        cmds.start_clock(iter=4)
 
-        smart_event.resume(log_msg='mainline set 45')
+        assert smart_event.wait(log_msg='mainline sync point 45')
+
+        assert 2 <= cmds.duration() <= 3
+
+        assert not smart_event.alpha.event.is_set()
+        assert not smart_event.beta.event.is_set()
         smart_event.sync(log_msg='mainline sync point 5')
-        start_time[0] = time.time()
-        smart_event.sync(log_msg='mainline sync point 6')
-
-        assert smart_event.wait()
-        duration = time.time() - start_time[0]
-        assert 3 <= duration <= 4
-
-        assert not smart_event.alpha.event.is_set()
-        assert not smart_event.beta.event.is_set()
-
-        smart_event.sync(log_msg='mainline sync point 7')
-        start_time[0] = time.time()
-        smart_event.sync(log_msg='mainline sync point 8')
-
-        assert smart_event.wait(log_msg='mainline sync point 89')
-        duration = time.time() - start_time[0]
-        assert 3 <= duration <= 4
-
-        assert not smart_event.alpha.event.is_set()
-        assert not smart_event.beta.event.is_set()
-        smart_event.sync(log_msg='mainline sync point 9')
 
         thread_app.join()
 
@@ -1868,8 +2012,8 @@ class TestSmartEventTimeout:
             assert not s_event.wait(timeout=0.5)
             assert 0.5 <= time.time() - s_time <= 0.75
             s_event.sync(log_msg='f1 beta sync point 3')
-            s_event.wait_until(WUCond.RemoteWaiting)
-            s_event.resume(log_msg='f1 beta set 34')
+            s_event.pause_until(WUCond.RemoteWaiting)
+            s_event.resume(log_msg='f1 beta resume 34')
             s_event.sync(log_msg='f1 beta sync point 4')
             s_event.sync(log_msg='f1 beta sync point 5')
 
@@ -1877,10 +2021,10 @@ class TestSmartEventTimeout:
         beta_thread = threading.Thread(target=f1, args=(smart_event,))
         smart_event.register_thread(beta=beta_thread)
         beta_thread.start()
-        smart_event.wait_until(WUCond.ThreadsReady)
+        smart_event.pause_until(WUCond.ThreadsReady)
         smart_event.sync(log_msg='mainline sync point 1')
-        smart_event.wait_until(WUCond.RemoteWaiting)
-        smart_event.resume(log_msg='mainline set 12')
+        smart_event.pause_until(WUCond.RemoteWaiting)
+        smart_event.resume(log_msg='mainline resume 12')
         smart_event.sync(log_msg='mainline sync point 2')
         smart_event.sync(log_msg='mainline sync point 3')
         assert smart_event.wait(timeout=2)
@@ -1893,165 +2037,142 @@ class TestSmartEventTimeout:
         beta_thread.join()
 
     ###########################################################################
-    # test_smart_event_f1_set_time_out
+    # test_smart_event_f1_resume_time_out
     ###########################################################################
-    def test_smart_event_f1_set_time_out(self) -> None:
+    def test_smart_event_f1_resume_time_out(self) -> None:
         """Test smart event wait timeout with f1 thread."""
 
-        def f1(s_event: SmartEvent,
-               start_time: List[Any]) -> None:
+        def f1(s_event: SmartEvent) -> None:
             """The remote thread for requests.
 
             Args:
                 s_event: the smart event to test
-                start_time: used to improve accuracy of times across threads
 
             """
             logger.debug('f1 entered')
-            s_event.sync(log_msg='f1 beta sync point 1')
+            # s_event.sync(log_msg='f1 beta sync point 1')
 
-            # the first set will set the flag ON and the flag will stay ON
+            # the first resume will set the flag ON and the flag will stay ON
             # since there is no matching wait
             assert not s_event.beta.event.is_set()
             assert s_event.resume(timeout=2)
             assert s_event.beta.event.is_set()
 
-            # this second set will timeout waiting for the flag to go OFF
-            s_time = time.time()
+            # this second resume will timeout waiting for the flag to go OFF
+            cmds.start_clock(iter=1)
             assert not s_event.resume(timeout=0.5)
-            assert 0.5 <= time.time() - s_time <= 0.75
+            assert 0.5 <= cmds.duration() <= 0.75
             assert s_event.beta.event.is_set()
 
+            s_event.sync(log_msg='f1 beta sync point 1')
             s_event.sync(log_msg='f1 beta sync point 2')
-            s_event.sync(log_msg='f1 beta sync point 3')
 
-            # this first set will complete within the timeout
+            # this first resume will complete within the timeout
             s_event.alpha.waiting = True  # simulate waiting
             s_event.alpha.deadlock = True  # simulate deadlock
-            start_time[0] = time.time()
+            cmds.start_clock(iter=2)
             assert s_event.resume(timeout=1)
-            assert 0.5 <= time.time() - start_time[0] <= 0.75
+            assert 0.5 <= cmds.duration() <= 0.75
 
+            # s_event.sync(log_msg='f1 beta sync point 3')
             s_event.sync(log_msg='f1 beta sync point 4')
-            start_time[0] = 0  # reset for next test
-            s_event.sync(log_msg='f1 beta sync point 5')
 
-            # this set will timeout
+            # this resume will timeout
             s_event.alpha.waiting = True  # simulate waiting
             s_event.alpha.deadlock = True  # simulate deadlock
 
-            start_time[0] = time.time()
+            cmds.start_clock(iter=3)
             assert not s_event.resume(timeout=0.5)
-            assert 0.5 <= time.time() - start_time[0] <= 0.75
+            assert 0.5 <= cmds.duration() <= 0.75
 
+            s_event.sync(log_msg='f1 beta sync point 5')
             s_event.sync(log_msg='f1 beta sync point 6')
-            s_event.sync(log_msg='f1 beta sync point 7')
 
             # this wait will clear the flag - use timeout to prevent f1 beta
             # sync from raising ConflictDeadlockDetected
             assert s_event.wait(log_msg='f1 beta wait 67',
                                 timeout=1)
 
-            start_time[0] = 0
+            s_event.sync(log_msg='f1 beta sync point 7')
+
+            cmds.pause(0.5, iter=5)  # we purposely skipped 4
+            # clear the deadlock within the resume timeout to allow mainline
+            # resume to complete
+            s_event.beta.deadlock = False
+            s_event.beta.waiting = False
+
             s_event.sync(log_msg='f1 beta sync point 8')
 
-            while True:
-                if start_time[0]:
-                    if 0.5 <= (time.time() - start_time[0]):
-                        break
-                time.sleep(0.01)
-            # clear the deadlock within the set timeout to allow mainline set
-            # to complete
+            cmds.pause(0.75, iter=6)
+            # clear the deadlock after resume timeout to cause ml to timeout
             s_event.beta.deadlock = False
             s_event.beta.waiting = False
 
             s_event.sync(log_msg='f1 beta sync point 9')
 
-            while True:
-                if start_time[0]:
-                    if 0.75 <= (time.time() - start_time[0]):
-                        break
-                time.sleep(0.01)
-            # clear the deadlock after the set timeout to cause ml to timeout
-            s_event.beta.deadlock = False
-            s_event.beta.waiting = False
-
-            s_event.sync(log_msg='f1 beta sync point 10')
-
-        start_time = [0]
+        cmds = Cmds()
         smart_event = SmartEvent(alpha=threading.current_thread())
-        beta_thread = threading.Thread(target=f1, args=(smart_event,
-                                                        start_time))
+        beta_thread = threading.Thread(target=f1, args=(smart_event,))
         smart_event.register_thread(beta=beta_thread)
         beta_thread.start()
-        smart_event.wait_until(WUCond.ThreadsReady)
+        smart_event.pause_until(WUCond.ThreadsReady)
         smart_event.sync(log_msg='mainline sync point 1')
-
-        smart_event.sync(log_msg='mainline sync point 2')
 
         # this wait will clear the flag - use timeout to prevent sync
         # from raising ConflictDeadlockDetected
         assert smart_event.beta.event.is_set()
-        assert smart_event.wait(log_msg='f1 beta wait 12',
+        assert smart_event.wait(log_msg='mainline wait 12',
                                 timeout=1)
 
-        smart_event.sync(log_msg='mainline sync point 3')
+        smart_event.sync(log_msg='mainline sync point 2')
 
-        while True:
-            if start_time[0]:
-                if 0.5 <= (time.time() - start_time[0]):
-                    break
-            time.sleep(0.01)
+        cmds.pause(0.5, iter=2)  # we purposely skipped iter=1
 
-        # clear the deadlock within the set timeout to allow f1 set to complete
+        # clear the deadlock within resume timeout to allow f1 resume to
+        # complete
         smart_event.alpha.deadlock = False
         smart_event.alpha.waiting = False
 
+        # smart_event.sync(log_msg='mainline sync point 3')
         smart_event.sync(log_msg='mainline sync point 4')
+
+        cmds.pause(0.75, iter=3)
+
+        # clear the deadlock after the resume timeout to cause f1 to timeout
+        smart_event.alpha.deadlock = False
+        smart_event.alpha.waiting = False
+
         smart_event.sync(log_msg='mainline sync point 5')
 
-        while True:
-            if start_time[0]:
-                if 0.75 <= (time.time() - start_time[0]):
-                    break
-            time.sleep(0.01)
-
-        # clear the deadlock after the set timeout to cause f1 to timeout
-        smart_event.alpha.deadlock = False
-        smart_event.alpha.waiting = False
-
-        smart_event.sync(log_msg='mainline sync point 6')
-
-        # the first set will set the flag ON and the flag will stay ON
+        # the first resume will set the flag ON and the flag will stay ON
         # since there is no matching wait
         assert smart_event.resume(timeout=2)
-        start_time[0] = time.time()
 
-        # this second set will timeout waiting for the flag to go OFF
+        # this second resume will timeout waiting for the flag to go OFF
+        cmds.start_clock(iter=4)
         assert not smart_event.resume(timeout=0.3)
-        assert 0.3 <= time.time() - start_time[0] <= 0.6
+        assert 0.3 <= cmds.duration() <= 0.6
 
+        smart_event.sync(log_msg='mainline sync point 6')
         smart_event.sync(log_msg='mainline sync point 7')
+
+        # this first resume will complete within the timeout
+        smart_event.beta.waiting = True  # simulate waiting
+        smart_event.beta.deadlock = True  # simulate deadlock
+        cmds.start_clock(iter=5)
+        assert smart_event.resume(timeout=1)
+        assert 0.5 <= cmds.duration() <= 0.75
+
         smart_event.sync(log_msg='mainline sync point 8')
 
-        # this first set will complete within the timeout
+        # this resume will timeout
         smart_event.beta.waiting = True  # simulate waiting
         smart_event.beta.deadlock = True  # simulate deadlock
-        start_time[0] = time.time()
-        assert smart_event.resume(timeout=1)
-        assert 0.5 <= time.time() - start_time[0] <= 0.75
-
-        start_time[0] = 0
-        smart_event.sync(log_msg='mainline sync point 9')
-
-        # this set will timeout
-        smart_event.beta.waiting = True  # simulate waiting
-        smart_event.beta.deadlock = True  # simulate deadlock
-        start_time[0] = time.time()
+        cmds.start_clock(iter=6)
         assert not smart_event.resume(timeout=0.5)
-        assert 0.5 <= time.time() - start_time[0] <= 0.75
+        assert 0.5 <= cmds.duration() <= 0.75
 
-        smart_event.sync(log_msg='mainline sync point 10')
+        smart_event.sync(log_msg='mainline sync point 9')
 
         beta_thread.join()
 
@@ -2068,16 +2189,28 @@ class TestSmartEventTimeout:
 
             def run(self):
                 logger.debug('ThreadApp run entered')
-                assert not self.s_event.wait(timeout=2)
-                time.sleep(4)
 
+                cmds.start_clock(iter=1)
+                assert not self.s_event.wait(timeout=2)
+                assert 2 <= cmds.duration() < 3
+
+                assert self.s_event.sync(log_msg='beta sync point 1')
+                assert self.s_event.sync(log_msg='beta sync point 2')
+
+        cmds = Cmds()
         smart_event = SmartEvent(alpha=threading.current_thread())
         thread_app = MyThread(smart_event)
         thread_app.start()
 
-        time.sleep(3)
+        smart_event.pause_until(WUCond.ThreadsReady)
 
+        assert smart_event.sync(log_msg='alpha sync point 1')
+
+        cmds.start_clock(iter=2)
         assert not smart_event.wait(timeout=2)
+        assert 2 <= cmds.duration() < 3
+
+        assert smart_event.sync(log_msg='alpha sync point 2')
 
         thread_app.join()
 
@@ -2086,7 +2219,7 @@ class TestSmartEventTimeout:
 # TestSmartEventCode Class
 ###############################################################################
 class TestSmartEventCode:
-    """Test SmartEvent set codes."""
+    """Test SmartEvent resume codes."""
     ###########################################################################
     # test_smart_event_f1_event_code
     ###########################################################################
@@ -2136,7 +2269,7 @@ class TestSmartEventCode:
         beta_thread = threading.Thread(target=f1, args=(smart_event,))
         smart_event.register_thread(beta=beta_thread)
         beta_thread.start()
-        smart_event.wait_until(WUCond.ThreadsReady)
+        smart_event.pause_until(WUCond.ThreadsReady)
 
         smart_event.sync(log_msg='mainline sync point 1')
 
@@ -2191,13 +2324,13 @@ class TestSmartEventCode:
                 assert self.s_event.beta.code == 42
                 assert self.s_event.get_code() == 42
 
-                self.s_event.resume(log_msg='beta set 4',
+                self.s_event.resume(log_msg='beta resume 4',
                                     code='forty-two')
 
         smart_event = SmartEvent(alpha=threading.current_thread())
         thread_app = MyThread(smart_event)
         thread_app.start()
-        smart_event.wait_until(WUCond.ThreadsReady)
+        smart_event.pause_until(WUCond.ThreadsReady)
 
         smart_event.sync(log_msg='mainline sync point 2')
         smart_event.resume(code=42)
@@ -2264,7 +2397,7 @@ class TestSmartEventCode:
 
         thread_event_app = MyThread(alpha=threading.current_thread())
         thread_event_app.start()
-        thread_event_app.wait_until(WUCond.ThreadsReady)
+        thread_event_app.pause_until(WUCond.ThreadsReady)
 
         assert not thread_event_app.alpha.code
         assert not thread_event_app.beta.code
@@ -2277,7 +2410,7 @@ class TestSmartEventCode:
         assert not thread_event_app.beta.code
         assert not thread_event_app.get_code()
 
-        thread_event_app.resume(code=42, log_msg='mainline set for beta 56')
+        thread_event_app.resume(code=42, log_msg='mainline resume for beta 56')
 
         assert not thread_event_app.alpha.code
         assert thread_event_app.beta.code == 42
@@ -2365,11 +2498,11 @@ class TestSmartEventLogger:
                                                         exp_log_msgs))
         smart_event.register_thread(beta=beta_thread)
         beta_thread.start()
-        smart_event.wait_until(WUCond.ThreadsReady)
+        smart_event.pause_until(WUCond.ThreadsReady)
 
         exp_log_msgs.add_alpha_sync_msg('mainline sync point 1')
         smart_event.sync(log_msg='mainline sync point 1')
-        smart_event.wait_until(WUCond.RemoteWaiting)
+        smart_event.pause_until(WUCond.RemoteWaiting)
 
         exp_log_msgs.add_alpha_resume_msg('post beta 12')
         smart_event.resume(log_msg='post beta 12')
@@ -2391,7 +2524,11 @@ class TestSmartEventLogger:
         exp_log_msgs.add_msg('mainline all tests complete')
         logger.debug('mainline all tests complete')
 
-        exp_log_msgs.verify_log_msgs(caplog, log_enabled_arg)
+        exp_log_msgs.verify_log_msgs(caplog=caplog,
+                                     log_enabled_tf=log_enabled_arg)
+
+        # restore root to debug
+        logging.getLogger().setLevel(logging.DEBUG)
 
     ###########################################################################
     # test_smart_event_thread_app_event_logger
@@ -2429,7 +2566,7 @@ class TestSmartEventLogger:
                 self.exp_log_msgs.add_beta_sync_msg('beta sync point 2')
                 self.s_event.sync(log_msg='beta sync point 2')
 
-                self.s_event.wait_until(WUCond.RemoteWaiting)
+                self.s_event.pause_until(WUCond.RemoteWaiting)
 
                 self.exp_log_msgs.add_beta_resume_msg('post mainline 34',
                                                       True, 'forty-two')
@@ -2459,12 +2596,12 @@ class TestSmartEventLogger:
         smart_event = SmartEvent(alpha=threading.current_thread())
         thread_app = MyThread(smart_event, exp_log_msgs)
         thread_app.start()
-        smart_event.wait_until(WUCond.ThreadsReady)
+        smart_event.pause_until(WUCond.ThreadsReady)
 
         exp_log_msgs.add_alpha_sync_msg('mainline sync point 1')
         smart_event.sync(log_msg='mainline sync point 1')
 
-        smart_event.wait_until(WUCond.RemoteWaiting)
+        smart_event.pause_until(WUCond.RemoteWaiting)
 
         exp_log_msgs.add_alpha_resume_msg(
             f'post thread {smart_event.beta.name} 23', True, 42)
@@ -2488,7 +2625,11 @@ class TestSmartEventLogger:
         exp_log_msgs.add_msg(l_msg)
         logger.debug('mainline all tests complete')
 
-        exp_log_msgs.verify_log_msgs(caplog, log_enabled_arg)
+        exp_log_msgs.verify_log_msgs(caplog=caplog,
+                                     log_enabled_tf=log_enabled_arg)
+
+        # restore root to debug
+        logging.getLogger().setLevel(logging.DEBUG)
 
     ###########################################################################
     # test_smart_event_thread_event_app_event_logger
@@ -2526,7 +2667,7 @@ class TestSmartEventLogger:
                 self.exp_log_msgs.add_beta_sync_msg('beta sync point 2')
                 self.sync(log_msg='beta sync point 2')
 
-                self.wait_until(WUCond.RemoteWaiting)
+                self.pause_until(WUCond.RemoteWaiting)
 
                 self.exp_log_msgs.add_beta_resume_msg('post mainline 23')
                 self.resume(log_msg='post mainline 23')
@@ -2553,12 +2694,12 @@ class TestSmartEventLogger:
 
         thread_event_app.start()
 
-        thread_event_app.wait_until(WUCond.ThreadsReady)
+        thread_event_app.pause_until(WUCond.ThreadsReady)
 
         exp_log_msgs.add_alpha_sync_msg('mainline sync point 1')
         thread_event_app.sync(log_msg='mainline sync point 1')
 
-        thread_event_app.wait_until(WUCond.RemoteWaiting)
+        thread_event_app.pause_until(WUCond.RemoteWaiting)
 
         exp_log_msgs.add_alpha_resume_msg(
             f'post thread {thread_event_app.beta.name} 12')
@@ -2579,7 +2720,11 @@ class TestSmartEventLogger:
         exp_log_msgs.add_msg('mainline all tests complete')
         logger.debug('mainline all tests complete')
 
-        exp_log_msgs.verify_log_msgs(caplog, log_enabled_arg)
+        exp_log_msgs.verify_log_msgs(caplog=caplog,
+                                     log_enabled_tf=log_enabled_arg)
+
+        # restore root to debug
+        logging.getLogger().setLevel(logging.DEBUG)
 
 
 ###############################################################################
@@ -2618,7 +2763,7 @@ class TestCombos:
         cmds = Cmds()
 
         smart_event = SmartEvent(alpha=threading.current_thread())
-        
+
         cmds.l_msg = log_msg_arg1
         cmds.r_code = code_arg1
 
@@ -2632,7 +2777,7 @@ class TestCombos:
         logger.debug(l_msg)
 
         f1_thread.start()
-        smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
+        smart_event.pause_until(WUCond.ThreadsReady, timeout=1)
 
         self.action_loop(smart_event=smart_event,
                          action1=action_arg1,
@@ -2650,7 +2795,7 @@ class TestCombos:
         f1_thread.join()
 
         if log_msg_arg1:
-            exp_log_msgs.verify_log_msgs(caplog=caplog)
+            exp_log_msgs.verify_log_msgs(caplog=caplog, log_enabled_tf=True)
 
     ###########################################################################
     # test_smart_event_thread_f1_combos
@@ -2705,7 +2850,7 @@ class TestCombos:
 
         f1_thread.start()
         f2_thread.start()
-        smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
+        smart_event.pause_until(WUCond.ThreadsReady, timeout=1)
 
         l_msg = 'main completed all actions'
         exp_log_msgs.add_msg(l_msg)
@@ -2717,7 +2862,7 @@ class TestCombos:
         f1_thread.join()
 
         if log_msg_arg1:
-            exp_log_msgs.verify_log_msgs(caplog=caplog)
+            exp_log_msgs.verify_log_msgs(caplog=caplog, log_enabled_tf=True)
 
     ###########################################################################
     # test_smart_event_thread_thread_app_combos
@@ -2784,7 +2929,7 @@ class TestCombos:
         cmds = Cmds()
 
         smart_event = SmartEvent(alpha=threading.current_thread())
-        
+
         cmds.l_msg = log_msg_arg1
         cmds.r_code = code_arg1
 
@@ -2798,7 +2943,7 @@ class TestCombos:
         logger.debug(l_msg)
 
         f1_thread.start()
-        smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
+        smart_event.pause_until(WUCond.ThreadsReady, timeout=1)
 
         self.action_loop(smart_event=smart_event,
                          action1=action_arg1,
@@ -2815,7 +2960,7 @@ class TestCombos:
         f1_thread.join()
 
         if log_msg_arg1:
-            exp_log_msgs.verify_log_msgs(caplog=caplog)
+            exp_log_msgs.verify_log_msgs(caplog=caplog, log_enabled_tf=True)
 
     ###########################################################################
     # test_smart_event_thread_thread_app_combos
@@ -2892,7 +3037,7 @@ class TestCombos:
         exp_log_msgs.add_msg(l_msg)
         logger.debug(l_msg)
         f1_thread.start()
-        f1_thread.wait_until(WUCond.ThreadsReady, timeout=1)
+        f1_thread.pause_until(WUCond.ThreadsReady, timeout=1)
 
         self.action_loop(smart_event=f1_thread,
                          action1=action_arg1,
@@ -2909,7 +3054,7 @@ class TestCombos:
         f1_thread.join()
 
         if log_msg_arg1:
-            exp_log_msgs.verify_log_msgs(caplog=caplog)
+            exp_log_msgs.verify_log_msgs(caplog=caplog, log_enabled_tf=True)
 
     ###########################################################################
     # action loop
@@ -2934,9 +3079,10 @@ class TestCombos:
 
         Raises:
             IncorrectActionSpecified: The Action is not recognized
+            UnrecognizedCmd: beta send mainline an unrecognized command
 
         """
-        smart_event.wait_until(WUCond.ThreadsReady, timeout=1)
+        smart_event.pause_until(WUCond.ThreadsReady, timeout=1)
         actions = []
         actions.append(action1)
         actions.append(action2)
@@ -2947,7 +3093,7 @@ class TestCombos:
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
-                cmds.queue_cmd('beta', Cmd.Set)
+                cmds.queue_cmd('beta', Cmd.Resume)
                 assert smart_event.wait()
                 if cmds.r_code:
                     assert smart_event.alpha.code == cmds.r_code
@@ -3001,8 +3147,8 @@ class TestCombos:
                 # at the bottom
                 cmds.queue_cmd('alpha', Cmd.Next_Action)
 
-            elif action == Action.MainSet:
-                l_msg = 'main starting Action.MainSet'
+            elif action == Action.MainResume:
+                l_msg = 'main starting Action.MainResume'
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
                 if cmds.r_code:
@@ -3015,8 +3161,8 @@ class TestCombos:
                 assert smart_event.alpha.event.is_set()
                 cmds.queue_cmd('beta', Cmd.Wait)
 
-            elif action == Action.MainSet_TOT:
-                l_msg = 'main starting Action.MainSet_TOT'
+            elif action == Action.MainResume_TOT:
+                l_msg = 'main starting Action.MainResume_TOT'
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
                 if cmds.r_code:
@@ -3029,8 +3175,8 @@ class TestCombos:
                 assert smart_event.alpha.event.is_set()
                 cmds.queue_cmd('beta', Cmd.Wait)
 
-            elif action == Action.MainSet_TOF:
-                l_msg = 'main starting Action.MainSet_TOF'
+            elif action == Action.MainResume_TOF:
+                l_msg = 'main starting Action.MainResume_TOF'
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
                 l_msg = (f'{smart_event.alpha.name} timeout '
@@ -3040,7 +3186,7 @@ class TestCombos:
                 exp_log_msgs.add_msg(l_msg)
 
                 assert not smart_event.alpha.event.is_set()
-                # pre-set to set flag
+                # pre-resume to set flag
                 if cmds.r_code:
                     assert smart_event.resume(code=cmds.r_code)
                     assert smart_event.beta.code == cmds.r_code
@@ -3073,7 +3219,7 @@ class TestCombos:
                 logger.debug(l_msg)
 
                 cmds.queue_cmd('beta', Cmd.Wait)
-                smart_event.wait_until(WUCond.RemoteWaiting)
+                smart_event.pause_until(WUCond.RemoteWaiting)
                 if cmds.r_code:
                     smart_event.resume(code=cmds.r_code)
                     assert smart_event.beta.code == cmds.r_code
@@ -3086,8 +3232,8 @@ class TestCombos:
                 logger.debug(l_msg)
 
                 cmds.queue_cmd('beta', Cmd.Wait_TOT)
-                smart_event.wait_until(WUCond.RemoteWaiting)
-                time.sleep(0.3)
+                smart_event.pause_until(WUCond.RemoteWaiting)
+                # time.sleep(0.3)
                 if cmds.r_code:
                     smart_event.resume(code=cmds.r_code)
                     assert smart_event.beta.code == cmds.r_code
@@ -3100,15 +3246,15 @@ class TestCombos:
                 logger.debug(l_msg)
 
                 cmds.queue_cmd('beta', Cmd.Wait_TOF)
-                smart_event.wait_until(WUCond.RemoteWaiting)
+                smart_event.pause_until(WUCond.RemoteWaiting)
 
-            elif action == Action.ThreadSet:
-                l_msg = 'main starting Action.ThreadSet'
+            elif action == Action.ThreadResume:
+                l_msg = 'main starting Action.ThreadResume'
                 exp_log_msgs.add_msg(l_msg)
                 logger.debug(l_msg)
 
-                cmds.queue_cmd('beta', Cmd.Set)
-                smart_event.wait_until(WUCond.RemoteResume)
+                cmds.queue_cmd('beta', Cmd.Resume)
+                smart_event.pause_until(WUCond.RemoteResume)
                 assert smart_event.wait()
                 if cmds.r_code:
                     assert smart_event.alpha.code == cmds.r_code
@@ -3123,7 +3269,6 @@ class TestCombos:
                     break
                 else:
                     raise UnrecognizedCmd
-
 
 
 ###############################################################################
@@ -3144,11 +3289,11 @@ def thread_func1(s_event: SmartEvent,
         UnrecognizedCmd: Thread received an unrecognized command
 
     """
-    l_msg = f'thread_func1 beta started'
+    l_msg = 'thread_func1 beta started'
     exp_log_msgs.add_msg(l_msg)
     logger.debug(l_msg)
 
-    s_event.wait_until(WUCond.ThreadsReady, timeout=1)
+    s_event.pause_until(WUCond.ThreadsReady, timeout=1)
     while True:
         beta_cmd = cmds.get_cmd('beta')
         if beta_cmd == Cmd.Exit:
@@ -3237,8 +3382,8 @@ def thread_func1(s_event: SmartEvent,
 
             cmds.queue_cmd('alpha', Cmd.Next_Action)
 
-        elif beta_cmd == Cmd.Set:
-            l_msg = 'thread_func1 beta doing Set'
+        elif beta_cmd == Cmd.Resume:
+            l_msg = 'thread_func1 beta doing Resume'
             exp_log_msgs.add_msg(l_msg)
             logger.debug(l_msg)
             if cmds.r_code:
@@ -3265,6 +3410,7 @@ def thread_func1(s_event: SmartEvent,
     l_msg = 'thread_func1 beta exiting'
     exp_log_msgs.add_msg(l_msg)
     logger.debug(l_msg)
+
 
 ###############################################################################
 # ExpLogMsg class
@@ -3500,6 +3646,8 @@ class Cmds:
         self.r_code: Any = None
         self.start_time: float = 0.0
         self.previous_start_time: float = 0.0
+        self.clock_in_use = False
+        self.iteration = 0
 
     def queue_cmd(self, who: str, cmd: Any) -> None:
         """Place a cmd on the cmd queue for the specified who.
@@ -3507,6 +3655,9 @@ class Cmds:
         Args:
             who: alpha when cmd is for alpha, beta when cmd is for beta
             cmd: command to place on queue
+
+        Raises:
+            ValueError: who must be alpha or beta
 
         """
         if who == 'alpha':
@@ -3529,6 +3680,9 @@ class Cmds:
         Returns:
             the cmd to perform
 
+        Raises:
+            ValueError: who must be alpha or beta
+
         """
         while True:
             try:
@@ -3542,25 +3696,34 @@ class Cmds:
             except queue.Empty:
                 continue
 
-    def pause(self, seconds: Union[int, float]) -> None:
+    def pause(self, seconds: Union[int, float], iter: int) -> None:
         """Sleep for the number of input seconds relative to start_time.
 
         Args:
             seconds: number of seconds to pause
+            iter: clock iteration to pause on
 
         """
-        while self.start_time == self.previous_start_time:
+        while iter != self.iteration:
             time.sleep(0.1)
 
-        self.previous_start_time = self.start_time
+        # self.previous_start_time = self.start_time
 
-        remaining_seconds = seconds - self.duration()
+        remaining_seconds = seconds - (time.time() - self.start_time)
         if remaining_seconds > 0:
             time.sleep(remaining_seconds)
 
-    def start_clock(self) -> None:
-        """Set the start_time to the current time."""
+    def start_clock(self, iter: int) -> None:
+        """Set the start_time to the current time.
+
+        Args:
+            iter: iteration to set for the clock
+        """
+        while self.clock_in_use:
+            time.sleep(0.1)
+        self.clock_in_use = True
         self.start_time = time.time()
+        self.iteration = iter
 
     def duration(self) -> float:
         """Return the number of seconds from the start_time.
@@ -3568,4 +3731,6 @@ class Cmds:
         Returns:
             number of seconds from the start_time
         """
-        return time.time() - self.start_time
+        ret_duration = time.time() - self.start_time
+        self.clock_in_use = False
+        return ret_duration

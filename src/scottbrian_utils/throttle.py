@@ -301,7 +301,7 @@ class Throttle:
                             lb_threshold will effectively cause all requests
                             that are early to be delayed.
 
-        # noqa: DAR101
+        .. # noqa: DAR101
 
         Raises:
             IncorrectRequestsSpecified: The requests specification must be
@@ -925,7 +925,7 @@ def throttle(wrapped: Optional[F] = None, *,
                         lb_threshold will effectively cause all requests
                         that are early to be delayed.
 
-    # noqa: DAR101
+    .. # noqa: DAR101
 
     Returns:
         A callable function that, for mode Throttle.MODE_ASYNC, queues the
