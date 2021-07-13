@@ -5,14 +5,12 @@ import traceback
 import pytest
 from typing import Any, cast
 
-from scottbrian_utils.smart_event import SmartEvent
-
 import logging
 
 ###############################################################################
 # logging
 ###############################################################################
-logging.basicConfig(filename='ThreadComm.log',
+logging.basicConfig(filename='Throttle.log',
                     filemode='w',
                     level=logging.DEBUG,
                     format='%(asctime)s '
@@ -87,7 +85,7 @@ def thread_exc(monkeypatch: Any) -> "ExcHook":
     exc_hook = ExcHook()
 
     def mock_threading_excepthook(args):
-        exc_err_msg = (f'SmartEvent excepthook: {args.exc_type}, '
+        exc_err_msg = (f'Throttle excepthook: {args.exc_type}, '
                        f'{args.exc_value}, {args.exc_traceback},'
                        f' {args.thread}')
         traceback.print_tb(args.exc_traceback)
@@ -96,7 +94,7 @@ def thread_exc(monkeypatch: Any) -> "ExcHook":
         logger.debug(f'excepthook current thread is {current_thread}')
         # ExcHook.exc_err_msg1 = exc_err_msg
         exc_hook.exc_err_msg1 = exc_err_msg
-        raise Exception(f'SmartEvent thread test error: {exc_err_msg}')
+        raise Exception(f'Throttle thread test error: {exc_err_msg}')
 
     monkeypatch.setattr(threading, "excepthook", mock_threading_excepthook)
     logger.debug(f'hook after: {threading.excepthook}')
