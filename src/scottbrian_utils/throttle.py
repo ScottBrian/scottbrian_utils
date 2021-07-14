@@ -103,7 +103,7 @@ import inspect
 
 from datetime import timedelta
 from typing import (Any, Callable, cast, Dict, Final, NamedTuple, Optional,
-                    Tuple, Type, TYPE_CHECKING, TypeVar, Union)
+                    overload, Tuple, Type, TYPE_CHECKING, TypeVar, Union)
 import functools
 from wrapt.decorators import decorator  # type: ignore
 # from scottbrian_utils.diag_msg import diag_msg
@@ -196,7 +196,7 @@ class Throttle:
     class Request(NamedTuple):
         """NamedTuple for the request queue item."""
         request_func: Callable[..., Any]
-        args: Tuple[Any, ]
+        args: Tuple[Any, ...]
         kwargs: Dict[str, Any]
 
     MODE_ASYNC: Final[int] = 1
@@ -404,10 +404,13 @@ class Throttle:
         #######################################################################
         # determine whether we are throttle decorator
         #######################################################################
-        if inspect.currentframe().f_back.f_code.co_name == 'throttle':
-            self.decorator = True
-        else:
-            self.decorator = False
+        # self.decorator = False
+        # frame = inspect.currentframe()
+        # if frame is not None:
+        #     if frame.f_back.f_code.co_name == 'throttle':
+        #         self.decorator = True
+        #     else:
+        #         self.decorator = False
 
         #######################################################################
         # requests
@@ -518,17 +521,15 @@ class Throttle:
         self.shutdown_lock = threading.Lock()
         self._shutdown = False
         self.do_shutdown = Throttle.TYPE_SHUTDOWN_NONE
-        self._expected_arrival_time = 0
+        self._expected_arrival_time = 0.0
         self._early_arrival_count = 0
-
+        self.async_q = None
+        self.request_scheduler_thread = None
         if mode == Throttle.MODE_ASYNC:
             self.async_q = queue.Queue(maxsize=self.async_q_size)
             self.request_scheduler_thread = threading.Thread(
                     target=self.schedule_requests)
             self.request_scheduler_thread.start()
-        else:
-            self.async_q = None
-            self.request_scheduler_thread = None
 
     ###########################################################################
     # len
@@ -566,7 +567,7 @@ class Throttle:
 
         """
         if self.mode == Throttle.MODE_ASYNC:
-            return self.async_q.qsize()
+            return self.async_q.qsize()  # type: ignore
         else:
             return 0
 
@@ -661,7 +662,9 @@ class Throttle:
             self._shutdown = True  # indicate shutdown in progress
             with self.shutdown_lock:
                 self.do_shutdown = shutdown_type
-            self.request_scheduler_thread.join()  # wait for cleanup
+
+            # wait for cleanup
+            self.request_scheduler_thread.join()  # type: ignore
         else:
             raise AttemptedShutdownForSyncThrottle('Calling start_shutdown is '
                                                    'valid only for a throttle '
@@ -697,7 +700,7 @@ class Throttle:
                 request_item = Throttle.Request(func, args, kwargs)
                 while not self._shutdown:
                     try:
-                        self.async_q.put(request_item,
+                        self.async_q.put(request_item,  # type: ignore
                                          block=True,
                                          timeout=0.5)
                         return Throttle.RC_OK
@@ -787,7 +790,8 @@ class Throttle:
         # we can detect shutdown in a timely fashion.
         while True:
             try:
-                request_item = self.async_q.get(block=True, timeout=1)
+                request_item = self.async_q.get(block=True,  # type: ignore
+                                                timeout=1)
                 next_send_time = time.time() + self.target_interval
             except queue.Empty:
                 if self.do_shutdown != Throttle.TYPE_SHUTDOWN_NONE:
@@ -825,16 +829,56 @@ class Throttle:
 ###############################################################################
 # Pie Throttle Decorator
 ###############################################################################
+# @overload
+# def throttle(*,
+#              requests: int,
+#              seconds: Union[int, float],
+#              mode: int) -> Callable[[F], F]:
+#     pass
+
+# def throttle(wrapped: Optional[F] = None, *,
+#              requests: int,
+#              seconds: Union[int, float],
+#              mode: int,
+#              async_q_size: Optional[int] = None,
+#              early_count: Optional[int] = None,
+#              lb_threshold: Optional[Union[int, float]] = None
+#              ) -> F:
+
 F = TypeVar('F', bound=Callable[..., Any])
+
+
+@overload
+def throttle(wrapped: F, *,
+             requests: int,
+             seconds: int,  # Union[int, float],
+             mode: int,
+             # async_q_size: Optional[int] = None,
+             # early_count: Optional[int] = None,
+             # lb_threshold: Optional[Union[int, float]] = None
+             ) -> F:
+    pass
+
+
+@overload
+def throttle(*,
+             requests: int,
+             seconds: int,  # Union[int, float],
+             mode: int
+             # async_q_size: Optional[int] = None,
+             # early_count: Optional[int] = None,
+             # lb_threshold: Optional[Union[int, float]] = None
+             ) -> Callable[[F], F]:
+    pass
 
 
 def throttle(wrapped: Optional[F] = None, *,
              requests: int,
-             seconds: Union[int, float],
-             mode: int,
-             async_q_size: Optional[int] = None,
-             early_count: Optional[int] = None,
-             lb_threshold: Optional[Union[int, float]] = None
+             seconds: int,  # Union[int, float],
+             mode: int
+             # async_q_size: Optional[int] = None,
+             # early_count: Optional[int] = None,
+             # lb_threshold: Optional[Union[int, float]] = None
              ) -> F:
     """Decorator to wrap a function in a throttle to avoid exceeding a limit.
 
@@ -1051,16 +1095,16 @@ def throttle(wrapped: Optional[F] = None, *,
         return cast(F, functools.partial(throttle,
                                          requests=requests,
                                          seconds=seconds,
-                                         mode=mode,
-                                         async_q_size=async_q_size,
-                                         early_count=early_count,
-                                         lb_threshold=lb_threshold))
+                                         mode=mode))
+                                         # async_q_size=async_q_size,
+                                         # early_count=early_count,
+                                         # lb_threshold=lb_threshold))
     a_throttle = Throttle(requests=requests,
                           seconds=seconds,
-                          mode=mode,
-                          async_q_size=async_q_size,
-                          early_count=early_count,
-                          lb_threshold=lb_threshold)
+                          mode=mode)
+                          # async_q_size=async_q_size,
+                          # early_count=early_count,
+                          # lb_threshold=lb_threshold)
 
     @decorator  # type: ignore
     def wrapper(func_to_wrap: F, instance: Optional[Any],
@@ -1073,4 +1117,4 @@ def throttle(wrapped: Optional[F] = None, *,
     wrapper2 = wrapper(wrapped)
     wrapper2.throttle = a_throttle
     # return cast(F, wrapper(wrapped))
-    return wrapper2
+    return cast(F, wrapper2)

@@ -51,6 +51,8 @@ class CallerInfo(NamedTuple):
 #             raise Exception
 #         except Exception:
 #             return sys.exc_info()[2].tb_frame.f_back
+
+
 ###############################################################################
 # diag_msg
 ###############################################################################

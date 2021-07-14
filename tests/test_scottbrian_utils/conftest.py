@@ -59,18 +59,16 @@ logger = logging.getLogger(__name__)
 #
 ###############################################################################
 @pytest.fixture(autouse=True)
-def thread_exc(monkeypatch: Any) -> "ExcHook":
+def thread_exc(monkeypatch: Any) -> None:
     """Instantiate and return a ThreadExc for testing.
 
     Args:
         monkeypatch: pytest fixture used to modify code for testing
-        mock_exc: object that holds exception message
 
-    Returns:
+    Yields:
         a thread exception handler
 
     """
-
     class ExcHook:
         def __init__(self):
             self.exc_err_msg1 = ''
