@@ -10,6 +10,7 @@ import threading
 from scottbrian_utils.flower_box import print_flower_box_msg as flowers
 
 from scottbrian_utils.throttle import Throttle, throttle
+from scottbrian_utils.throttle import shutdown_decorated_functions
 from scottbrian_utils.throttle import IncorrectRequestsSpecified
 from scottbrian_utils.throttle import IncorrectSecondsSpecified
 from scottbrian_utils.throttle import IncorrectModeSpecified
@@ -1241,53 +1242,58 @@ class TestThrottle:
         #######################################################################
         for i in range(requests_arg * request_multiplier):
             rc = f0()
-            assert rc is None
+            assert rc == 0
             time.sleep(send_interval)
+
+        # f0.throttle.start_shutdown()
+        shutdown_decorated_functions(f0)
         request_validator.validate_series()  # validate for the series
-        f0.throttle.start_shutdown()
 
         for i in range(requests_arg * request_multiplier):
             rc = f1(i)
-            assert rc is None
+            assert rc == 0
             time.sleep(send_interval)
-        request_validator.validate_series()  # validate for the series
         f1.throttle.start_shutdown()
+        request_validator.validate_series()  # validate for the series
 
         for i in range(requests_arg * request_multiplier):
             rc = f2(i, requests_arg)
-            assert rc is None
+            assert rc == 0
             time.sleep(send_interval)
+        shutdown_decorated_functions(f2)
         request_validator.validate_series()  # validate for the series
-        f2.throttle.start_shutdown()
+        # f2.throttle.start_shutdown()
 
         for i in range(requests_arg * request_multiplier):
             rc = f3(idx=i)
-            assert rc is None
+            assert rc == 0
             time.sleep(send_interval)
-        request_validator.validate_series()  # validate for the series
         f3.throttle.start_shutdown()
+        request_validator.validate_series()  # validate for the series
 
         for i in range(requests_arg * request_multiplier):
             rc = f4(idx=i, seconds=seconds_arg)
-            assert rc is None
+            assert rc == 0
             time.sleep(send_interval)
+        shutdown_decorated_functions(f4)
         request_validator.validate_series()  # validate for the series
-        f4.throttle.start_shutdown()
+        # f4.throttle.start_shutdown()
 
         for i in range(requests_arg * request_multiplier):
             rc = f5(idx=i, interval=send_interval_mult_arg)
-            assert rc is None
+            assert rc == 0
             time.sleep(send_interval)
-        request_validator.validate_series()  # validate for the series
         f5.throttle.start_shutdown()
+        request_validator.validate_series()  # validate for the series
 
         for i in range(requests_arg * request_multiplier):
             rc = f6(i, requests_arg,
                     seconds=seconds_arg, interval=send_interval_mult_arg)
-            assert rc is None
+            assert rc == 0
             time.sleep(send_interval)
+        shutdown_decorated_functions(f6)
         request_validator.validate_series()  # validate for the series
-        f6.throttle.start_shutdown()
+        # f6.throttle.start_shutdown()
 
     ###########################################################################
     # test_throttle_sync
@@ -2493,7 +2499,7 @@ class TestThrottleDocstrings:
                   f'seconds')
             return arrival_time
 
-        previous_time = 0
+        previous_time = 0.0
         for i in range(10):
             previous_time = make_request(i, previous_time)
 

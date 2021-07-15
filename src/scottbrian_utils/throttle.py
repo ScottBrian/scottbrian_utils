@@ -99,11 +99,11 @@ The throttle module contains:
 import time
 import threading
 import queue
-import inspect
 
 from datetime import timedelta
 from typing import (Any, Callable, cast, Dict, Final, NamedTuple, Optional,
-                    overload, Tuple, Type, TYPE_CHECKING, TypeVar, Union)
+                    overload, Protocol, Tuple, Type, TYPE_CHECKING, TypeVar,
+                    Union)
 import functools
 from wrapt.decorators import decorator  # type: ignore
 # from scottbrian_utils.diag_msg import diag_msg
@@ -243,12 +243,11 @@ class Throttle:
                    (e.g., a callback method).
                 2) **mode=Throttle.MODE_SYNC** specifies synchonous mode.
                    For synchronous throttling, the caller may be blocked to
-                   delay the request in order to achieve the the specified
+                   delay the request in order to achieve the specified
                    number of requests per the specified number of seconds.
-                   Since the request is handled synchronously on the same
-                   thread, any return value from the request will be
-                   immediately returned to the caller when the request
-                   completes.
+                   Since the request is handled synchronously, a return
+                   value from the request will be returned to the caller
+                   when the request completes.
                 3) **mode=Throttle.MODE_SYNC_EC** specifies synchronous mode
                    using an early arrival algorithm.
                    For synchronous throttleing with the early
@@ -829,57 +828,63 @@ class Throttle:
 ###############################################################################
 # Pie Throttle Decorator
 ###############################################################################
-# @overload
-# def throttle(*,
-#              requests: int,
-#              seconds: Union[int, float],
-#              mode: int) -> Callable[[F], F]:
-#     pass
-
-# def throttle(wrapped: Optional[F] = None, *,
-#              requests: int,
-#              seconds: Union[int, float],
-#              mode: int,
-#              async_q_size: Optional[int] = None,
-#              early_count: Optional[int] = None,
-#              lb_threshold: Optional[Union[int, float]] = None
-#              ) -> F:
-
 F = TypeVar('F', bound=Callable[..., Any])
+
+###############################################################################
+# FuncWithThrottleAttr class
+###############################################################################
+class FuncWithThrottleAttr(Protocol[F]):
+    """Class to allow type checking on function with attribute."""
+    throttle: Throttle
+    __call__: F
+
+
+def add_throttle_attr(func: F) -> FuncWithThrottleAttr[F]:
+    """Wrapper to add throttle attribute to function.
+    
+    Args:
+        func: function that has the attribute added
+        
+    Returns:
+        input function with throttle attached as attribute
+            
+    """
+    func_with_throttle_attr = cast(FuncWithThrottleAttr[F], func)
+    return func_with_throttle_attr
 
 
 @overload
 def throttle(wrapped: F, *,
              requests: int,
-             seconds: int,  # Union[int, float],
+             seconds: Union[int, float],
              mode: int,
-             # async_q_size: Optional[int] = None,
-             # early_count: Optional[int] = None,
-             # lb_threshold: Optional[Union[int, float]] = None
-             ) -> F:
+             async_q_size: Optional[int] = None,
+             early_count: Optional[int] = None,
+             lb_threshold: Optional[Union[int, float]] = None
+             ) -> FuncWithThrottleAttr[F]:  # F:
     pass
 
 
 @overload
 def throttle(*,
              requests: int,
-             seconds: int,  # Union[int, float],
-             mode: int
-             # async_q_size: Optional[int] = None,
-             # early_count: Optional[int] = None,
-             # lb_threshold: Optional[Union[int, float]] = None
-             ) -> Callable[[F], F]:
+             seconds: Union[int, float],
+             mode: int,
+             async_q_size: Optional[int] = None,
+             early_count: Optional[int] = None,
+             lb_threshold: Optional[Union[int, float]] = None
+             ) -> Callable[[F], FuncWithThrottleAttr[F]]:   # Callable[[F], F]:
     pass
 
 
 def throttle(wrapped: Optional[F] = None, *,
              requests: int,
-             seconds: int,  # Union[int, float],
-             mode: int
-             # async_q_size: Optional[int] = None,
-             # early_count: Optional[int] = None,
-             # lb_threshold: Optional[Union[int, float]] = None
-             ) -> F:
+             seconds: Any,  # : Union[int, float],
+             mode: int,
+             async_q_size: Optional[Any] = None,
+             early_count: Optional[Any] = None,
+             lb_threshold: Optional[Any] = None
+             ) -> Union[F, FuncWithThrottleAttr[F]]:  # F:
     """Decorator to wrap a function in a throttle to avoid exceeding a limit.
 
     The throttle wraps code around a function that is typically used to issue
@@ -1092,19 +1097,21 @@ def throttle(wrapped: Optional[F] = None, *,
     # ========================================================================
 
     if wrapped is None:
-        return cast(F, functools.partial(throttle,
-                                         requests=requests,
-                                         seconds=seconds,
-                                         mode=mode))
-                                         # async_q_size=async_q_size,
-                                         # early_count=early_count,
-                                         # lb_threshold=lb_threshold))
+        return cast(FuncWithThrottleAttr[F],
+                    functools.partial(throttle,
+                                      requests=requests,
+                                      seconds=seconds,
+                                      mode=mode,
+                                      async_q_size=async_q_size,
+                                      early_count=early_count,
+                                      lb_threshold=lb_threshold))
+
     a_throttle = Throttle(requests=requests,
                           seconds=seconds,
-                          mode=mode)
-                          # async_q_size=async_q_size,
-                          # early_count=early_count,
-                          # lb_threshold=lb_threshold)
+                          mode=mode,
+                          async_q_size=async_q_size,
+                          early_count=early_count,
+                          lb_threshold=lb_threshold)
 
     @decorator  # type: ignore
     def wrapper(func_to_wrap: F, instance: Optional[Any],
@@ -1114,7 +1121,35 @@ def throttle(wrapped: Optional[F] = None, *,
         ret_value = a_throttle.send_request(func_to_wrap, *args, **kwargs2)
         return ret_value
 
-    wrapper2 = wrapper(wrapped)
-    wrapper2.throttle = a_throttle
-    # return cast(F, wrapper(wrapped))
-    return cast(F, wrapper2)
+    wrapper = wrapper(wrapped)
+
+    wrapper = add_throttle_attr(wrapper)
+    wrapper.throttle = a_throttle
+
+    return cast(FuncWithThrottleAttr[F], wrapper)
+
+###############################################################################
+# shutdown_decorated_functions
+###############################################################################
+def shutdown_decorated_functions(
+        *args: Tuple[FuncWithThrottleAttr, ...],
+        shutdown_type: int = Throttle.TYPE_SHUTDOWN_SOFT
+                                 ) -> None:
+    """Shutdown the throttle request scheduling for decorated functions.
+
+    Args:
+        args: one or more functions to be shutdown
+        shutdown_type: Throttle.TYPE_SHUTDOWN_SOFT or
+                         Throttle.TYPE_SHUTDOWN_HARD. A soft shutdown,
+                         the default, stops any additional requests
+                         from being queued and cleans up the request
+                         queue by scheduling any remaining requests at
+                         the interval calculated as seconds/requests. A
+                         hard shutdown stops any additional requests
+                         from being queued and cleans up the request
+                         queue by quickly removing any remaining
+                         requests without executing them.
+
+    """
+    for func in args:
+        func.throttle.start_shutdown(shutdown_type)
