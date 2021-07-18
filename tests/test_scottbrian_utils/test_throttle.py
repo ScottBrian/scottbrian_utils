@@ -3,8 +3,8 @@
 import pytest
 import math
 import time
-from typing import Any, cast, List, Tuple, Union
-
+from typing import Any, cast, List, Optional, Tuple, Union
+from dataclasses import dataclass
 import threading
 
 from scottbrian_utils.flower_box import print_flower_box_msg as flowers
@@ -23,6 +23,10 @@ from scottbrian_utils.throttle import IncorrectLbThresholdSpecified
 from scottbrian_utils.throttle import MissingLbThresholdSpecification
 from scottbrian_utils.throttle import LbThresholdNotAllowed
 from scottbrian_utils.throttle import AttemptedShutdownForSyncThrottle
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 ###############################################################################
@@ -85,6 +89,44 @@ def seconds_arg(request: Any) -> Union[int, float]:
     """
     return cast(Union[int, float], request.param)
 
+
+###############################################################################
+# timeout_arg fixture
+###############################################################################
+timeout_arg_list = [True, False]
+
+
+@pytest.fixture(params=timeout_arg_list)  # type: ignore
+def timeout_arg(request: Any) -> bool:
+    """Whether to use timeout.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+
+    """
+    return cast(bool, request.param)
+
+###############################################################################
+# sleep_delay_arg fixture
+###############################################################################
+sleep_delay_arg_list = [0.3, 0.4, 0.6, 1.1]
+
+
+@pytest.fixture(params=sleep_delay_arg_list)  # type: ignore
+def sleep_delay_arg(request: Any) -> float:
+    """Whether to use timeout.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+
+    """
+    return cast(float, request.param)
 
 ###############################################################################
 # mode_arg fixture
@@ -1237,63 +1279,118 @@ class TestThrottle:
                                         seconds=seconds,
                                         interval=interval)
 
+        request_validator.add_func_throttles(f0, f1, f2, f3, f4, f5, f6)
         #######################################################################
         # Invoke the functions
         #######################################################################
+        about_to_send_time: List[float] = []
+        after_send_time: List[float] = []
+        start_time = time.time()
         for i in range(requests_arg * request_multiplier):
+            about_to_send_time.append(time.time())
             rc = f0()
+            sent_time = time.time()
+            after_send_time.append(sent_time)
             assert rc == 0
-            time.sleep(send_interval)
+            time.sleep((start_time + (send_interval * (i+1))) - time.time())
 
         # f0.throttle.start_shutdown()
         shutdown_decorated_functions(f0)
-        request_validator.validate_series()  # validate for the series
+        request_validator.validate_series(
+            about_to_send_time=about_to_send_time,
+            after_send_time=after_send_time)  # validate
+        # for the series
 
+        about_to_send_time: List[float] = []
+        after_send_time: List[float] = []
+        start_time = time.time()
         for i in range(requests_arg * request_multiplier):
+            about_to_send_time.append(time.time())
             rc = f1(i)
+            sent_time = time.time()
+            after_send_time.append(sent_time)
             assert rc == 0
-            time.sleep(send_interval)
+            time.sleep((start_time + (send_interval * (i+1))) - time.time())
         f1.throttle.start_shutdown()
-        request_validator.validate_series()  # validate for the series
+        request_validator.validate_series(
+            about_to_send_time=about_to_send_time,
+            after_send_time=after_send_time)  # validate
 
+        about_to_send_time: List[float] = []
+        after_send_time: List[float] = []
+        start_time = time.time()
         for i in range(requests_arg * request_multiplier):
+            about_to_send_time.append(time.time())
             rc = f2(i, requests_arg)
+            sent_time = time.time()
+            after_send_time.append(sent_time)
             assert rc == 0
-            time.sleep(send_interval)
+            time.sleep((start_time + (send_interval * (i+1))) - time.time())
         shutdown_decorated_functions(f2)
-        request_validator.validate_series()  # validate for the series
-        # f2.throttle.start_shutdown()
+        request_validator.validate_series(
+            about_to_send_time=about_to_send_time,
+            after_send_time=after_send_time)  # validate
 
+        about_to_send_time: List[float] = []
+        after_send_time: List[float] = []
+        start_time = time.time()
         for i in range(requests_arg * request_multiplier):
+            about_to_send_time.append(time.time())
             rc = f3(idx=i)
+            sent_time = time.time()
+            after_send_time.append(sent_time)
             assert rc == 0
-            time.sleep(send_interval)
+            time.sleep((start_time + (send_interval * (i+1))) - time.time())
         f3.throttle.start_shutdown()
-        request_validator.validate_series()  # validate for the series
+        request_validator.validate_series(
+            about_to_send_time=about_to_send_time,
+            after_send_time=after_send_time)  # validate
 
+        about_to_send_time: List[float] = []
+        after_send_time: List[float] = []
+        start_time = time.time()
         for i in range(requests_arg * request_multiplier):
+            about_to_send_time.append(time.time())
             rc = f4(idx=i, seconds=seconds_arg)
+            sent_time = time.time()
+            after_send_time.append(sent_time)
             assert rc == 0
-            time.sleep(send_interval)
+            time.sleep((start_time + (send_interval * (i+1))) - time.time())
         shutdown_decorated_functions(f4)
-        request_validator.validate_series()  # validate for the series
-        # f4.throttle.start_shutdown()
+        request_validator.validate_series(
+            about_to_send_time=about_to_send_time,
+            after_send_time=after_send_time)  # validate
 
+        about_to_send_time: List[float] = []
+        after_send_time: List[float] = []
+        start_time = time.time()
         for i in range(requests_arg * request_multiplier):
-            rc = f5(idx=i, interval=send_interval_mult_arg)
+            about_to_send_time.append(time.time())
+            rc = f5(idx=i, interval=send_interval)
+            sent_time = time.time()
+            after_send_time.append(sent_time)
             assert rc == 0
-            time.sleep(send_interval)
+            time.sleep((start_time + (send_interval * (i+1))) - time.time())
         f5.throttle.start_shutdown()
-        request_validator.validate_series()  # validate for the series
+        request_validator.validate_series(
+            about_to_send_time=about_to_send_time,
+            after_send_time=after_send_time)  # validate
 
+        about_to_send_time: List[float] = []
+        after_send_time: List[float] = []
+        start_time = time.time()
         for i in range(requests_arg * request_multiplier):
+            about_to_send_time.append(time.time())
             rc = f6(i, requests_arg,
-                    seconds=seconds_arg, interval=send_interval_mult_arg)
+                    seconds=seconds_arg, interval=send_interval)
+            sent_time = time.time()
+            after_send_time.append(sent_time)
             assert rc == 0
-            time.sleep(send_interval)
+            time.sleep((start_time + (send_interval * (i+1))) - time.time())
         shutdown_decorated_functions(f6)
-        request_validator.validate_series()  # validate for the series
-        # f6.throttle.start_shutdown()
+        request_validator.validate_series(
+            about_to_send_time=about_to_send_time,
+            after_send_time=after_send_time)  # validate
 
     ###########################################################################
     # test_throttle_sync
@@ -1739,9 +1836,233 @@ class TestThrottle:
         assert a_var[0] == 10
 
     ###########################################################################
-    # test_throttle_shutdown
+    # test_throttle_shutdown_soft
     ###########################################################################
-    def test_throttle_shutdown(self) -> None:
+    def test_throttle_shutdown(self,
+                               requests_arg: int,
+                               seconds_arg: int,
+                               timeout_arg: int,
+                               sleep_delay_arg: float
+                               ) -> None:
+        """Method to test shutdown scenarios."""
+        def f2(b: List[int]) -> None:
+            b[0] += 1
+            logger.debug(f'f2 bumped count to {b[0]}')
+
+        num_reqs_to_make = 32
+        seconds = seconds_arg * 10
+        b_throttle1 = Throttle(requests=requests_arg,
+                               seconds=seconds,
+                               mode=Throttle.MODE_ASYNC)
+
+        b_var = [0]
+
+        interval = float(seconds)/requests_arg
+        logger.debug(f'interval = {interval}')
+
+        first_sleep_reqs = min(num_reqs_to_make,
+                               math.floor(num_reqs_to_make
+                                          * sleep_delay_arg))
+        logger.debug(f'first_sleep_reqs = {first_sleep_reqs}')
+
+        first_sleep_elapsed_seconds = (((first_sleep_reqs - 1) * interval)
+                                       + (interval/2))
+
+        remaining_reqs = num_reqs_to_make - first_sleep_reqs
+        third_reqs = math.floor(remaining_reqs/3)
+
+        first_timeout_reqs = (first_sleep_reqs + third_reqs)
+        logger.debug(f'first_timeout_reqs = {first_timeout_reqs}')
+        first_timeout_elapsed_seconds = (((first_timeout_reqs - 1) * interval)
+                                         + (interval/2))
+
+        second_sleep_reqs = (first_timeout_reqs + third_reqs)
+        logger.debug(f'second_sleep_reqs = {second_sleep_reqs}')
+        second_sleep_elapsed_seconds = (((second_sleep_reqs - 1) * interval)
+                                        + (interval / 2))
+
+        second_timeout_reqs = num_reqs_to_make
+        logger.debug(f'second_timeout_reqs = {second_timeout_reqs}')
+        second_timeout_elapsed_seconds = (((second_timeout_reqs - 1)
+                                          * interval)
+                                          + (interval / 2))
+
+        logger.debug(f'start adding requests')
+        start_time = time.time()
+        for i in range(num_reqs_to_make):
+            assert Throttle.RC_OK == b_throttle1.send_request(f2, b_var)
+
+        logger.debug('all requests added, elapsed time = '
+                     f'{time.time() - start_time} seconds')
+
+        first_sleep_end_time = (start_time + first_sleep_elapsed_seconds)
+        first_timeout_end_time = (start_time + first_timeout_elapsed_seconds)
+        second_sleep_end_time = (start_time + second_sleep_elapsed_seconds)
+        second_timeout_end_time = (start_time + second_timeout_elapsed_seconds)
+
+        #######################################################################
+        # first sleep to allow shutdown to progress
+        #######################################################################
+        logger.debug(f'first sleep for '
+                     f'{first_sleep_end_time - start_time} '
+                     'seconds')
+        time.sleep(first_sleep_end_time - time.time())
+        assert b_var[0] == first_sleep_reqs
+        logger.debug(f'first sleep complete, {first_sleep_reqs} reqs done, '
+                     f'elapsed time = {time.time() - start_time} seconds')
+
+        if timeout_arg and (third_reqs > 0):
+            ###################################################################
+            # first timeout will time out
+            ###################################################################
+            logger.debug(
+                'first timeout for '
+                f'{first_timeout_end_time - first_sleep_end_time} seconds')
+            ret_code = b_throttle1.start_shutdown(
+                timeout=(first_timeout_end_time - time.time()))
+            assert ret_code is False
+            assert b_var[0] == first_timeout_reqs
+            logger.debug(f'first timeout complete with ret_code {ret_code}, '
+                         f'{ first_timeout_reqs} reqs done, '
+                         f'elapsed time = {time.time() - start_time} seconds')
+            ###################################################################
+            # second sleep
+            ###################################################################
+            logger.debug(f'second sleep for '
+                         f'{second_sleep_end_time - first_timeout_end_time} '
+                         'seconds')
+            time.sleep(second_sleep_end_time - time.time())
+            assert b_var[0] == second_sleep_reqs
+            logger.debug(f'first sleep complete, {second_sleep_reqs} reqs '
+                         f'done, '
+                         f'elapsed time = {time.time() - start_time} seconds')
+
+            ###################################################################
+            # second timeout will succeed without time out
+            ###################################################################
+            logger.debug(
+                'second timeout for '
+                f'{second_timeout_end_time - second_sleep_end_time} seconds')
+            ret_code = b_throttle1.start_shutdown(
+                timeout=(second_timeout_end_time - time.time()))
+            assert ret_code is True
+            assert b_var[0] == second_timeout_reqs
+            logger.debug(f'second timeout complete with ret_code {ret_code}, '
+                         f'{second_timeout_reqs} reqs done, '
+                         f'elapsed time = {time.time() - start_time} seconds')
+
+        elif timeout_arg and (third_reqs == 0):
+            ###################################################################
+            # first and only timeout will succeed without time out
+            ###################################################################
+            logger.debug(
+                f'first and only timeout for {10} seconds')
+            ret_code = b_throttle1.start_shutdown(timeout=10)
+            assert ret_code is True
+            assert b_var[0] == num_reqs_to_make
+            logger.debug(f'first and only timeout complete with ret_code '
+                         f'{ret_code}, '
+                         f'{num_reqs_to_make} reqs done, '
+                         f'elapsed time = {time.time() - start_time} seconds')
+
+        else:
+            logger.debug('starting non-timeout shutdown')
+            ret_code = b_throttle1.start_shutdown()
+            assert ret_code is True
+            assert b_var[0] == num_reqs_to_make
+            logger.debug('non-timeout shutdown complete with ret_code'
+                         f' {ret_code}, '
+                         f'{num_reqs_to_make} reqs done, '
+                         f'elapsed time = {time.time() - start_time} seconds')
+
+        #######################################################################
+        # verify shutdown completed within expected time
+        #######################################################################
+        shutdown_complete_secs = time.time() - start_time
+        exp_shutdown_complete_secs = max(first_sleep_elapsed_seconds,
+                                         (interval * (num_reqs_to_make - 1)))
+
+        logger.debug('exp_shutdown_complete_secs '
+                     f'{exp_shutdown_complete_secs}')
+
+        assert ((exp_shutdown_complete_secs - 1)
+                <= shutdown_complete_secs
+                <= (exp_shutdown_complete_secs + 1))
+
+        #######################################################################
+        # the following requests should get rejected
+        #######################################################################
+        for i in range(num_reqs_to_make):
+            assert Throttle.RC_SHUTDOWN == b_throttle1.send_request(f2, b_var)
+
+    ###########################################################################
+    # test_throttle_shutdown_soft
+    ###########################################################################
+    def test_throttle_shutdown_timeout_soft(self,
+                                            requests_arg: int,
+                                            seconds_arg: int,
+                                            timeout_arg:
+                                            int
+                                            ) -> None:
+        """Method to test shutdown scenarios."""
+        #######################################################################
+        # call start_shutdown
+        #######################################################################
+        num_reqs_to_make = 32
+        b_throttle1 = Throttle(requests=requests_arg,
+                               seconds=shutdown_seconds_arg,
+                               mode=Throttle.MODE_ASYNC)
+
+        b_var = [0]
+
+        interval = float(shutdown_seconds_arg)/requests_arg
+        logger.debug(f'interval = {interval}')
+
+        def f2(b: List[int]) -> None:
+            b[0] += 1
+            logger.debug(f'f2 bumped count to {b[0]}')
+
+        start_time = time.time()
+        logger.debug(f'start_time =  {start_time}')
+        for i in range(num_reqs_to_make):
+            assert Throttle.RC_OK == b_throttle1.send_request(f2, b_var)
+
+        logger.debug('all requests made - elapsed time = '
+                     f'{time.time() - start_time}')
+
+        secs_to_sleep = ((shutdown_num_complete_arg - 1)
+                         * interval) + (interval/2)
+
+        # sleep to allow shutdown_num_complete_arg
+        sleep_secs = secs_to_sleep - (time.time() - start_time)
+        logger.debug(f'sleep_secs = {sleep_secs}')
+        time.sleep(sleep_secs)
+
+        logger.debug('start_shutdown at elapsed time '
+                     f'{time.time() - start_time}')
+        b_throttle1.start_shutdown()
+        shutdown_complete_secs = time.time() - start_time
+        logger.debug('start_shutdown finished at elapsed time '
+                     f'{shutdown_complete_secs}')
+
+        assert b_var[0] == num_reqs_to_make
+        exp_shutdown_complete_secs = interval * (num_reqs_to_make - 1)
+
+        logger.debug('exp_shutdown_complete_secs '
+                     f'{exp_shutdown_complete_secs}')
+
+        assert ((exp_shutdown_complete_secs - 1)
+                <= shutdown_complete_secs
+                <= (exp_shutdown_complete_secs + 1))
+
+        # the following requests should get rejected
+        for i in range(num_reqs_to_make):
+            assert Throttle.RC_SHUTDOWN == b_throttle1.send_request(f2, b_var)
+
+    ###########################################################################
+    # test_throttle_shutdown_hard
+    ###########################################################################
+    def test_throttle_shutdown_hard(self) -> None:
         """Method to test shutdown scenarios."""
         #######################################################################
         # call start_shutdown
@@ -1771,9 +2092,9 @@ class TestThrottle:
         assert b_var[0] == 4
 
     ###########################################################################
-    # test_pie_throttle_shutdown
+    # test_pie_throttle_shutdown_soft
     ###########################################################################
-    def test_pie_throttle_shutdown(self) -> None:
+    def test_pie_throttle_shutdown_soft(self) -> None:
         """Test shutdown processing."""
         #######################################################################
         # test 3 - shutdown events with pie throttle
@@ -1806,7 +2127,41 @@ class TestThrottle:
         # the count should not have changed
         assert c_var[0] == 4
 
+    ###########################################################################
+    # test_pie_throttle_shutdown
+    ###########################################################################
+    def test_pie_throttle_shutdown_hard(self) -> None:
+        """Test shutdown processing."""
+        #######################################################################
+        # test 3 - shutdown events with pie throttle
+        #######################################################################
+        # start_shutdown = threading.Event()
+        # shutdown_complete = threading.Event()
+        c_var = [0]
 
+        @throttle(requests=1,
+                  seconds=4,
+                  mode=Throttle.MODE_ASYNC)
+        def f3(c: List[int]) -> None:
+            c[0] += 1
+
+        for i in range(32):
+            f3(c_var)
+
+        time.sleep(14)  # allow 4 requests to be scheduled
+
+        f3.throttle.start_shutdown()
+        # start_shutdown.set()
+        # shutdown_complete.wait()
+
+        assert c_var[0] == 4
+
+        # the following requests should get ignored
+        for i in range(32):
+            f3(c_var)
+
+        # the count should not have changed
+        assert c_var[0] == 4
 ###############################################################################
 # RequestValidator class
 ###############################################################################
@@ -1839,11 +2194,28 @@ class RequestValidator:
         self.lb_threshold = lb_threshold
         self.request_mult = request_mult
         self.send_interval = send_interval
+        self.throttles: List[Throttle] = []
+        self.next_send_times: List[float] = []
         self.idx = -1
         self.req_times: List[Tuple[int, float]] = []
+
         self.normalized_times: List[float] = []
         self.normalized_intervals: List[float] = []
         self.mean_interval = 0.0
+
+        self.normalized_abts_times: List[float] = []
+        self.normalized_abts_intervals: List[float] = []
+        self.mean_abts_interval = 0.0
+
+        self.normalized_ast_times: List[float] = []
+        self.normalized_ast_intervals: List[float] = []
+        self.mean_ast_interval = 0.0
+
+        self.normalized_nst_times: List[float] = []
+        self.normalized_nst_intervals: List[float] = []
+        self.mean_nst_interval = 0.0
+
+
         # calculate parms
 
         self.total_requests = requests * request_mult
@@ -1885,27 +2257,40 @@ class RequestValidator:
         self.normalized_intervals = []
         self.mean_interval = 0.0
 
-    def validate_series(self) -> None:
+        self.normalized_abts_times = []
+        self.normalized_abts_intervals = []
+        self.mean_abts_interval = 0.0
+
+        self.normalized_ast_times = []
+        self.normalized_ast_intervals = []
+        self.mean_ast_interval = 0.0
+
+        self.next_send_times = []
+        self.normalized_nst_times = []
+        self.normalized_nst_intervals = []
+        self.mean_nst_interval = 0.0
+
+    def add_func_throttles(self, *args):
+        """Add the throttles for decorated functions to the validator.
+
+        Args:
+            args: the function that have the throttles attached as attributes
+
+        """
+        self.throttles = []
+        for func in args:
+            self.throttles.append(func.throttle)
+
+    def validate_series(self,
+                        about_to_send_time: Optional[List[float]] = None,
+                        after_send_time: Optional[List[float]] = None
+                        ) -> None:
         """Validate the requests.
 
         Raises:
             InvalidModeNum: Mode must be 1, 2, 3, or 4
 
         """
-        self.sleep_time = 0
-        # if self.mode == Throttle.MODE_ASYNC:
-        #     assert len(self.req_times) == self.total_requests
-        #     while True:
-        #         print('len(self.req_times):', len(self.req_times))
-        #         if len(self.req_times) == self.total_requests:
-        #             break
-        #         time.sleep(1)
-        #         self.sleep_time += 1
-        #         # diag_msg('len(self.req_times)', len(self.req_times),
-        #         #          'self.total_requests', self.total_requests,
-        #         #          'sleep_time:', sleep_time)
-        #         assert self.sleep_time <= math.ceil(self.exp_total_time) + 5
-
         assert len(self.req_times) == self.total_requests
         base_time = self.req_times[0][1]
         prev_time = base_time
@@ -1916,7 +2301,47 @@ class RequestValidator:
             self.normalized_intervals.append(cur_time - prev_time)
             prev_time = cur_time
 
-        self.mean_interval = self.normalized_times[-1]/(self.total_requests-1)
+        self.mean_interval = (self.normalized_times[-1]
+                              / (self.total_requests - 1))
+
+        if about_to_send_time is not None:
+            assert len(about_to_send_time) == self.total_requests
+            base_time = about_to_send_time[0]
+            prev_time = base_time
+            for send_time in about_to_send_time:
+                cur_time = send_time
+                self.normalized_abts_times.append(cur_time - base_time)
+                self.normalized_abts_intervals.append(cur_time - prev_time)
+                prev_time = cur_time
+
+        self.mean_abts_interval = (self.normalized_abts_times[-1]
+                                   / (self.total_requests - 1))
+
+        if after_send_time is not None:
+            assert len(after_send_time) == self.total_requests
+            base_time = after_send_time[0]
+            prev_time = base_time
+            for send_time in after_send_time:
+                cur_time = send_time
+                self.normalized_ast_times.append(cur_time - base_time)
+                self.normalized_ast_intervals.append(cur_time - prev_time)
+                prev_time = cur_time
+
+        self.mean_ast_interval = (self.normalized_ast_times[-1]
+                                  / (self.total_requests - 1))
+
+        if self.next_send_times:
+            assert len(self.next_send_times) == self.total_requests
+            base_time = self.next_send_times[0]
+            prev_time = base_time
+            for send_time in self.next_send_times:
+                cur_time = send_time
+                self.normalized_nst_times.append(cur_time - base_time)
+                self.normalized_nst_intervals.append(cur_time - prev_time)
+                prev_time = cur_time
+
+        self.mean_nst_interval = (self.normalized_nst_times[-1]
+                                  / (self.total_requests - 1))
 
         if ((self.mode == Throttle.MODE_ASYNC) or
                 (self.mode == Throttle.MODE_SYNC) or
@@ -1986,6 +2411,26 @@ class RequestValidator:
         # assert num_early_1pct == 0
 
         if self.target_interval < self.send_interval:
+            if num_early > 0:
+                print('\nself.normalized_abts_intervals:\n',
+                      self.normalized_abts_intervals)
+                print('\nself.mean_abts_interval='
+                      f'{self.mean_abts_interval}')
+
+                print('\nself.normalized_nst_intervals:\n',
+                      self.normalized_nst_intervals)
+                print('\nself.mean_nst_interval'
+                      f'={self.mean_nst_interval}')
+
+                print('\nself.normalized_intervals:\n',
+                      self.normalized_intervals)
+                print('\nself.mean_interval'
+                      f'={self.mean_interval}')
+
+                print('\nself.normalized_ast_intervals:\n',
+                      self.normalized_ast_intervals)
+                print('\nself.mean_ast_interval'
+                      f'={self.mean_ast_interval}')
             assert num_early == 0
 
         # assert num_late_15pct == 0
@@ -2008,8 +2453,6 @@ class RequestValidator:
 
         num_to_add = extra_exp_total_time - self.exp_total_time
         print(f'num_to_add: {num_to_add:.2f}')
-
-        print(f'sleep_time: {self.sleep_time}')
 
         print('self.max_interval:', self.max_interval)
         print('self.mean_interval:', self.mean_interval)
@@ -2395,6 +2838,7 @@ class RequestValidator:
         """Queue the callback for request0."""
         self.idx += 1
         self.req_times.append((self.idx, time.time()))
+        self.next_send_times.append(self.throttles[0].next_send_time)
 
     def callback1(self, idx: int) -> None:
         """Queue the callback for request0.
@@ -2403,6 +2847,7 @@ class RequestValidator:
             idx: index of the request call
         """
         self.req_times.append((idx, time.time()))
+        self.next_send_times.append(self.throttles[0].next_send_time)
         assert idx == self.idx + 1
         self.idx = idx
 
@@ -2414,6 +2859,7 @@ class RequestValidator:
             requests: number of requests for the throttle
         """
         self.req_times.append((idx, time.time()))
+        self.next_send_times.append(self.throttles[0].next_send_time)
         assert idx == self.idx + 1
         assert requests == self.requests
         self.idx = idx
@@ -2425,6 +2871,7 @@ class RequestValidator:
             idx: index of the request call
         """
         self.req_times.append((idx, time.time()))
+        self.next_send_times.append(self.throttles[0].next_send_time)
         assert idx == self.idx + 1
         self.idx = idx
 
@@ -2436,6 +2883,7 @@ class RequestValidator:
             seconds: number of seconds for the throttle
         """
         self.req_times.append((idx, time.time()))
+        self.next_send_times.append(self.throttles[0].next_send_time)
         assert idx == self.idx + 1
         assert seconds == self.seconds
         self.idx = idx
@@ -2451,6 +2899,7 @@ class RequestValidator:
             interval: interval between requests
         """
         self.req_times.append((idx, time.time()))
+        self.next_send_times.append(self.throttles[0].next_send_time)
         assert idx == self.idx + 1
         assert interval == self.send_interval
         self.idx = idx
@@ -2470,6 +2919,7 @@ class RequestValidator:
             interval: interval between requests
         """
         self.req_times.append((idx, time.time()))
+        self.next_send_times.append(self.throttles[0].next_send_time)
         assert idx == self.idx + 1
         assert requests == self.requests
         assert seconds == self.seconds
