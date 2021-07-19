@@ -633,15 +633,18 @@ class Throttle:
 
         Args:
             shutdown_type: specifies either Throttle.TYPE_SHUTDOWN_SOFT or
-                             Throttle.TYPE_SHUTDOWN_HARD. A soft shutdown,
-                             the default, stops any additional requests
-                             from being queued and cleans up the request
-                             queue by scheduling any remaining requests at
-                             the interval calculated as seconds/requests. A
-                             hard shutdown stops any additional requests
-                             from being queued and cleans up the request
-                             queue by quickly removing any remaining
-                             requests without executing them.
+                             Throttle.TYPE_SHUTDOWN_HARD.
+
+                             * A soft shutdown, the default, stops any
+                               additional requests from being queued and
+                               cleans up the request queue by scheduling any
+                               remaining requests at the normal interval as
+                               calculated by the seconds and requests that
+                               were specified during instantiation.
+                             * A hard shutdown stops any additional requests
+                               from being queued and cleans up the request
+                               queue by quickly removing any remaining
+                               requests without executing them.
             timeout: number of seconds to allow for shutdown to complete.
                        Note that a *timeout* of zero or less is equivalent
                        to a *timeout* of None
@@ -834,7 +837,7 @@ class Throttle:
                 continue  # no need to wait since we already did
             ###################################################################
             # Call the request function.
-            # We use try/except to log any unhandled errors.
+            # We use try/except to log and re-raise any unhandled errors.
             ###################################################################
             try:
                 if self.do_shutdown != Throttle.TYPE_SHUTDOWN_HARD:
@@ -853,10 +856,12 @@ class Throttle:
             # or less increments and bail if we detect shutdown.
             ###################################################################
             while True:
-                # If shutdown and the queue is now empty, we are done
-                if (self.do_shutdown != Throttle.TYPE_SHUTDOWN_NONE
-                        and self.async_q.empty()):
-                    return
+                # handle shutdown
+                if self.do_shutdown != Throttle.TYPE_SHUTDOWN_NONE:
+                    if self.async_q.empty():
+                        return  # we are down with shutdown
+                    if self.do_shutdown == Throttle.TYPE_SHUTDOWN_HARD:
+                        break  # don't sleep for hard shutdown
 
                 # Use min to ensure we don't sleep too long and appear
                 # slow to respond to a shutdown request
