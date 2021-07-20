@@ -4,13 +4,13 @@ import pytest
 import math
 import time
 from typing import Any, cast, List, Optional, Tuple, Union
-from dataclasses import dataclass
+from enum import Enum
 import threading
 
 from scottbrian_utils.flower_box import print_flower_box_msg as flowers
 
 from scottbrian_utils.throttle import Throttle, throttle
-from scottbrian_utils.throttle import shutdown_decorated_functions
+from scottbrian_utils.throttle import shutdown_throttle_funcs
 from scottbrian_utils.throttle import IncorrectRequestsSpecified
 from scottbrian_utils.throttle import IncorrectSecondsSpecified
 from scottbrian_utils.throttle import IncorrectModeSpecified
@@ -23,6 +23,7 @@ from scottbrian_utils.throttle import IncorrectLbThresholdSpecified
 from scottbrian_utils.throttle import MissingLbThresholdSpecification
 from scottbrian_utils.throttle import LbThresholdNotAllowed
 from scottbrian_utils.throttle import AttemptedShutdownForSyncThrottle
+from scottbrian_utils.throttle import IncorrectShutdownTypeSpecified
 
 import logging
 
@@ -49,6 +50,11 @@ class InvalidModeNum(ErrorTstThrottle):
 
 class BadRequestStyleArg(ErrorTstThrottle):
     """BadRequestStyleArg exception class."""
+    pass
+
+
+class IncorrectWhichThrottle(ErrorTstThrottle):
+    """IncorrectWhichThrottle exception class."""
     pass
 
 
@@ -91,14 +97,50 @@ def seconds_arg(request: Any) -> Union[int, float]:
 
 
 ###############################################################################
+# shutdown_requests_arg fixture
+###############################################################################
+shutdown_requests_arg_list = [1, 3]
+
+
+@pytest.fixture(params=shutdown_requests_arg_list)  # type: ignore
+def shutdown_requests_arg(request: Any) -> int:
+    """Using different requests.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+###############################################################################
+# shutdown_seconds_arg fixture
+###############################################################################
+shutdown_seconds_arg_list = [0.3, 1, 2]
+
+
+@pytest.fixture(params=shutdown_seconds_arg_list)  # type: ignore
+def shutdown_seconds_arg(request: Any) -> Union[int, float]:
+    """Using different seconds.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(Union[int, float], request.param)
+###############################################################################
 # shutdown_type_arg fixture
 ###############################################################################
-shutdown_type_arg_list = [None,
-                          Throttle.TYPE_SHUTDOWN_SOFT,
-                          Throttle.TYPE_SHUTDOWN_HARD]
+shutdown1_type_arg_list = [None,
+                           Throttle.TYPE_SHUTDOWN_SOFT,
+                           Throttle.TYPE_SHUTDOWN_HARD]
 
 
-@pytest.fixture(params=shutdown_type_arg_list)  # type: ignore
+@pytest.fixture(params=shutdown1_type_arg_list)  # type: ignore
 def shutdown1_type_arg(request: Any) -> int:
     """Using different shutdown types.
 
@@ -111,7 +153,10 @@ def shutdown1_type_arg(request: Any) -> int:
     return cast(int, request.param)
 
 
-@pytest.fixture(params=shutdown_type_arg_list)  # type: ignore
+shutdown2_type_arg_list = [Throttle.TYPE_SHUTDOWN_SOFT,
+                           Throttle.TYPE_SHUTDOWN_HARD]
+
+@pytest.fixture(params=shutdown2_type_arg_list)  # type: ignore
 def shutdown2_type_arg(request: Any) -> int:
     """Using different shutdown types.
 
@@ -161,7 +206,7 @@ def timeout2_arg(request: Any) -> bool:
 ###############################################################################
 # sleep_delay_arg fixture
 ###############################################################################
-sleep_delay_arg_list = [0.3, 0.4, 0.6, 1.1]
+sleep_delay_arg_list = [0.3, 0.6, 1.1]
 
 
 @pytest.fixture(params=sleep_delay_arg_list)  # type: ignore
@@ -176,6 +221,32 @@ def sleep_delay_arg(request: Any) -> float:
 
     """
     return cast(float, request.param)
+
+
+###############################################################################
+# which_throttle_arg fixture
+###############################################################################
+WT = Enum('WT',
+          'PieThrottleDirectShutdown '
+          'PieThrottleShutdownFuncs '
+          'NonPieThrottle')
+
+which_throttle_arg_list = [WT.PieThrottleDirectShutdown,
+                           WT.PieThrottleShutdownFuncs,
+                           WT.NonPieThrottle]
+
+
+@pytest.fixture(params=which_throttle_arg_list)  # type: ignore
+def which_throttle_arg(request: Any) -> int:
+    """Using different requests.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
 
 ###############################################################################
 # mode_arg fixture
@@ -1344,7 +1415,7 @@ class TestThrottle:
             time.sleep((start_time + (send_interval * (i+1))) - time.time())
 
         # f0.throttle.start_shutdown()
-        shutdown_decorated_functions(f0)
+        shutdown_throttle_funcs(f0)
         request_validator.validate_series(
             about_to_send_time=about_to_send_time,
             after_send_time=after_send_time)  # validate
@@ -1375,7 +1446,7 @@ class TestThrottle:
             after_send_time.append(sent_time)
             assert rc == 0
             time.sleep((start_time + (send_interval * (i+1))) - time.time())
-        shutdown_decorated_functions(f2)
+        shutdown_throttle_funcs(f2)
         request_validator.validate_series(
             about_to_send_time=about_to_send_time,
             after_send_time=after_send_time)  # validate
@@ -1405,7 +1476,7 @@ class TestThrottle:
             after_send_time.append(sent_time)
             assert rc == 0
             time.sleep((start_time + (send_interval * (i+1))) - time.time())
-        shutdown_decorated_functions(f4)
+        shutdown_throttle_funcs(f4)
         request_validator.validate_series(
             about_to_send_time=about_to_send_time,
             after_send_time=after_send_time)  # validate
@@ -1436,7 +1507,7 @@ class TestThrottle:
             after_send_time.append(sent_time)
             assert rc == 0
             time.sleep((start_time + (send_interval * (i+1))) - time.time())
-        shutdown_decorated_functions(f6)
+        shutdown_throttle_funcs(f6)
         request_validator.validate_series(
             about_to_send_time=about_to_send_time,
             after_send_time=after_send_time)  # validate
@@ -1855,13 +1926,13 @@ class TestThrottle:
     ###########################################################################
     # test_throttle_shutdown_error
     ###########################################################################
-    def test_throttle_shutdown_error(self) -> None:
+    def test_throttle_shutdown_errors(self) -> None:
         """Method to test attempted shutdown in sync mode."""
         #######################################################################
         # call start_shutdown for sync mode
         #######################################################################
         a_throttle1 = Throttle(requests=1,
-                               seconds=4,
+                               seconds=1,
                                mode=Throttle.MODE_SYNC)
 
         a_var = [0]
@@ -1874,6 +1945,9 @@ class TestThrottle:
 
         with pytest.raises(AttemptedShutdownForSyncThrottle):
             a_throttle1.start_shutdown()
+
+        with pytest.raises(IncorrectShutdownTypeSpecified):
+            a_throttle1.start_shutdown(shutdown_type=1)
 
         assert a_var[0] == 4
 
@@ -1894,19 +1968,65 @@ class TestThrottle:
                                shutdown2_type_arg: int,
                                timeout1_arg: int,
                                timeout2_arg: int,
-                               sleep_delay_arg: float
+                               sleep_delay_arg: float,
+                               which_throttle_arg: int
                                ) -> None:
-        """Method to test shutdown scenarios."""
-        def f2(b: List[int]) -> None:
+        """Method to test shutdown scenarios.
+
+        Args:
+            requests_arg: how many requests per seconds
+            seconds_arg: how many seconds between number of requests
+            shutdown1_type_arg: soft or hard shutdown for first shutdown
+            shutdown2_type_arg: soft or hard shutdown for second shutdown
+            timeout1_arg: True or False to use timeout on shutdown1
+            timeout2_arg: True or False to use timeout on shutdown2
+            sleep_delay_arg: how many requests as a ratio to total requests
+                               to allow to get scheduled go before starting
+                               shutdown
+            which_throttle_arg: 1 for the pie decorator, 2 for the send_request
+                                  style of throttle, 3 for pie call
+
+        Raises:
+            IncorrectWhichThrottle: which_throttle_arg must be 1 or 2
+
+        """
+        @throttle(requests=requests_arg,
+                  seconds=seconds_arg,
+                  mode=Throttle.MODE_ASYNC)
+        def f1(b: List[Union[int, float]]) -> None:
+            t = time.time()
+            prev_t = b[1]
+            f_interval = t - prev_t
+            f_interval_str = (time.strftime('%S',
+                                            time.localtime(f_interval))
+                              + ('%.9f' % (f_interval % 1,))[1:6])
+            b[1] = t
+            time_str = (time.strftime('%H:%M:%S', time.localtime(t))
+                        + ('%.9f' % (t % 1,))[1:6])
             b[0] += 1
-            logger.debug(f'f2 bumped count to {b[0]}')
+            logger.debug(f'f1 bumped count to {b[0]} at {time_str}, '
+                         f'interval={f_interval_str}')
+
+        def f2(b: List[Union[int, float]]) -> None:
+            t = time.time()
+            prev_t = b[1]
+            f_interval = t - prev_t
+            f_interval_str = (time.strftime('%S',
+                                            time.localtime(f_interval))
+                              + ('%.9f' % (f_interval % 1,))[1:6])
+            b[1] = t
+            time_str = (time.strftime('%H:%M:%S', time.localtime(t))
+                        + ('%.9f' % (t % 1,))[1:6])
+            b[0] += 1
+            logger.debug(f'f2 bumped count to {b[0]} at {time_str}, '
+                         f'interval={f_interval_str}')
 
         num_reqs_to_make = 32
         b_throttle1 = Throttle(requests=requests_arg,
                                seconds=seconds_arg,
                                mode=Throttle.MODE_ASYNC)
 
-        b_var = [0]
+        b_var = [0, time.time()]
         logger.debug(f'requests_arg = {requests_arg}')
         logger.debug(f'seconds_arg = {seconds_arg}')
         logger.debug(f'shutdown1_type_arg = {shutdown1_type_arg}')
@@ -1915,43 +2035,81 @@ class TestThrottle:
         logger.debug(f'timeout2_arg = {timeout2_arg}')
         logger.debug(f'sleep_delay_arg = {sleep_delay_arg}')
 
-        interval = float(seconds_arg)/requests_arg
+        interval = seconds_arg/requests_arg
         logger.debug(f'interval = {interval}')
 
-        exp_sleep1_reqs_done = min(num_reqs_to_make,
-                                   math.floor(num_reqs_to_make
-                                              * sleep_delay_arg))
+        #######################################################################
+        # calculate sleep1 times
+        #######################################################################
+        sleep1_reqs_to_do = min(num_reqs_to_make,
+                                math.floor(num_reqs_to_make
+                                           * sleep_delay_arg))
+        logger.debug(f'sleep1_reqs_to_do = {sleep1_reqs_to_do}')
+        sleep1_sleep_seconds = (((sleep1_reqs_to_do - 1) * interval)
+                                + (interval / 2))
+        logger.debug(f'sleep1_sleep_seconds = {sleep1_sleep_seconds}')
+        exp_sleep1_reqs_done = sleep1_reqs_to_do
         logger.debug(f'exp_sleep1_reqs_done = {exp_sleep1_reqs_done}')
-
         sleep1_elapsed_seconds = (((exp_sleep1_reqs_done - 1) * interval)
-                                       + (interval/2))
-        logger.debug('sleep1_elapsed_seconds = '
-                     f'{sleep1_elapsed_seconds}')
+                                  + (interval / 2))
+        logger.debug(f'sleep1_elapsed_seconds = {sleep1_elapsed_seconds}')
 
+        shutdown1_nonzero_min_time = 1.1
+        shutdown2_nonzero_min_time = 1.1
         if shutdown1_type_arg == Throttle.TYPE_SHUTDOWN_HARD:
+            shutdown1_reqs_to_do = 0
             exp_shutdown1_reqs_done = exp_sleep1_reqs_done
-            exp_shutdown1_ret_code = True 
-            exp_sleep2_reqs_done = exp_sleep1_reqs_done
-            exp_total_reqs_done = exp_sleep1_reqs_done
+            exp_shutdown1_ret_code = True
+            sleep2_reqs_to_do = 0
+            exp_sleep2_reqs_done = exp_shutdown1_reqs_done
+            shutdown2_reqs_to_do = 0
+            exp_shutdown2_reqs_done = exp_sleep2_reqs_done
+            exp_total_reqs_done = exp_shutdown2_reqs_done
         else:  # first shutdown is soft
             if timeout1_arg:  # first shutdown is soft with timeout
                 remaining_reqs = num_reqs_to_make - exp_sleep1_reqs_done
                 third_reqs = math.floor(remaining_reqs / 3)
-                exp_shutdown1_reqs_done = exp_sleep1_reqs_done + third_reqs
+                shutdown1_reqs_to_do = third_reqs
+                exp_shutdown1_reqs_done = (exp_sleep1_reqs_done
+                                           + shutdown1_reqs_to_do)
                 if remaining_reqs:
                     exp_shutdown1_ret_code = False
+                    shutdown1_nonzero_min_time = 0.01
                 else:
                     exp_shutdown1_ret_code = True
-                exp_sleep2_reqs_done = exp_shutdown1_reqs_done + third_reqs
+                sleep2_reqs_to_do = third_reqs
+                exp_sleep2_reqs_done = (exp_shutdown1_reqs_done
+                                        + sleep2_reqs_to_do)
                 if shutdown2_type_arg == Throttle.TYPE_SHUTDOWN_HARD:
-                    exp_total_reqs_done = exp_sleep2_reqs_done
+                    shutdown2_reqs_to_do = 0
+                    exp_shutdown2_reqs_done = exp_sleep2_reqs_done
+                    exp_total_reqs_done = exp_shutdown2_reqs_done
                 else:
-                    exp_total_reqs_done = num_reqs_to_make
+                    shutdown2_reqs_to_do = (num_reqs_to_make
+                                            - exp_sleep2_reqs_done)
+                    exp_shutdown2_reqs_done = (exp_sleep2_reqs_done
+                                               + shutdown2_reqs_to_do)
+                    exp_total_reqs_done = exp_shutdown2_reqs_done
             else:  # first shutdown is soft with no timeout
-                exp_shutdown1_reqs_done = num_reqs_to_make
+                shutdown1_reqs_to_do = num_reqs_to_make - exp_sleep1_reqs_done
+                exp_shutdown1_reqs_done = (exp_sleep1_reqs_done
+                                           + shutdown1_reqs_to_do)
                 exp_shutdown1_ret_code = True
-                exp_sleep2_reqs_done = num_reqs_to_make
-                exp_total_reqs_done = num_reqs_to_make
+                sleep2_reqs_to_do = 0
+                exp_sleep2_reqs_done = exp_shutdown1_reqs_done
+                shutdown2_reqs_to_do = 0
+                exp_shutdown2_reqs_done = (exp_sleep2_reqs_done
+                                           + shutdown2_reqs_to_do)
+                exp_total_reqs_done = exp_shutdown2_reqs_done
+
+        #######################################################################
+        # calculate shutdown1 times
+        #######################################################################
+        logger.debug(f'shutdown1_reqs_to_do = {shutdown1_reqs_to_do}')
+        shutdown1_timeout_seconds = ((shutdown1_reqs_to_do * interval)
+                                     + (interval / 2))
+        logger.debug('shutdown1_timeout_seconds = '
+                     f'{shutdown1_timeout_seconds}')
 
         logger.debug(f'exp_shutdown1_reqs_done = {exp_shutdown1_reqs_done}')
         shutdown1_elapsed_seconds = (((exp_shutdown1_reqs_done - 1) * interval)
@@ -1959,412 +2117,243 @@ class TestThrottle:
         logger.debug('shutdown1_elapsed_seconds = '
                      f'{shutdown1_elapsed_seconds}')
 
+        #######################################################################
+        # calculate sleep2 times
+        #######################################################################
+        logger.debug(f'sleep2_reqs_to_do = {sleep2_reqs_to_do}')
+        sleep2_sleep_seconds = ((sleep2_reqs_to_do * interval)
+                                + (interval / 2))
+        logger.debug(f'sleep2_sleep_seconds = {sleep2_sleep_seconds}')
+
         logger.debug(f'exp_sleep2_reqs_done = {exp_sleep2_reqs_done}')
         sleep2_elapsed_seconds = (((exp_sleep2_reqs_done - 1) * interval)
                                   + (interval / 2))
-        logger.debug('sleep2_elapsed_seconds = '
-                     f'{sleep2_elapsed_seconds}')
+        logger.debug(f'sleep2_elapsed_seconds = {sleep2_elapsed_seconds}')
 
-        logger.debug(f'exp_total_reqs_done = {exp_total_reqs_done}')
-        shutdown2_elapsed_seconds = (((exp_total_reqs_done - 1) * interval)
+        #######################################################################
+        # calculate shutdown2 times
+        #######################################################################
+        logger.debug(f'shutdown2_reqs_to_do = {shutdown2_reqs_to_do}')
+        shutdown2_timeout_seconds = ((shutdown2_reqs_to_do * interval)
+                                     + (interval / 2))
+        logger.debug('shutdown2_timeout_seconds = '
+                     f'{shutdown2_timeout_seconds}')
+
+        logger.debug(f'exp_shutdown2_reqs_done = {exp_shutdown2_reqs_done}')
+        shutdown2_elapsed_seconds = (((exp_shutdown2_reqs_done - 1)
+                                      * interval)
                                      + (interval / 2))
         logger.debug('shutdown2_elapsed_seconds = '
                      f'{shutdown2_elapsed_seconds}')
 
-        logger.debug(f'start adding requests')
-        start_time = time.time()
-        for i in range(num_reqs_to_make):
-            assert Throttle.RC_OK == b_throttle1.send_request(f2, b_var)
-
-        logger.debug('all requests added, elapsed time = '
-                     f'{time.time() - start_time} seconds')
-
-        sleep1_target_end_time = (start_time + sleep1_elapsed_seconds)
-        shutdown1_target_end_time = (start_time + shutdown1_elapsed_seconds)
-        sleep2_target_end_time = (start_time + sleep2_elapsed_seconds)
-        shutdown2_target_end_time = (start_time + shutdown2_elapsed_seconds)
-
         #######################################################################
-        # first sleep to allow shutdown to progress
+        # calculate end times
         #######################################################################
-        logger.debug(f'first sleep for '
-                     f'{sleep1_target_end_time - start_time} '
-                     'seconds')
-        time.sleep(sleep1_target_end_time - time.time())
-        assert b_var[0] == exp_sleep1_reqs_done
-        logger.debug(f'sleep1 complete, {exp_sleep1_reqs_done} reqs done, '
-                     f'elapsed time = {time.time() - start_time} seconds')
-
-        #######################################################################
-        # first shutdown
-        #######################################################################
-        if timeout1_arg:
-            l_msg = (f' with timeout for '
-                     f'{shutdown1_target_end_time - sleep1_target_end_time} '
-                     'seconds')
-        else:
-            l_msg = ''
-        logger.debug(f'starting shutdown1 {l_msg}')
-
-        if timeout1_arg:
-            if shutdown1_type_arg:
-                ret_code = b_throttle1.start_shutdown(
-                    shutdown_type=shutdown1_type_arg,
-                    timeout=max(1.1,
-                                shutdown1_target_end_time - time.time()
-                                ))
-            else:
-                ret_code = b_throttle1.start_shutdown(
-                    timeout=max(1.1,
-                                shutdown1_target_end_time - time.time()
-                                ))
-        else:
-            if shutdown1_type_arg:
-                ret_code = b_throttle1.start_shutdown(
-                    shutdown_type=shutdown1_type_arg)
-            else:
-                ret_code = b_throttle1.start_shutdown()
-
-        assert b_var[0] == exp_shutdown1_reqs_done
-        assert ret_code is exp_shutdown1_ret_code
-
-        logger.debug(f'shutdown1 complete with ret_code {ret_code}, '
-                     f'{ exp_shutdown1_reqs_done} reqs done, '
-                     f'elapsed time = {time.time() - start_time} seconds')
-
-        #######################################################################
-        # second sleep
-        #######################################################################
-        logger.debug(f'sleep2 for '
-                     f'{sleep2_target_end_time - shutdown1_target_end_time} '
-                     'seconds')
-        time.sleep(max(0, sleep2_target_end_time - time.time()))
-        assert b_var[0] == exp_sleep2_reqs_done
-        logger.debug(f'sleep1 complete, {exp_sleep2_reqs_done} reqs done, '
-                     f'elapsed time = {time.time() - start_time} seconds')
-
-        #######################################################################
-        # second shutdown will succeed with or without time out
-        #######################################################################
-        if timeout2_arg:
-            l_msg = (f' with timeout for '
-                     f'{shutdown2_target_end_time - sleep2_target_end_time} '
-                     'seconds')
-        else:
-            l_msg = ''
-        logger.debug(f'starting shutdown2 {l_msg}')
-
-        if timeout2_arg:
-            if shutdown2_type_arg:
-                ret_code = b_throttle1.start_shutdown(
-                    shutdown_type=shutdown2_type_arg,
-                    timeout=max(1.1,
-                                shutdown2_target_end_time - time.time()
-                                ))
-            else:
-                ret_code = b_throttle1.start_shutdown(
-                    timeout=max(1.1,
-                                shutdown2_target_end_time - time.time()
-                                ))
-        else:
-            if shutdown2_type_arg:
-                ret_code = b_throttle1.start_shutdown(
-                    shutdown_type=shutdown2_type_arg)
-            else:
-                ret_code = b_throttle1.start_shutdown()
-        shutdown_complete_secs = time.time() - start_time
-
-        assert b_var[0] == exp_total_reqs_done
-        assert ret_code is True
-
-        logger.debug(f'shutdown2 complete with ret_code {ret_code}, '
-                     f'{exp_total_reqs_done} reqs done, '
-                     f'elapsed time = {time.time() - start_time} seconds')
-
-        #######################################################################
-        # verify shutdown completed within expected time
-        #######################################################################
-        exp_shutdown_complete_secs = interval * (exp_total_reqs_done - 1)
-
-
-        logger.debug('exp_shutdown_complete_secs '
-                     f'{exp_shutdown_complete_secs}')
-
-        assert (exp_shutdown_complete_secs
-                <= shutdown_complete_secs
-                <= (exp_shutdown_complete_secs + 2.5))
-
-        #######################################################################
-        # the following requests should get rejected
-        #######################################################################
-        for i in range(num_reqs_to_make):
-            assert Throttle.RC_SHUTDOWN == b_throttle1.send_request(f2, b_var)
-
-    ###########################################################################
-    # test_throttle_shutdown_soft
-    ###########################################################################
-    def test_throttle_shutdown_bak(self,
-            requests_arg: int,
-            seconds_arg: int,
-            shutdown_type_arg: int,
-            timeout_arg: int,
-            sleep_delay_arg: float
-    ) -> None:
-        """Method to test shutdown scenarios."""
-
-        def f2(b: List[int]) -> None:
-            b[0] += 1
-            logger.debug(f'f2 bumped count to {b[0]}')
-
-        num_reqs_to_make = 32
-        b_throttle1 = Throttle(requests=requests_arg,
-                               seconds=seconds_arg,
-                               mode=Throttle.MODE_ASYNC)
-
-        b_var = [0]
-        logger.debug(f'requests_arg = {requests_arg}')
-        logger.debug(f'seconds_arg = {seconds_arg}')
-        logger.debug(f'shutdown_type_arg = {shutdown_type_arg}')
-        logger.debug(f'timeout_arg = {timeout_arg}')
-        logger.debug(f'sleep_delay_arg = {sleep_delay_arg}')
-
-        interval = float(seconds_arg) / requests_arg
-        logger.debug(f'interval = {interval}')
-
-        exp_sleep1_reqs_done = min(num_reqs_to_make,
-                               math.floor(num_reqs_to_make
-                                          * sleep_delay_arg))
-        logger.debug(f'exp_sleep1_reqs_done = {exp_sleep1_reqs_done}')
-
-        sleep1_elapsed_seconds = (((exp_sleep1_reqs_done - 1) * interval)
-                                       + (interval / 2))
-        logger.debug('sleep1_elapsed_seconds = '
-                     f'{sleep1_elapsed_seconds}')
-
-        remaining_reqs = num_reqs_to_make - exp_sleep1_reqs_done
-        third_reqs = math.floor(remaining_reqs / 3)
-
-        exp_shutdown1_reqs_done = (exp_sleep1_reqs_done + third_reqs)
-        logger.debug(f'exp_shutdown1_reqs_done = {exp_shutdown1_reqs_done}')
-        shutdown1_elapsed_seconds = (((exp_shutdown1_reqs_done - 1) * interval)
-                                         + (interval / 2))
-
-        exp_sleep2_reqs_done = (exp_shutdown1_reqs_done + third_reqs)
-        logger.debug(f'exp_sleep2_reqs_done = {exp_sleep2_reqs_done}')
-        sleep2_elapsed_seconds = (((exp_sleep2_reqs_done - 1) * interval)
-                                        + (interval / 2))
-
-        second_timeout_reqs = num_reqs_to_make
-        logger.debug(f'second_timeout_reqs = {second_timeout_reqs}')
-        shutdown2_elapsed_seconds = (((second_timeout_reqs - 1)
-                                           * interval)
-                                          + (interval / 2))
+        logger.debug(f'total_reqs_to_do = {exp_total_reqs_done}')
+        total_reqs_elapsed_seconds = (exp_total_reqs_done - 1) * interval
+        logger.debug('total_reqs_elapsed_seconds = '
+                     f'{total_reqs_elapsed_seconds}')
 
         logger.debug(f'start adding requests')
         start_time = time.time()
-        for i in range(num_reqs_to_make):
-            assert Throttle.RC_OK == b_throttle1.send_request(f2, b_var)
-
-        logger.debug('all requests added, elapsed time = '
-                     f'{time.time() - start_time} seconds')
-
-        sleep1_target_end_time = (start_time + sleep1_elapsed_seconds)
-        shutdown1_target_end_time = (start_time + shutdown1_elapsed_seconds)
-        sleep2_target_end_time = (start_time + sleep2_elapsed_seconds)
-        shutdown2_target_end_time = (start_time + shutdown2_elapsed_seconds)
-
         #######################################################################
-        # first sleep to allow shutdown to progress
+        # We need a try/finally to make sure we can shutdown the throttle
+        # in the event that an assert fails. Before this, there were test
+        # cases failing and leaving the throttle active with its requests
+        # showing up in the next test case logs.
         #######################################################################
-        logger.debug(f'first sleep for '
-                     f'{sleep1_target_end_time - start_time} '
-                     'seconds')
-        time.sleep(sleep1_target_end_time - time.time())
-        assert b_var[0] == exp_sleep1_reqs_done
-        logger.debug(f'first sleep complete, {exp_sleep1_reqs_done} reqs done, '
-                     f'elapsed time = {time.time() - start_time} seconds')
+        try:
+            if (which_throttle_arg == WT.PieThrottleDirectShutdown
+                    or which_throttle_arg == WT.PieThrottleShutdownFuncs):
+                for i in range(num_reqs_to_make):
+                    assert Throttle.RC_OK == f1(b_var)
+            elif which_throttle_arg == WT.NonPieThrottle:
+                for i in range(num_reqs_to_make):
+                    assert Throttle.RC_OK == b_throttle1.send_request(f2,
+                                                                      b_var)
+            else:
+                raise IncorrectWhichThrottle('which_throttle must be 1 or 2')
 
-        if timeout_arg and (third_reqs > 0):
+            logger.debug('all requests added, elapsed time = '
+                         f'{time.time() - start_time} seconds')
+
             ###################################################################
-            # first timeout will time out
+            # first sleep to allow shutdown to progress
             ###################################################################
-            logger.debug(
-                'first timeout for '
-                f'{shutdown1_target_end_time - sleep1_target_end_time} seconds')
-            ret_code = b_throttle1.start_shutdown(
-                timeout=(shutdown1_target_end_time - time.time()))
-            assert ret_code is False
-            assert b_var[0] == exp_shutdown1_reqs_done
-            logger.debug(f'first timeout complete with ret_code {ret_code}, '
-                         f'{exp_shutdown1_reqs_done} reqs done, '
+            logger.debug(f'first sleep for {sleep1_sleep_seconds} seconds')
+            sleep1_target_end_time = (start_time + sleep1_sleep_seconds)
+            time.sleep(max(0, sleep1_target_end_time - time.time()))
+            sleep1_reqs_time = b_var
+            logger.debug(f'sleep1 complete, {sleep1_reqs_time[0]} reqs done, '
                          f'elapsed time = {time.time() - start_time} seconds')
+            assert sleep1_reqs_time[0] == exp_sleep1_reqs_done
+
+            ###################################################################
+            # first shutdown
+            ###################################################################
+            if timeout1_arg:
+                l_msg = (f' with timeout for {shutdown1_timeout_seconds} '
+                         'seconds')
+            else:
+                l_msg = ''
+            logger.debug(f'starting shutdown1 {l_msg}')
+
+            if timeout1_arg:
+                shutdown1_target_end_time = (sleep1_reqs_time[1]
+                                             + shutdown1_timeout_seconds)
+                if shutdown1_type_arg:
+                    if which_throttle_arg == WT.PieThrottleDirectShutdown:
+                        ret_code = f1.throttle.start_shutdown(
+                            shutdown_type=shutdown1_type_arg,
+                            timeout=max(shutdown1_nonzero_min_time,
+                                        shutdown1_target_end_time - time.time()
+                                        ))
+                    elif which_throttle_arg == WT.PieThrottleShutdownFuncs:
+                        ret_code = shutdown_throttle_funcs(
+                            f1,
+                            shutdown_type=shutdown1_type_arg,
+                            timeout=max(shutdown1_nonzero_min_time,
+                                        shutdown1_target_end_time - time.time()
+                                        ))
+                    else:
+                        ret_code = b_throttle1.start_shutdown(
+                            shutdown_type=shutdown1_type_arg,
+                            timeout=max(shutdown1_nonzero_min_time,
+                                        shutdown1_target_end_time - time.time()
+                                        ))
+                else:
+                    if which_throttle_arg == WT.PieThrottleDirectShutdown:
+                        ret_code = f1.throttle.start_shutdown(
+                            timeout=max(shutdown1_nonzero_min_time,
+                                        shutdown1_target_end_time - time.time()
+                                        ))
+                    elif which_throttle_arg == WT.PieThrottleShutdownFuncs:
+                        ret_code = shutdown_throttle_funcs(
+                            f1,
+                            timeout=max(shutdown1_nonzero_min_time,
+                                        shutdown1_target_end_time - time.time()
+                                        ))
+                    else:
+                        ret_code = b_throttle1.start_shutdown(
+                            timeout=max(shutdown1_nonzero_min_time,
+                                        shutdown1_target_end_time - time.time()
+                                        ))
+            else:
+                if shutdown1_type_arg:
+                    if which_throttle_arg == WT.PieThrottleDirectShutdown:
+                        ret_code = f1.throttle.start_shutdown(
+                            shutdown_type=shutdown1_type_arg)
+                    elif which_throttle_arg == WT.PieThrottleShutdownFuncs:
+                        ret_code = shutdown_throttle_funcs(
+                            f1,
+                            shutdown_type=shutdown1_type_arg)
+                    else:
+                        ret_code = b_throttle1.start_shutdown(
+                            shutdown_type=shutdown1_type_arg)
+
+                else:
+                    if which_throttle_arg == WT.PieThrottleDirectShutdown:
+                        ret_code = f1.throttle.start_shutdown()
+                    elif which_throttle_arg == WT.PieThrottleShutdownFuncs:
+                        ret_code = shutdown_throttle_funcs(f1)
+                    else:
+                        ret_code = b_throttle1.start_shutdown()
+
+            shutdown1_reqs_time = b_var
+            logger.debug(f'shutdown1 complete with ret_code {ret_code}, '
+                         f'{shutdown1_reqs_time[0]} reqs done, '
+                         f'elapsed time = {time.time() - start_time} seconds')
+            assert shutdown1_reqs_time[0] == exp_shutdown1_reqs_done
+            assert ret_code is exp_shutdown1_ret_code
+
             ###################################################################
             # second sleep
             ###################################################################
-            logger.debug(f'second sleep for '
-                         f'{sleep2_target_end_time - shutdown1_target_end_time} '
+            logger.debug(f'sleep2 for {sleep2_sleep_seconds} seconds')
+
+            sleep2_target_end_time = (shutdown1_reqs_time[1]
+                                      + sleep2_sleep_seconds)
+
+            time.sleep(max(0, sleep2_target_end_time - time.time()))
+            sleep2_reqs_time = b_var
+            logger.debug(f'sleep2 complete, {sleep2_reqs_time[0]} reqs done, '
+                         f'elapsed time = {time.time() - start_time} seconds')
+            assert sleep2_reqs_time[0] == exp_sleep2_reqs_done
+
+            ###################################################################
+            # second shutdown will succeed with or without time out
+            ###################################################################
+            if timeout2_arg:
+                l_msg = (f' with timeout for {shutdown2_timeout_seconds} '
                          'seconds')
-            time.sleep(sleep2_target_end_time - time.time())
-            assert b_var[0] == exp_sleep2_reqs_done
-            logger.debug(f'first sleep complete, {exp_sleep2_reqs_done} reqs '
-                         f'done, '
-                         f'elapsed time = {time.time() - start_time} seconds')
+            else:
+                l_msg = ''
+            logger.debug(f'starting shutdown2 {l_msg}')
 
-            ###################################################################
-            # second timeout will succeed without time out
-            ###################################################################
-            logger.debug(
-                'second timeout for '
-                f'{shutdown2_target_end_time - sleep2_target_end_time} seconds')
-            ret_code = b_throttle1.start_shutdown(
-                timeout=(shutdown2_target_end_time - time.time()))
+            if timeout2_arg:
+                shutdown2_target_end_time = (sleep2_reqs_time[1]
+                                             + shutdown2_timeout_seconds)
+
+                if which_throttle_arg == WT.PieThrottleDirectShutdown:
+                    ret_code = f1.throttle.start_shutdown(
+                        shutdown_type=shutdown2_type_arg,
+                        timeout=max(shutdown2_nonzero_min_time,
+                                    shutdown2_target_end_time - time.time()
+                                    ))
+                elif which_throttle_arg == WT.PieThrottleShutdownFuncs:
+                    ret_code = shutdown_throttle_funcs(
+                        f1,
+                        shutdown_type=shutdown2_type_arg,
+                        timeout=max(shutdown2_nonzero_min_time,
+                                    shutdown2_target_end_time - time.time()
+                                    ))
+                else:
+                    ret_code = b_throttle1.start_shutdown(
+                        shutdown_type=shutdown2_type_arg,
+                        timeout=max(shutdown2_nonzero_min_time,
+                                    shutdown2_target_end_time - time.time()
+                                    ))
+
+            else:
+                if which_throttle_arg == WT.PieThrottleDirectShutdown:
+                    ret_code = f1.throttle.start_shutdown(
+                        shutdown_type=shutdown2_type_arg)
+                elif which_throttle_arg == WT.PieThrottleShutdownFuncs:
+                    ret_code = shutdown_throttle_funcs(
+                        f1,
+                        shutdown_type=shutdown2_type_arg)
+                else:
+                    ret_code = b_throttle1.start_shutdown(
+                        shutdown_type=shutdown2_type_arg)
+
             shutdown_complete_secs = time.time() - start_time
-            assert ret_code is True
-            assert b_var[0] == second_timeout_reqs
-            logger.debug(f'second timeout complete with ret_code {ret_code}, '
-                         f'{second_timeout_reqs} reqs done, '
+            shutdown2_reqs_time = b_var
+            logger.debug(f'shutdown2 complete with ret_code {ret_code}, '
+                         f'{shutdown2_reqs_time[0]} reqs done, '
                          f'elapsed time = {time.time() - start_time} seconds')
+            assert shutdown2_reqs_time[0] == exp_total_reqs_done
+            assert ret_code is True
 
-        elif timeout_arg and (third_reqs == 0):
             ###################################################################
-            # first and only timeout will succeed without time out
+            # verify shutdown completed within expected time
             ###################################################################
-            logger.debug(
-                f'first and only timeout for {10} seconds')
-            ret_code = b_throttle1.start_shutdown(timeout=10)
-            shutdown_complete_secs = time.time() - start_time
-            assert ret_code is True
-            assert b_var[0] == num_reqs_to_make
-            logger.debug(f'first and only timeout complete with ret_code '
-                         f'{ret_code}, '
-                         f'{num_reqs_to_make} reqs done, '
-                         f'elapsed time = {time.time() - start_time} seconds')
+            exp_shutdown_complete_secs = interval * (exp_total_reqs_done - 1)
 
-        else:
-            logger.debug('starting non-timeout shutdown')
-            ret_code = b_throttle1.start_shutdown()
-            shutdown_complete_secs = time.time() - start_time
-            assert ret_code is True
-            assert b_var[0] == num_reqs_to_make
-            logger.debug('non-timeout shutdown complete with ret_code'
-                         f' {ret_code}, '
-                         f'{num_reqs_to_make} reqs done, '
-                         f'elapsed time = {time.time() - start_time} seconds')
+            logger.debug('exp_shutdown_complete_secs '
+                         f'{exp_shutdown_complete_secs}')
 
-        #######################################################################
-        # verify shutdown completed within expected time
-        #######################################################################
-        exp_shutdown_complete_secs = max(sleep1_elapsed_seconds,
-                                         (interval * (num_reqs_to_make - 1)))
-
-        logger.debug('exp_shutdown_complete_secs '
-                     f'{exp_shutdown_complete_secs}')
-
-        assert ((exp_shutdown_complete_secs)
-                <= shutdown_complete_secs
-                <= (exp_shutdown_complete_secs + 1.5))
+            assert (exp_shutdown_complete_secs
+                    <= shutdown_complete_secs
+                    <= (exp_shutdown_complete_secs + 2.5))
+        finally:
+            logger.debug('final shutdown to ensure throttle is closed')
+            b_throttle1.start_shutdown()
 
         #######################################################################
         # the following requests should get rejected
         #######################################################################
         for i in range(num_reqs_to_make):
             assert Throttle.RC_SHUTDOWN == b_throttle1.send_request(f2, b_var)
-
-    ###########################################################################
-    # test_throttle_shutdown_soft
-    ###########################################################################
-    def test_throttle_shutdown_timeout_soft(self,
-                                            requests_arg: int,
-                                            seconds_arg: int,
-                                            timeout_arg:
-                                            int
-                                            ) -> None:
-        """Method to test shutdown scenarios."""
-        #######################################################################
-        # call start_shutdown
-        #######################################################################
-        num_reqs_to_make = 32
-        b_throttle1 = Throttle(requests=requests_arg,
-                               seconds=shutdown_seconds_arg,
-                               mode=Throttle.MODE_ASYNC)
-
-        b_var = [0]
-
-        interval = float(shutdown_seconds_arg)/requests_arg
-        logger.debug(f'interval = {interval}')
-
-        def f2(b: List[int]) -> None:
-            b[0] += 1
-            logger.debug(f'f2 bumped count to {b[0]}')
-
-        start_time = time.time()
-        logger.debug(f'start_time =  {start_time}')
-        for i in range(num_reqs_to_make):
-            assert Throttle.RC_OK == b_throttle1.send_request(f2, b_var)
-
-        logger.debug('all requests made - elapsed time = '
-                     f'{time.time() - start_time}')
-
-        secs_to_sleep = ((shutdown_num_complete_arg - 1)
-                         * interval) + (interval/2)
-
-        # sleep to allow shutdown_num_complete_arg
-        sleep_secs = secs_to_sleep - (time.time() - start_time)
-        logger.debug(f'sleep_secs = {sleep_secs}')
-        time.sleep(sleep_secs)
-
-        logger.debug('start_shutdown at elapsed time '
-                     f'{time.time() - start_time}')
-        b_throttle1.start_shutdown()
-        shutdown_complete_secs = time.time() - start_time
-        logger.debug('start_shutdown finished at elapsed time '
-                     f'{shutdown_complete_secs}')
-
-        assert b_var[0] == num_reqs_to_make
-        exp_shutdown_complete_secs = interval * (num_reqs_to_make - 1)
-
-        logger.debug('exp_shutdown_complete_secs '
-                     f'{exp_shutdown_complete_secs}')
-
-        assert ((exp_shutdown_complete_secs - 1)
-                <= shutdown_complete_secs
-                <= (exp_shutdown_complete_secs + 1))
-
-        # the following requests should get rejected
-        for i in range(num_reqs_to_make):
-            assert Throttle.RC_SHUTDOWN == b_throttle1.send_request(f2, b_var)
-
-    ###########################################################################
-    # test_throttle_shutdown_hard
-    ###########################################################################
-    def test_throttle_shutdown_hard(self) -> None:
-        """Method to test shutdown scenarios."""
-        #######################################################################
-        # call start_shutdown
-        #######################################################################
-        b_throttle1 = Throttle(requests=1,
-                               seconds=4,
-                               mode=Throttle.MODE_ASYNC)
-
-        b_var = [0]
-
-        def f2(b: List[int]) -> None:
-            b[0] += 1
-
-        for i in range(32):
-            b_throttle1.send_request(f2, b_var)
-
-        time.sleep(14)  # allow 4 requests to be scheduled
-        b_throttle1.start_shutdown()
-
-        assert b_var[0] == 4
-
-        # the following requests should get ignored
-        for i in range(32):
-            b_throttle1.send_request(f2, b_var)
-
-        # the count should not have changed
-        assert b_var[0] == 4
 
     ###########################################################################
     # test_pie_throttle_shutdown_soft
@@ -2437,6 +2426,8 @@ class TestThrottle:
 
         # the count should not have changed
         assert c_var[0] == 4
+
+
 ###############################################################################
 # RequestValidator class
 ###############################################################################

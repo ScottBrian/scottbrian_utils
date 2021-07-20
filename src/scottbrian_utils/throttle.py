@@ -631,23 +631,34 @@ class Throttle:
                        ) -> bool:
         """Shutdown the throttle request scheduling.
 
-        Args:
-            shutdown_type: specifies either Throttle.TYPE_SHUTDOWN_SOFT or
-                             Throttle.TYPE_SHUTDOWN_HARD.
+        Shutdown is used to clean up the request queue and bring the
+        throttle to a halt. This should be down during normal application
+        shutdown or when an error occurs. Once the throttle has completed
+        shutdown it can no longer be used. If a throttle is once again needed
+        after shutdown, a new one will need to be instantiated to
+        replace the old one.
 
-                             * A soft shutdown, the default, stops any
-                               additional requests from being queued and
-                               cleans up the request queue by scheduling any
-                               remaining requests at the normal interval as
-                               calculated by the seconds and requests that
-                               were specified during instantiation.
-                             * A hard shutdown stops any additional requests
-                               from being queued and cleans up the request
-                               queue by quickly removing any remaining
-                               requests without executing them.
+        Args:
+            shutdown_type: specifies whether to do a soft or a hard
+                             shutdown:
+
+                             * A soft shutdown (Throttle.TYPE_SHUTDOWN_SOFT),
+                               the default, stops any additional requests from
+                               being queued and cleans up the request queue by
+                               scheduling any remaining requests at the normal
+                               interval as calculated by the seconds and
+                               requests that were specified during
+                               instantiation.
+                             * A hard shutdown (Throttle.TYPE_SHUTDOWN_HARD)
+                               stops any additional requests from being queued
+                               and cleans up the request queue by quickly
+                               removing any remaining requests without
+                               executing them.
             timeout: number of seconds to allow for shutdown to complete.
                        Note that a *timeout* of zero or less is equivalent
-                       to a *timeout* of None
+                       to a *timeout* of None, meaning start_shutdown will
+                       return when the shutdown is complete without a
+                       timeout.
 
         Returns:
             * ``True`` if *timeout* was not specified, or if it was specified
@@ -670,7 +681,7 @@ class Throttle:
         if shutdown_type not in (Throttle.TYPE_SHUTDOWN_SOFT,
                                  Throttle.TYPE_SHUTDOWN_HARD):
             raise IncorrectShutdownTypeSpecified(
-                'For start_shutdowm, shutdownType must be specified as '
+                'For start_shutdown, shutdownType must be specified as '
                 'either Throttle.TYPE_SHUTDOWN_SOFT or '
                 'Throttle.TYPE_SHUTDOWN_HARD')
         if self.mode != Throttle.MODE_ASYNC:
@@ -689,20 +700,19 @@ class Throttle:
         with self.shutdown_lock:
             self.do_shutdown = shutdown_type
 
-        # determine the timeout value to use on the join request
-        if timeout and (timeout > 0):
-            t_out = min(0.1, timeout)
-        else:
-            t_out = 0.1
-
+        # join the schedule_requests thread to wait for the shutdown
         start_time = time.time()
-        # shutdown is complete when the scheduler thread finishes
-        while self.request_scheduler_thread.is_alive():
-            self.request_scheduler_thread.join(timeout=t_out)  # type: ignore
-            if timeout and (timeout < (time.time() - start_time)):
+        if timeout and (timeout > 0):
+            self.request_scheduler_thread.join(timeout=timeout)  # type: ignore
+            if self.request_scheduler_thread.is_alive():
                 self.logger.debug('timeout of a start_shutdown() request '
                                   f'with timeout={timeout}')
-                return False  # shutdown timed out
+                return False  # we timed out
+        else:
+            self.request_scheduler_thread.join()  # type: ignore
+
+        self.logger.debug('start_shutdown() request successfully completed '
+                          f'in {time.time()- start_time} seconds')
 
         return True  # shutdown was successful
 
@@ -1175,28 +1185,92 @@ def throttle(wrapped: Optional[F] = None, *,
 
     return cast(FuncWithThrottleAttr[F], wrapper)
 
+
 ###############################################################################
-# shutdown_decorated_functions
+# shutdown_throttle_funcs
 ###############################################################################
-def shutdown_decorated_functions(
+def shutdown_throttle_funcs(
         *args: Tuple[FuncWithThrottleAttr, ...],
-        shutdown_type: int = Throttle.TYPE_SHUTDOWN_SOFT
-                                 ) -> None:
+        shutdown_type: int = Throttle.TYPE_SHUTDOWN_SOFT,
+        timeout: Optional[Union[int, float]] = None
+                            ) -> bool:
     """Shutdown the throttle request scheduling for decorated functions.
+
+    The shutdown_throttle_funcs function is used to shutdown one or more
+    function that were decorated with the throttle. The arguments apply to
+    each of the functions that are specified to be shutdown. If timeout is
+    specified, then True is returned iff all functions shutdown within the
+    timeout number of second specified.
 
     Args:
         args: one or more functions to be shutdown
-        shutdown_type: Throttle.TYPE_SHUTDOWN_SOFT or
-                         Throttle.TYPE_SHUTDOWN_HARD. A soft shutdown,
-                         the default, stops any additional requests
-                         from being queued and cleans up the request
-                         queue by scheduling any remaining requests at
-                         the interval calculated as seconds/requests. A
-                         hard shutdown stops any additional requests
-                         from being queued and cleans up the request
-                         queue by quickly removing any remaining
-                         requests without executing them.
+        shutdown_type: specifies whether to do a soft or a hard
+                         shutdown:
+
+                         * A soft shutdown (Throttle.TYPE_SHUTDOWN_SOFT),
+                           the default, stops any additional requests from
+                           being queued and cleans up the request queue by
+                           scheduling any remaining requests at the normal
+                           interval as calculated by the seconds and
+                           requests that were specified during
+                           instantiation.
+                         * A hard shutdown (Throttle.TYPE_SHUTDOWN_HARD)
+                           stops any additional requests from being queued
+                           and cleans up the request queue by quickly
+                           removing any remaining requests without
+                           executing them.
+        timeout: number of seconds to allow for shutdown to complete for
+                   all of the functions specified to be shutdown.
+                   Note that a *timeout* of zero or less is equivalent
+                   to a *timeout* of None, meaning start_shutdown will
+                   return when the shutdown is complete without a
+                   timeout.
+
+        Returns:
+            * ``True`` if *timeout* was not specified, or if it was specified
+              and all of the specified functions completed shutdown within the
+              specified number of seconds.
+            * ``False`` if *timeout* was specified and at least one of the
+              functions specified to shutdown did not complete within the
+              specified number of seconds.
 
     """
+    start_time = time.time()  # clock starts now
+
+    ###########################################################################
+    # handle one function case
+    ###########################################################################
+    if len(args) == 1:  # if only one function
+        return args[0].throttle.start_shutdown(shutdown_type=shutdown_type,
+                                               timeout=timeout)
+
+    ###########################################################################
+    # get all of the shutdowns started
+    ###########################################################################
     for func in args:
-        func.throttle.start_shutdown(shutdown_type)
+        func.throttle.start_shutdown(
+            shutdown_type=shutdown_type,
+            timeout=0.01)
+
+    ###########################################################################
+    # start checking them for completion
+    ###########################################################################
+    funcs = list(args)  # we will subtract the ones that are done as we go
+    # Note that we will never leave the following loop if timeout was not
+    # specified and at least one function shutdown fails to complete
+    while True:
+        for idx, func in enumerate(funcs):
+            ret_code = func.throttle.start_shutdown(
+                shutdown_type=shutdown_type,
+                timeout=0.01)
+            if ret_code:  # if shutdown complete
+                funcs.pop(idx)  # one less function to check
+                break  # start loop over since we modified funcs list
+
+        if not funcs:  # if all shutdowns are complete
+            return True
+
+        if (timeout
+                and (timeout > 0)
+                and (timeout < (time.time() - start_time))):
+            return False  # we timed out
