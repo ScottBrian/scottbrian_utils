@@ -524,6 +524,7 @@ class Throttle:
         self.async_q = None
         self.request_scheduler_thread = None
         self.logger = logging.getLogger(__name__)
+        self.num_shutdown_timeouts = 0  # used to limit timeout log messages
 
         if mode == Throttle.MODE_ASYNC:
             self.async_q = queue.Queue(maxsize=self.async_q_size)
@@ -705,8 +706,13 @@ class Throttle:
         if timeout and (timeout > 0):
             self.request_scheduler_thread.join(timeout=timeout)  # type: ignore
             if self.request_scheduler_thread.is_alive():
-                self.logger.debug('timeout of a start_shutdown() request '
-                                  f'with timeout={timeout}')
+                self.num_shutdown_timeouts += 1
+                if ((self.num_shutdown_timeouts % 1000 == 0)
+                        or (timeout > 10)):
+                    self.logger.debug('timeout of a start_shutdown() request '
+                                      f'{self.num_shutdown_timeouts} '
+                                      f'with timeout={timeout}')
+
                 return False  # we timed out
         else:
             self.request_scheduler_thread.join()  # type: ignore
@@ -1235,17 +1241,9 @@ def shutdown_throttle_funcs(
               specified number of seconds.
 
     """
-    start_time = time.time()  # clock starts now
-
+    start_time = time.time()  # start the clock
     ###########################################################################
-    # handle one function case
-    ###########################################################################
-    if len(args) == 1:  # if only one function
-        return args[0].throttle.start_shutdown(shutdown_type=shutdown_type,
-                                               timeout=timeout)
-
-    ###########################################################################
-    # get all of the shutdowns started
+    # get all shutdowns started
     ###########################################################################
     for func in args:
         func.throttle.start_shutdown(
@@ -1253,24 +1251,24 @@ def shutdown_throttle_funcs(
             timeout=0.01)
 
     ###########################################################################
-    # start checking them for completion
+    # check each shutdown
+    # Note that if timeout was not specified, then we simply call shutdown
+    # for each func and hope that each one eventually completes. If timeout
+    # was specified, then we will call each shutdown with whatever timeout
+    # time remains and bail on the first timeout we get.
     ###########################################################################
-    funcs = list(args)  # we will subtract the ones that are done as we go
-    # Note that we will never leave the following loop if timeout was not
-    # specified and at least one function shutdown fails to complete
-    while True:
-        for idx, func in enumerate(funcs):
-            ret_code = func.throttle.start_shutdown(
-                shutdown_type=shutdown_type,
-                timeout=0.01)
-            if ret_code:  # if shutdown complete
-                funcs.pop(idx)  # one less function to check
-                break  # start loop over since we modified funcs list
+    for func in args:
+        if timeout is None or timeout <= 0:
+            func.throttle.start_shutdown(shutdown_type=shutdown_type)
+        else:  # timeout specified and as a non-zero positive value
+            # use min to ensure non-zero positive value
+            if not func.throttle.start_shutdown(
+                    shutdown_type=shutdown_type,
+                    timeout=max(0.01, timeout - (time.time() - start_time))):
+                func.throttle.logger.debug('timeout of '
+                                           'shutdown_throttle_funcs '
+                                           f'with timeout={timeout}')
+                return False  # we timed out
 
-        if not funcs:  # if all shutdowns are complete
-            return True
-
-        if (timeout
-                and (timeout > 0)
-                and (timeout < (time.time() - start_time))):
-            return False  # we timed out
+    # if we are here then all shutdowns are complete
+    return True

@@ -2,11 +2,12 @@
 
 import pytest
 import math
+import statistics as stats
 import time
 from typing import Any, cast, List, Optional, Tuple, Union
 from enum import Enum
 import threading
-
+from dataclasses import dataclass
 from scottbrian_utils.flower_box import print_flower_box_msg as flowers
 
 from scottbrian_utils.throttle import Throttle, throttle
@@ -56,6 +57,16 @@ class BadRequestStyleArg(ErrorTstThrottle):
 class IncorrectWhichThrottle(ErrorTstThrottle):
     """IncorrectWhichThrottle exception class."""
     pass
+
+
+###############################################################################
+# ReqTime data class used for shutdown testing
+###############################################################################
+@dataclass
+class ReqTime:
+    """ReqTime class contains number of completed requests and last time."""
+    num_reqs: int = 0
+    f_time: float = 0.0
 
 
 ###############################################################################
@@ -115,6 +126,94 @@ def shutdown_requests_arg(request: Any) -> int:
     return cast(int, request.param)
 
 
+###############################################################################
+# f_num_reqs_arg fixture
+###############################################################################
+f_num_reqs_arg_list = [0, 16, 32]
+
+
+@pytest.fixture(params=f_num_reqs_arg_list)  # type: ignore
+def f1_num_reqs_arg(request: Any) -> int:
+    """Number of requests to make for f1.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+@pytest.fixture(params=f_num_reqs_arg_list)  # type: ignore
+def f2_num_reqs_arg(request: Any) -> int:
+    """Number of requests to make for f2.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+@pytest.fixture(params=f_num_reqs_arg_list)  # type: ignore
+def f3_num_reqs_arg(request: Any) -> int:
+    """Number of requests to make for f3.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+@pytest.fixture(params=f_num_reqs_arg_list)  # type: ignore
+def f4_num_reqs_arg(request: Any) -> int:
+    """Number of requests to make for f4.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+@pytest.fixture(params=f_num_reqs_arg_list)  # type: ignore
+def f5_num_reqs_arg(request: Any) -> int:
+    """Number of requests to make for f5.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+###############################################################################
+# num_shutdown1_funcs_arg fixture
+###############################################################################
+num_shutdown1_funcs_arg_list = [0, 1, 2, 3, 4]
+
+
+@pytest.fixture(params=num_shutdown1_funcs_arg_list)  # type: ignore
+def num_shutdown1_funcs_arg(request: Any) -> int:
+    """Number of requests to shutdown in first shutdown.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
 ###############################################################################
 # shutdown_seconds_arg fixture
 ###############################################################################
@@ -206,11 +305,31 @@ def timeout2_arg(request: Any) -> bool:
 ###############################################################################
 # sleep_delay_arg fixture
 ###############################################################################
-sleep_delay_arg_list = [0.3, 0.6, 1.1]
+sleep_delay_arg_list = [0.3, 1.1]
 
 
 @pytest.fixture(params=sleep_delay_arg_list)  # type: ignore
 def sleep_delay_arg(request: Any) -> float:
+    """Whether to use timeout.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+
+    """
+    return cast(float, request.param)
+
+
+###############################################################################
+# sleep2_delay_arg fixture
+###############################################################################
+sleep2_delay_arg_list = [0.3, 1.1]
+
+
+@pytest.fixture(params=sleep2_delay_arg_list)  # type: ignore
+def sleep2_delay_arg(request: Any) -> float:
     """Whether to use timeout.
 
     Args:
@@ -1923,6 +2042,12 @@ class TestThrottle:
             time.sleep(send_interval)
         request_validator.validate_series()  # validate for the series
 
+
+###############################################################################
+# TestThrottleShutdown
+###############################################################################
+class TestThrottleShutdown:
+    """Class TestThrottle."""
     ###########################################################################
     # test_throttle_shutdown_error
     ###########################################################################
@@ -2345,8 +2470,24 @@ class TestThrottle:
             assert (exp_shutdown_complete_secs
                     <= shutdown_complete_secs
                     <= (exp_shutdown_complete_secs + 2.5))
+
+            ###################################################################
+            # verify new requests are rejected, q empty, and thread is done
+            ###################################################################
+            if (which_throttle_arg == WT.PieThrottleDirectShutdown
+                    or which_throttle_arg == WT.PieThrottleShutdownFuncs):
+                assert Throttle.RC_SHUTDOWN == f1(b_var)
+                assert f1.throttle.async_q.empty()
+                assert not f1.throttle.request_scheduler_thread.is_alive()
+            else:
+                assert (Throttle.RC_SHUTDOWN
+                        == b_throttle1.send_request(f2, b_var))
+                assert b_throttle1.async_q.empty()
+                assert not b_throttle1.request_scheduler_thread.is_alive()
+
         finally:
             logger.debug('final shutdown to ensure throttle is closed')
+            f1.throttle.start_shutdown()
             b_throttle1.start_shutdown()
 
         #######################################################################
@@ -2354,79 +2495,273 @@ class TestThrottle:
         #######################################################################
         for i in range(num_reqs_to_make):
             assert Throttle.RC_SHUTDOWN == b_throttle1.send_request(f2, b_var)
-
+        # assert Throttle.RC_SHUTDOWN == f1(f1_req_time)
     ###########################################################################
-    # test_pie_throttle_shutdown_soft
+    # test_shutdown_throttle_funcs
     ###########################################################################
-    def test_pie_throttle_shutdown_soft(self) -> None:
-        """Test shutdown processing."""
-        #######################################################################
-        # test 3 - shutdown events with pie throttle
-        #######################################################################
-        # start_shutdown = threading.Event()
-        # shutdown_complete = threading.Event()
-        c_var = [0]
+    def test_shutdown_throttle_funcs(self,
+                                     sleep2_delay_arg: float,
+                                     num_shutdown1_funcs_arg: int,
+                                     f1_num_reqs_arg: int,
+                                     f2_num_reqs_arg: int,
+                                     f3_num_reqs_arg: int,
+                                     f4_num_reqs_arg: int
+                                     ) -> None:
+        """Test shutdown processing for pie throttles using function.
 
-        @throttle(requests=1,
-                  seconds=4,
+        Args:
+            sleep2_delay_arg: percentage of reqs to sleep before shutdown
+            num_shutdown1_funcs_arg: number of funcs in first shutdown
+            f1_num_reqs_arg: number of reqs to make
+            f2_num_reqs_arg: number of reqs to make
+            f3_num_reqs_arg: number of reqs to make
+            f4_num_reqs_arg: number of reqs to make
+
+        """
+        #######################################################################
+        # f1
+        #######################################################################
+        seconds_arg = .1
+        f1_reqs = 1
+        f2_reqs = 5
+        f3_reqs = 2
+        f4_reqs = 4
+        @throttle(requests=f1_reqs,
+                  seconds=seconds_arg,
                   mode=Throttle.MODE_ASYNC)
-        def f3(c: List[int]) -> None:
-            c[0] += 1
+        def f1(req_time: ReqTime) -> None:
+            t = time.time()
+            prev_t = req_time.f_time
+            f_interval = t - prev_t
+            f_interval_str = (time.strftime('%S',
+                                            time.localtime(f_interval))
+                              + ('%.9f' % (f_interval % 1,))[1:6])
+            req_time.f_time = t
+            time_str = (time.strftime('%H:%M:%S', time.localtime(t))
+                        + ('%.9f' % (t % 1,))[1:6])
+            req_time.num_reqs += 1
+            logger.debug(f'f1 bumped count to {req_time.num_reqs} '
+                         f'at {time_str}, interval={f_interval_str}')
 
-        for i in range(32):
-            f3(c_var)
-
-        time.sleep(14)  # allow 4 requests to be scheduled
-
-        f3.throttle.start_shutdown()
-        # start_shutdown.set()
-        # shutdown_complete.wait()
-
-        assert c_var[0] == 4
-
-        # the following requests should get ignored
-        for i in range(32):
-            f3(c_var)
-
-        # the count should not have changed
-        assert c_var[0] == 4
-
-    ###########################################################################
-    # test_pie_throttle_shutdown
-    ###########################################################################
-    def test_pie_throttle_shutdown_hard(self) -> None:
-        """Test shutdown processing."""
         #######################################################################
-        # test 3 - shutdown events with pie throttle
+        # f2
         #######################################################################
-        # start_shutdown = threading.Event()
-        # shutdown_complete = threading.Event()
-        c_var = [0]
-
-        @throttle(requests=1,
-                  seconds=4,
+        @throttle(requests=f2_reqs,
+                  seconds=seconds_arg,
                   mode=Throttle.MODE_ASYNC)
-        def f3(c: List[int]) -> None:
-            c[0] += 1
+        def f2(req_time: ReqTime) -> None:
+            t = time.time()
+            prev_t = req_time.f_time
+            f_interval = t - prev_t
+            f_interval_str = (time.strftime('%S',
+                                            time.localtime(f_interval))
+                              + ('%.9f' % (f_interval % 1,))[1:6])
+            req_time.f_time = t
+            time_str = (time.strftime('%H:%M:%S', time.localtime(t))
+                        + ('%.9f' % (t % 1,))[1:6])
+            req_time.num_reqs += 1
+            logger.debug(f'f2 bumped count to {req_time.num_reqs} '
+                         f'at {time_str}, interval={f_interval_str}')
 
-        for i in range(32):
-            f3(c_var)
+        #######################################################################
+        # f3
+        #######################################################################
+        @throttle(requests=f3_reqs,
+                  seconds=seconds_arg,
+                  mode=Throttle.MODE_ASYNC)
+        def f3(req_time: ReqTime) -> None:
+            t = time.time()
+            prev_t = req_time.f_time
+            f_interval = t - prev_t
+            f_interval_str = (time.strftime('%S',
+                                            time.localtime(f_interval))
+                              + ('%.9f' % (f_interval % 1,))[1:6])
+            req_time.f_time = t
+            time_str = (time.strftime('%H:%M:%S', time.localtime(t))
+                        + ('%.9f' % (t % 1,))[1:6])
+            req_time.num_reqs += 1
+            logger.debug(f'f3 bumped count to {req_time.num_reqs} '
+                         f'at {time_str}, interval={f_interval_str}')
 
-        time.sleep(14)  # allow 4 requests to be scheduled
+        #######################################################################
+        # f4
+        #######################################################################
+        @throttle(requests=f4_reqs,
+                  seconds=seconds_arg,
+                  mode=Throttle.MODE_ASYNC)
+        def f4(req_time: ReqTime) -> None:
+            t = time.time()
+            prev_t = req_time.f_time
+            f_interval = t - prev_t
+            f_interval_str = (time.strftime('%S',
+                                            time.localtime(f_interval))
+                              + ('%.9f' % (f_interval % 1,))[1:6])
+            req_time.f_time = t
+            time_str = (time.strftime('%H:%M:%S', time.localtime(t))
+                        + ('%.9f' % (t % 1,))[1:6])
+            req_time.num_reqs += 1
+            logger.debug(f'f4 bumped count to {req_time.num_reqs} '
+                         f'at {time_str}, interval={f_interval_str}')
 
-        f3.throttle.start_shutdown()
-        # start_shutdown.set()
-        # shutdown_complete.wait()
+        #######################################################################
+        # f5
+        #######################################################################
+        # @throttle(requests=3,
+        #           seconds=seconds_arg,
+        #           mode=Throttle.MODE_ASYNC)
+        # def f5(req_time: ReqTime) -> None:
+        #     t = time.time()
+        #     prev_t = req_time.f_time
+        #     f_interval = t - prev_t
+        #     f_interval_str = (time.strftime('%S',
+        #                                     time.localtime(f_interval))
+        #                       + ('%.9f' % (f_interval % 1,))[1:6])
+        #     req_time.f_time = t
+        #     time_str = (time.strftime('%H:%M:%S', time.localtime(t))
+        #                 + ('%.9f' % (t % 1,))[1:6])
+        #     req_time.num_reqs += 1
+        #     logger.debug(f'f5 bumped count to {req_time.num_reqs} '
+        #                  f'at {time_str}, interval={f_interval_str}')
 
-        assert c_var[0] == 4
+        start_time = time.time()
+        f1_req_time = ReqTime(num_reqs=0, f_time=start_time)
+        f2_req_time = ReqTime(num_reqs=0, f_time=start_time)
+        f3_req_time = ReqTime(num_reqs=0, f_time=start_time)
+        f4_req_time = ReqTime(num_reqs=0, f_time=start_time)
+        # f5_req_time = ReqTime(num_reqs=0, f_time=start_time)
 
-        # the following requests should get ignored
-        for i in range(32):
-            f3(c_var)
+        interval = seconds_arg/stats.mean([1, 2, 3, 4, 5])
 
-        # the count should not have changed
-        assert c_var[0] == 4
+        num_reqs_to_make = [f1_num_reqs_arg,
+                            f2_num_reqs_arg,
+                            f3_num_reqs_arg,
+                            f4_num_reqs_arg]
+        mean_reqs_to_make = stats.mean(num_reqs_to_make)
+        sum_reqs = sum(num_reqs_to_make)
+        if 0 <= mean_reqs_to_make <= 22:
+            shutdown1_type_arg = None
+        elif 22 <= mean_reqs_to_make <= 43:
+            shutdown1_type_arg = Throttle.TYPE_SHUTDOWN_SOFT
+        else:
+            shutdown1_type_arg = Throttle.TYPE_SHUTDOWN_HARD
 
+        f1_interval = seconds_arg / f1_reqs
+        f2_interval = seconds_arg/f2_reqs
+        f3_interval = seconds_arg / f3_reqs
+        f4_interval = seconds_arg/f4_reqs
+
+        f1_exp_elapsed_seconds = f1_interval * f1_num_reqs_arg
+        f2_exp_elapsed_seconds = f2_interval * f2_num_reqs_arg
+        f3_exp_elapsed_seconds = f3_interval * f3_num_reqs_arg
+        f4_exp_elapsed_seconds = f4_interval * f4_num_reqs_arg
+
+        timeout_arg = None
+        if ((shutdown1_type_arg != Throttle.TYPE_SHUTDOWN_HARD)
+                and (num_shutdown1_funcs_arg == 2)
+                and (f1_num_reqs_arg > 0)
+                and (f2_num_reqs_arg > 0)):
+            timeout_arg = min(f1_exp_elapsed_seconds,
+                              f2_exp_elapsed_seconds) / 2
+        elif ((shutdown1_type_arg != Throttle.TYPE_SHUTDOWN_HARD)
+                and (num_shutdown1_funcs_arg == 3)
+                and (f1_num_reqs_arg > 0)
+                and (f2_num_reqs_arg > 0)
+                and (f3_num_reqs_arg > 0)):
+            timeout_arg = min(f1_exp_elapsed_seconds,
+                              f2_exp_elapsed_seconds,
+                              f3_exp_elapsed_seconds) / 2
+
+        if timeout_arg:
+            sleep_time = 0
+        else:
+            sleep_time = mean_reqs_to_make * sleep2_delay_arg * interval
+
+        funcs_to_shutdown = list([f1, f2, f3, f4][0:num_shutdown1_funcs_arg])
+        logger.debug(f'funcs_to_shutdown = {funcs_to_shutdown}')
+        #######################################################################
+        # start the requests
+        #######################################################################
+        timeout_start_time = time.time()
+        for i in range(f1_num_reqs_arg):
+            assert Throttle.RC_OK == f1(f1_req_time)
+
+        for i in range(f2_num_reqs_arg):
+            assert Throttle.RC_OK == f2(f2_req_time)
+
+        for i in range(f3_num_reqs_arg):
+            assert Throttle.RC_OK == f3(f3_req_time)
+
+        for i in range(f4_num_reqs_arg):
+            assert Throttle.RC_OK == f4(f4_req_time)
+
+        # for i in range(f5_num_reqs_arg):
+        #     assert Throttle.RC_OK == f5(f5_req_time)
+
+        #######################################################################
+        # allow some requests to be made
+        #######################################################################
+        time.sleep(sleep_time)
+
+        #######################################################################
+        # start shutdowns
+        #######################################################################
+        if shutdown1_type_arg:
+            if timeout_arg:
+                ret_code = shutdown_throttle_funcs(
+                    *funcs_to_shutdown,
+                    shutdown_type=shutdown1_type_arg,
+                    timeout=timeout_arg)
+            else:
+                ret_code = shutdown_throttle_funcs(
+                    *funcs_to_shutdown,
+                    shutdown_type=shutdown1_type_arg)
+        else:
+            if timeout_arg:
+                ret_code = shutdown_throttle_funcs(
+                    *funcs_to_shutdown,
+                    timeout=timeout_arg)
+            else:
+                ret_code = shutdown_throttle_funcs(*funcs_to_shutdown)
+
+        if timeout_arg:
+            assert not ret_code
+            assert (timeout_arg
+                    <= time.time() - timeout_start_time
+                    <= timeout_arg + 1)
+        else:
+            assert ret_code
+
+        if shutdown1_type_arg:
+            assert shutdown_throttle_funcs(
+                f1, f2, f3, f4,
+                shutdown_type=shutdown1_type_arg)
+
+        else:
+            assert shutdown_throttle_funcs(f1, f2, f3, f4)
+
+        #######################################################################
+        # verify all funcs are shutdown
+        #######################################################################
+        #######################################################################
+        # the following requests should get rejected
+        #######################################################################
+        assert Throttle.RC_SHUTDOWN == f1(f1_req_time)
+        assert Throttle.RC_SHUTDOWN == f2(f2_req_time)
+        assert Throttle.RC_SHUTDOWN == f3(f3_req_time)
+        assert Throttle.RC_SHUTDOWN == f4(f4_req_time)
+        # assert Throttle.RC_SHUTDOWN == f5(f5_req_time)
+
+        assert f1.throttle.async_q.empty()
+        assert f2.throttle.async_q.empty()
+        assert f3.throttle.async_q.empty()
+        assert f4.throttle.async_q.empty()
+        # assert f5.throttle.async_q.empty()
+
+        assert not f1.throttle.request_scheduler_thread.is_alive()
+        assert not f2.throttle.request_scheduler_thread.is_alive()
+        assert not f3.throttle.request_scheduler_thread.is_alive()
+        assert not f4.throttle.request_scheduler_thread.is_alive()
+        # assert not f5.throttle.request_scheduler_thread.is_alive()
 
 ###############################################################################
 # RequestValidator class
