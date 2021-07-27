@@ -103,6 +103,8 @@ def adjust_line_nums() -> None:
     search_text7 = '.test_get_caller_info_'
     search_text8 = '.diag_msg_depth_'
     search_text9 = 'get_call_seq_depth_'
+    search_text10 = 'a_inner.g'
+    search_text11 = 'a_inherit.h'
 
     phase = 1
     l_count = 0
@@ -149,7 +151,9 @@ def adjust_line_nums() -> None:
                     search_text6 in file_line or
                     search_text7 in file_line or
                     search_text8 in file_line or
-                    search_text9 in file_line):
+                    search_text9 in file_line or
+                    search_text10 in file_line or
+                    search_text11 in file_line):
                 new_text = 'line_num=' + str(idx+1)  # 0 based file
                 # find end of statement
                 l_paren_count = 0

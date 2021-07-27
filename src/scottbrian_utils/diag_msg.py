@@ -153,19 +153,16 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
         if not cls_name:  # did not find it yet
             for obj_name, obj in frame.f_locals.items():
                 try:
-                    # print('\nobj.__class__.__dict__', obj.__class__.__dict__)
-                    # print('\nobj.__class__.__dict__[func_name]',
-                    #       obj.__class__.__dict__[func_name])
                     if obj.__class__.__dict__[func_name].__code__ is code:
                         cls_name = obj.__class__.__name__
                         break
                 except (AttributeError, KeyError):
                     pass
-
+        if not cls_name and frame.f_back:  # did not find it yet
+            for obj_name, obj in frame.f_back.f_locals.items():
                 try:
-                    if obj.__class__.__dict__[func_name].__func__.__code__ \
-                            is code:
-                        cls_name = obj.__class__.__name__
+                    if obj.__dict__[func_name].__func__.__code__ is code:
+                        cls_name = obj_name
                         break
                 except (AttributeError, KeyError):
                     pass

@@ -661,6 +661,8 @@ class Throttle:
                        return when the shutdown is complete without a
                        timeout.
 
+        .. # noqa: DAR101
+
         Returns:
             * ``True`` if *timeout* was not specified, or if it was specified
               and the ``start_shutdown()`` request completed within the
@@ -834,7 +836,13 @@ class Throttle:
     # schedule_requests
     ###########################################################################
     def schedule_requests(self) -> None:
-        """Get tasks from queue and run them."""
+        """Get tasks from queue and run them.
+
+        Raises:
+            Exception: re-raise any throttle schedule_requests unhandled
+                         exception in request
+
+        """
         # Requests will be scheduled from the async_q at the interval
         # calculated from the requests and seconds arguments when the
         # throttle was instantiated. If shutdown is indicated,
@@ -875,7 +883,7 @@ class Throttle:
                 # handle shutdown
                 if self.do_shutdown != Throttle.TYPE_SHUTDOWN_NONE:
                     if self.async_q.empty():
-                        return  # we are down with shutdown
+                        return  # we are done with shutdown
                     if self.do_shutdown == Throttle.TYPE_SHUTDOWN_HARD:
                         break  # don't sleep for hard shutdown
 
@@ -893,6 +901,7 @@ class Throttle:
 ###############################################################################
 F = TypeVar('F', bound=Callable[..., Any])
 
+
 ###############################################################################
 # FuncWithThrottleAttr class
 ###############################################################################
@@ -904,13 +913,13 @@ class FuncWithThrottleAttr(Protocol[F]):
 
 def add_throttle_attr(func: F) -> FuncWithThrottleAttr[F]:
     """Wrapper to add throttle attribute to function.
-    
+
     Args:
         func: function that has the attribute added
-        
+
     Returns:
         input function with throttle attached as attribute
-            
+
     """
     func_with_throttle_attr = cast(FuncWithThrottleAttr[F], func)
     return func_with_throttle_attr
@@ -1232,13 +1241,15 @@ def shutdown_throttle_funcs(
                    return when the shutdown is complete without a
                    timeout.
 
-        Returns:
-            * ``True`` if *timeout* was not specified, or if it was specified
-              and all of the specified functions completed shutdown within the
-              specified number of seconds.
-            * ``False`` if *timeout* was specified and at least one of the
-              functions specified to shutdown did not complete within the
-              specified number of seconds.
+    .. # noqa: DAR101
+
+    Returns:
+        * ``True`` if *timeout* was not specified, or if it was specified
+          and all of the specified functions completed shutdown within the
+          specified number of seconds.
+        * ``False`` if *timeout* was specified and at least one of the
+          functions specified to shutdown did not complete within the
+          specified number of seconds.
 
     """
     start_time = time.time()  # start the clock
@@ -1257,14 +1268,15 @@ def shutdown_throttle_funcs(
     # was specified, then we will call each shutdown with whatever timeout
     # time remains and bail on the first timeout we get.
     ###########################################################################
-    for func in args:
-        if timeout is None or timeout <= 0:
+    if timeout is None or timeout <= 0:
+        for func in args:
             func.throttle.start_shutdown(shutdown_type=shutdown_type)
-        else:  # timeout specified and as a non-zero positive value
-            # use min to ensure non-zero positive value
+    else:  # timeout specified and is a non-zero positive value
+        for func in args:
+            # use min to ensure non-zero positive timeout value
             if not func.throttle.start_shutdown(
                     shutdown_type=shutdown_type,
-                    timeout=max(0.01, timeout - (time.time() - start_time))):
+                    timeout=max(0.01, start_time + timeout - time.time())):
                 func.throttle.logger.debug('timeout of '
                                            'shutdown_throttle_funcs '
                                            f'with timeout={timeout}')

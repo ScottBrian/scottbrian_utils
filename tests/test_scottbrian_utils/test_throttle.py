@@ -214,6 +214,8 @@ def num_shutdown1_funcs_arg(request: Any) -> int:
         The params values are returned one at a time
     """
     return cast(int, request.param)
+
+
 ###############################################################################
 # shutdown_seconds_arg fixture
 ###############################################################################
@@ -231,6 +233,8 @@ def shutdown_seconds_arg(request: Any) -> Union[int, float]:
         The params values are returned one at a time
     """
     return cast(Union[int, float], request.param)
+
+
 ###############################################################################
 # shutdown_type_arg fixture
 ###############################################################################
@@ -254,6 +258,7 @@ def shutdown1_type_arg(request: Any) -> int:
 
 shutdown2_type_arg_list = [Throttle.TYPE_SHUTDOWN_SOFT,
                            Throttle.TYPE_SHUTDOWN_HARD]
+
 
 @pytest.fixture(params=shutdown2_type_arg_list)  # type: ignore
 def shutdown2_type_arg(request: Any) -> int:
@@ -366,6 +371,7 @@ def which_throttle_arg(request: Any) -> int:
         The params values are returned one at a time
     """
     return cast(int, request.param)
+
 
 ###############################################################################
 # mode_arg fixture
@@ -2279,7 +2285,7 @@ class TestThrottleShutdown:
         logger.debug('total_reqs_elapsed_seconds = '
                      f'{total_reqs_elapsed_seconds}')
 
-        logger.debug(f'start adding requests')
+        logger.debug('start adding requests')
         start_time = time.time()
         #######################################################################
         # We need a try/finally to make sure we can shutdown the throttle
@@ -2496,6 +2502,7 @@ class TestThrottleShutdown:
         for i in range(num_reqs_to_make):
             assert Throttle.RC_SHUTDOWN == b_throttle1.send_request(f2, b_var)
         # assert Throttle.RC_SHUTDOWN == f1(f1_req_time)
+
     ###########################################################################
     # test_shutdown_throttle_funcs
     ###########################################################################
@@ -2526,6 +2533,7 @@ class TestThrottleShutdown:
         f2_reqs = 5
         f3_reqs = 2
         f4_reqs = 4
+
         @throttle(requests=f1_reqs,
                   seconds=seconds_arg,
                   mode=Throttle.MODE_ASYNC)
@@ -2637,7 +2645,7 @@ class TestThrottleShutdown:
                             f3_num_reqs_arg,
                             f4_num_reqs_arg]
         mean_reqs_to_make = stats.mean(num_reqs_to_make)
-        sum_reqs = sum(num_reqs_to_make)
+
         if 0 <= mean_reqs_to_make <= 22:
             shutdown1_type_arg = None
         elif 22 <= mean_reqs_to_make <= 43:
@@ -2648,12 +2656,10 @@ class TestThrottleShutdown:
         f1_interval = seconds_arg / f1_reqs
         f2_interval = seconds_arg/f2_reqs
         f3_interval = seconds_arg / f3_reqs
-        f4_interval = seconds_arg/f4_reqs
 
         f1_exp_elapsed_seconds = f1_interval * f1_num_reqs_arg
         f2_exp_elapsed_seconds = f2_interval * f2_num_reqs_arg
         f3_exp_elapsed_seconds = f3_interval * f3_num_reqs_arg
-        f4_exp_elapsed_seconds = f4_interval * f4_num_reqs_arg
 
         timeout_arg = None
         if ((shutdown1_type_arg != Throttle.TYPE_SHUTDOWN_HARD)
@@ -2763,6 +2769,7 @@ class TestThrottleShutdown:
         assert not f4.throttle.request_scheduler_thread.is_alive()
         # assert not f5.throttle.request_scheduler_thread.is_alive()
 
+
 ###############################################################################
 # RequestValidator class
 ###############################################################################
@@ -2815,7 +2822,6 @@ class RequestValidator:
         self.normalized_nst_times: List[float] = []
         self.normalized_nst_intervals: List[float] = []
         self.mean_nst_interval = 0.0
-
 
         # calculate parms
 
@@ -2887,6 +2893,10 @@ class RequestValidator:
                         after_send_time: Optional[List[float]] = None
                         ) -> None:
         """Validate the requests.
+
+        Args:
+            about_to_send_time: list if times before each request send
+            after_send_time: list if times after each request send
 
         Raises:
             InvalidModeNum: Mode must be 1, 2, 3, or 4
