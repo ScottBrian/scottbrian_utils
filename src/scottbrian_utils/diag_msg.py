@@ -25,6 +25,7 @@ from os import fspath
 from pathlib import Path
 # noinspection PyProtectedMember
 from sys import _getframe
+import types
 from types import FrameType
 from typing import Any, NamedTuple
 
@@ -40,17 +41,6 @@ class CallerInfo(NamedTuple):
     cls_name: str
     func_name: str
     line_num: int
-
-# found this in tracing module - maybe need this here as well
-# if hasattr(sys, '_getframe'):
-#     currentframe = lambda: sys._getframe(3)
-# else: #pragma: no cover
-#     def currentframe():
-#         """Return the frame object for the caller's stack frame."""
-#         try:
-#             raise Exception
-#         except Exception:
-#             return sys.exc_info()[2].tb_frame.f_back
 
 
 ###############################################################################
@@ -124,50 +114,71 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
     """
     code = frame.f_code
     mod_name = fspath(Path(code.co_filename).name)
-    cls_name = ''
     func_name = code.co_name
 
     if func_name == '<module>':  # if we are a script
         func_name = ''  # no func_name, no cls_name
     else:
-        for obj_name, obj in frame.f_globals.items():
-            # first try for normal method in class
-            try:
-                if obj.__dict__[func_name].__code__ is code:
-                    cls_name = obj_name
-                    break
-            except (AttributeError, KeyError):
-                pass
+        for key, item in frame.f_globals.items():
+            if (isinstance(item, type)
+                    and func_in_class(func_name=func_name,
+                                      class_obj=item,
+                                      code=code)):
+                return CallerInfo(mod_name=mod_name,
+                                  cls_name=key,
+                                  func_name=func_name,
+                                  line_num=frame.f_lineno)
 
-            # second try for static or class method
-            try:
-                if obj.__dict__[func_name].__func__.__code__ is code:
-                    cls_name = obj_name
-                    break
-            except (AttributeError, KeyError):
-                pass
+        # if here, not found yet - try looking at locals in the previous frame
+        if frame.f_back:
+            for key, item in frame.f_back.f_locals.items():
+                if (isinstance(item, type)
+                        and (key != 'cls')
+                        and func_in_class(func_name=func_name,
+                                          class_obj=item,
+                                          code=code)):
+                    return CallerInfo(mod_name=mod_name,
+                                      cls_name=key,
+                                      func_name=func_name,
+                                      line_num=frame.f_lineno)
 
-        # The following handles the case where the method is in a class
-        # that is itself defined within a function. Unfortunately, we are
-        # unable to find the class for a static function.
-        if not cls_name:  # did not find it yet
-            for obj_name, obj in frame.f_locals.items():
-                try:
-                    if obj.__class__.__dict__[func_name].__code__ is code:
-                        cls_name = obj.__class__.__name__
-                        break
-                except (AttributeError, KeyError):
-                    pass
-        if not cls_name and frame.f_back:  # did not find it yet
-            for obj_name, obj in frame.f_back.f_locals.items():
-                try:
-                    if obj.__dict__[func_name].__func__.__code__ is code:
-                        cls_name = obj_name
-                        break
-                except (AttributeError, KeyError):
-                    pass
+    return CallerInfo(mod_name=mod_name,
+                      cls_name='',
+                      func_name=func_name,
+                      line_num=frame.f_lineno)
 
-    return CallerInfo(mod_name, cls_name, func_name, frame.f_lineno)
+
+###############################################################################
+# get_formatted_call_sequence
+###############################################################################
+def func_in_class(func_name: str,
+                  class_obj: type,
+                  code: Any) -> bool:
+    """Determine whether function is in class.
+
+    Args:
+        func_name: name to find in the class
+        class_obj: the class dictionary to search for function
+        code: the code to compare to ensure it is the correct function
+
+    Returns:
+        True if function is in class, False otherwise
+
+    """
+    try:
+        func_obj = class_obj.__dict__[func_name]
+        if ((isinstance(func_obj, types.FunctionType)
+                and (func_obj.__code__ is code)
+             )
+                or (isinstance(func_obj, (staticmethod, classmethod))
+                    and (func_obj.__func__.__code__ is code)
+                    )):
+            return True
+
+    except (AttributeError, KeyError):
+        pass  # class name not found
+
+    return False
 
 
 ###############################################################################
