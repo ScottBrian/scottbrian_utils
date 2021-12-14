@@ -29,6 +29,8 @@ import types
 from types import FrameType
 from typing import Any, NamedTuple
 
+import time
+
 # diag_msg_datetime_fmt = "%b %d %H:%M:%S.%f"
 diag_msg_datetime_fmt = "%H:%M:%S.%f"
 diag_msg_caller_depth = 1
@@ -129,9 +131,33 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
                                   func_name=func_name,
                                   line_num=frame.f_lineno)
 
+        # if here, not found yet - try looking at locals for self class
+        for item in frame.f_locals.values():
+            try:
+                if hasattr(item, "__dict__"):
+                    if item.__class__.__dict__[func_name].__code__ is code:
+                        class_name = item.__class__.__name__
+                        return CallerInfo(mod_name=mod_name,
+                                          cls_name=class_name,
+                                          func_name=func_name,
+                                          line_num=frame.f_lineno)
+            except (AttributeError, KeyError):
+                pass
+
         # if here, not found yet - try looking at locals in the previous frame
+        # if func_name == 'run':
+        #     if frame.f_back:
+        #         print(f'{time.time():0.3f} f_back exists')
+        #     else:
+        #         print(f'{time.time():0.3f} ******* f_back missing *******')
         if frame.f_back:
+            # print(f'\nframe.f_back.f_locals: \n {frame.f_back.f_locals}')
             for key, item in frame.f_back.f_locals.items():
+                # if func_name == 'run':
+                #     print(
+                #         f'{time.time():0.3f} f_back key = {key} item = {item} '
+                #         f'type ='
+                #         f' {type(item)}')
                 if (isinstance(item, type)
                         and (key != 'cls')
                         and func_in_class(func_name=func_name,
@@ -167,17 +193,26 @@ def func_in_class(func_name: str,
     """
     try:
         func_obj = class_obj.__dict__[func_name]
+        # if func_name == 'run' and (p is True):
+        #     print(f'{time.time():0.3f} isinstance(func_obj, types.FunctionType) '
+        #           f'{isinstance(func_obj, types.FunctionType)}')
         if ((isinstance(func_obj, types.FunctionType)
                 and (func_obj.__code__ is code)
              )
                 or (isinstance(func_obj, (staticmethod, classmethod))
                     and (func_obj.__func__.__code__ is code)
                     )):
+            # if func_name == 'run' and (p is True):
+            #     print(f'{time.time():0.3f} func_in_class returning True')
             return True
 
     except (AttributeError, KeyError):
         pass  # class name not found
+        # if func_name == 'run' and (p is True):
+        #     print(f'{time.time():0.3f} func_in_class exception')
 
+    # if func_name == 'run' and (p is True):
+    #     print(f'{time.time():0.3f} func_in_class returning False')
     return False
 
 

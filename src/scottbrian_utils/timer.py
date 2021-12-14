@@ -87,7 +87,7 @@ class Timer:
     def timeout(self):
         if self._timeout:  # if not None
             # make sure not negative
-            ret_timeout = max(0.01,
+            ret_timeout = max(0.0001,
                               self._timeout - (time.time() - self.start_time))
         else:
             ret_timeout = None
@@ -95,7 +95,7 @@ class Timer:
 
     def is_expired(self) -> bool:
         """Return either True or False for the timer."""
-        if self.timeout and self.timeout < (time.time() - self.start_time):
+        if self._timeout and self._timeout < (time.time() - self.start_time):
             return True  # we timed out
         else:
             # time remaining, or timeout is None which never expires
