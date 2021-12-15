@@ -33,9 +33,9 @@ logger = logging.getLogger(__name__)
 logger.debug('about to start the tests')
 
 
-##############################################################################
+########################################################################
 # Cmds test exceptions
-###############################################################################
+########################################################################
 class ErrorTstCmds(Exception):
     """Base class for exception in this module."""
     pass
@@ -61,9 +61,9 @@ class IncorrectWhichTimer(ErrorTstCmds):
     pass
 
 
-###############################################################################
+########################################################################
 # timeout_arg fixture
-###############################################################################
+########################################################################
 timeout_arg_list = [0.0, 0.3, 0.5, 1, 2, 4]
 
 
@@ -80,9 +80,9 @@ def timeout_arg(request: Any) -> float:
     return cast(float, request.param)
 
 
-###############################################################################
+########################################################################
 # TestCmdsBasic class to test Cmds methods
-###############################################################################
+########################################################################
 class TestCmdsErrors:
     """TestCmdsErrors class."""
     def test_cmds_timeout(self,
@@ -159,33 +159,82 @@ class TestCmdsErrors:
 
         logger.debug('mainline entered')
 
-###############################################################################
+########################################################################
 # TestTimerBasic class to test Timer methods
-###############################################################################
-class TestTimerBasic:
-    """Test basic functions of Timer."""
+########################################################################
+class TestCmdsBasic:
+    """Test basic functions of Cmds."""
 
-    ###########################################################################
-    # test_timer_example1
-    ###########################################################################
-    def test_timer_example(self) -> None:
-        """Test timer example."""
+    ####################################################################
+    # test_cmds_example1
+    ####################################################################
+    def test_cmds_example1(self,
+                           capsys: Any) -> None:
+        """Test cmds example1.
 
-        # create a timer and use in a loop
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        def f1():
+            print('f1 entered')
+            print(cmds.get_cmd('beta'))
+            print('f1 exiting')
+
         print('mainline entered')
-        timer = Timer(timeout=3)
-        for idx in range(10):
-            print(f'idx = {idx}')
-            time.sleep(1)
-            if timer.is_expired():
-                print('timer has expired')
-            break
+        cmds = Cmds()
+        f1_thread = threading.Thread(target=f1)
+        f1_thread.start()
+        cmds.queue_cmd('beta', 'exit now')
+        f1_thread.join()
         print('mainline exiting')
 
+        expected_result = 'mainline entered\n'
+        expected_result += 'f1 entered\n'
+        expected_result += 'exit now\n'
+        expected_result += 'f1 exiting\n'
+        expected_result += 'mainline exiting\n'
+        captured = capsys.readouterr().out
 
-    ###########################################################################
+        assert captured == expected_result
+
+    ####################################################################
+    # test_cmds_example2
+    ####################################################################
+    def test_cmds_example2(self,
+                           capsys: Any) -> None:
+        """Test cmds example2.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        def f1():
+            print('f1 entered')
+            cmds.start_clock(clock_iter=1)
+            cmds.get_cmd('beta')
+            assert 2 <= cmds.duration() <= 3
+            print('f1 exiting')
+
+        print('mainline entered')
+        cmds = Cmds()
+        f1_thread = threading.Thread(target=f1)
+        f1_thread.start()
+        cmds.pause(2.5, clock_iter=1)
+        cmds.queue_cmd('beta', 'exit now')
+        f1_thread.join()
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += 'f1 entered\n'
+        expected_result += 'f1 exiting\n'
+        expected_result += 'mainline exiting\n'
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+    ####################################################################
     # repr with mode async
-    ###########################################################################
+    ####################################################################
     # def test_timer_repr(self,
     #                              requests_arg: int,
     #                              seconds_arg: Union[int, float]
