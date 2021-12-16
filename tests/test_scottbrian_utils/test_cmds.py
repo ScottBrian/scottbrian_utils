@@ -81,6 +81,63 @@ def timeout_arg(request: Any) -> float:
 
 
 ########################################################################
+# who_arg fixture
+########################################################################
+who_arg_list = ['beta', 'charlie', 'both']
+
+
+@pytest.fixture(params=who_arg_list)  # type: ignore
+def who_arg(request: Any) -> str:
+    """Using different cmd targets.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(str, request.param)
+
+
+#######################################################################
+# cmd_arg fixture
+########################################################################
+cmd_arg_list = [0, '0', 0.0, 'hello', 1, [1, 2, 3], ('a', 'b', 'c')]
+
+
+@pytest.fixture(params=cmd_arg_list)  # type: ignore
+def cmd_arg(request: Any) -> Any:
+    """Using different cmds.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return request.param
+
+
+#######################################################################
+# start_arg fixture
+########################################################################
+start_arg_list = ['before', 'mid1', 'mid2', 'after']
+
+
+@pytest.fixture(params=start_arg_list)  # type: ignore
+def start_arg(request: Any) -> str:
+    """Using different remote thread start points.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(str, request.param)
+
+
+########################################################################
 # TestCmdsBasic class to test Cmds methods
 ########################################################################
 class TestCmdsErrors:
@@ -94,7 +151,8 @@ class TestCmdsErrors:
                            on get_cmd request
 
         """
-        def f1():
+        def f1() -> None:
+            """Beta f1 function."""
             logger.debug('f1 beta entered')
             f1_to_low = f1_timeout * .9
             f1_to_high = f1_timeout * 1.1
@@ -159,11 +217,12 @@ class TestCmdsErrors:
 
         logger.debug('mainline entered')
 
+
 ########################################################################
-# TestTimerBasic class to test Timer methods
+# TestCmdsExamples class
 ########################################################################
-class TestCmdsBasic:
-    """Test basic functions of Cmds."""
+class TestCmdsExamples:
+    """Test examples of Cmds."""
 
     ####################################################################
     # test_cmds_example1
@@ -176,7 +235,8 @@ class TestCmdsBasic:
             capsys: pytest fixture to capture print output
 
         """
-        def f1():
+        def f1() -> None:
+            """Beta f1 function."""
             print('f1 entered')
             print(cmds.get_cmd('beta'))
             print('f1 exiting')
@@ -209,7 +269,8 @@ class TestCmdsBasic:
             capsys: pytest fixture to capture print output
 
         """
-        def f1():
+        def f1() -> None:
+            """Beta f1 function."""
             print('f1 entered')
             cmds.start_clock(clock_iter=1)
             cmds.get_cmd('beta')
@@ -232,6 +293,120 @@ class TestCmdsBasic:
         captured = capsys.readouterr().out
 
         assert captured == expected_result
+
+########################################################################
+# TestCmdsCmds class
+########################################################################
+class TestCmdsCmds:
+    """Test examples of Cmds."""
+
+    ####################################################################
+    # test_cmds_example1
+    ####################################################################
+    def test_cmds_cmds1(self,
+                        who_arg: str,
+                        cmd_arg: Any,
+                        start_arg: str) -> None:
+        """Test cmds queue_cmd and get_cmd methods.
+
+        Args:
+            who_arg: who to send cmd to
+            cmd_arg: what to send
+
+        """
+
+        def f1() -> None:
+            """Beta f1 function."""
+            logger.debug('f1 beta entered')
+            f1_event.set()
+            assert cmds.get_cmd('beta') == 'go'
+            while True:
+                my_cmd = cmds.get_cmd('beta')
+                if my_cmd == 'exit now':
+                    break
+                else:
+                    assert my_cmd == cmd_arg
+            logger.debug('f1 beta exiting')
+
+        def f2() -> None:
+            """Charlie f2 function."""
+            logger.debug('f2 charlie entered')
+            f2_event.set()
+            cmds.queue_cmd('alpha', 'charlie ready')
+            assert cmds.get_cmd('charlie') == 'go'
+            while True:
+                my_cmd = cmds.get_cmd('charlie')
+                if my_cmd == 'exit now':
+                    break
+                else:
+                    assert my_cmd == cmd_arg
+
+            logger.debug('f2 charlie exiting')
+
+        logger.debug('mainline entered')
+        cmds = Cmds()
+        f1_event = threading.Event()
+        f2_event = threading.Event()
+
+        if who_arg == 'beta' or who_arg == 'both':
+            f1_thread = threading.Thread(target=f1)
+            if start_arg == 'before':
+                logger.debug('mainline starting beta before')
+                f1_thread.start()
+                f1_event.wait()
+            cmds.queue_cmd('beta')  # no arg, default is 'go'
+            if start_arg == 'mid1':
+                logger.debug('mainline starting beta mid1')
+                f1_thread.start()
+                f1_event.wait()
+            cmds.queue_cmd('beta', cmd_arg)
+            if start_arg == 'mid2':
+                logger.debug('mainline starting beta mid2')
+                f1_thread.start()
+                f1_event.wait()
+            if who_arg == 'beta':
+                cmds.queue_cmd(who_arg, 'exit now')
+            else:
+                cmds.queue_cmd('beta', 'exit now')
+            if start_arg == 'after':
+                logger.debug('mainline starting beta after')
+                f1_thread.start()
+                f1_event.wait()
+            logger.debug('mainline about to join f1 beta')
+            f1_thread.join()
+
+        if who_arg == 'charlie' or who_arg == 'both':
+            logger.debug('mainline starting charlie')
+            f2_thread = threading.Thread(target=f2)
+            if start_arg == 'before':
+                logger.debug('mainline starting charlie before')
+                f2_thread.start()
+                f2_event.wait()
+            cmds.queue_cmd('charlie')  # no arg, default is 'go'
+            if start_arg == 'mid1':
+                logger.debug('mainline starting charlie mid1')
+                f2_thread.start()
+                f2_event.wait()
+            cmds.queue_cmd('charlie', cmd_arg)
+            if start_arg == 'mid2':
+                logger.debug('mainline starting charlie mid2')
+                f2_thread.start()
+                f2_event.wait()
+            if who_arg == 'charlie':
+                cmds.queue_cmd(who_arg, 'exit now')
+            else:
+                cmds.queue_cmd('charlie', 'exit now')
+            logger.debug('mainline about to join f2 charlie')
+            if start_arg == 'after':
+                logger.debug('mainline starting charlie after')
+                f2_thread.start()
+                f2_event.wait()
+            f2_thread.join()
+
+        logger.debug('mainline exiting')
+
+
+
     ####################################################################
     # repr with mode async
     ####################################################################

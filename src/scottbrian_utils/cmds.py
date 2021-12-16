@@ -68,6 +68,7 @@ The cmds module contains:
 ########################################################################
 # Standard Library
 ########################################################################
+import logging
 import queue
 import threading
 import time
@@ -136,6 +137,12 @@ class Cmds:
         self.clock_in_use = False
         self.iteration = 0
 
+        # add a logger
+        self.logger = logging.getLogger(__name__)
+
+        # Flag to quickly determine whether debug logging is enabled
+        self.debug_logging_enabled = self.logger.isEnabledFor(logging.DEBUG)
+
     ####################################################################
     # queue_cmd
     ####################################################################
@@ -201,7 +208,11 @@ class Cmds:
 
             if (timeout_value
                     and timeout_value < (time.time() - start_time)):
-                raise GetCmdTimedOut(f'{who} timed out waiting for cmd')
+                err_msg = (f'Thread {threading.current_thread()} '
+                           f'timed out on get_cmd for who: {who} ')
+                if self.debug_logging_enabled:
+                    self.logger.debug(err_msg)
+                raise GetCmdTimedOut(err_msg)
 
     ####################################################################
     # pause
