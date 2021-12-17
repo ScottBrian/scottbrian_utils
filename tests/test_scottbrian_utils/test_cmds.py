@@ -137,6 +137,25 @@ def start_arg(request: Any) -> str:
     return cast(str, request.param)
 
 
+#######################################################################
+# sleep_arg fixture
+########################################################################
+sleep_arg_list = [0.3, 1.0, 2.5]
+
+
+@pytest.fixture(params=sleep_arg_list)  # type: ignore
+def sleep_arg(request: Any) -> float:
+    """Using different remote thread start points.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(float, request.param)
+
+
 ########################################################################
 # TestCmdsBasic class to test Cmds methods
 ########################################################################
@@ -294,11 +313,12 @@ class TestCmdsExamples:
 
         assert captured == expected_result
 
+
 ########################################################################
 # TestCmdsCmds class
 ########################################################################
 class TestCmdsCmds:
-    """Test examples of Cmds."""
+    """Test queue_cmd and get_cmd methods of Cmds."""
 
     ####################################################################
     # test_cmds_example1
@@ -312,6 +332,7 @@ class TestCmdsCmds:
         Args:
             who_arg: who to send cmd to
             cmd_arg: what to send
+            start_arg: when to start the remote thread
 
         """
 
@@ -405,6 +426,154 @@ class TestCmdsCmds:
 
         logger.debug('mainline exiting')
 
+
+########################################################################
+# TestCmdsClock class
+########################################################################
+class TestCmdsClock:
+    """Test the start_clock, pause, and duration methods of Cmds."""
+
+    ####################################################################
+    # test_cmds_example1
+    ####################################################################
+    def test_cmds_clock1(self,
+                         sleep_arg: float) -> None:
+        """Test start_clock and duration methods.
+
+        Args:
+            sleep_arg: how long to sleep to test duration
+
+        """
+
+        def f1() -> None:
+            """Beta f1 function."""
+            logger.debug('f1 beta entered')
+            cmds.start_clock(clock_iter=2)
+            f1_event.set()
+            time.sleep(sleep_arg)
+            assert sleep_arg <= cmds.duration() <= late_time
+            logger.debug('f1 beta exiting')
+
+        def f2() -> None:
+            """Charlie f2 function."""
+            logger.debug('f2 charlie entered')
+            f2a_event.set()
+            f2b_event.wait()
+            cmds.start_clock(clock_iter=5)
+            time.sleep(sleep_arg)
+            assert sleep_arg <= cmds.duration() <= late_time
+            logger.debug('f2 charlie exiting')
+
+        logger.debug('mainline entered')
+        cmds = Cmds()
+        f1_event = threading.Event()
+        f2a_event = threading.Event()
+        f2b_event = threading.Event()
+
+        late_time = sleep_arg * 1.1
+        cmds.start_clock(clock_iter=1)
+        time.sleep(sleep_arg)
+        assert sleep_arg <= cmds.duration() <= late_time
+
+        f1_thread = threading.Thread(target=f1)
+        logger.debug('mainline starting beta')
+        f1_thread.start()
+        f1_event.wait()
+        cmds.start_clock(clock_iter=3)
+        time.sleep(sleep_arg)
+        assert sleep_arg <= cmds.duration() <= late_time
+
+        logger.debug('mainline about to join f1 beta')
+        f1_thread.join()
+
+        f2_thread = threading.Thread(target=f2)
+        logger.debug('mainline starting charlie')
+        f2_thread.start()
+        f2a_event.wait()
+        cmds.start_clock(clock_iter=4)
+        f2b_event.set()
+        time.sleep(sleep_arg)
+        assert sleep_arg <= cmds.duration() <= late_time
+
+        logger.debug('mainline about to join f2 charlie')
+        f2_thread.join()
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_cmds_example1
+    ####################################################################
+    def test_cmds_clock2(self,
+                         sleep_arg: float) -> None:
+        """Test start_clock and duration methods.
+
+        Args:
+            sleep_arg: how long to sleep to test duration
+
+        """
+
+        def f1() -> None:
+            """Beta f1 function."""
+            logger.debug('f1 beta entered')
+            cmds.start_clock(clock_iter=1)
+            f1_event.set()
+            time.sleep(f1_sleep_time)
+            assert f1_sleep_time <= cmds.duration() <= f1_late_time
+            logger.debug('f1 beta exiting')
+
+        def f2() -> None:
+            """Charlie f2 function."""
+            logger.debug('f2 charlie entered')
+            assert cmds.clock_in_use is True
+            assert cmds.iteration == 1
+            iter1_start_time = cmds.start_time
+            assert cmds.clock_in_use is True
+            assert cmds.iteration == 1
+            cmds.start_clock(clock_iter=2)
+            time.sleep(f2_sleep_time)
+            assert f2_sleep_time <= cmds.duration() <= f2_late_time
+            assert (sum_sleep_time
+                    <= (time.time() - iter1_start_time)
+                    <= sum_late_sleep_time)
+            logger.debug('f2 charlie exiting')
+
+        logger.debug('mainline entered')
+        cmds = Cmds()
+        assert cmds.clock_in_use is False
+
+        f1_sleep_time = sleep_arg * 2
+        f1_late_time = f1_sleep_time * 1.1
+
+        f2_sleep_time = sleep_arg
+        f2_late_time = f2_sleep_time * 1.1
+
+        sum_sleep_time = f1_sleep_time + f2_sleep_time
+        sum_late_sleep_time = sum_sleep_time * 1.1
+
+        f1_event = threading.Event()
+
+        f1_thread = threading.Thread(target=f1)
+        f2_thread = threading.Thread(target=f2)
+
+        logger.debug('mainline starting beta')
+        f1_thread.start()
+        f1_event.wait()
+        assert cmds.clock_in_use is True
+        assert cmds.iteration == 1
+
+        logger.debug('mainline starting charlie')
+        f2_thread.start()
+
+        logger.debug('mainline about to join f1 beta')
+        f1_thread.join()
+
+        logger.debug('mainline about to join f2 charlie')
+        f2_thread.join()
+
+        assert cmds.clock_in_use is False
+        assert cmds.iteration == 2
+
+        logger.debug('mainline exiting')
 
 
     ####################################################################
