@@ -1,0 +1,300 @@
+"""test_stop_watch.py module."""
+
+########################################################################
+# Standard Library
+########################################################################
+import logging
+import threading
+import time
+from typing import Any, cast, Optional, Union
+
+########################################################################
+# Third Party
+########################################################################
+import pytest
+
+########################################################################
+# Local
+########################################################################
+from scottbrian_utils.stop_watch import StopWatch
+
+########################################################################
+# type aliases
+########################################################################
+OptIntFloat = Optional[Union[int, float]]
+
+########################################################################
+# Set up logging
+########################################################################
+logger = logging.getLogger(__name__)
+logger.debug('about to start the tests')
+
+
+########################################################################
+# StopWatch test exceptions
+########################################################################
+class ErrorTstStopWatch(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+
+########################################################################
+# timeout_arg fixture
+########################################################################
+timeout_arg_list = [0.0, 0.3, 0.5, 1, 2, 4]
+
+
+@pytest.fixture(params=timeout_arg_list)  # type: ignore
+def timeout_arg(request: Any) -> float:
+    """Using different seconds for timeout.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(float, request.param)
+
+
+#######################################################################
+# sleep_arg fixture
+########################################################################
+sleep_arg_list = [0.3, 1.0, 2.5]
+
+
+@pytest.fixture(params=sleep_arg_list)  # type: ignore
+def sleep_arg(request: Any) -> float:
+    """Using different remote thread start points.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(float, request.param)
+
+
+########################################################################
+# TestStopWatchClock class
+########################################################################
+class TestBasicStopWatch:
+    """Test StopWatch repr."""
+
+    ####################################################################
+    # test_stop_watch_repr
+    ####################################################################
+    def test_stop_watch_repr(self) -> None:
+        """Test StopWatch repr."""
+
+        logger.debug('mainline entered')
+
+        stop_watch = StopWatch()
+        expected_repr_string = 'StopWatch()'
+        assert repr(stop_watch) == expected_repr_string
+
+        logger.debug('mainline exiting')
+
+
+########################################################################
+# TestStopWatchExamples class
+########################################################################
+class TestStopWatchExamples:
+    """Test examples of StopWatch."""
+
+    ####################################################################
+    # test_stop_watch_example
+    ####################################################################
+    def test_stop_watch_example(self,
+                                capsys: Any) -> None:
+        """Test stop_watch example.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        def f1() -> None:
+            """Beta f1 function."""
+            print('f1 entered')
+            stop_watch.start_clock(clock_iter=1)
+            print('f1 about to wait')
+            f1_event.wait()
+            print('f1 back from wait')
+            assert 2.5 <= stop_watch.duration() <= 2.6
+            print('f1 exiting')
+
+        print('mainline entered')
+        stop_watch = StopWatch()
+        f1_event = threading.Event()
+        f1_thread = threading.Thread(target=f1)
+        print('mainline about to start f1')
+        f1_thread.start()
+        stop_watch.pause(2.5, clock_iter=1)
+        print('mainline about set f1_event')
+        f1_event.set()
+        f1_thread.join()
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += 'mainline about to start f1'
+        expected_result += 'f1 entered\n'
+        expected_result += 'f1 about to wait'
+        expected_result += 'mainline about set f1_event'
+        expected_result += 'f1 back from wait'
+        expected_result += 'f1 exiting\n'
+        expected_result += 'mainline exiting\n'
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+
+########################################################################
+# TestStopWatchClock class
+########################################################################
+class TestStopWatch:
+    """Test the start_clock, pause, and duration methods of StopWatch."""
+
+    ####################################################################
+    # test_stop_watch1
+    ####################################################################
+    def test_stop_watch1(self,
+                         sleep_arg: float) -> None:
+        """Test start_clock and duration methods.
+
+        Args:
+            sleep_arg: how long to sleep to test duration
+
+        """
+
+        def f1() -> None:
+            """Beta f1 function."""
+            logger.debug('f1 beta entered')
+            stop_watch.start_clock(clock_iter=2)
+            f1_event.set()
+            time.sleep(sleep_arg)
+            assert sleep_arg <= stop_watch.duration() <= late_time
+            logger.debug('f1 beta exiting')
+
+        def f2() -> None:
+            """Charlie f2 function."""
+            logger.debug('f2 charlie entered')
+            f2a_event.set()
+            f2b_event.wait()
+            stop_watch.start_clock(clock_iter=5)
+            time.sleep(sleep_arg)
+            assert sleep_arg <= stop_watch.duration() <= late_time
+            logger.debug('f2 charlie exiting')
+
+        logger.debug('mainline entered')
+        stop_watch = StopWatch()
+        f1_event = threading.Event()
+        f2a_event = threading.Event()
+        f2b_event = threading.Event()
+
+        late_time = sleep_arg * 1.1
+        stop_watch.start_clock(clock_iter=1)
+        time.sleep(sleep_arg)
+        assert sleep_arg <= stop_watch.duration() <= late_time
+
+        f1_thread = threading.Thread(target=f1)
+        logger.debug('mainline starting beta')
+        f1_thread.start()
+        f1_event.wait()
+        stop_watch.start_clock(clock_iter=3)
+        time.sleep(sleep_arg)
+        assert sleep_arg <= stop_watch.duration() <= late_time
+
+        logger.debug('mainline about to join f1 beta')
+        f1_thread.join()
+
+        f2_thread = threading.Thread(target=f2)
+        logger.debug('mainline starting charlie')
+        f2_thread.start()
+        f2a_event.wait()
+        stop_watch.start_clock(clock_iter=4)
+        f2b_event.set()
+        time.sleep(sleep_arg)
+        assert sleep_arg <= stop_watch.duration() <= late_time
+
+        logger.debug('mainline about to join f2 charlie')
+        f2_thread.join()
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_stop_watch2
+    ####################################################################
+    def test_stop_watch2(self,
+                         sleep_arg: float) -> None:
+        """Test start_clock and duration methods.
+
+        Args:
+            sleep_arg: how long to sleep to test duration
+
+        """
+
+        def f1() -> None:
+            """Beta f1 function."""
+            logger.debug('f1 beta entered')
+            stop_watch.start_clock(clock_iter=1)
+            f1_event.set()
+            time.sleep(f1_sleep_time)
+            assert f1_sleep_time <= stop_watch.duration() <= f1_late_time
+            logger.debug('f1 beta exiting')
+
+        def f2() -> None:
+            """Charlie f2 function."""
+            logger.debug('f2 charlie entered')
+            assert stop_watch.clock_in_use is True
+            assert stop_watch.clock_iter == 1
+            iter1_start_time = stop_watch.start_time
+            assert stop_watch.clock_in_use is True
+            assert stop_watch.clock_iter == 1
+            stop_watch.start_clock(clock_iter=2)
+            time.sleep(f2_sleep_time)
+            assert f2_sleep_time <= stop_watch.duration() <= f2_late_time
+            assert (sum_sleep_time
+                    <= (time.time() - iter1_start_time)
+                    <= sum_late_sleep_time)
+            logger.debug('f2 charlie exiting')
+
+        logger.debug('mainline entered')
+        stop_watch = StopWatch()
+        assert stop_watch.clock_in_use is False
+
+        f1_sleep_time = sleep_arg * 2
+        f1_late_time = f1_sleep_time * 1.1
+
+        f2_sleep_time = sleep_arg
+        f2_late_time = f2_sleep_time * 1.1
+
+        sum_sleep_time = f1_sleep_time + f2_sleep_time
+        sum_late_sleep_time = sum_sleep_time * 1.1
+
+        f1_event = threading.Event()
+
+        f1_thread = threading.Thread(target=f1)
+        f2_thread = threading.Thread(target=f2)
+
+        logger.debug('mainline starting beta')
+        f1_thread.start()
+        f1_event.wait()
+        assert stop_watch.clock_in_use is True
+        assert stop_watch.clock_iter == 1
+
+        logger.debug('mainline starting charlie')
+        f2_thread.start()
+
+        logger.debug('mainline about to join f1 beta')
+        f1_thread.join()
+
+        logger.debug('mainline about to join f2 charlie')
+        f2_thread.join()
+
+        assert stop_watch.clock_in_use is False
+        assert stop_watch.clock_iter == 2
+
+        logger.debug('mainline exiting')
+
+
