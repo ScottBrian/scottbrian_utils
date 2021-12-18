@@ -1,15 +1,17 @@
 """test_timer.py module."""
 
-import pytest
-import math
-import statistics as stats
+########################################################################
+# Standard Library
+########################################################################
 import time
-from typing import Any, cast, List, Optional, Tuple, Union
-from enum import Enum
-import threading
-from dataclasses import dataclass
-from scottbrian_utils.flower_box import print_flower_box_msg as flowers
 
+########################################################################
+# Third Party
+########################################################################
+
+########################################################################
+# Local
+########################################################################
 from scottbrian_utils.timer import Timer
 
 import logging
@@ -629,7 +631,6 @@ class TestTimerBasic:
     ###########################################################################
     def test_timer_example(self) -> None:
         """Test timer example."""
-
         # create a timer and use in a loop
         print('mainline entered')
         timer = Timer(timeout=3)
@@ -640,57 +641,3 @@ class TestTimerBasic:
                 print('timer has expired')
             break
         print('mainline exiting')
-
-
-    ###########################################################################
-    # repr with mode async
-    ###########################################################################
-    # def test_timer_repr(self,
-    #                              requests_arg: int,
-    #                              seconds_arg: Union[int, float]
-    #                              ) -> None:
-    #     """test_timer repr mode 1 with various requests and seconds.
-    #
-    #     Args:
-    #         requests_arg: fixture that provides args
-    #         seconds_arg: fixture that provides args
-    #
-    #     """
-    #     #######################################################################
-    #     # throttle with async_q_size specified
-    #     #######################################################################
-    #     a_throttle = Timer(requests=requests_arg,
-    #                           seconds=seconds_arg,
-    #                           mode=Timer.MODE_ASYNC)
-    #
-    #     expected_repr_str = \
-    #         f'Timer(' \
-    #         f'requests={requests_arg}, ' \
-    #         f'seconds={float(seconds_arg)}, ' \
-    #         f'mode=Timer.MODE_ASYNC, ' \
-    #         f'async_q_size={Timer.DEFAULT_ASYNC_Q_SIZE})'
-    #
-    #     assert repr(a_throttle) == expected_repr_str
-    #
-    #     a_throttle.start_shutdown()
-    #
-    #     #######################################################################
-    #     # throttle with async_q_size specified
-    #     #######################################################################
-    #     q_size = requests_arg * 3
-    #     a_throttle = Timer(requests=requests_arg,
-    #                           seconds=seconds_arg,
-    #                           mode=Timer.MODE_ASYNC,
-    #                           async_q_size=q_size)
-    #
-    #     expected_repr_str = \
-    #         f'Timer(' \
-    #         f'requests={requests_arg}, ' \
-    #         f'seconds={float(seconds_arg)}, ' \
-    #         f'mode=Timer.MODE_ASYNC, ' \
-    #         f'async_q_size={q_size})'
-    #
-    #     assert repr(a_throttle) == expected_repr_str
-    #
-    #     a_throttle.start_shutdown()
-

@@ -87,7 +87,6 @@ class TestBasicStopWatch:
     ####################################################################
     def test_stop_watch_repr(self) -> None:
         """Test StopWatch repr."""
-
         logger.debug('mainline entered')
 
         stop_watch = StopWatch()
@@ -137,11 +136,11 @@ class TestStopWatchExamples:
         print('mainline exiting')
 
         expected_result = 'mainline entered\n'
-        expected_result += 'mainline about to start f1'
+        expected_result += 'mainline about to start f1\n'
         expected_result += 'f1 entered\n'
-        expected_result += 'f1 about to wait'
-        expected_result += 'mainline about set f1_event'
-        expected_result += 'f1 back from wait'
+        expected_result += 'f1 about to wait\n'
+        expected_result += 'mainline about set f1_event\n'
+        expected_result += 'f1 back from wait\n'
         expected_result += 'f1 exiting\n'
         expected_result += 'mainline exiting\n'
         captured = capsys.readouterr().out
@@ -297,4 +296,77 @@ class TestStopWatch:
 
         logger.debug('mainline exiting')
 
+    ####################################################################
+    # test_stop_watch3
+    ####################################################################
+    def test_stop_watch3(self,
+                         sleep_arg: float) -> None:
+        """Test start_clock and pause methods.
 
+        Args:
+            sleep_arg: how long to sleep to test duration
+
+        """
+
+        def f1() -> None:
+            """Beta f1 function."""
+            logger.debug('f1 beta entered')
+            stop_watch.start_clock(clock_iter=1)
+            f1_event.set()
+            time.sleep(f1_sleep_time)
+            assert f1_sleep_time <= stop_watch.duration() <= f1_late_time
+
+            stop_watch.start_clock(clock_iter=2)
+            time.sleep(f1_sleep_time)
+            assert f1_sleep_time <= stop_watch.duration() <= f1_late_time
+            logger.debug('f1 beta exiting')
+
+        def f2() -> None:
+            """Charlie f2 function."""
+            logger.debug('f2 charlie entered')
+            assert stop_watch.clock_in_use is True
+            assert stop_watch.clock_iter == 1
+            iter1_start_time = stop_watch.start_time
+            assert stop_watch.clock_in_use is True
+            assert stop_watch.clock_iter == 1
+            stop_watch.pause(f2_pause_time, clock_iter=2)
+            f2_pause_duration = time.time() - iter1_start_time
+            assert f2_exp_pause_duration <= f2_pause_duration <= f2_late_time
+
+            logger.debug('f2 charlie exiting')
+
+        logger.debug('mainline entered')
+        stop_watch = StopWatch()
+        assert stop_watch.clock_in_use is False
+
+        f1_sleep_time = sleep_arg
+        f1_late_time = f1_sleep_time * 1.1
+
+        f2_pause_time = sleep_arg * 0.5
+        f2_exp_pause_duration = f1_sleep_time + f2_pause_time
+        f2_late_time = f2_exp_pause_duration * 1.1
+
+        f1_event = threading.Event()
+
+        f1_thread = threading.Thread(target=f1)
+        f2_thread = threading.Thread(target=f2)
+
+        logger.debug('mainline starting beta')
+        f1_thread.start()
+        f1_event.wait()
+        assert stop_watch.clock_in_use is True
+        assert stop_watch.clock_iter == 1
+
+        logger.debug('mainline starting charlie')
+        f2_thread.start()
+
+        logger.debug('mainline about to join f1 beta')
+        f1_thread.join()
+
+        logger.debug('mainline about to join f2 charlie')
+        f2_thread.join()
+
+        assert stop_watch.clock_in_use is False
+        assert stop_watch.clock_iter == 2
+
+        logger.debug('mainline exiting')

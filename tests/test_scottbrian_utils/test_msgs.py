@@ -171,7 +171,7 @@ class TestMsgsErrors:
             assert to_low <= msgs.duration() <= to_high
 
             f1_thread.start()
-            logger.debug(f'mainline starting timeout loop')
+            logger.debug('mainline starting timeout loop')
             for idx in range(2, 5):  # 2, 3, 4
                 logger.debug(f'mainline starting timeout loop {idx}')
                 msgs.start_clock(clock_iter=idx)

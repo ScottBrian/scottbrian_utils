@@ -63,6 +63,7 @@ class TimerError(Exception):
 # Timer Class
 ########################################################################
 class Timer:
+    """Timer class."""
     def __init__(self,
                  timeout: Optional[Union[int, float]] = None,
                  default_timeout: Optional[Union[int, float]] = None) -> None:
@@ -84,7 +85,13 @@ class Timer:
             self._timeout = timeout or default_timeout
 
     @property
-    def timeout(self):
+    def timeout(self) -> float:
+        """Getter method that returns the timeout value.
+
+        Returns:
+            remaining time of timeout value
+
+        """
         if self._timeout:  # if not None
             # make sure not negative
             ret_timeout = max(0.0001,
@@ -94,7 +101,11 @@ class Timer:
         return ret_timeout  # return value of remaining time for timeout
 
     def is_expired(self) -> bool:
-        """Return either True or False for the timer."""
+        """Return either True or False for the timer.
+
+        Returns:
+            True if the timer has expired, False if not
+        """
         if self._timeout and self._timeout < (time.time() - self.start_time):
             return True  # we timed out
         else:

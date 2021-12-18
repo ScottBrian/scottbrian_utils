@@ -4,10 +4,10 @@
 diag_msg
 ========
 
-With **diag_msg** you can print messages with the time and caller info added
-automatically. The default time format is H:M:S.f. The caller info includes
-the module name, class name (or null), method name (or null), and the line
-number relative to the start of the module.
+With **diag_msg** you can print messages with the time and caller info
+added automatically. The default time format is H:M:S.f. The caller info
+includes the module name, class name (or null), method name (or null),
+and the line number relative to the start of the module.
 
 :Example: print a diagnostic message
 
@@ -15,11 +15,16 @@ number relative to the start of the module.
 >>> diag_msg('this is a diagnostic message')
 16:20:05.909260 <input>:1 this is a diagnostic message
 
-Note that all of the examples are done as if entered in a python session from
-the console. As such, the module name will show as <input>. When coded in a
-module, however, you will see the module name instead of <input>.
+Note that all of the examples are done as if entered in a python session
+from the console. As such, the module name will show as <input>. When
+coded in a module, however, you will see the module name instead of
+<input>.
 
 """
+
+########################################################################
+# Standard Library
+########################################################################
 from datetime import datetime
 from os import fspath
 from pathlib import Path
@@ -29,7 +34,13 @@ import types
 from types import FrameType
 from typing import Any, NamedTuple
 
-import time
+########################################################################
+# Third Party
+########################################################################
+
+########################################################################
+# Local
+########################################################################
 
 # diag_msg_datetime_fmt = "%b %d %H:%M:%S.%f"
 diag_msg_datetime_fmt = "%H:%M:%S.%f"
@@ -45,9 +56,9 @@ class CallerInfo(NamedTuple):
     line_num: int
 
 
-###############################################################################
+########################################################################
 # diag_msg
-###############################################################################
+########################################################################
 def diag_msg(*args: Any,
              depth: int = diag_msg_caller_depth,
              dt_format: str = diag_msg_datetime_fmt,
@@ -56,11 +67,13 @@ def diag_msg(*args: Any,
 
     Args:
         args: the text to print as part of the diagnostic message
-        depth:  specifies how many callers to include in the call sequence
+        depth:  specifies how many callers to include in the call
+                  sequence
         dt_format: datetime format to use
         kwargs: keyword args to pass along to the print statement
 
-    :Example: print a diagnostic message from a method with a seq depth of 2
+    :Example: print a diagnostic message from a method with a seq depth
+                of 2
 
     >>> from scottbrian_utils.diag_msg import diag_msg
     >>> class Cls1:
@@ -82,7 +95,8 @@ def diag_msg(*args: Any,
     Tue Feb-16 10:38:32 <input>::Cls1.f1:4 diagnostic info 24
 
     """
-    # we specify 2 frames back since we don't want our call in the sequence
+    # we specify 2 frames back since we don't want our call in the
+    # sequence
     caller_sequence = get_formatted_call_sequence(1, depth)
 
     str_time = datetime.now().strftime(dt_format)
@@ -90,9 +104,9 @@ def diag_msg(*args: Any,
     print(f'{str_time} {caller_sequence}', *args, **kwargs)
 
 
-###############################################################################
+########################################################################
 # get_caller_info
-###############################################################################
+########################################################################
 def get_caller_info(frame: FrameType) -> CallerInfo:
     """Return caller information from the given stack frame.
 
@@ -100,8 +114,8 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
         frame: the frame from which to extract caller info
 
     Returns:
-        The caller module name, class name (or null), function name (or null),
-        and the line number within the module source
+        The caller module name, class name (or null), function name (or
+        null), and the line number within the module source
 
     :Example: get caller info for current frame
 
@@ -144,20 +158,10 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
             except (AttributeError, KeyError):
                 pass
 
-        # if here, not found yet - try looking at locals in the previous frame
-        # if func_name == 'run':
-        #     if frame.f_back:
-        #         print(f'{time.time():0.3f} f_back exists')
-        #     else:
-        #         print(f'{time.time():0.3f} ******* f_back missing *******')
+        # if here, not found yet - try looking at locals in the previous
+        # frame
         if frame.f_back:
-            # print(f'\nframe.f_back.f_locals: \n {frame.f_back.f_locals}')
             for key, item in frame.f_back.f_locals.items():
-                # if func_name == 'run':
-                #     print(
-                #         f'{time.time():0.3f} f_back key = {key} item = {item} '
-                #         f'type ='
-                #         f' {type(item)}')
                 if (isinstance(item, type)
                         and (key != 'cls')
                         and func_in_class(func_name=func_name,
@@ -174,9 +178,9 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
                       line_num=frame.f_lineno)
 
 
-###############################################################################
+########################################################################
 # get_formatted_call_sequence
-###############################################################################
+########################################################################
 def func_in_class(func_name: str,
                   class_obj: type,
                   code: Any) -> bool:
@@ -193,53 +197,48 @@ def func_in_class(func_name: str,
     """
     try:
         func_obj = class_obj.__dict__[func_name]
-        # if func_name == 'run' and (p is True):
-        #     print(f'{time.time():0.3f} isinstance(func_obj, types.FunctionType) '
-        #           f'{isinstance(func_obj, types.FunctionType)}')
         if ((isinstance(func_obj, types.FunctionType)
                 and (func_obj.__code__ is code)
              )
                 or (isinstance(func_obj, (staticmethod, classmethod))
                     and (func_obj.__func__.__code__ is code)
                     )):
-            # if func_name == 'run' and (p is True):
-            #     print(f'{time.time():0.3f} func_in_class returning True')
             return True
 
     except (AttributeError, KeyError):
         pass  # class name not found
-        # if func_name == 'run' and (p is True):
-        #     print(f'{time.time():0.3f} func_in_class exception')
 
-    # if func_name == 'run' and (p is True):
-    #     print(f'{time.time():0.3f} func_in_class returning False')
     return False
 
 
-###############################################################################
+########################################################################
 # get_formatted_call_sequence
-###############################################################################
+########################################################################
 def get_formatted_call_sequence(latest: int = 0,
                                 depth: int = get_formatted_call_seq_depth
                                 ) -> str:
     """Return a formatted string showing the callers.
 
     Args:
-        latest: specifies the stack position of the most recent caller to be
-                  included in the call sequence
-        depth: specifies how many callers to include in the call sequence
+        latest: specifies the stack position of the most recent caller
+                  to be included in the call sequence
+        depth: specifies how many callers to include in the call
+                 sequence
 
     Returns:
-        Formatted string showing for each caller the module name, possibly
-        a function name or a class name/method_name pair, and the
-        source code line number. There are three basic scenarios:
+        Formatted string showing for each caller the module name,
+        possibly a function name or a class name/method_name pair, and
+        the source code line number. There are three basic scenarios:
 
-        * A call from a script will appear as: mod_name:lineno
-        * A call from a function will appear as: mod_name::func_name:lineno
-        * A call from a class method: mod_name::cls_name.func_name:lineno
+        * A call from a script will appear as:
+          mod_name:lineno
+        * A call from a function will appear as:
+          mod_name::func_name:lineno
+        * A call from a class method will appear as::
+          mod_name::cls_name.func_name:lineno
 
-    This function is useful if, for example, you want to include the call
-    sequence in a log.
+    This function is useful if, for example, you want to include the
+    call sequence in a log.
 
     :Example: get call sequence for three callers
 
@@ -258,10 +257,10 @@ def get_formatted_call_sequence(latest: int = 0,
     >>> f1()
     <input>::f1:4 -> <input>::f2:3 -> <input>::f3:4
 
-    Note that when coded in a module, you will get the module name in the
-    sequence instead of <input>, and the line numbers will be relative from
-    the start of the module instead of from each of the function definition
-    sections.
+    Note that when coded in a module, you will get the module name in
+    the sequence instead of <input>, and the line numbers will be
+    relative from the start of the module instead of from each of the
+    function definition sections.
 
     :Example: get call sequence for last two callers
 
@@ -322,10 +321,12 @@ def get_formatted_call_sequence(latest: int = 0,
         except ValueError:
             break  # caller_depth beyond depth of frames
         except Exception:  # anything else, such as _getframe missing
-            break  # we will return whatever we collected so far (maybe null)
+            # we will return whatever we collected so far (maybe null)
+            break
 
         try:
-            # mod_name, cls_name, func_name, lineno = get_caller_info(frame)
+            # mod_name, cls_name, func_name,
+            # lineno = get_caller_info(frame)
             caller_info = get_caller_info(frame)
         finally:
             del frame  # important to prevent storage leak

@@ -4,9 +4,9 @@
 StopWatch
 =========
 
-The StopWatch class can be used during testing to start a clock, pause 
-for a certain amount of time relative to the started clock, and then 
-stop the clock and get the elapsed time.  
+The StopWatch class can be used during testing to start a clock, pause
+for a certain amount of time relative to the started clock, and then
+stop the clock and get the elapsed time.
 
 :Example: verify timing of event
 
@@ -56,10 +56,9 @@ The stop_watch module contains:
 # Standard Library
 ########################################################################
 import logging
-import queue
 import threading
 import time
-from typing import Any, Final, Optional, Union
+from typing import Final, Optional, Type, TYPE_CHECKING, Union
 
 ########################################################################
 # Third Party
@@ -117,6 +116,30 @@ class StopWatch:
         # Flag to quickly determine whether debug logging is enabled
         self.debug_logging_enabled = self.logger.isEnabledFor(logging.DEBUG)
 
+    ###########################################################################
+    # repr
+    ###########################################################################
+    def __repr__(self) -> str:
+        """Return a representation of the class.
+
+        Returns:
+            The representation as how the class is instantiated
+
+        :Example: repr of StopWatch
+
+        >>> from scottbrian_utils.stop_watch import StopWatch
+        >>> stop_watch = StopWatch()
+        >>> repr(stop_watch)
+        StopWatch()
+
+        """
+        if TYPE_CHECKING:
+            __class__: Type[StopWatch]
+        classname = self.__class__.__name__
+        parms = ''
+
+        return f'{classname}({parms})'
+
     ####################################################################
     # pause
     ####################################################################
@@ -128,7 +151,6 @@ class StopWatch:
         Args:
             seconds: number of seconds to pause from the start_time for
                        the given clock_iter.
-
             clock_iter: clock clock_iter to pause on
 
         Notes:
