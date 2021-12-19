@@ -3,21 +3,27 @@
 ########################################################################
 # Standard Library
 ########################################################################
+import logging
 import time
-from typing import Any, Optional
+from typing import Any, cast, Optional, Union
 
 ########################################################################
 # Third Party
 ########################################################################
+import pytest
 
 ########################################################################
 # Local
 ########################################################################
 from scottbrian_utils.timer import Timer
 
-import logging
-
 logger = logging.getLogger(__name__)
+
+########################################################################
+# type aliases
+########################################################################
+IntFloat = Union[int, float]
+OptIntFloat = Optional[IntFloat]
 
 
 ########################################################################
@@ -27,9 +33,67 @@ class ErrorTstTimer(Exception):
     """Base class for exception in this module."""
     pass
 
+########################################################################
+# timeout_arg fixture
+########################################################################
+zero_or_less_timeout_arg_list = [-1.1, -1, 0, 0.0]
+greater_than_zero_timeout_arg_list = [0.3, 0.5, 1, 1.5, 2, 4]
+
+
+@pytest.fixture(params=zero_or_less_timeout_arg_list)  # type: ignore
+def zero_or_less_timeout_arg(request: Any) -> IntFloat:
+    """Using different seconds for timeout.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(IntFloat, request.param)
+
+
+@pytest.fixture(params=greater_than_zero_timeout_arg_list)  # type: ignore
+def greater_than_zero_timeout_arg(request: Any) -> IntFloat:
+    """Using different seconds for timeout.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(IntFloat, request.param)
+
+
+@pytest.fixture(params=zero_or_less_timeout_arg_list)  # type: ignore
+def zero_or_less_default_timeout_arg(request: Any) -> IntFloat:
+    """Using different seconds for timeout_default.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(IntFloat, request.param)
+
+
+@pytest.fixture(params=greater_than_zero_timeout_arg_list)  # type: ignore
+def greater_than_zero_default_timeout_arg(request: Any) -> IntFloat:
+    """Using different seconds for timeout_default.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(IntFloat, request.param)
+
 
 ###############################################################################
-# TestTimerBasic class to test Timer methods
+# TestTimerExamples class
 ###############################################################################
 class TestTimerExamples:
     """Test examples of Timer."""
@@ -222,5 +286,326 @@ class TestTimerExamples:
         f1(-1)
         f1()
 
+###############################################################################
+# TestTimerBasic class
+###############################################################################
+class TestTimerBasic:
+    """Test basic functions of Timer."""
 
+    ###########################################################################
+    # test_timer_case1a
+    ###########################################################################
+    def test_timer_case1a(self) -> None:
+        """Test timer case1a."""
+        print('mainline entered')
+        timer = Timer()
+        time.sleep(1)
+        assert not timer.is_expired()
+        time.sleep(1)
+        assert not timer.is_expired()
+        print('mainline exiting')
+        
+    ###########################################################################
+    # test_timer_case1b
+    ###########################################################################
+    def test_timer_case1b(self) -> None:
+        """Test timer case1b."""
+        print('mainline entered')
+        timer = Timer(default_timeout=None)
+        time.sleep(1)
+        assert not timer.is_expired()
+        time.sleep(1)
+        assert not timer.is_expired()
+        print('mainline exiting')
+        
+    ###########################################################################
+    # test_timer_case1c
+    ###########################################################################
+    def test_timer_case1c(self) -> None:
+        """Test timer case1c."""
+        print('mainline entered')
+        timer = Timer(timeout=None)
+        time.sleep(1)
+        assert not timer.is_expired()
+        time.sleep(1)
+        assert not timer.is_expired()
+        print('mainline exiting')
+        
+    ###########################################################################
+    # test_timer_case1d
+    ###########################################################################
+    def test_timer_case1d(self) -> None:
+        """Test timer case1d."""
+        print('mainline entered')
+        timer = Timer(timeout=None, default_timeout=None)
+        time.sleep(1)
+        assert not timer.is_expired()
+        time.sleep(1)
+        assert not timer.is_expired()
+        print('mainline exiting')
+
+    ###########################################################################
+    # test_timer_case2a
+    ###########################################################################
+    def test_timer_case2a(self,
+                          zero_or_less_default_timeout_arg: IntFloat
+                          ) -> None:
+        """Test timer case2a.
+
+        Args:
+            zero_or_less_default_timeout_arg: pytest fixture for timeout
+                                                seconds
+
+        """
+        print('mainline entered')
+        timer = Timer(default_timeout=zero_or_less_default_timeout_arg)
+        time.sleep(abs(zero_or_less_default_timeout_arg * 0.9))
+        assert not timer.is_expired()
+        time.sleep(abs(zero_or_less_default_timeout_arg))
+        assert not timer.is_expired()
+        print('mainline exiting')
+
+    ###########################################################################
+    # test_timer_case2b
+    ###########################################################################
+
+    def test_timer_case2b(self,
+                          zero_or_less_default_timeout_arg: IntFloat
+                          ) -> None:
+        """Test timer case2b.
+
+        Args:
+            zero_or_less_default_timeout_arg: pytest fixture for timeout
+                                                seconds
+
+        """
+        print('mainline entered')
+        timer = Timer(timeout=None,
+                      default_timeout=zero_or_less_default_timeout_arg)
+        time.sleep(abs(zero_or_less_default_timeout_arg * 0.9))
+        assert not timer.is_expired()
+        time.sleep(abs(zero_or_less_default_timeout_arg))
+        assert not timer.is_expired()
+        print('mainline exiting')
+
+    ###########################################################################
+    # test_timer_case3a
+    ###########################################################################
+    def test_timer_case3a(self,
+                          greater_than_zero_default_timeout_arg: IntFloat
+                          ) -> None:
+        """Test timer case3a.
+
+        Args:
+            greater_than_zero_default_timeout_arg: pytest fixture for
+                                                     timeout seconds
+
+        """
+        print('mainline entered')
+        timer = Timer(default_timeout=greater_than_zero_default_timeout_arg)
+        time.sleep(greater_than_zero_default_timeout_arg * 0.9)
+        assert not timer.is_expired()
+        time.sleep(greater_than_zero_default_timeout_arg)
+        assert timer.is_expired()
+        print('mainline exiting')
+
+    ###########################################################################
+    # test_timer_case3b
+    ###########################################################################
+    def test_timer_case3b(self,
+                          greater_than_zero_default_timeout_arg: IntFloat
+                          ) -> None:
+        """Test timer case3b.
+
+        Args:
+            greater_than_zero_default_timeout_arg: pytest fixture for
+                                                     timeout seconds
+
+        """
+        print('mainline entered')
+        timer = Timer(timeout=None,
+                      default_timeout=greater_than_zero_default_timeout_arg)
+        time.sleep(greater_than_zero_default_timeout_arg * 0.9)
+        assert not timer.is_expired()
+        time.sleep(greater_than_zero_default_timeout_arg)
+        assert timer.is_expired()
+        print('mainline exiting')
+
+    ###########################################################################
+    # test_timer_case4a
+    ###########################################################################
+    def test_timer_case4a(self,
+                          zero_or_less_timeout_arg: IntFloat) -> None:
+        """Test timer case4a.
+
+        Args:
+            zero_or_less_timeout_arg: pytest fixture for timeout seconds
+
+        """
+        print('mainline entered')
+        timer = Timer(timeout=zero_or_less_timeout_arg)
+        time.sleep(abs(zero_or_less_timeout_arg * 0.9))
+        assert not timer.is_expired()
+        time.sleep(abs(zero_or_less_timeout_arg))
+        assert not timer.is_expired()
+        print('mainline exiting')
+
+    ###########################################################################
+    # test_timer_case4b
+    ###########################################################################
+    def test_timer_case4b(self,
+                          zero_or_less_timeout_arg: IntFloat) -> None:
+        """Test timer case4b.
+
+        Args:
+            zero_or_less_timeout_arg: pytest fixture for timeout seconds
+
+        """
+        print('mainline entered')
+        timer = Timer(timeout=zero_or_less_timeout_arg,
+                      default_timeout=None)
+        time.sleep(abs(zero_or_less_timeout_arg * 0.9))
+        assert not timer.is_expired()
+        time.sleep(abs(zero_or_less_timeout_arg))
+        assert not timer.is_expired()
+        print('mainline exiting')
+
+    ###########################################################################
+    # test_timer_case5
+    ###########################################################################
+    def test_timer_case5(self,
+                         zero_or_less_timeout_arg: IntFloat,
+                         zero_or_less_default_timeout_arg: IntFloat
+                         ) -> None:
+        """Test timer case5.
+
+        Args:
+            zero_or_less_timeout_arg: pytest fixture for timeout seconds
+            zero_or_less_default_timeout_arg: pytest fixture for timeout
+                                                seconds
+
+        """
+        print('mainline entered')
+        timer = Timer(timeout=zero_or_less_timeout_arg,
+                      default_timeout=zero_or_less_default_timeout_arg)
+        time.sleep(abs(zero_or_less_timeout_arg * 0.9))
+        assert not timer.is_expired()
+        time.sleep(abs(zero_or_less_timeout_arg))
+        assert not timer.is_expired()
+        print('mainline exiting')
+
+    ###########################################################################
+    # test_timer_case6
+    ###########################################################################
+    def test_timer_case6(self,
+                         zero_or_less_timeout_arg: IntFloat,
+                         greater_than_zero_default_timeout_arg: IntFloat
+                         ) -> None:
+        """Test timer case6.
+
+        Args:
+            zero_or_less_timeout_arg: pytest fixture for timeout seconds
+            greater_than_zero_default_timeout_arg: pytest fixture for
+                                                     timeout seconds
+
+        """
+        print('mainline entered')
+        timer = Timer(timeout=zero_or_less_timeout_arg,
+                      default_timeout=greater_than_zero_default_timeout_arg)
+        time.sleep(abs(zero_or_less_timeout_arg * 0.9))
+        assert not timer.is_expired()
+        time.sleep(abs(zero_or_less_timeout_arg))
+        assert not timer.is_expired()
+        print('mainline exiting')
+
+    ###########################################################################
+    # test_timer_case7a
+    ###########################################################################
+    def test_timer_case7a(self,
+                          greater_than_zero_timeout_arg: IntFloat) -> None:
+        """Test timer case7a.
+
+        Args:
+            greater_than_zero_timeout_arg: pytest fixture for timeout
+                                             seconds
+
+        """
+        print('mainline entered')
+        timer = Timer(timeout=greater_than_zero_timeout_arg)
+        time.sleep(greater_than_zero_timeout_arg * 0.9)
+        assert not timer.is_expired()
+        time.sleep(greater_than_zero_timeout_arg)
+        assert timer.is_expired()
+        print('mainline exiting')
+
+    ###########################################################################
+    # test_timer_case7b
+    ###########################################################################
+    def test_timer_case7b(self,
+                          greater_than_zero_timeout_arg: IntFloat) -> None:
+        """Test timer case7b.
+
+        Args:
+            greater_than_zero_timeout_arg: pytest fixture for timeout
+                                             seconds
+
+        """
+        print('mainline entered')
+        timer = Timer(timeout=greater_than_zero_timeout_arg,
+                      default_timeout=None)
+        time.sleep(greater_than_zero_timeout_arg * 0.9)
+        assert not timer.is_expired()
+        time.sleep(greater_than_zero_timeout_arg)
+        assert timer.is_expired()
+        print('mainline exiting')
+        
+    ###########################################################################
+    # test_timer_case8
+    ###########################################################################
+    def test_timer_case8(self,
+                         greater_than_zero_timeout_arg: IntFloat,
+                         zero_or_less_default_timeout_arg: IntFloat
+                         ) -> None:
+        """Test timer case8.
+
+        Args:
+            greater_than_zero_timeout_arg: pytest fixture for timeout
+                                             seconds
+            zero_or_less_default_timeout_arg: pytest fixture for timeout
+                                                seconds                                  
+
+        """
+        print('mainline entered')
+        timer = Timer(timeout=greater_than_zero_timeout_arg, 
+                      default_timeout=zero_or_less_default_timeout_arg)
+        time.sleep(greater_than_zero_timeout_arg * 0.9)
+        assert not timer.is_expired()
+        time.sleep(greater_than_zero_timeout_arg)
+        assert timer.is_expired()
+        print('mainline exiting')
+        
+    ###########################################################################
+    # test_timer_case9
+    ###########################################################################
+    def test_timer_case9(self,
+                         greater_than_zero_timeout_arg: IntFloat,
+                         greater_than_zero_default_timeout_arg: IntFloat
+                         ) -> None:
+        """Test timer case9.
+
+        Args:
+            greater_than_zero_timeout_arg: pytest fixture for timeout
+                                             seconds
+            greater_than_zero_default_timeout_arg: pytest fixture for 
+                                                     timeout seconds                                 
+
+        """
+        print('mainline entered')
+        timer = Timer(timeout=greater_than_zero_timeout_arg, 
+                      default_timeout=greater_than_zero_default_timeout_arg)
+        time.sleep(greater_than_zero_timeout_arg * 0.9)
+        assert not timer.is_expired()
+        time.sleep(greater_than_zero_timeout_arg)
+        assert timer.is_expired()
+        print('mainline exiting')
 
