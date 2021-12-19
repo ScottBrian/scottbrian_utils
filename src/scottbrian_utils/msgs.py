@@ -1,67 +1,76 @@
-"""Module cmds.
+"""Module msgs.
 
 ====
-Cmds
+Msgs
 ====
 
-The Cmds class can be used during testing to send message between
-threads, set a timer, or pause for a certain amount of time.
+The Msgs class is intended to be used during testing to send and receive
+messages between threads.
 
-:Example: send cmd message to remote thread
+:Example: send a message to remote thread
 
->>>import threading from scottbrian_utils.cmds import Cmds
->>> import time
->>> def f1():
-...     print('f1 entered')
-...     print(cmds.get_cmd('beta'))
-...     print('f1 exiting')
+>>> import threading from scottbrian_utils.msgs import Msgs
+>>> def f1() -> None:
+...     print('f1 beta entered')
+...     my_msg = msgs.get_msg('beta')
+...     print(my_msg)
+...     print('f1 beta exiting')
 >>> print('mainline entered')
->>> cmds = Cmds()
+>>> msgs = Msgs()
 >>> f1_thread = threading.Thread(target=f1)
 >>> f1_thread.start()
->>> cmds.queue_cmd('beta', 'exit now')
+>>> msgs.queue_msg('beta', 'exit now')
 >>> f1_thread.join()
 >>> print('mainline exiting')
 mainline entered
-f1 entered
+f1 beta entered
 exit now
-f1 exiting
+f1 beta exiting
 mainline exiting
 
 
-:Example: verify timing of event
+:Example: a command loop using Msgs
 
->>>import threading from scottbrian_utils.cmds import Cmds
+>>> import threading from scottbrian_utils.msgs import Msgs
 >>> import time
->>> def f1():
-...     print('f1 entered')
-...     cmds.start_clock(clock_iter=1)
-...     cmds.get_cmd('beta')
-...     assert 2 <= cmds.duration() <= 3
-...     print('f1 exiting')
->>> print('mainline entered')
->>> cmds = Cmds()
+>>> def f1() -> None:
+...     print('f1 beta entered')
+...     while True:
+...         my_msg = msgs.get_msg('beta')
+...         if my_msg == 'exit':
+...             break
+...         else:
+...             # handle message
+...             print(f'beta received msg: {my_msg}')
+...             msgs.queue_msg('alpha', f'msg "{my_msg}" completed')
+...     print('f1 beta exiting')
+>>> print('mainline alpha entered')
+>>> msgs = Msgs()
 >>> f1_thread = threading.Thread(target=f1)
 >>> f1_thread.start()
->>> cmds.pause(2.5, clock_iter=1)
->>> cmds.queue_cmd('beta', 'exit now')
+>>> msgs.queue_msg('beta', 'do message a')
+>>> print(msgs.get_msg('alpha'))
+>>> msgs.queue_msg('beta', 'do message b')
+>>> print(f"alpha received response: {msgs.get_msg('alpha')}")
+>>> msgs.queue_msg('beta', 'exit')
 >>> f1_thread.join()
->>> print('mainline exiting')
-mainline entered
-f1 entered
-f1 exiting
-mainline exiting
+>>> print('mainline alpha exiting')
+mainline alpha entered
+f1 beta entered
+beta received msg: do message a
+alpha received response: msg "do message a" completed
+beta received msg: do message b
+alpha received response: msg "do message b" completed
+f1 beta exiting
+mainline alpha exiting
 
 
-The cmds module contains:
+The msgs module contains:
 
-    1) Cmds class with methods:
+    1) Msgs class with methods:
 
-       a. duration
-       b. get_cmd
-       c. pause
-       d. queue_cmd
-       e. start_clock
+       a. get_msg
+       b. queue_msg
 
 """
 
@@ -71,12 +80,12 @@ The cmds module contains:
 import logging
 import queue
 import threading
-import time
 from typing import Any, Final, Optional, Union
 
 ########################################################################
 # Third Party
 ########################################################################
+from scottbrian_utils.timer import Timer
 
 ########################################################################
 # Local
@@ -90,34 +99,32 @@ OptIntFloat = Optional[IntFloat]
 
 
 ########################################################################
-# Cmd Exceptions classes
+# Msg Exceptions classes
 ########################################################################
-class CmdsError(Exception):
+class MsgsError(Exception):
     """Base class for exception in this module."""
     pass
 
 
-class GetCmdTimedOut(CmdsError):
-    """Cmds get_cmd timed out waiting for cmd."""
+class GetMsgTimedOut(MsgsError):
+    """Msgs get_msg timed out waiting for msg."""
     pass
 
 
 ########################################################################
-# Cmd Class
+# Msgs Class
 ########################################################################
-class Cmds:
-    """Cmd class for testing.
+class Msgs:
+    """Msgs class for testing.
 
-    The Cmds class is used to assist in the testing of multi-threaded
+    The Msgs class is used to assist in the testing of multi-threaded
     functions. It provides a set of methods that help with test case
-    coordination and verification of timed event. The test case setup
+    coordination and verification. The test case setup
     involves a mainline thread that starts one or more remote threads.
-    The queue_cmd and get_cmd methods are used for inter-thread
-    communications, and the start_clock and duration methods are used to
-    verify event times.
+    The queue_msg and get_msg methods are used for inter-thread
+    communications.
 
     """
-
     GET_CMD_TIMEOUT: Final[float] = 3.0
     CMD_Q_MAX_SIZE: Final[int] = 10
 
@@ -126,16 +133,8 @@ class Cmds:
     ####################################################################
     def __init__(self) -> None:
         """Initialize the object."""
-        # self.alpha_cmd = queue.Queue(maxsize=10)
-        # self.beta_cmd = queue.Queue(maxsize=10)
-        self.cmd_array: dict[str, Any] = {}
-        self.cmd_lock = threading.Lock()
-        self.l_msg: Any = None
-        self.r_code: Any = None
-        self.start_time: float = 0.0
-        self.previous_start_time: float = 0.0
-        self.clock_in_use = False
-        self.iteration = 0
+        self.msg_array: dict[str, Any] = {}
+        self.msg_lock = threading.Lock()
 
         # add a logger
         self.logger = logging.getLogger(__name__)
@@ -144,121 +143,71 @@ class Cmds:
         self.debug_logging_enabled = self.logger.isEnabledFor(logging.DEBUG)
 
     ####################################################################
-    # queue_cmd
+    # queue_msg
     ####################################################################
-    def queue_cmd(self, who: str, cmd: Optional[Any] = 'go') -> None:
-        """Place a cmd on the cmd queue for the specified target.
+    def queue_msg(self, who: str, msg: Optional[Any] = 'go') -> None:
+        """Place a msg on the msg queue for the specified target.
 
         Args:
             who: arbitrary name that designates the target of the
-                   command and which will be used with the get_cmd
-                   method to retrieve the command
-            cmd: command to place on queue
+                   message and which will be used with the get_msg
+                   method to retrieve the message
+            msg: message to place on queue
 
         """
-        with self.cmd_lock:
-            if who not in self.cmd_array:
-                self.cmd_array[who] = queue.Queue(maxsize=Cmds.CMD_Q_MAX_SIZE)
+        with self.msg_lock:
+            if who not in self.msg_array:
+                self.msg_array[who] = queue.Queue(maxsize=Msgs.CMD_Q_MAX_SIZE)
 
-        self.cmd_array[who].put(cmd,
+        self.msg_array[who].put(msg,
                                 block=True,
                                 timeout=0.5)
 
     ####################################################################
-    # get_cmd
+    # get_msg
     ####################################################################
-    def get_cmd(self,
+    def get_msg(self,
                 who: str,
                 timeout: OptIntFloat = GET_CMD_TIMEOUT) -> Any:
-        """Get the next command for alpha to do.
+        """Get the next message for alpha to do.
 
         Args:
             who: arbitrary name that designates the target of the
-                   command and which will be used with the queue_cmd
+                   message and which will be used with the queue_msg
                    method to identify the intended recipient of the
-                   command
-            timeout: number of seconds allowed for cmd response. A
+                   message
+            timeout: number of seconds allowed for msg response. A
                        negative value, zero, or None means no timeout
                        will happen. If timeout is not specified, then
                        the default timeout value will be used.
 
         Returns:
-            the cmd to perform
+            the received message
 
         Raises:
-            GetCmdTimedOut: {who} timed out waiting for cmd
+            GetMsgTimedOut: {who} timed out waiting for msg
 
         """
-        if timeout is None or timeout <= 0:
-            timeout_value = None
-        else:
-            timeout_value = timeout
+        # get a timer (the clock is started when instantiated)
+        timer = Timer(timeout=timeout)
 
-        with self.cmd_lock:
-            if who not in self.cmd_array:
-                self.cmd_array[who] = queue.Queue(maxsize=Cmds.CMD_Q_MAX_SIZE)
+        # shared/excl lock here could improve performance
+        with self.msg_lock:
+            if who not in self.msg_array:
+                # we need to add the message target if this is the first
+                # time the target is calling get_msg
+                self.msg_array[who] = queue.Queue(maxsize=Msgs.CMD_Q_MAX_SIZE)
 
-        start_time = time.time()
         while True:
             try:
-                cmd = self.cmd_array[who].get(block=True, timeout=0.1)
-                return cmd
+                msg = self.msg_array[who].get(block=True, timeout=0.1)
+                return msg
             except queue.Empty:
                 pass
 
-            if (timeout_value
-                    and timeout_value < (time.time() - start_time)):
+            if timer.is_expired():
                 err_msg = (f'Thread {threading.current_thread()} '
-                           f'timed out on get_cmd for who: {who} ')
+                           f'timed out on get_msg for who: {who} ')
                 if self.debug_logging_enabled:
                     self.logger.debug(err_msg)
-                raise GetCmdTimedOut(err_msg)
-
-    ####################################################################
-    # pause
-    ####################################################################
-    def pause(self,
-              seconds: IntFloat,
-              clock_iter: int) -> None:
-        """Sleep for the number of input seconds relative to start_time.
-
-        Args:
-            seconds: number of seconds to pause
-            clock_iter: clock iteration to pause on
-
-        """
-        while clock_iter != self.iteration:
-            time.sleep(0.1)
-
-        remaining_seconds = seconds - (time.time() - self.start_time)
-        if remaining_seconds > 0:
-            time.sleep(remaining_seconds)
-
-    ####################################################################
-    # start_clock
-    ####################################################################
-    def start_clock(self,
-                    clock_iter: int) -> None:
-        """Set the start_time to the current time.
-
-        Args:
-            clock_iter: iteration to set for the clock
-        """
-        while self.clock_in_use:
-            time.sleep(0.1)
-        self.clock_in_use = True
-        self.start_time = time.time()
-        self.iteration = clock_iter
-
-    ####################################################################
-    # duration
-    ####################################################################
-    def duration(self) -> float:
-        """Return the number of seconds from the start_time.
-
-        Returns:
-            number of seconds from the start_time
-        """
-        ret_duration = time.time() - self.start_time
-        self.clock_in_use = False
-        return ret_duration
+                raise GetMsgTimedOut(err_msg)
