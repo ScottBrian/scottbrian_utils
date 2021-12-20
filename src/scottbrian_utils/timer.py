@@ -213,21 +213,87 @@ class Timer:
             self._timeout = None
 
     ####################################################################
-    # timeout
+    # remaining_time
     ####################################################################
-    @property
-    def timeout(self) -> float:
+    def remaining_time(self) -> OptIntFloat:
         """Getter method that returns the remaining timer time.
 
         Returns:
             remaining time of the timer
 
+        Example: using remaining_time and is_expired
+
+        >>> import threading
+        >>> from scottbrian_utils.timer import Timer
+        >>> def f1():
+        ...     print('f1 entered')
+        ...     time.sleep(1)
+        ...     f1_event.set()
+        ...     time.sleep(1)
+        ...     f1_event.set()
+        ...     time.sleep(1)
+        ...     f1_event.set()
+        ...     print('f1 exiting')
+        >>> print('mainline entered')
+        >>> timer = Timer(timeout=2.5)
+        >>> f1_thread = threading.Thread(target=f1)
+        >>> f1_event = threading.Event()
+        >>> f1_thread.start()
+        >>> wait_result = f1_event.wait(timeout=timer.remaining_time())
+        >>> print(f'wait1 result = {wait_result}')
+        >>> f1_event.clear()
+        >>> print(f'remaining time = {timer.remaining_time():0.1f}')
+        >>> print(f'timer expired = {timer.is_expired()}')
+        >>> wait_result = f1_event.wait(timeout=timer.remaining_time())
+        >>> print(f'wait2 result = {wait_result}')
+        >>> f1_event.clear()
+        >>> print(f'remaining time = {timer.remaining_time():0.1f}')
+        >>> print(f'timer expired = {timer.is_expired()}')
+        >>> wait_result = f1_event.wait(timeout=timer.remaining_time())
+        >>> print(f'wait3 result = {wait_result}')
+        >>> f1_event.clear()
+        >>> print(f'remaining time = {timer.remaining_time():0.4f}')
+        >>> print(f'timer expired = {timer.is_expired()}')
+        >>> f1_thread.join()
+        >>> print('mainline exiting')
+        mainline entered
+        f1 entered
+        wait1 result = True
+        remaining time = 1.5
+        timer expired = False
+        wait2 result = True
+        remaining time = 0.5
+        timer expired = False
+        wait3 result = False
+        remaining time = 0.0001
+        timer expired = True
+        f1 exiting
+        mainline exiting
+
+
         Notes:
-            1) The returned timeout value will never be zero or
-               negative, meaning the timeout value can not be used to
-               determine whether the timer has expired. The is_expired
-               method should be used to determine whether the timer has
-               expired.
+            1) The remaining time is calculated by subtracting the
+               elapsed time from the timeout value originally supplied
+               when the timer was instantiated. Depending on when the
+               remaining time is requested, it could be such that the
+               timeout value has been reached or exceeded and the true
+               remaining time becomes zero or negative. The returned
+               value, however, will never be zero or negative - it will
+               be at least a value of 0.0001. Thus, the timeout value
+               can not be used to determine whether the timer has
+               expired since it will always show at least 0.0001 seconds
+               remaining after the timer has truly expired. The
+               is_expired method should be used to determine whether the
+               timer has expired. The reason for this is that the
+               intended use of remaining_time is to use it as a timeout
+               arg that is passed into a service such as wait or a lock
+               obtain. Many services interpret a value of zero or less
+               as an unlimited timeout value, meaning it will never
+               timeout. It is thus better to pass in a very small value
+               and get an immediate timeout in these cases than to
+               possibly wait forever.
+            2) None is returned when the timer was originally
+               instantiated with unlimited time.
 
         """
         if self._timeout:  # if not None

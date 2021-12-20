@@ -4,6 +4,7 @@
 # Standard Library
 ########################################################################
 import logging
+import threading
 import time
 from typing import Any, cast, Optional, Union
 
@@ -33,13 +34,34 @@ class ErrorTstTimer(Exception):
     """Base class for exception in this module."""
     pass
 
+
 ########################################################################
-# timeout_arg fixture
+# timeout arg fixtures
+# greater_than_zero_timeout_arg fixture
 ########################################################################
 zero_or_less_timeout_arg_list = [-1.1, -1, 0, 0.0]
 greater_than_zero_timeout_arg_list = [0.3, 0.5, 1, 1.5, 2, 4]
 
 
+########################################################################
+# timeout_arg fixture
+########################################################################
+@pytest.fixture(params=greater_than_zero_timeout_arg_list)  # type: ignore
+def timeout_arg(request: Any) -> IntFloat:
+    """Using different seconds for timeout.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(IntFloat, request.param)
+
+
+########################################################################
+# zero_or_less_timeout_arg fixture
+########################################################################
 @pytest.fixture(params=zero_or_less_timeout_arg_list)  # type: ignore
 def zero_or_less_timeout_arg(request: Any) -> IntFloat:
     """Using different seconds for timeout.
@@ -53,6 +75,9 @@ def zero_or_less_timeout_arg(request: Any) -> IntFloat:
     return cast(IntFloat, request.param)
 
 
+########################################################################
+# greater_than_zero_timeout_arg fixture
+########################################################################
 @pytest.fixture(params=greater_than_zero_timeout_arg_list)  # type: ignore
 def greater_than_zero_timeout_arg(request: Any) -> IntFloat:
     """Using different seconds for timeout.
@@ -66,6 +91,9 @@ def greater_than_zero_timeout_arg(request: Any) -> IntFloat:
     return cast(IntFloat, request.param)
 
 
+########################################################################
+# zero_or_less_default_timeout_arg fixture
+########################################################################
 @pytest.fixture(params=zero_or_less_timeout_arg_list)  # type: ignore
 def zero_or_less_default_timeout_arg(request: Any) -> IntFloat:
     """Using different seconds for timeout_default.
@@ -79,6 +107,9 @@ def zero_or_less_default_timeout_arg(request: Any) -> IntFloat:
     return cast(IntFloat, request.param)
 
 
+########################################################################
+# greater_than_zero_default_timeout_arg fixture
+########################################################################
 @pytest.fixture(params=greater_than_zero_timeout_arg_list)  # type: ignore
 def greater_than_zero_default_timeout_arg(request: Any) -> IntFloat:
     """Using different seconds for timeout_default.
@@ -257,34 +288,65 @@ class TestTimerExamples:
     ###########################################################################
     # test_timer_example5
     ###########################################################################
-    def test_timer_example5(self) -> None:
-        """Test timer example4."""
-        def f1(p1=None):
-            print(f'\np1 = {p1}')
-            if p1 is not None and p1 > 0:
-                print('p1 is greater than zero')
-            else:
-                print('p1 is NOT greater than zero')
-            if p1 and p1 > 0:
-                print('p1 is greater than zero')
-            else:
-                print('p1 is NOT greater than zero')
-            if p1:
-                print('p1 is something')
-            else:
-                print('p1 is NOT something')
-            if not p1:
-                print('p1 is NOT something')
-            else:
-                print('p1 is something')
+    def test_timer_example5(self,
+                            capsys: Any) -> None:
+        """Test timer example5.
 
+        Args:
+            capsys: pytest fixture to capture print output
 
+        """
+        def f1():
+            print('f1 entered')
+            time.sleep(1)
+            f1_event.set()
+            time.sleep(1)
+            f1_event.set()
+            time.sleep(1)
+            f1_event.set()
+            print('f1 exiting')
 
-        f1(42)
-        f1(None)
-        f1(0)
-        f1(-1)
-        f1()
+        print('mainline entered')
+        timer = Timer(timeout=2.5)
+        f1_thread = threading.Thread(target=f1)
+        f1_event = threading.Event()
+        f1_thread.start()
+        wait_result = f1_event.wait(timeout=timer.remaining_time())
+        print(f'wait1 result = {wait_result}')
+        f1_event.clear()
+        print(f'remaining time = {timer.remaining_time():0.1f}')
+        print(f'timer expired = {timer.is_expired()}')
+        wait_result = f1_event.wait(timeout=timer.remaining_time())
+        print(f'wait2 result = {wait_result}')
+        f1_event.clear()
+        print(f'remaining time = {timer.remaining_time():0.1f}')
+        print(f'timer expired = {timer.is_expired()}')
+        wait_result = f1_event.wait(timeout=timer.remaining_time())
+        print(f'wait3 result = {wait_result}')
+        f1_event.clear()
+        print(f'remaining time = {timer.remaining_time():0.4f}')
+        print(f'timer expired = {timer.is_expired()}')
+        f1_thread.join()
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += 'f1 entered\n'
+        expected_result += 'wait1 result = True\n'
+        expected_result += 'remaining time = 1.5\n'
+        expected_result += 'timer expired = False\n'
+        expected_result += 'wait2 result = True\n'
+        expected_result += 'remaining time = 0.5\n'
+        expected_result += 'timer expired = False\n'
+        expected_result += 'wait3 result = False\n'
+        expected_result += 'remaining time = 0.0001\n'
+        expected_result += 'timer expired = True\n'
+        expected_result += 'f1 exiting\n'
+        expected_result += 'mainline exiting\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
 
 ###############################################################################
 # TestTimerBasic class
@@ -609,3 +671,47 @@ class TestTimerBasic:
         assert timer.is_expired()
         print('mainline exiting')
 
+
+###############################################################################
+# TestTimerBasic class
+###############################################################################
+class TestTimerRemainingTime:
+    """Test remaining_time method of Timer."""
+
+    ###########################################################################
+    # test_timer_remaining_time1
+    ###########################################################################
+    def test_timer_remaining_time1(self,
+                                   timeout_arg) -> None:
+        """Test timer remaining time1.
+
+        Args:
+            timeout_arg: number of seconds to use for timer timeout arg
+
+        """
+        logger.debug('mainline entered')
+        sleep_time = timeout_arg/3
+        timer = Timer(timeout=timeout_arg)
+        time.sleep(sleep_time)
+        exp_remaining_time = timeout_arg - sleep_time
+
+        assert ((exp_remaining_time * .9)
+                <= timer.remaining_time()
+                <= exp_remaining_time)
+        assert not timer.is_expired()
+
+        time.sleep(sleep_time)
+        exp_remaining_time = timeout_arg - sleep_time * 2
+
+        assert ((exp_remaining_time * .9)
+                <= timer.remaining_time()
+                <= exp_remaining_time)
+        assert not timer.is_expired()
+
+        time.sleep(sleep_time + 0.1)
+        exp_remaining_time = 0.0001
+
+        assert exp_remaining_time == timer.remaining_time()
+        assert timer.is_expired()
+
+        logger.debug('mainline exiting')
