@@ -224,6 +224,7 @@ class Timer:
         Example: using remaining_time and is_expired
 
         >>> import threading
+        >>> import time
         >>> from scottbrian_utils.timer import Timer
         >>> def f1():
         ...     print('f1 entered')
@@ -312,6 +313,25 @@ class Timer:
 
         Returns:
             True if the timer has expired, False if not
+
+        Example: using is_expired
+
+        >>> import time
+        >>> from scottbrian_utils.timer import Timer
+        >>> print('mainline entered')
+        >>> timer = Timer(timeout=2.5)
+        >>> time.sleep(1)
+        >>> print(f'timer expired = {timer.is_expired()}')
+        >>> time.sleep(1)
+        >>> print(f'timer expired = {timer.is_expired()}')
+        >>> time.sleep(1)
+        >>> print(f'timer expired = {timer.is_expired()}')
+        >>> print('mainline exiting')
+        mainline entered
+        timer expired = False
+        timer expired = False
+        timer expired = True
+        mainline exiting
 
         """
         if self._timeout and self._timeout < (time.time() - self.start_time):

@@ -17,6 +17,7 @@ import pytest
 ########################################################################
 from scottbrian_utils.msgs import Msgs, GetMsgTimedOut
 from scottbrian_utils.stop_watch import StopWatch
+from scottbrian_utils.log_ver import LogVer
 
 ########################################################################
 # type aliases
@@ -116,7 +117,7 @@ def start_arg(request: Any) -> str:
 
 
 ########################################################################
-# TestMsgsBasic class to test Msgs methods
+# TestMsgsErrors class
 ########################################################################
 class TestMsgsErrors:
     """TestMsgsErrors class."""
@@ -157,8 +158,22 @@ class TestMsgsErrors:
         logger.debug('mainline entered')
         msgs = Msgs()
         ml_stop_watch = StopWatch()
+        log_ver = LogVer()
+        alpha_call_seq = 'test_msgs.py::TestMsgsErrors.test_msgs_timeout'
+        log_ver.add_call_seq(name='alpha',
+                             call_seq=alpha_call_seq)
+
+        log_msg = 'mainline started'
+        log_ver.add_msg(log_msg)
+
         f1_timeout = 5
         f1_thread = threading.Thread(target=f1)
+
+        # we expect to get this log message in the following code
+        log_msg = (f'Thread {threading.current_thread()} '
+                   f'timed out on get_msg for who: beta '
+                   f'{log_ver.get_call_seq("alpha")}')
+        log_ver.add_msg(log_msg)
 
         # we will try -1 as a timeout value in the section below, and
         # we also use the -1 value to do the default value
@@ -169,6 +184,7 @@ class TestMsgsErrors:
             to_low = Msgs.GET_CMD_TIMEOUT
             to_high = Msgs.GET_CMD_TIMEOUT * 1.1
             ml_stop_watch.start_clock(clock_iter=1)
+            
             with pytest.raises(GetMsgTimedOut):
                 _ = msgs.get_msg('beta')
             assert to_low <= ml_stop_watch.duration() <= to_high
@@ -193,6 +209,8 @@ class TestMsgsErrors:
             with pytest.raises(GetMsgTimedOut):
                 _ = msgs.get_msg('beta', timeout_arg)
             assert to_low <= ml_stop_watch.duration() <= to_high
+
+        log_ver.verify_log_msgs()
 
         logger.debug('mainline entered')
 

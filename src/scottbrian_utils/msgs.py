@@ -85,6 +85,7 @@ from typing import Any, Final, Optional, Union
 ########################################################################
 # Third Party
 ########################################################################
+from scottbrian_utils.diag_msg import get_formatted_call_sequence
 from scottbrian_utils.timer import Timer
 
 ########################################################################
@@ -138,9 +139,6 @@ class Msgs:
 
         # add a logger
         self.logger = logging.getLogger(__name__)
-
-        # Flag to quickly determine whether debug logging is enabled
-        self.debug_logging_enabled = self.logger.isEnabledFor(logging.DEBUG)
 
     ####################################################################
     # queue_msg
@@ -206,8 +204,10 @@ class Msgs:
                 pass
 
             if timer.is_expired():
+                caller_info = get_formatted_call_sequence(latest=1, depth=1)
                 err_msg = (f'Thread {threading.current_thread()} '
-                           f'timed out on get_msg for who: {who} ')
-                if self.debug_logging_enabled:
-                    self.logger.debug(err_msg)
+                           f'timed out on get_msg for who: {who} '
+                           f'{caller_info}')
+
+                self.logger.debug(err_msg)
                 raise GetMsgTimedOut(err_msg)

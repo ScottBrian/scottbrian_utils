@@ -1,4 +1,4 @@
-"""test_timer.py module."""
+"""test_log_verifier.py module."""
 
 ########################################################################
 # Standard Library
@@ -16,7 +16,7 @@ import pytest
 ########################################################################
 # Local
 ########################################################################
-from scottbrian_utils.timer import Timer
+from scottbrian_utils.log_verifier import LogVer
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +28,9 @@ OptIntFloat = Optional[IntFloat]
 
 
 ########################################################################
-# Timer test exceptions
+# LogVer test exceptions
 ########################################################################
-class ErrorTstTimer(Exception):
+class ErrorTstLogVer(Exception):
     """Base class for exception in this module."""
     pass
 
@@ -124,49 +124,46 @@ def greater_than_zero_default_timeout_arg(request: Any) -> IntFloat:
 
 
 ###############################################################################
-# TestTimerExamples class
+# TestLogVerExamples class
 ###############################################################################
-class TestTimerExamples:
-    """Test examples of Timer."""
+class TestLogVerExamples:
+    """Test examples of LogVer."""
 
     ###########################################################################
-    # test_timer_example1
+    # test_log_verifier_example1
     ###########################################################################
-    def test_timer_example1(self,
-                            capsys: Any) -> None:
-        """Test timer example1.
+    def test_log_verifier_example1(self,
+                                   capsys: Any,
+                                   caplog: Any) -> None:
+        """Test log_verifier example1.
 
         Args:
             capsys: pytest fixture to capture print output
 
         """
-        print('mainline entered')
-        timer = Timer(timeout=3)
-        for idx in range(10):
-            print(f'idx = {idx}')
-            time.sleep(1)
-            if timer.is_expired():
-                print('timer has expired')
-                break
-        print('mainline exiting')
-
-        expected_result = 'mainline entered\n'
-        expected_result += 'idx = 0\n'
-        expected_result += 'idx = 1\n'
-        expected_result += 'idx = 2\n'
-        expected_result += 'timer has expired\n'
-        expected_result += 'mainline exiting\n'
+        logger = logging.getLogger(__name__)
+        log_ver = LogVer()
+        log_msg = 'hello'
+        log_ver.add_msg(log_msg=log_msg)
+        logger.debug(log_msg)
+        log_ver.verify_log_msgs(caplog)
+        expected_result = '\nnum_log_records_found: 1 of 1\n'
+        expected_result += '******** matched log records found ********\n'
+        expected_result += 'hello\n'
+        expected_result += ('******** remaining unmatched log records '
+                            '********\n')
+        expected_result += '******** remaining expected log records ********\n'
 
         captured = capsys.readouterr().out
 
         assert captured == expected_result
 
     ###########################################################################
-    # test_timer_example2
+    # test_log_verifier_example2
     ###########################################################################
-    def test_timer_example2(self,
+    def test_log_verifier_example2(self,
                             capsys: Any) -> None:
-        """Test timer example2.
+        """Test log_verifier example2.
 
         Args:
             capsys: pytest fixture to capture print output
@@ -177,9 +174,9 @@ class TestTimerExamples:
                 self.a = 1
 
             def m1(self, sleep_time: float) -> bool:
-                timer = Timer(timeout=1)
+                log_verifier = LogVer(timeout=1)
                 time.sleep(sleep_time)
-                if timer.is_expired():
+                if log_verifier.is_expired():
                     return False
                 return True
 
@@ -199,11 +196,11 @@ class TestTimerExamples:
         assert captured == expected_result
 
     ###########################################################################
-    # test_timer_example3
+    # test_log_verifier_example3
     ###########################################################################
-    def test_timer_example3(self,
+    def test_log_verifier_example3(self,
                             capsys: Any) -> None:
-        """Test timer example3.
+        """Test log_verifier example3.
 
         Args:
             capsys: pytest fixture to capture print output
@@ -214,9 +211,9 @@ class TestTimerExamples:
                 self.a = 1
 
             def m1(self, sleep_time: float, timeout: float) -> bool:
-                timer = Timer(timeout=timeout)
+                log_verifier = LogVer(timeout=timeout)
                 time.sleep(sleep_time)
-                if timer.is_expired():
+                if log_verifier.is_expired():
                     return False
                 return True
 
@@ -238,11 +235,11 @@ class TestTimerExamples:
         assert captured == expected_result
 
     ###########################################################################
-    # test_timer_example4
+    # test_log_verifier_example4
     ###########################################################################
-    def test_timer_example4(self,
+    def test_log_verifier_example4(self,
                             capsys: Any) -> None:
-        """Test timer example4.
+        """Test log_verifier example4.
 
         Args:
             capsys: pytest fixture to capture print output
@@ -256,10 +253,10 @@ class TestTimerExamples:
             def m1(self,
                    sleep_time: float,
                    timeout: Optional[float] = None) -> bool:
-                timer = Timer(timeout=timeout,
+                log_verifier = LogVer(timeout=timeout,
                               default_timeout=self.default_timeout)
                 time.sleep(sleep_time)
-                if timer.is_expired():
+                if log_verifier.is_expired():
                     return False
                 return True
 
@@ -285,11 +282,11 @@ class TestTimerExamples:
         assert captured == expected_result
 
     ###########################################################################
-    # test_timer_example5
+    # test_log_verifier_example5
     ###########################################################################
-    def test_timer_example5(self,
+    def test_log_verifier_example5(self,
                             capsys: Any) -> None:
-        """Test timer example5.
+        """Test log_verifier example5.
 
         Args:
             capsys: pytest fixture to capture print output
@@ -306,25 +303,25 @@ class TestTimerExamples:
             print('f1 exiting')
 
         print('mainline entered')
-        timer = Timer(timeout=2.5)
+        log_verifier = LogVer(timeout=2.5)
         f1_thread = threading.Thread(target=f1)
         f1_event = threading.Event()
         f1_thread.start()
-        wait_result = f1_event.wait(timeout=timer.remaining_time())
+        wait_result = f1_event.wait(timeout=log_verifier.remaining_time())
         print(f'wait1 result = {wait_result}')
         f1_event.clear()
-        print(f'remaining time = {timer.remaining_time():0.1f}')
-        print(f'timer expired = {timer.is_expired()}')
-        wait_result = f1_event.wait(timeout=timer.remaining_time())
+        print(f'remaining time = {log_verifier.remaining_time():0.1f}')
+        print(f'log_verifier expired = {log_verifier.is_expired()}')
+        wait_result = f1_event.wait(timeout=log_verifier.remaining_time())
         print(f'wait2 result = {wait_result}')
         f1_event.clear()
-        print(f'remaining time = {timer.remaining_time():0.1f}')
-        print(f'timer expired = {timer.is_expired()}')
-        wait_result = f1_event.wait(timeout=timer.remaining_time())
+        print(f'remaining time = {log_verifier.remaining_time():0.1f}')
+        print(f'log_verifier expired = {log_verifier.is_expired()}')
+        wait_result = f1_event.wait(timeout=log_verifier.remaining_time())
         print(f'wait3 result = {wait_result}')
         f1_event.clear()
-        print(f'remaining time = {timer.remaining_time():0.4f}')
-        print(f'timer expired = {timer.is_expired()}')
+        print(f'remaining time = {log_verifier.remaining_time():0.4f}')
+        print(f'log_verifier expired = {log_verifier.is_expired()}')
         f1_thread.join()
         print('mainline exiting')
 
@@ -332,13 +329,13 @@ class TestTimerExamples:
         expected_result += 'f1 entered\n'
         expected_result += 'wait1 result = True\n'
         expected_result += 'remaining time = 1.5\n'
-        expected_result += 'timer expired = False\n'
+        expected_result += 'log_verifier expired = False\n'
         expected_result += 'wait2 result = True\n'
         expected_result += 'remaining time = 0.5\n'
-        expected_result += 'timer expired = False\n'
+        expected_result += 'log_verifier expired = False\n'
         expected_result += 'wait3 result = False\n'
         expected_result += 'remaining time = 0.0001\n'
-        expected_result += 'timer expired = True\n'
+        expected_result += 'log_verifier expired = True\n'
         expected_result += 'f1 exiting\n'
         expected_result += 'mainline exiting\n'
 
@@ -347,30 +344,30 @@ class TestTimerExamples:
         assert captured == expected_result
 
     ###########################################################################
-    # test_timer_example6
+    # test_log_verifier_example6
     ###########################################################################
-    def test_timer_example6(self,
+    def test_log_verifier_example6(self,
                             capsys: Any) -> None:
-        """Test timer example6.
+        """Test log_verifier example6.
 
         Args:
             capsys: pytest fixture to capture print output
 
         """
         print('mainline entered')
-        timer = Timer(timeout=2.5)
+        log_verifier = LogVer(timeout=2.5)
         time.sleep(1)
-        print(f'timer expired = {timer.is_expired()}')
+        print(f'log_verifier expired = {log_verifier.is_expired()}')
         time.sleep(1)
-        print(f'timer expired = {timer.is_expired()}')
+        print(f'log_verifier expired = {log_verifier.is_expired()}')
         time.sleep(1)
-        print(f'timer expired = {timer.is_expired()}')
+        print(f'log_verifier expired = {log_verifier.is_expired()}')
         print('mainline exiting')
 
         expected_result = 'mainline entered\n'
-        expected_result += 'timer expired = False\n'
-        expected_result += 'timer expired = False\n'
-        expected_result += 'timer expired = True\n'
+        expected_result += 'log_verifier expired = False\n'
+        expected_result += 'log_verifier expired = False\n'
+        expected_result += 'log_verifier expired = True\n'
         expected_result += 'mainline exiting\n'
 
         captured = capsys.readouterr().out
@@ -379,70 +376,70 @@ class TestTimerExamples:
 
 
 ###############################################################################
-# TestTimerBasic class
+# TestLogVerBasic class
 ###############################################################################
-class TestTimerBasic:
-    """Test basic functions of Timer."""
+class TestLogVerBasic:
+    """Test basic functions of LogVer."""
 
     ###########################################################################
-    # test_timer_case1a
+    # test_log_verifier_case1a
     ###########################################################################
-    def test_timer_case1a(self) -> None:
-        """Test timer case1a."""
+    def test_log_verifier_case1a(self) -> None:
+        """Test log_verifier case1a."""
         print('mainline entered')
-        timer = Timer()
+        log_verifier = LogVer()
         time.sleep(1)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(1)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case1b
+    # test_log_verifier_case1b
     ###########################################################################
-    def test_timer_case1b(self) -> None:
-        """Test timer case1b."""
+    def test_log_verifier_case1b(self) -> None:
+        """Test log_verifier case1b."""
         print('mainline entered')
-        timer = Timer(default_timeout=None)
+        log_verifier = LogVer(default_timeout=None)
         time.sleep(1)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(1)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case1c
+    # test_log_verifier_case1c
     ###########################################################################
-    def test_timer_case1c(self) -> None:
-        """Test timer case1c."""
+    def test_log_verifier_case1c(self) -> None:
+        """Test log_verifier case1c."""
         print('mainline entered')
-        timer = Timer(timeout=None)
+        log_verifier = LogVer(timeout=None)
         time.sleep(1)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(1)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case1d
+    # test_log_verifier_case1d
     ###########################################################################
-    def test_timer_case1d(self) -> None:
-        """Test timer case1d."""
+    def test_log_verifier_case1d(self) -> None:
+        """Test log_verifier case1d."""
         print('mainline entered')
-        timer = Timer(timeout=None, default_timeout=None)
+        log_verifier = LogVer(timeout=None, default_timeout=None)
         time.sleep(1)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(1)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case2a
+    # test_log_verifier_case2a
     ###########################################################################
-    def test_timer_case2a(self,
+    def test_log_verifier_case2a(self,
                           zero_or_less_default_timeout_arg: IntFloat
                           ) -> None:
-        """Test timer case2a.
+        """Test log_verifier case2a.
 
         Args:
             zero_or_less_default_timeout_arg: pytest fixture for timeout
@@ -450,21 +447,21 @@ class TestTimerBasic:
 
         """
         print('mainline entered')
-        timer = Timer(default_timeout=zero_or_less_default_timeout_arg)
+        log_verifier = LogVer(default_timeout=zero_or_less_default_timeout_arg)
         time.sleep(abs(zero_or_less_default_timeout_arg * 0.9))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(abs(zero_or_less_default_timeout_arg))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case2b
+    # test_log_verifier_case2b
     ###########################################################################
 
-    def test_timer_case2b(self,
+    def test_log_verifier_case2b(self,
                           zero_or_less_default_timeout_arg: IntFloat
                           ) -> None:
-        """Test timer case2b.
+        """Test log_verifier case2b.
 
         Args:
             zero_or_less_default_timeout_arg: pytest fixture for timeout
@@ -472,21 +469,21 @@ class TestTimerBasic:
 
         """
         print('mainline entered')
-        timer = Timer(timeout=None,
+        log_verifier = LogVer(timeout=None,
                       default_timeout=zero_or_less_default_timeout_arg)
         time.sleep(abs(zero_or_less_default_timeout_arg * 0.9))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(abs(zero_or_less_default_timeout_arg))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case3a
+    # test_log_verifier_case3a
     ###########################################################################
-    def test_timer_case3a(self,
+    def test_log_verifier_case3a(self,
                           greater_than_zero_default_timeout_arg: IntFloat
                           ) -> None:
-        """Test timer case3a.
+        """Test log_verifier case3a.
 
         Args:
             greater_than_zero_default_timeout_arg: pytest fixture for
@@ -494,20 +491,20 @@ class TestTimerBasic:
 
         """
         print('mainline entered')
-        timer = Timer(default_timeout=greater_than_zero_default_timeout_arg)
+        log_verifier = LogVer(default_timeout=greater_than_zero_default_timeout_arg)
         time.sleep(greater_than_zero_default_timeout_arg * 0.9)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(greater_than_zero_default_timeout_arg)
-        assert timer.is_expired()
+        assert log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case3b
+    # test_log_verifier_case3b
     ###########################################################################
-    def test_timer_case3b(self,
+    def test_log_verifier_case3b(self,
                           greater_than_zero_default_timeout_arg: IntFloat
                           ) -> None:
-        """Test timer case3b.
+        """Test log_verifier case3b.
 
         Args:
             greater_than_zero_default_timeout_arg: pytest fixture for
@@ -515,61 +512,61 @@ class TestTimerBasic:
 
         """
         print('mainline entered')
-        timer = Timer(timeout=None,
+        log_verifier = LogVer(timeout=None,
                       default_timeout=greater_than_zero_default_timeout_arg)
         time.sleep(greater_than_zero_default_timeout_arg * 0.9)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(greater_than_zero_default_timeout_arg)
-        assert timer.is_expired()
+        assert log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case4a
+    # test_log_verifier_case4a
     ###########################################################################
-    def test_timer_case4a(self,
+    def test_log_verifier_case4a(self,
                           zero_or_less_timeout_arg: IntFloat) -> None:
-        """Test timer case4a.
+        """Test log_verifier case4a.
 
         Args:
             zero_or_less_timeout_arg: pytest fixture for timeout seconds
 
         """
         print('mainline entered')
-        timer = Timer(timeout=zero_or_less_timeout_arg)
+        log_verifier = LogVer(timeout=zero_or_less_timeout_arg)
         time.sleep(abs(zero_or_less_timeout_arg * 0.9))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(abs(zero_or_less_timeout_arg))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case4b
+    # test_log_verifier_case4b
     ###########################################################################
-    def test_timer_case4b(self,
+    def test_log_verifier_case4b(self,
                           zero_or_less_timeout_arg: IntFloat) -> None:
-        """Test timer case4b.
+        """Test log_verifier case4b.
 
         Args:
             zero_or_less_timeout_arg: pytest fixture for timeout seconds
 
         """
         print('mainline entered')
-        timer = Timer(timeout=zero_or_less_timeout_arg,
+        log_verifier = LogVer(timeout=zero_or_less_timeout_arg,
                       default_timeout=None)
         time.sleep(abs(zero_or_less_timeout_arg * 0.9))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(abs(zero_or_less_timeout_arg))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case5
+    # test_log_verifier_case5
     ###########################################################################
-    def test_timer_case5(self,
+    def test_log_verifier_case5(self,
                          zero_or_less_timeout_arg: IntFloat,
                          zero_or_less_default_timeout_arg: IntFloat
                          ) -> None:
-        """Test timer case5.
+        """Test log_verifier case5.
 
         Args:
             zero_or_less_timeout_arg: pytest fixture for timeout seconds
@@ -578,22 +575,22 @@ class TestTimerBasic:
 
         """
         print('mainline entered')
-        timer = Timer(timeout=zero_or_less_timeout_arg,
+        log_verifier = LogVer(timeout=zero_or_less_timeout_arg,
                       default_timeout=zero_or_less_default_timeout_arg)
         time.sleep(abs(zero_or_less_timeout_arg * 0.9))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(abs(zero_or_less_timeout_arg))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case6
+    # test_log_verifier_case6
     ###########################################################################
-    def test_timer_case6(self,
+    def test_log_verifier_case6(self,
                          zero_or_less_timeout_arg: IntFloat,
                          greater_than_zero_default_timeout_arg: IntFloat
                          ) -> None:
-        """Test timer case6.
+        """Test log_verifier case6.
 
         Args:
             zero_or_less_timeout_arg: pytest fixture for timeout seconds
@@ -602,20 +599,20 @@ class TestTimerBasic:
 
         """
         print('mainline entered')
-        timer = Timer(timeout=zero_or_less_timeout_arg,
+        log_verifier = LogVer(timeout=zero_or_less_timeout_arg,
                       default_timeout=greater_than_zero_default_timeout_arg)
         time.sleep(abs(zero_or_less_timeout_arg * 0.9))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(abs(zero_or_less_timeout_arg))
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case7a
+    # test_log_verifier_case7a
     ###########################################################################
-    def test_timer_case7a(self,
+    def test_log_verifier_case7a(self,
                           greater_than_zero_timeout_arg: IntFloat) -> None:
-        """Test timer case7a.
+        """Test log_verifier case7a.
 
         Args:
             greater_than_zero_timeout_arg: pytest fixture for timeout
@@ -623,19 +620,19 @@ class TestTimerBasic:
 
         """
         print('mainline entered')
-        timer = Timer(timeout=greater_than_zero_timeout_arg)
+        log_verifier = LogVer(timeout=greater_than_zero_timeout_arg)
         time.sleep(greater_than_zero_timeout_arg * 0.9)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(greater_than_zero_timeout_arg)
-        assert timer.is_expired()
+        assert log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case7b
+    # test_log_verifier_case7b
     ###########################################################################
-    def test_timer_case7b(self,
+    def test_log_verifier_case7b(self,
                           greater_than_zero_timeout_arg: IntFloat) -> None:
-        """Test timer case7b.
+        """Test log_verifier case7b.
 
         Args:
             greater_than_zero_timeout_arg: pytest fixture for timeout
@@ -643,22 +640,22 @@ class TestTimerBasic:
 
         """
         print('mainline entered')
-        timer = Timer(timeout=greater_than_zero_timeout_arg,
+        log_verifier = LogVer(timeout=greater_than_zero_timeout_arg,
                       default_timeout=None)
         time.sleep(greater_than_zero_timeout_arg * 0.9)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(greater_than_zero_timeout_arg)
-        assert timer.is_expired()
+        assert log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case8
+    # test_log_verifier_case8
     ###########################################################################
-    def test_timer_case8(self,
+    def test_log_verifier_case8(self,
                          greater_than_zero_timeout_arg: IntFloat,
                          zero_or_less_default_timeout_arg: IntFloat
                          ) -> None:
-        """Test timer case8.
+        """Test log_verifier case8.
 
         Args:
             greater_than_zero_timeout_arg: pytest fixture for timeout
@@ -668,22 +665,22 @@ class TestTimerBasic:
 
         """
         print('mainline entered')
-        timer = Timer(timeout=greater_than_zero_timeout_arg,
+        log_verifier = LogVer(timeout=greater_than_zero_timeout_arg,
                       default_timeout=zero_or_less_default_timeout_arg)
         time.sleep(greater_than_zero_timeout_arg * 0.9)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(greater_than_zero_timeout_arg)
-        assert timer.is_expired()
+        assert log_verifier.is_expired()
         print('mainline exiting')
 
     ###########################################################################
-    # test_timer_case9
+    # test_log_verifier_case9
     ###########################################################################
-    def test_timer_case9(self,
+    def test_log_verifier_case9(self,
                          greater_than_zero_timeout_arg: IntFloat,
                          greater_than_zero_default_timeout_arg: IntFloat
                          ) -> None:
-        """Test timer case9.
+        """Test log_verifier case9.
 
         Args:
             greater_than_zero_timeout_arg: pytest fixture for timeout
@@ -692,55 +689,55 @@ class TestTimerBasic:
                                                      timeout seconds
         """
         print('mainline entered')
-        timer = Timer(timeout=greater_than_zero_timeout_arg,
+        log_verifier = LogVer(timeout=greater_than_zero_timeout_arg,
                       default_timeout=greater_than_zero_default_timeout_arg)
         time.sleep(greater_than_zero_timeout_arg * 0.9)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
         time.sleep(greater_than_zero_timeout_arg)
-        assert timer.is_expired()
+        assert log_verifier.is_expired()
         print('mainline exiting')
 
 
 ###############################################################################
-# TestTimerBasic class
+# TestLogVerBasic class
 ###############################################################################
-class TestTimerRemainingTime:
-    """Test remaining_time method of Timer."""
+class TestLogVerRemainingTime:
+    """Test remaining_time method of LogVer."""
 
     ###########################################################################
-    # test_timer_remaining_time1
+    # test_log_verifier_remaining_time1
     ###########################################################################
-    def test_timer_remaining_time1(self,
+    def test_log_verifier_remaining_time1(self,
                                    timeout_arg) -> None:
-        """Test timer remaining time1.
+        """Test log_verifier remaining time1.
 
         Args:
-            timeout_arg: number of seconds to use for timer timeout arg
+            timeout_arg: number of seconds to use for log_verifier timeout arg
 
         """
         logger.debug('mainline entered')
         sleep_time = timeout_arg/3
-        timer = Timer(timeout=timeout_arg)
+        log_verifier = LogVer(timeout=timeout_arg)
         time.sleep(sleep_time)
         exp_remaining_time = timeout_arg - sleep_time
 
         assert ((exp_remaining_time * .9)
-                <= timer.remaining_time()
+                <= log_verifier.remaining_time()
                 <= exp_remaining_time)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
 
         time.sleep(sleep_time)
         exp_remaining_time = timeout_arg - sleep_time * 2
 
         assert ((exp_remaining_time * .9)
-                <= timer.remaining_time()
+                <= log_verifier.remaining_time()
                 <= exp_remaining_time)
-        assert not timer.is_expired()
+        assert not log_verifier.is_expired()
 
         time.sleep(sleep_time + 0.1)
         exp_remaining_time = 0.0001
 
-        assert exp_remaining_time == timer.remaining_time()
-        assert timer.is_expired()
+        assert exp_remaining_time == log_verifier.remaining_time()
+        assert log_verifier.is_expired()
 
         logger.debug('mainline exiting')

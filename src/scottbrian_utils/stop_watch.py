@@ -55,7 +55,6 @@ The stop_watch module contains:
 ########################################################################
 # Standard Library
 ########################################################################
-import logging
 import threading
 import time
 from typing import Final, Optional, Type, TYPE_CHECKING, Union
@@ -109,12 +108,6 @@ class StopWatch:
         self.previous_start_time: float = 0.0
         self.clock_in_use = False
         self.clock_iter = 0
-
-        # add a logger
-        self.logger = logging.getLogger(__name__)
-
-        # Flag to quickly determine whether debug logging is enabled
-        self.debug_logging_enabled = self.logger.isEnabledFor(logging.DEBUG)
 
     ###########################################################################
     # repr
