@@ -17,6 +17,7 @@ import pytest
 # Local
 ########################################################################
 from scottbrian_utils.log_verifier import LogVer
+from scottbrian_utils.log_verifier import UnmatchedExpectedMessages
 
 logger = logging.getLogger(__name__)
 
@@ -123,15 +124,15 @@ def greater_than_zero_default_timeout_arg(request: Any) -> IntFloat:
     return cast(IntFloat, request.param)
 
 
-###############################################################################
+########################################################################
 # TestLogVerExamples class
-###############################################################################
+########################################################################
 class TestLogVerExamples:
     """Test examples of LogVer."""
 
-    ###########################################################################
+    ####################################################################
     # test_log_verifier_example1
-    ###########################################################################
+    ####################################################################
     def test_log_verifier_example1(self,
                                    capsys: Any,
                                    caplog: Any) -> None:
@@ -139,236 +140,92 @@ class TestLogVerExamples:
 
         Args:
             capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
 
         """
-        logger = logging.getLogger(__name__)
+        t_logger = logging.getLogger(__name__)
         log_ver = LogVer()
         log_msg = 'hello'
         log_ver.add_msg(log_msg=log_msg)
-        logger.debug(log_msg)
-        log_ver.verify_log_msgs(caplog)
-        expected_result = '\nnum_log_records_found: 1 of 1\n'
-        expected_result += '******** matched log records found ********\n'
+        t_logger.debug(log_msg)
+        log_results = log_ver.get_match_results(caplog)
+        log_ver.print_match_results(log_results)
+        log_ver.verify_log_results(log_results)
+
+        expected_result = '\n'
+        expected_result += '**********************************\n'
+        expected_result += '* number expected log records: 1 *\n'
+        expected_result += '* number expected unmatched  : 0 *\n'
+        expected_result += '* number actual log records  : 1 *\n'
+        expected_result += '* number actual unmatched    : 0 *\n'
+        expected_result += '* number matched records     : 1 *\n'
+        expected_result += '**********************************\n'
+        expected_result += '\n'
+        expected_result += '******************************\n'
+        expected_result += '* unmatched expected records *\n'
+        expected_result += '******************************\n'
+        expected_result += '\n'
+        expected_result += '****************************\n'
+        expected_result += '* unmatched actual records *\n'
+        expected_result += '****************************\n'
+        expected_result += '\n'
+        expected_result += '***********************\n'
+        expected_result += '* matched log records *\n'
+        expected_result += '***********************\n'
         expected_result += 'hello\n'
-        expected_result += ('******** remaining unmatched log records '
-                            '********\n')
-        expected_result += '******** remaining expected log records ********\n'
 
         captured = capsys.readouterr().out
 
         assert captured == expected_result
 
-    ###########################################################################
+    ####################################################################
     # test_log_verifier_example2
-    ###########################################################################
+    ####################################################################
     def test_log_verifier_example2(self,
-                            capsys: Any) -> None:
+                                   capsys: Any,
+                                   caplog: Any) -> None:
         """Test log_verifier example2.
 
         Args:
             capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
 
         """
-        class A:
-            def __init__(self):
-                self.a = 1
+        # two log messages expected, only one is logged
+        t_logger = logging.getLogger(__name__)
+        log_ver = LogVer()
+        log_msg1 = 'hello'
+        log_ver.add_msg(log_msg=log_msg1)
+        log_msg2 = 'goodbye'
+        log_ver.add_msg(log_msg=log_msg2)
+        t_logger.debug(log_msg1)
+        log_results = log_ver.get_match_results(caplog)
+        log_ver.print_match_results(log_results)
+        with pytest.raises(UnmatchedExpectedMessages):
+            log_ver.verify_log_results(log_results)
 
-            def m1(self, sleep_time: float) -> bool:
-                log_verifier = LogVer(timeout=1)
-                time.sleep(sleep_time)
-                if log_verifier.is_expired():
-                    return False
-                return True
-
-        print('mainline entered')
-        my_a = A()
-        print(my_a.m1(0.5))
-        print(my_a.m1(1.5))
-        print('mainline exiting')
-
-        expected_result = 'mainline entered\n'
-        expected_result += 'True\n'
-        expected_result += 'False\n'
-        expected_result += 'mainline exiting\n'
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ###########################################################################
-    # test_log_verifier_example3
-    ###########################################################################
-    def test_log_verifier_example3(self,
-                            capsys: Any) -> None:
-        """Test log_verifier example3.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        class A:
-            def __init__(self):
-                self.a = 1
-
-            def m1(self, sleep_time: float, timeout: float) -> bool:
-                log_verifier = LogVer(timeout=timeout)
-                time.sleep(sleep_time)
-                if log_verifier.is_expired():
-                    return False
-                return True
-
-        print('mainline entered')
-        my_a = A()
-        print(my_a.m1(sleep_time=0.5, timeout=0.7))
-        print(my_a.m1(sleep_time=1.5, timeout=1.2))
-        print(my_a.m1(sleep_time=1.5, timeout=1.8))
-        print('mainline exiting')
-
-        expected_result = 'mainline entered\n'
-        expected_result += 'True\n'
-        expected_result += 'False\n'
-        expected_result += 'True\n'
-        expected_result += 'mainline exiting\n'
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ###########################################################################
-    # test_log_verifier_example4
-    ###########################################################################
-    def test_log_verifier_example4(self,
-                            capsys: Any) -> None:
-        """Test log_verifier example4.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        class A:
-            def __init__(self, default_timeout: float):
-                self.a = 1
-                self.default_timeout = default_timeout
-
-            def m1(self,
-                   sleep_time: float,
-                   timeout: Optional[float] = None) -> bool:
-                log_verifier = LogVer(timeout=timeout,
-                              default_timeout=self.default_timeout)
-                time.sleep(sleep_time)
-                if log_verifier.is_expired():
-                    return False
-                return True
-
-        print('mainline entered')
-        my_a = A(default_timeout=1.2)
-        print(my_a.m1(sleep_time=0.5))
-        print(my_a.m1(sleep_time=1.5))
-        print(my_a.m1(sleep_time=0.5, timeout=0.3))
-        print(my_a.m1(sleep_time=1.5, timeout=1.8))
-        print(my_a.m1(sleep_time=1.5, timeout=0))
-        print('mainline exiting')
-
-        expected_result = 'mainline entered\n'
-        expected_result += 'True\n'
-        expected_result += 'False\n'
-        expected_result += 'False\n'
-        expected_result += 'True\n'
-        expected_result += 'True\n'
-        expected_result += 'mainline exiting\n'
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ###########################################################################
-    # test_log_verifier_example5
-    ###########################################################################
-    def test_log_verifier_example5(self,
-                            capsys: Any) -> None:
-        """Test log_verifier example5.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        def f1():
-            print('f1 entered')
-            time.sleep(1)
-            f1_event.set()
-            time.sleep(1)
-            f1_event.set()
-            time.sleep(1)
-            f1_event.set()
-            print('f1 exiting')
-
-        print('mainline entered')
-        log_verifier = LogVer(timeout=2.5)
-        f1_thread = threading.Thread(target=f1)
-        f1_event = threading.Event()
-        f1_thread.start()
-        wait_result = f1_event.wait(timeout=log_verifier.remaining_time())
-        print(f'wait1 result = {wait_result}')
-        f1_event.clear()
-        print(f'remaining time = {log_verifier.remaining_time():0.1f}')
-        print(f'log_verifier expired = {log_verifier.is_expired()}')
-        wait_result = f1_event.wait(timeout=log_verifier.remaining_time())
-        print(f'wait2 result = {wait_result}')
-        f1_event.clear()
-        print(f'remaining time = {log_verifier.remaining_time():0.1f}')
-        print(f'log_verifier expired = {log_verifier.is_expired()}')
-        wait_result = f1_event.wait(timeout=log_verifier.remaining_time())
-        print(f'wait3 result = {wait_result}')
-        f1_event.clear()
-        print(f'remaining time = {log_verifier.remaining_time():0.4f}')
-        print(f'log_verifier expired = {log_verifier.is_expired()}')
-        f1_thread.join()
-        print('mainline exiting')
-
-        expected_result = 'mainline entered\n'
-        expected_result += 'f1 entered\n'
-        expected_result += 'wait1 result = True\n'
-        expected_result += 'remaining time = 1.5\n'
-        expected_result += 'log_verifier expired = False\n'
-        expected_result += 'wait2 result = True\n'
-        expected_result += 'remaining time = 0.5\n'
-        expected_result += 'log_verifier expired = False\n'
-        expected_result += 'wait3 result = False\n'
-        expected_result += 'remaining time = 0.0001\n'
-        expected_result += 'log_verifier expired = True\n'
-        expected_result += 'f1 exiting\n'
-        expected_result += 'mainline exiting\n'
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ###########################################################################
-    # test_log_verifier_example6
-    ###########################################################################
-    def test_log_verifier_example6(self,
-                            capsys: Any) -> None:
-        """Test log_verifier example6.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        print('mainline entered')
-        log_verifier = LogVer(timeout=2.5)
-        time.sleep(1)
-        print(f'log_verifier expired = {log_verifier.is_expired()}')
-        time.sleep(1)
-        print(f'log_verifier expired = {log_verifier.is_expired()}')
-        time.sleep(1)
-        print(f'log_verifier expired = {log_verifier.is_expired()}')
-        print('mainline exiting')
-
-        expected_result = 'mainline entered\n'
-        expected_result += 'log_verifier expired = False\n'
-        expected_result += 'log_verifier expired = False\n'
-        expected_result += 'log_verifier expired = True\n'
-        expected_result += 'mainline exiting\n'
+        expected_result = '\n'
+        expected_result += '**********************************\n'
+        expected_result += '* number expected log records: 2 *\n'
+        expected_result += '* number expected unmatched  : 1 *\n'
+        expected_result += '* number actual log records  : 1 *\n'
+        expected_result += '* number actual unmatched    : 0 *\n'
+        expected_result += '* number matched records     : 1 *\n'
+        expected_result += '**********************************\n'
+        expected_result += '\n'
+        expected_result += '******************************\n'
+        expected_result += '* unmatched expected records *\n'
+        expected_result += '******************************\n'
+        expected_result += 'goodbye\n'
+        expected_result += '\n'
+        expected_result += '****************************\n'
+        expected_result += '* unmatched actual records *\n'
+        expected_result += '****************************\n'
+        expected_result += '\n'
+        expected_result += '***********************\n'
+        expected_result += '* matched log records *\n'
+        expected_result += '***********************\n'
+        expected_result += 'hello\n'
 
         captured = capsys.readouterr().out
 
@@ -513,7 +370,7 @@ class TestLogVerBasic:
         """
         print('mainline entered')
         log_verifier = LogVer(timeout=None,
-                      default_timeout=greater_than_zero_default_timeout_arg)
+                              default_timeout=greater_than_zero_default_timeout_arg)
         time.sleep(greater_than_zero_default_timeout_arg * 0.9)
         assert not log_verifier.is_expired()
         time.sleep(greater_than_zero_default_timeout_arg)
@@ -524,7 +381,7 @@ class TestLogVerBasic:
     # test_log_verifier_case4a
     ###########################################################################
     def test_log_verifier_case4a(self,
-                          zero_or_less_timeout_arg: IntFloat) -> None:
+                                 zero_or_less_timeout_arg: IntFloat) -> None:
         """Test log_verifier case4a.
 
         Args:
@@ -543,7 +400,7 @@ class TestLogVerBasic:
     # test_log_verifier_case4b
     ###########################################################################
     def test_log_verifier_case4b(self,
-                          zero_or_less_timeout_arg: IntFloat) -> None:
+                                 zero_or_less_timeout_arg: IntFloat) -> None:
         """Test log_verifier case4b.
 
         Args:
@@ -552,7 +409,7 @@ class TestLogVerBasic:
         """
         print('mainline entered')
         log_verifier = LogVer(timeout=zero_or_less_timeout_arg,
-                      default_timeout=None)
+                              default_timeout=None)
         time.sleep(abs(zero_or_less_timeout_arg * 0.9))
         assert not log_verifier.is_expired()
         time.sleep(abs(zero_or_less_timeout_arg))
@@ -563,9 +420,9 @@ class TestLogVerBasic:
     # test_log_verifier_case5
     ###########################################################################
     def test_log_verifier_case5(self,
-                         zero_or_less_timeout_arg: IntFloat,
-                         zero_or_less_default_timeout_arg: IntFloat
-                         ) -> None:
+                                zero_or_less_timeout_arg: IntFloat,
+                                zero_or_less_default_timeout_arg: IntFloat
+                                ) -> None:
         """Test log_verifier case5.
 
         Args:
@@ -576,7 +433,7 @@ class TestLogVerBasic:
         """
         print('mainline entered')
         log_verifier = LogVer(timeout=zero_or_less_timeout_arg,
-                      default_timeout=zero_or_less_default_timeout_arg)
+                              default_timeout=zero_or_less_default_timeout_arg)
         time.sleep(abs(zero_or_less_timeout_arg * 0.9))
         assert not log_verifier.is_expired()
         time.sleep(abs(zero_or_less_timeout_arg))
@@ -587,9 +444,9 @@ class TestLogVerBasic:
     # test_log_verifier_case6
     ###########################################################################
     def test_log_verifier_case6(self,
-                         zero_or_less_timeout_arg: IntFloat,
-                         greater_than_zero_default_timeout_arg: IntFloat
-                         ) -> None:
+                                zero_or_less_timeout_arg: IntFloat,
+                                greater_than_zero_default_timeout_arg: IntFloat
+                                ) -> None:
         """Test log_verifier case6.
 
         Args:
@@ -600,7 +457,7 @@ class TestLogVerBasic:
         """
         print('mainline entered')
         log_verifier = LogVer(timeout=zero_or_less_timeout_arg,
-                      default_timeout=greater_than_zero_default_timeout_arg)
+                              default_timeout=greater_than_zero_default_timeout_arg)
         time.sleep(abs(zero_or_less_timeout_arg * 0.9))
         assert not log_verifier.is_expired()
         time.sleep(abs(zero_or_less_timeout_arg))
@@ -611,7 +468,7 @@ class TestLogVerBasic:
     # test_log_verifier_case7a
     ###########################################################################
     def test_log_verifier_case7a(self,
-                          greater_than_zero_timeout_arg: IntFloat) -> None:
+                                 greater_than_zero_timeout_arg: IntFloat) -> None:
         """Test log_verifier case7a.
 
         Args:
@@ -631,7 +488,7 @@ class TestLogVerBasic:
     # test_log_verifier_case7b
     ###########################################################################
     def test_log_verifier_case7b(self,
-                          greater_than_zero_timeout_arg: IntFloat) -> None:
+                                 greater_than_zero_timeout_arg: IntFloat) -> None:
         """Test log_verifier case7b.
 
         Args:
@@ -641,7 +498,7 @@ class TestLogVerBasic:
         """
         print('mainline entered')
         log_verifier = LogVer(timeout=greater_than_zero_timeout_arg,
-                      default_timeout=None)
+                              default_timeout=None)
         time.sleep(greater_than_zero_timeout_arg * 0.9)
         assert not log_verifier.is_expired()
         time.sleep(greater_than_zero_timeout_arg)
@@ -652,9 +509,9 @@ class TestLogVerBasic:
     # test_log_verifier_case8
     ###########################################################################
     def test_log_verifier_case8(self,
-                         greater_than_zero_timeout_arg: IntFloat,
-                         zero_or_less_default_timeout_arg: IntFloat
-                         ) -> None:
+                                greater_than_zero_timeout_arg: IntFloat,
+                                zero_or_less_default_timeout_arg: IntFloat
+                                ) -> None:
         """Test log_verifier case8.
 
         Args:
@@ -666,7 +523,7 @@ class TestLogVerBasic:
         """
         print('mainline entered')
         log_verifier = LogVer(timeout=greater_than_zero_timeout_arg,
-                      default_timeout=zero_or_less_default_timeout_arg)
+                              default_timeout=zero_or_less_default_timeout_arg)
         time.sleep(greater_than_zero_timeout_arg * 0.9)
         assert not log_verifier.is_expired()
         time.sleep(greater_than_zero_timeout_arg)
@@ -677,9 +534,9 @@ class TestLogVerBasic:
     # test_log_verifier_case9
     ###########################################################################
     def test_log_verifier_case9(self,
-                         greater_than_zero_timeout_arg: IntFloat,
-                         greater_than_zero_default_timeout_arg: IntFloat
-                         ) -> None:
+                                greater_than_zero_timeout_arg: IntFloat,
+                                greater_than_zero_default_timeout_arg: IntFloat
+                                ) -> None:
         """Test log_verifier case9.
 
         Args:
@@ -690,7 +547,7 @@ class TestLogVerBasic:
         """
         print('mainline entered')
         log_verifier = LogVer(timeout=greater_than_zero_timeout_arg,
-                      default_timeout=greater_than_zero_default_timeout_arg)
+                              default_timeout=greater_than_zero_default_timeout_arg)
         time.sleep(greater_than_zero_timeout_arg * 0.9)
         assert not log_verifier.is_expired()
         time.sleep(greater_than_zero_timeout_arg)
@@ -708,7 +565,7 @@ class TestLogVerRemainingTime:
     # test_log_verifier_remaining_time1
     ###########################################################################
     def test_log_verifier_remaining_time1(self,
-                                   timeout_arg) -> None:
+                                          timeout_arg) -> None:
         """Test log_verifier remaining time1.
 
         Args:

@@ -184,7 +184,7 @@ class TestMsgsErrors:
             to_low = Msgs.GET_CMD_TIMEOUT
             to_high = Msgs.GET_CMD_TIMEOUT * 1.1
             ml_stop_watch.start_clock(clock_iter=1)
-            
+
             with pytest.raises(GetMsgTimedOut):
                 _ = msgs.get_msg('beta')
             assert to_low <= ml_stop_watch.duration() <= to_high

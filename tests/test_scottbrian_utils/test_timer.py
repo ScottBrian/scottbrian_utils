@@ -718,21 +718,24 @@ class TestTimerRemainingTime:
             timeout_arg: number of seconds to use for timer timeout arg
 
         """
+        tolerance_factor = 0.85
         logger.debug('mainline entered')
         sleep_time = timeout_arg/3
         timer = Timer(timeout=timeout_arg)
+        start_time = time.time()
         time.sleep(sleep_time)
         exp_remaining_time = timeout_arg - sleep_time
 
-        assert ((exp_remaining_time * .9)
+        assert ((exp_remaining_time * tolerance_factor)
                 <= timer.remaining_time()
                 <= exp_remaining_time)
         assert not timer.is_expired()
 
         time.sleep(sleep_time)
         exp_remaining_time = timeout_arg - sleep_time * 2
+        # exp_remaining_time = timeout_arg - (time.time() - start_time)
 
-        assert ((exp_remaining_time * .9)
+        assert ((exp_remaining_time * tolerance_factor)
                 <= timer.remaining_time()
                 <= exp_remaining_time)
         assert not timer.is_expired()
