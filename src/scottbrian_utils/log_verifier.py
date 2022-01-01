@@ -204,6 +204,11 @@ class UnmatchedExpectedMessages(LogVerError):
     pass
 
 
+class UnmatchedActualMessages(LogVerError):
+    """Unmatched actual messages were found during verify."""
+    pass
+
+
 class IncorrectNumberOfMatchedMessages(LogVerError):
     """Number of matched expected messages not equal to actual."""
     pass
@@ -390,6 +395,8 @@ class LogVer:
         Raises:
             UnmatchedExpectedMessages: There are expected log messages
                 that failed to match actual log messages.
+            UnmatchedActualMessages: There are actual log messages that
+                failed to match expected log messages.
             IncorrectNumberOfMatchedMessages: The number of expected log
                 messages that were matched is not equal to the number of
                 actual log messages.
@@ -403,6 +410,12 @@ class LogVer:
                 raise UnmatchedExpectedMessages(
                     f'There are {match_results.num_exp_unmatched} '
                     'expected log messages that failed to match actual log '
+                    'messages.')
+
+            if match_results.num_actual_unmatched:
+                raise UnmatchedActualMessages(
+                    f'There are {match_results.num_actual_unmatched} '
+                    'actual log messages that failed to match expected log '
                     'messages.')
 
             if (match_results.num_records_matched

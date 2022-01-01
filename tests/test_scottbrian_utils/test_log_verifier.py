@@ -18,6 +18,7 @@ import pytest
 ########################################################################
 from scottbrian_utils.log_verifier import LogVer
 from scottbrian_utils.log_verifier import UnmatchedExpectedMessages
+from scottbrian_utils.log_verifier import UnmatchedActualMessages
 
 logger = logging.getLogger(__name__)
 
@@ -221,6 +222,60 @@ class TestLogVerExamples:
         expected_result += '****************************\n'
         expected_result += '* unmatched actual records *\n'
         expected_result += '****************************\n'
+        expected_result += '\n'
+        expected_result += '***********************\n'
+        expected_result += '* matched log records *\n'
+        expected_result += '***********************\n'
+        expected_result += 'hello\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_log_verifier_example3
+    ####################################################################
+    def test_log_verifier_example3(self,
+                                   capsys: Any,
+                                   caplog: Any) -> None:
+        """Test log_verifier example3.
+
+        Args:
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+
+        """
+        # two log messages expected, only one is logged
+        t_logger = logging.getLogger(__name__)
+        log_ver = LogVer()
+        log_msg1 = 'hello'
+        log_ver.add_msg(log_msg=log_msg1)
+        log_msg2 = 'goodbye'
+        t_logger.debug(log_msg1)
+        t_logger.debug(log_msg2)
+        # log_results = log_ver.get_match_results(caplog)
+        log_ver.print_match_results(
+            log_results := log_ver.get_match_results(caplog))
+        with pytest.raises(UnmatchedActualMessages):
+            log_ver.verify_log_results(log_results)
+
+        expected_result = '\n'
+        expected_result += '**********************************\n'
+        expected_result += '* number expected log records: 1 *\n'
+        expected_result += '* number expected unmatched  : 0 *\n'
+        expected_result += '* number actual log records  : 2 *\n'
+        expected_result += '* number actual unmatched    : 1 *\n'
+        expected_result += '* number matched records     : 1 *\n'
+        expected_result += '**********************************\n'
+        expected_result += '\n'
+        expected_result += '******************************\n'
+        expected_result += '* unmatched expected records *\n'
+        expected_result += '******************************\n'
+        expected_result += '\n'
+        expected_result += '****************************\n'
+        expected_result += '* unmatched actual records *\n'
+        expected_result += '****************************\n'
+        expected_result += 'goodbye\n'
         expected_result += '\n'
         expected_result += '***********************\n'
         expected_result += '* matched log records *\n'
