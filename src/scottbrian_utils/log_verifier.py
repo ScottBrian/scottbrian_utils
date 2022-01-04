@@ -355,16 +355,22 @@ class LogVer:
             match_results: contains the results to be printed
 
         """
+        max_num = max(match_results.num_exp_records,
+                      match_results.num_exp_unmatched,
+                      match_results.num_actual_records,
+                      match_results.num_actual_unmatched,
+                      match_results.num_records_matched)
+        max_len = len(str(max_num))
         msg1 = ('number expected log records: '
-                f'{match_results.num_exp_records}')
+                f'{match_results.num_exp_records:>{max_len}}')
         msg2 = ('number expected unmatched  : '
-                f'{match_results.num_exp_unmatched}')
+                f'{match_results.num_exp_unmatched:>{max_len}}')
         msg3 = ('number actual log records  : '
-                f'{match_results.num_actual_records}')
+                f'{match_results.num_actual_records:>{max_len}}')
         msg4 = ('number actual unmatched    : '
-                f'{match_results.num_actual_unmatched}')
+                f'{match_results.num_actual_unmatched:>{max_len}}')
         msg5 = ('number matched records     : '
-                f'{match_results.num_records_matched}')
+                f'{match_results.num_records_matched:>{max_len}}')
 
         print_flower_box_msg([msg1, msg2, msg3, msg4, msg5])
 
