@@ -172,6 +172,7 @@ The log_verifier module contains:
 # Standard Library
 ########################################################################
 from dataclasses import dataclass
+import logging
 import re
 from typing import Any, Optional, Union
 
@@ -240,10 +241,12 @@ class LogVer:
     ####################################################################
     # __init__
     ####################################################################
-    def __init__(self) -> None:
+    def __init__(self,
+                 log_name: str = 'root') -> None:
         """Initialize object."""
         self.call_seqs = {}
         self.expected_messages = []
+        self.log_name = log_name
 
     ####################################################################
     # add_call_seq
@@ -283,14 +286,26 @@ class LogVer:
     ####################################################################
     # add_msg
     ####################################################################
-    def add_msg(self, log_msg: str) -> None:
+    def add_msg(self,
+                log_msg: str,
+                log_level: int = logging.DEBUG,
+                log_name: Optional[str] = None) -> None:
         """Add a message to the expected log messages.
 
         Args:
-            log_msg: message to add
+            log_msg: expected message to add
+            log_level: expected logging level
+            log_name: expected logger name
 
         """
-        self.expected_messages.append(re.compile(log_msg))
+        if log_name:
+            log_name_to_use = log_name
+        else:
+            log_name_to_use = self.log_name
+        self.expected_messages.append((log_name_to_use,
+                                       log_level,
+                                       re.compile(log_msg)
+                                       ))
 
     ###########################################################################
     # get_match_results
@@ -324,7 +339,11 @@ class LogVer:
         # find matches, update working copies to reflect results
         for actual_record in enumerate(caplog.record_tuples):
             for idx, exp_record in enumerate(unmatched_exp_records):
-                if exp_record.match(actual_record[1][2]):
+                # print(f'actual_record: {actual_record}')
+                # check that the logger name, level, and message match
+                if (exp_record[0] == actual_record[1][0]
+                        and exp_record[1] == actual_record[1][1]
+                        and exp_record[2].match(actual_record[1][2])):
                     unmatched_exp_records.pop(idx)
                     unmatched_actual_records.remove(actual_record[1][2])
                     matched_records.append(actual_record[1][2])
@@ -333,7 +352,7 @@ class LogVer:
         # convert unmatched expected records to string form
         unmatched_exp_records_2 = []
         for re_item in unmatched_exp_records:
-            unmatched_exp_records_2.append(re_item.pattern)
+            unmatched_exp_records_2.append(re_item[2].pattern)
 
         return MatchResults(num_exp_records=len(self.expected_messages),
                             num_exp_unmatched=len(unmatched_exp_records_2),

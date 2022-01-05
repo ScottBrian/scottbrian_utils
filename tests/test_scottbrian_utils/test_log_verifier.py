@@ -39,6 +39,25 @@ class ErrorTstLogVer(Exception):
 
 
 ########################################################################
+# log_enabled_arg
+########################################################################
+log_enabled_arg_list = [True, False]
+
+
+@pytest.fixture(params=log_enabled_arg_list)  # type: ignore
+def log_enabled_arg(request: Any) -> bool:
+    """Using enabled and disabled logging.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(bool, request.param)
+
+
+########################################################################
 # number of log messages arg fixtures
 ########################################################################
 num_msgs_arg_list = [0, 1, 2, 3]
@@ -143,7 +162,7 @@ class TestLogVerExamples:
         """
         # one message expected, one message logged
         t_logger = logging.getLogger(__name__)
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
         log_msg = 'hello'
         log_ver.add_msg(log_msg=log_msg)
         t_logger.debug(log_msg)
@@ -192,7 +211,7 @@ class TestLogVerExamples:
         """
         # two log messages expected, only one is logged
         t_logger = logging.getLogger(__name__)
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
         log_msg1 = 'hello'
         log_ver.add_msg(log_msg=log_msg1)
         log_msg2 = 'goodbye'
@@ -245,7 +264,7 @@ class TestLogVerExamples:
         """
         # one message expected, two messages logged
         t_logger = logging.getLogger(__name__)
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
         log_msg1 = 'hello'
         log_ver.add_msg(log_msg=log_msg1)
         log_msg2 = 'goodbye'
@@ -299,7 +318,7 @@ class TestLogVerExamples:
         # two log messages expected, two logged, one different
         # logged
         t_logger = logging.getLogger(__name__)
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
         log_msg1 = 'hello'
         log_ver.add_msg(log_msg=log_msg1)
         log_msg2a = 'goodbye'
@@ -348,7 +367,7 @@ class TestLogVerBasic:
     """Test basic functions of LogVer."""
 
     ###########################################################################
-    # test_log_verifier_case1a
+    # test_log_verifier_time_match
     ###########################################################################
     def test_log_verifier_time_match(self,
                                      capsys: Any,
@@ -360,7 +379,7 @@ class TestLogVerBasic:
             caplog: pytest fixture to capture log output
         """
         t_logger = logging.getLogger(__name__)
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
         fmt_str = '%d %b %Y %H:%M:%S'
 
         match_str_d = r'([0-2][0-9]|3[0-1])'
@@ -407,6 +426,76 @@ class TestLogVerBasic:
 
         assert captured == expected_result
 
+    ###########################################################################
+    # test_log_verifier_no_log
+    ###########################################################################
+    def test_log_verifier_no_log(self,
+                                 log_enabled_arg: bool,
+                                 capsys: Any,
+                                 caplog: Any) -> None:
+        """Test log_verifier with logging disabled and enabled.
+
+        Args:
+            log_enabled_arg: fixture to indicate whether log is enabled
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+        """
+        log_ver = LogVer(log_name=__name__)
+        if log_enabled_arg:
+            logging.getLogger().setLevel(logging.DEBUG)
+        else:
+            logging.getLogger().setLevel(logging.INFO)
+
+        log_msg = f'the log_enabled_arg is: {log_enabled_arg}'
+        log_ver.add_msg(log_msg=log_msg)
+        logger.debug(log_msg)
+        log_ver.print_match_results(
+            log_results := log_ver.get_match_results(caplog))
+        log_ver.verify_log_results(log_results,
+                                   log_enabled_tf=log_enabled_arg)
+
+        expected_result = '\n'
+        expected_result += '**********************************\n'
+        expected_result += '* number expected log records: 1 *\n'
+
+        if log_enabled_arg:
+            expected_result += '* number expected unmatched  : 0 *\n'
+            expected_result += '* number actual log records  : 1 *\n'
+        else:
+            expected_result += '* number expected unmatched  : 1 *\n'
+            expected_result += '* number actual log records  : 0 *\n'
+
+        expected_result += '* number actual unmatched    : 0 *\n'
+
+        if log_enabled_arg:
+            expected_result += '* number matched records     : 1 *\n'
+        else:
+            expected_result += '* number matched records     : 0 *\n'
+
+        expected_result += '**********************************\n'
+        expected_result += '\n'
+        expected_result += '******************************\n'
+        expected_result += '* unmatched expected records *\n'
+        expected_result += '******************************\n'
+        if not log_enabled_arg:
+            expected_result += f'the log_enabled_arg is: False\n'
+
+        expected_result += '\n'
+        expected_result += '****************************\n'
+        expected_result += '* unmatched actual records *\n'
+        expected_result += '****************************\n'
+        expected_result += '\n'
+        expected_result += '***********************\n'
+        expected_result += '* matched log records *\n'
+        expected_result += '***********************\n'
+
+        if log_enabled_arg:
+            expected_result += f'the log_enabled_arg is: True\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
 
 ###############################################################################
 # TestLogVerBasic class
@@ -441,7 +530,7 @@ class TestLogVerCombos:
 
         """
         t_logger = logging.getLogger(__name__)
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
 
         total_num_exp_msgs = 0
         total_num_act_msgs = 0
