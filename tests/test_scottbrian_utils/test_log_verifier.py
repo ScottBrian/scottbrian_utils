@@ -5,14 +5,12 @@
 ########################################################################
 import logging
 import datetime
-import time
 from typing import Any, cast, Optional, Union
 
 ########################################################################
 # Third Party
 ########################################################################
 import pytest
-import numpy as np
 
 ########################################################################
 # Local
@@ -161,8 +159,8 @@ class TestLogVerExamples:
 
         """
         # one message expected, one message logged
-        t_logger = logging.getLogger(__name__)
-        log_ver = LogVer(log_name=__name__)
+        t_logger = logging.getLogger('example_1')
+        log_ver = LogVer(log_name='example_1')
         log_msg = 'hello'
         log_ver.add_msg(log_msg=log_msg)
         t_logger.debug(log_msg)
@@ -193,7 +191,7 @@ class TestLogVerExamples:
         expected_result += '* matched records               *\n'
         expected_result += '* (logger name, level, message) *\n'
         expected_result += '*********************************\n'
-        expected_result += 'hello\n'
+        expected_result += "('example_1', 10, 'hello')\n"
 
         captured = capsys.readouterr().out
 
@@ -213,8 +211,8 @@ class TestLogVerExamples:
 
         """
         # two log messages expected, only one is logged
-        t_logger = logging.getLogger(__name__)
-        log_ver = LogVer(log_name=__name__)
+        t_logger = logging.getLogger('example_2')
+        log_ver = LogVer(log_name='example_2')
         log_msg1 = 'hello'
         log_ver.add_msg(log_msg=log_msg1)
         log_msg2 = 'goodbye'
@@ -238,7 +236,7 @@ class TestLogVerExamples:
         expected_result += '* unmatched expected records    *\n'
         expected_result += '* (logger name, level, message) *\n'
         expected_result += '*********************************\n'
-        expected_result += 'goodbye\n'
+        expected_result += "('example_2', 10, 'goodbye')\n"
         expected_result += '\n'
         expected_result += '*********************************\n'
         expected_result += '* unmatched actual records      *\n'
@@ -249,7 +247,7 @@ class TestLogVerExamples:
         expected_result += '* matched records               *\n'
         expected_result += '* (logger name, level, message) *\n'
         expected_result += '*********************************\n'
-        expected_result += 'hello\n'
+        expected_result += "('example_2', 10, 'hello')\n"
 
         captured = capsys.readouterr().out
 
@@ -269,8 +267,8 @@ class TestLogVerExamples:
 
         """
         # one message expected, two messages logged
-        t_logger = logging.getLogger(__name__)
-        log_ver = LogVer(log_name=__name__)
+        t_logger = logging.getLogger('example_3')
+        log_ver = LogVer(log_name='example_3')
         log_msg1 = 'hello'
         log_ver.add_msg(log_msg=log_msg1)
         log_msg2 = 'goodbye'
@@ -299,13 +297,13 @@ class TestLogVerExamples:
         expected_result += '* unmatched actual records      *\n'
         expected_result += '* (logger name, level, message) *\n'
         expected_result += '*********************************\n'
-        expected_result += 'goodbye\n'
+        expected_result += "('example_3', 10, 'goodbye')\n"
         expected_result += '\n'
         expected_result += '*********************************\n'
         expected_result += '* matched records               *\n'
         expected_result += '* (logger name, level, message) *\n'
         expected_result += '*********************************\n'
-        expected_result += 'hello\n'
+        expected_result += "('example_3', 10, 'hello')\n"
 
         captured = capsys.readouterr().out
 
@@ -326,15 +324,15 @@ class TestLogVerExamples:
         """
         # two log messages expected, two logged, one different
         # logged
-        t_logger = logging.getLogger(__name__)
-        log_ver = LogVer(log_name=__name__)
+        t_logger = logging.getLogger('example_4')
+        log_ver = LogVer(log_name='example_4')
         log_msg1 = 'hello'
         log_ver.add_msg(log_msg=log_msg1)
         log_msg2a = 'goodbye'
         log_ver.add_msg(log_msg=log_msg2a)
         log_msg2b = 'see you soon'
-        logger.debug(log_msg1)
-        logger.debug(log_msg2b)
+        t_logger.debug(log_msg1)
+        t_logger.debug(log_msg2b)
         log_ver.print_match_results(
             log_results := log_ver.get_match_results(caplog))
         with pytest.raises(UnmatchedExpectedMessages):
@@ -353,19 +351,19 @@ class TestLogVerExamples:
         expected_result += '* unmatched expected records    *\n'
         expected_result += '* (logger name, level, message) *\n'
         expected_result += '*********************************\n'
-        expected_result += 'goodbye\n'
+        expected_result += "('example_4', 10, 'goodbye')\n"
         expected_result += '\n'
         expected_result += '*********************************\n'
         expected_result += '* unmatched actual records      *\n'
         expected_result += '* (logger name, level, message) *\n'
         expected_result += '*********************************\n'
-        expected_result += 'see you soon\n'
+        expected_result += "('example_4', 10, 'see you soon')\n"
         expected_result += '\n'
         expected_result += '*********************************\n'
         expected_result += '* matched records               *\n'
         expected_result += '* (logger name, level, message) *\n'
         expected_result += '*********************************\n'
-        expected_result += 'hello\n'
+        expected_result += "('example_4', 10, 'hello')\n"
 
         captured = capsys.readouterr().out
 
@@ -388,8 +386,8 @@ class TestLogVerExamples:
 
         # t_logger = logging.getLogger(__name__)
         # log_ver = LogVer(__name__)
-        t_logger = logging.getLogger('test_example5')
-        log_ver = LogVer('test_example5')
+        t_logger = logging.getLogger('add_msg')
+        log_ver = LogVer('add_msg')
         log_msg1 = 'hello'
         log_msg2 = 'goodbye'
         log_ver.add_msg(log_msg=log_msg1)
@@ -423,8 +421,8 @@ class TestLogVerExamples:
         expected_result += '* matched records               *\n'
         expected_result += '* (logger name, level, message) *\n'
         expected_result += '*********************************\n'
-        expected_result += "('test_example5', 10, 'hello')\n"
-        expected_result += "('test_example5', 40, 'goodbye')\n"
+        expected_result += "('add_msg', 10, 'hello')\n"
+        expected_result += "('add_msg', 40, 'goodbye')\n"
 
         captured = capsys.readouterr().out
 
@@ -515,15 +513,18 @@ class TestLogVerBasic:
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
-        log_ver = LogVer(log_name=__name__)
+        t_logger = logging.getLogger('no_log')
+        log_ver = LogVer(log_name='no_log')
         if log_enabled_arg:
-            logging.getLogger().setLevel(logging.DEBUG)
+            t_logger.setLevel(logging.DEBUG)
+            # logging.getLogger().setLevel(logging.DEBUG)
         else:
-            logging.getLogger().setLevel(logging.INFO)
+            t_logger.setLevel(logging.INFO)
+            # logging.getLogger().setLevel(logging.INFO)
 
         log_msg = f'the log_enabled_arg is: {log_enabled_arg}'
         log_ver.add_msg(log_msg=log_msg)
-        logger.debug(log_msg)
+        t_logger.debug(log_msg)
         log_ver.print_match_results(
             log_results := log_ver.get_match_results(caplog))
         log_ver.verify_log_results(log_results,
@@ -549,23 +550,28 @@ class TestLogVerBasic:
 
         expected_result += '**********************************\n'
         expected_result += '\n'
-        expected_result += '******************************\n'
-        expected_result += '* unmatched expected records *\n'
-        expected_result += '******************************\n'
+        expected_result += '*********************************\n'
+        expected_result += '* unmatched expected records    *\n'
+        expected_result += '* (logger name, level, message) *\n'
+        expected_result += '*********************************\n'
         if not log_enabled_arg:
-            expected_result += f'the log_enabled_arg is: False\n'
+            expected_result += ("('no_log', "
+                                "10, 'the log_enabled_arg is: False')\n")
 
         expected_result += '\n'
-        expected_result += '****************************\n'
-        expected_result += '* unmatched actual records *\n'
-        expected_result += '****************************\n'
+        expected_result += '*********************************\n'
+        expected_result += '* unmatched actual records      *\n'
+        expected_result += '* (logger name, level, message) *\n'
+        expected_result += '*********************************\n'
         expected_result += '\n'
-        expected_result += '***********************\n'
-        expected_result += '* matched log records *\n'
-        expected_result += '***********************\n'
+        expected_result += '*********************************\n'
+        expected_result += '* matched records               *\n'
+        expected_result += '* (logger name, level, message) *\n'
+        expected_result += '*********************************\n'
 
         if log_enabled_arg:
-            expected_result += f'the log_enabled_arg is: True\n'
+            expected_result += ("('no_log', "
+                                "10, 'the log_enabled_arg is: True')\n")
 
         captured = capsys.readouterr().out
 
@@ -604,8 +610,8 @@ class TestLogVerCombos:
             caplog: pytest fixture to capture log output
 
         """
-        t_logger = logging.getLogger(__name__)
-        log_ver = LogVer(log_name=__name__)
+        t_logger = logging.getLogger('combos')
+        log_ver = LogVer(log_name='combos')
 
         total_num_exp_msgs = 0
         total_num_act_msgs = 0
@@ -635,7 +641,7 @@ class TestLogVerCombos:
                 log_ver.add_msg(log_msg=the_msg)
 
             for _ in range(num_act):
-                logger.debug(the_msg)
+                t_logger.debug(the_msg)
 
             for _ in range(num_exp_unmatched):
                 exp_unmatched_msgs.append(the_msg)
@@ -692,28 +698,31 @@ class TestLogVerCombos:
                             + f'{total_num_matched} *\n')
         expected_result += asterisks + '\n'
         expected_result += '\n'
-        expected_result += '******************************\n'
-        expected_result += '* unmatched expected records *\n'
-        expected_result += '******************************\n'
+        expected_result += '*********************************\n'
+        expected_result += '* unmatched expected records    *\n'
+        expected_result += '* (logger name, level, message) *\n'
+        expected_result += '*********************************\n'
 
         for msg in exp_unmatched_msgs:
-            expected_result += msg + '\n'
+            expected_result += f"('combos', 10, '{msg}')\n"
 
         expected_result += '\n'
-        expected_result += '****************************\n'
-        expected_result += '* unmatched actual records *\n'
-        expected_result += '****************************\n'
+        expected_result += '*********************************\n'
+        expected_result += '* unmatched actual records      *\n'
+        expected_result += '* (logger name, level, message) *\n'
+        expected_result += '*********************************\n'
 
         for msg in act_unmatched_msgs:
-            expected_result += msg + '\n'
+            expected_result += f"('combos', 10, '{msg}')\n"
 
         expected_result += '\n'
-        expected_result += '***********************\n'
-        expected_result += '* matched log records *\n'
-        expected_result += '***********************\n'
+        expected_result += '*********************************\n'
+        expected_result += '* matched records               *\n'
+        expected_result += '* (logger name, level, message) *\n'
+        expected_result += '*********************************\n'
 
         for msg in matched_msgs:
-            expected_result += msg + '\n'
+            expected_result += f"('combos', 10, '{msg}')\n"
 
         captured = capsys.readouterr().out
 

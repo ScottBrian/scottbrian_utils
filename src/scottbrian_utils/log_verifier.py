@@ -234,6 +234,7 @@ class NonZeroNumberOfMatchedMessages(LogVerError):
 
 @dataclass
 class MatchResults:
+    """Match results returned by get_match_results method."""
     num_exp_records: int
     num_exp_unmatched: int
     num_actual_records: int
@@ -255,7 +256,12 @@ class LogVer:
     ####################################################################
     def __init__(self,
                  log_name: str = 'root') -> None:
-        """Initialize object."""
+        """Initialize object.
+
+        Args:
+            log_name: name of the logger
+
+        """
         self.call_seqs = {}
         self.expected_messages = []
         self.log_name = log_name
