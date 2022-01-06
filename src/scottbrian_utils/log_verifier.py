@@ -12,8 +12,8 @@ have been issued.
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
->>> logger = logging.getLogger(__name__)
->>> log_ver = LogVer()
+>>> logger = logging.getLogger('example_1')
+>>> log_ver = LogVer('example_1')
 >>> log_msg = 'hello'
 >>> log_ver.add_msg(log_msg=log_msg)
 >>> logger.debug(log_msg)
@@ -29,26 +29,29 @@ have been issued.
 * number of matched records  : 1 *
 **********************************
 <BLANKLINE>
-******************************
-* unmatched expected records *
-******************************
+*********************************
+* unmatched expected records    *
+* (logger name, level, message) *
+*********************************
 <BLANKLINE>
-****************************
-* unmatched actual records *
-****************************
+*********************************
+* unmatched actual records      *
+* (logger name, level, message) *
+*********************************
 <BLANKLINE>
-***********************
-* matched log records *
-***********************
-hello
+*********************************
+* matched records               *
+* (logger name, level, message) *
+*********************************
+('example_1', 10, 'hello')
 
 
 :Example2: expect two log records, only one was issued
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
->>> logger = logging.getLogger(__name__)
->>> log_ver = LogVer()
+>>> logger = logging.getLogger('example_2')
+>>> log_ver = LogVer('example_2')
 >>> log_msg1 = 'hello'
 >>> log_ver.add_msg(log_msg=log_msg1)
 >>> log_msg2 = 'goodbye'
@@ -65,27 +68,30 @@ hello
 * number of matched records  : 1 *
 **********************************
 <BLANKLINE>
-******************************
-* unmatched expected records *
-******************************
-goodbye
+*********************************
+* unmatched expected records    *
+* (logger name, level, message) *
+*********************************
+('example_2', 10, 'goodbye')
 <BLANKLINE>
-****************************
-* unmatched actual records *
-****************************
+*********************************
+* unmatched actual records      *
+* (logger name, level, message) *
+*********************************
 <BLANKLINE>
-***********************
-* matched log records *
-***********************
-hello
+*********************************
+* matched records               *
+* (logger name, level, message) *
+*********************************
+('example_2', 10, 'hello')
 
 
 :Example3: expect one log record, two were issued
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
->>> logger = logging.getLogger(__name__)
->>> log_ver = LogVer()
+>>> logger = logging.getLogger('example_3')
+>>> log_ver = LogVer('example_3')
 >>> log_msg1 = 'hello'
 >>> log_ver.add_msg(log_msg=log_msg1)
 >>> log_msg2 = 'goodbye'
@@ -102,27 +108,30 @@ hello
 * number of matched records  : 1 *
 **********************************
 <BLANKLINE>
-******************************
-* unmatched expected records *
-******************************
+*********************************
+* unmatched expected records    *
+* (logger name, level, message) *
+*********************************
 <BLANKLINE>
-****************************
-* unmatched actual records *
-****************************
-goodbye
+*********************************
+* unmatched actual records      *
+* (logger name, level, message) *
+*********************************
+('example_3', 10, 'goodbye')
 <BLANKLINE>
-***********************
-* matched log records *
-***********************
-hello
+*********************************
+* matched records               *
+* (logger name, level, message) *
+*********************************
+('example_3', 10, 'hello')
 
 
 :Example4: expect two log records, two were issued, one different
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
->>> logger = logging.getLogger(__name__)
->>> log_ver = LogVer()
+>>> logger = logging.getLogger('example_4')
+>>> log_ver = LogVer('example_4')
 >>> log_msg1 = 'hello'
 >>> log_ver.add_msg(log_msg=log_msg1)
 >>> log_msg2a = 'goodbye'
@@ -141,20 +150,23 @@ hello
 * number of matched records  : 1 *
 **********************************
 <BLANKLINE>
-******************************
-* unmatched expected records *
-******************************
-goodbye
+*********************************
+* unmatched expected records    *
+* (logger name, level, message) *
+*********************************
+('example_4', 10, 'goodbye')
 <BLANKLINE>
-****************************
-* unmatched actual records *
-****************************
-see you soon
+*********************************
+* unmatched actual records      *
+* (logger name, level, message) *
+*********************************
+('example_4', 10, 'see you soon')
 <BLANKLINE>
-***********************
-* matched log records *
-***********************
-hello
+*********************************
+* matched records               *
+* (logger name, level, message) *
+*********************************
+('example_4', 10, 'hello')
 
 
 The log_verifier module contains:
@@ -227,9 +239,9 @@ class MatchResults:
     num_actual_records: int
     num_actual_unmatched: int
     num_records_matched: int
-    unmatched_exp_records: list[str]
-    unmatched_actual_records: list[str]
-    matched_records: list[str]
+    unmatched_exp_records: list[tuple[str, int, Any]]
+    unmatched_actual_records: list[tuple[str, int, Any]]
+    matched_records: list[tuple[str, int, Any]]
 
 
 ########################################################################
@@ -297,6 +309,45 @@ class LogVer:
             log_level: expected logging level
             log_name: expected logger name
 
+        Example: add two messages, each at a different level
+
+        >>> logger = logging.getLogger('add_msg')
+        >>> log_ver = LogVer('add_msg')
+        >>> log_msg1 = 'hello'
+        >>> log_msg2 = 'goodbye'
+        >>> log_ver.add_msg(log_msg=log_msg1)
+        >>> log_ver.add_msg(log_msg=log_msg2, log_level=logging.ERROR)
+        >>> logger.debug(log_msg1)
+        >>> logger.error(log_msg2)
+        >>> match_results = log_ver.get_match_results()
+        >>> log_ver.print_match_results(match_results)
+        >>> log_ver.verify_log_results(match_results)
+        <BLANKLINE>
+        **********************************
+        * number expected log records: 2 *
+        * number expected unmatched  : 1 *
+        * number actual log records  : 1 *
+        * number actual unmatched    : 0 *
+        * number of matched records  : 1 *
+        **********************************
+        <BLANKLINE>
+        *********************************
+        * unmatched expected records    *
+        * (logger name, level, message) *
+        *********************************
+        <BLANKLINE>
+        *********************************
+        * unmatched actual records      *
+        * (logger name, level, message) *
+        *********************************
+        <BLANKLINE>
+        *********************************
+        * matched records               *
+        * (logger name, level, message) *
+        *********************************
+        ('add_msg', 10, 'hello')
+        ('add_msg', 40, 'goodbye')
+
         """
         if log_name:
             log_name_to_use = log_name
@@ -333,26 +384,30 @@ class LogVer:
             unmatched_exp_records.append(record)
 
         # make a work copy of actual records
-        for record in caplog.records:
-            unmatched_actual_records.append(record.msg)
+        for record in caplog.record_tuples:
+            unmatched_actual_records.append(record)
 
         # find matches, update working copies to reflect results
-        for actual_record in enumerate(caplog.record_tuples):
+        for actual_record in caplog.record_tuples:
             for idx, exp_record in enumerate(unmatched_exp_records):
                 # print(f'actual_record: {actual_record}')
                 # check that the logger name, level, and message match
-                if (exp_record[0] == actual_record[1][0]
-                        and exp_record[1] == actual_record[1][1]
-                        and exp_record[2].match(actual_record[1][2])):
+                if (exp_record[0] == actual_record[0]
+                        and exp_record[1] == actual_record[1]
+                        and exp_record[2].match(actual_record[2])):
                     unmatched_exp_records.pop(idx)
-                    unmatched_actual_records.remove(actual_record[1][2])
-                    matched_records.append(actual_record[1][2])
+                    unmatched_actual_records.remove(actual_record)
+                    matched_records.append((actual_record[0],
+                                            actual_record[1],
+                                            actual_record[2]))
                     break
 
         # convert unmatched expected records to string form
         unmatched_exp_records_2 = []
-        for re_item in unmatched_exp_records:
-            unmatched_exp_records_2.append(re_item[2].pattern)
+        for item in unmatched_exp_records:
+            unmatched_exp_records_2.append((item[0],
+                                            item[1],
+                                            item[2].pattern))
 
         return MatchResults(num_exp_records=len(self.expected_messages),
                             num_exp_unmatched=len(unmatched_exp_records_2),
@@ -393,15 +448,16 @@ class LogVer:
 
         print_flower_box_msg([msg1, msg2, msg3, msg4, msg5])
 
-        print_flower_box_msg('unmatched expected records')
+        legend_msg = '(logger name, level, message)'
+        print_flower_box_msg(['unmatched expected records', legend_msg])
         for log_msg in match_results.unmatched_exp_records:
             print(log_msg)
 
-        print_flower_box_msg('unmatched actual records')
+        print_flower_box_msg(['unmatched actual records', legend_msg])
         for log_msg in match_results.unmatched_actual_records:
             print(log_msg)
 
-        print_flower_box_msg('matched log records')
+        print_flower_box_msg(['matched records', legend_msg])
         for log_msg in match_results.matched_records:
             print(log_msg)
 
