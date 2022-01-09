@@ -19,12 +19,12 @@ messages between threads.
 >>> msgs = Msgs()
 >>> f1_thread = threading.Thread(target=f1)
 >>> f1_thread.start()
->>> msgs.queue_msg('beta', 'exit now')
+>>> msgs.queue_msg('beta', 'hello beta')
 >>> f1_thread.join()
 >>> print('mainline exiting')
 mainline entered
 f1 beta entered
-exit now
+hello beta
 f1 beta exiting
 mainline exiting
 
@@ -48,19 +48,19 @@ mainline exiting
 >>> msgs = Msgs()
 >>> f1_thread = threading.Thread(target=f1)
 >>> f1_thread.start()
->>> msgs.queue_msg('beta', 'do message a')
+>>> msgs.queue_msg('beta', 'do command a')
 >>> print(msgs.get_msg('alpha'))
->>> msgs.queue_msg('beta', 'do message b')
+>>> msgs.queue_msg('beta', 'do command b')
 >>> print(f"alpha received response: {msgs.get_msg('alpha')}")
 >>> msgs.queue_msg('beta', 'exit')
 >>> f1_thread.join()
 >>> print('mainline alpha exiting')
 mainline alpha entered
 f1 beta entered
-beta received msg: do message a
-alpha received response: msg "do message a" completed
-beta received msg: do message b
-alpha received response: msg "do message b" completed
+beta received msg: do command a
+alpha received response: msg "do command a" completed
+beta received msg: do command b
+alpha received response: msg "do command b" completed
 f1 beta exiting
 mainline alpha exiting
 
@@ -135,7 +135,7 @@ class Msgs:
     def __init__(self) -> None:
         """Initialize the object."""
         self.msg_array: dict[str, Any] = {}
-        self.msg_lock = threading.Lock()
+        self.msg_lock: Threading.Lock = threading.Lock()
 
         # add a logger
         self.logger = logging.getLogger(__name__)
@@ -143,34 +143,35 @@ class Msgs:
     ####################################################################
     # queue_msg
     ####################################################################
-    def queue_msg(self, who: str, msg: Optional[Any] = 'go') -> None:
+    def queue_msg(self, target: str, msg: Optional[Any] = 'go') -> None:
         """Place a msg on the msg queue for the specified target.
 
         Args:
-            who: arbitrary name that designates the target of the
+            target: arbitrary name that designates the target of the
                    message and which will be used with the get_msg
                    method to retrieve the message
             msg: message to place on queue
 
         """
         with self.msg_lock:
-            if who not in self.msg_array:
-                self.msg_array[who] = queue.Queue(maxsize=Msgs.CMD_Q_MAX_SIZE)
+            if target not in self.msg_array:
+                self.msg_array[target] = queue.Queue(
+                    maxsize=Msgs.CMD_Q_MAX_SIZE)
 
-        self.msg_array[who].put(msg,
-                                block=True,
-                                timeout=0.5)
+        self.msg_array[target].put(msg,
+                                   block=True,
+                                   timeout=0.5)
 
     ####################################################################
     # get_msg
     ####################################################################
     def get_msg(self,
-                who: str,
+                recipient: str,
                 timeout: OptIntFloat = GET_CMD_TIMEOUT) -> Any:
-        """Get the next message for alpha to do.
+        """Get the next message in the queue.
 
         Args:
-            who: arbitrary name that designates the target of the
+            recipient: arbitrary name that designates the target of the
                    message and which will be used with the queue_msg
                    method to identify the intended recipient of the
                    message
@@ -183,7 +184,7 @@ class Msgs:
             the received message
 
         Raises:
-            GetMsgTimedOut: {who} timed out waiting for msg
+            GetMsgTimedOut: {recipient} timed out waiting for msg
 
         """
         # get a timer (the clock is started when instantiated)
@@ -191,14 +192,15 @@ class Msgs:
 
         # shared/excl lock here could improve performance
         with self.msg_lock:
-            if who not in self.msg_array:
+            if recipient not in self.msg_array:
                 # we need to add the message target if this is the first
-                # time the target is calling get_msg
-                self.msg_array[who] = queue.Queue(maxsize=Msgs.CMD_Q_MAX_SIZE)
+                # time the recipient is calling get_msg
+                self.msg_array[recipient] = queue.Queue(
+                    maxsize=Msgs.CMD_Q_MAX_SIZE)
 
         while True:
             try:
-                msg = self.msg_array[who].get(block=True, timeout=0.1)
+                msg = self.msg_array[recipient].get(block=True, timeout=0.1)
                 return msg
             except queue.Empty:
                 pass
@@ -206,7 +208,7 @@ class Msgs:
             if timer.is_expired():
                 caller_info = get_formatted_call_sequence(latest=1, depth=1)
                 err_msg = (f'Thread {threading.current_thread()} '
-                           f'timed out on get_msg for who: {who} '
+                           f'timed out on get_msg for recipient: {recipient} '
                            f'{caller_info}')
 
                 self.logger.debug(err_msg)

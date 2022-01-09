@@ -74,8 +74,8 @@ class Timer:
     # __init__
     ####################################################################
     def __init__(self,
-                 timeout: Optional[Union[int, float]] = None,
-                 default_timeout: Optional[Union[int, float]] = None
+                 timeout: OptIntFloat = None,
+                 default_timeout: OptIntFloat = None
                  ) -> None:
         """Initialize a timer object.
 
@@ -206,7 +206,7 @@ class Timer:
         #          here with either a positive value for the former,
         #          and with None for later.
         if timeout and timeout > 0:  # positive timeout takes precedent
-            self._timeout = timeout
+            self._timeout: OptIntFloat = timeout
         elif (timeout is None) and (default_timeout and default_timeout > 0):
             self._timeout = default_timeout
         else:
@@ -216,7 +216,7 @@ class Timer:
     # remaining_time
     ####################################################################
     def remaining_time(self) -> OptIntFloat:
-        """Getter method that returns the remaining timer time.
+        """Return the remaining timer time.
 
         Returns:
             remaining time of the timer

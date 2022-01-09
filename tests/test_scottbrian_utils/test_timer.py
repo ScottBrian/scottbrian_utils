@@ -173,7 +173,7 @@ class TestTimerExamples:
 
         """
         class A:
-            def __init__(self):
+            def __init__(self) -> None:
                 self.a = 1
 
             def m1(self, sleep_time: float) -> bool:
@@ -210,7 +210,7 @@ class TestTimerExamples:
 
         """
         class A:
-            def __init__(self):
+            def __init__(self) -> None:
                 self.a = 1
 
             def m1(self, sleep_time: float, timeout: float) -> bool:
@@ -295,7 +295,7 @@ class TestTimerExamples:
             capsys: pytest fixture to capture print output
 
         """
-        def f1():
+        def f1() -> None:
             print('f1 entered')
             time.sleep(1)
             f1_event.set()
@@ -711,14 +711,14 @@ class TestTimerRemainingTime:
     # test_timer_remaining_time1
     ####################################################################
     def test_timer_remaining_time1(self,
-                                   timeout_arg) -> None:
+                                   timeout_arg: IntFloat) -> None:
         """Test timer remaining time1.
 
         Args:
             timeout_arg: number of seconds to use for timer timeout arg
 
         """
-        tolerance_factor = 0.85
+        tolerance_factor = 0.80
         logger.debug('mainline entered')
         sleep_time = timeout_arg/3
         timer = Timer(timeout=timeout_arg)

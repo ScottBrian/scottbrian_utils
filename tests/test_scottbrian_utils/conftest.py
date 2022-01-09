@@ -3,7 +3,7 @@
 import threading
 import traceback
 import pytest
-from typing import Any, cast
+from typing import Any, cast, Generator
 
 import logging
 
@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 # For PyCharm, the above specification goes into field Additional
 # Arguments found at Run -> edit configurations
 #
-# For tox, the above specification goes into tox.ini in the
-# the string for the commands=
+# For tox, the above specification goes into tox.ini in the string for
+# the commands=
 # For example, in tox.ini for the pytest section:
 # [testenv:py{36, 37, 38, 39}-pytest]
 # description = invoke pytest on the package
@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 #
 ########################################################################
 @pytest.fixture(autouse=True)
-def thread_exc(monkeypatch: Any) -> None:
+def thread_exc(monkeypatch: Any) -> Generator:
     """Instantiate and return a ThreadExc for testing.
 
     Args:
@@ -70,10 +70,13 @@ def thread_exc(monkeypatch: Any) -> None:
 
     """
     class ExcHook:
-        def __init__(self):
+        """ExcHook class."""
+        def __init__(self) -> None:
+            """Initialize the ExcHook class instance."""
             self.exc_err_msg1 = ''
 
-        def raise_exc_if_one(self):
+        def raise_exc_if_one(self) -> None:
+            """Raise and error is we have one."""
             if self.exc_err_msg1:
                 exc_msg = self.exc_err_msg1
                 self.exc_err_msg1 = ''
@@ -82,8 +85,15 @@ def thread_exc(monkeypatch: Any) -> None:
     logger.debug(f'hook before: {threading.excepthook}')
     exc_hook = ExcHook()
 
-    def mock_threading_excepthook(args):
-        exc_err_msg = (f'Throttle excepthook: {args.exc_type}, '
+    def mock_threading_excepthook(args: Any) -> None:
+        """Build error message from exception.
+
+        Args:
+            args.exc_type: Optional[Type[BaseException]]
+            args.exc_value: Optional[BaseException]
+            args.exc_traceback: Optional[TracebackType]
+        """
+        exc_err_msg = (f'Test case excepthook: {args.exc_type}, '
                        f'{args.exc_value}, {args.exc_traceback},'
                        f' {args.thread}')
         traceback.print_tb(args.exc_traceback)
@@ -92,7 +102,7 @@ def thread_exc(monkeypatch: Any) -> None:
         logger.debug(f'excepthook current thread is {current_thread}')
         # ExcHook.exc_err_msg1 = exc_err_msg
         exc_hook.exc_err_msg1 = exc_err_msg
-        raise Exception(f'Throttle thread test error: {exc_err_msg}')
+        raise Exception(f'Test case thread test error: {exc_err_msg}')
 
     monkeypatch.setattr(threading, "excepthook", mock_threading_excepthook)
     logger.debug(f'hook after: {threading.excepthook}')

@@ -263,8 +263,8 @@ class LogVer:
             log_name: name of the logger
 
         """
-        self.call_seqs = {}
-        self.expected_messages = []
+        self.call_seqs: dict[str, str] = {}
+        self.expected_messages: list[tuple[str, int, Any]] = []
         self.log_name = log_name
 
     ####################################################################
@@ -300,7 +300,7 @@ class LogVer:
               number to match
 
         """
-        return self.call_seqs[name] + ':[0-9]* '
+        return self.call_seqs[name] + ':[0-9]*'
 
     ####################################################################
     # add_msg
@@ -383,9 +383,9 @@ class LogVer:
               or matching records
 
         """
-        unmatched_exp_records = []
-        unmatched_actual_records = []
-        matched_records = []
+        unmatched_exp_records: list[tuple[str, int, Any]] = []
+        unmatched_actual_records: list[tuple[str, int, Any]] = []
+        matched_records: list[tuple[str, int, Any]] = []
 
         # make a work copy of expected records
         for record in self.expected_messages:
@@ -398,7 +398,8 @@ class LogVer:
         # find matches, update working copies to reflect results
         for actual_record in caplog.record_tuples:
             for idx, exp_record in enumerate(unmatched_exp_records):
-                # print(f'actual_record: {actual_record}')
+                print(f'exp_record: {exp_record}')
+                print(f'actual_record: {actual_record}')
                 # check that the logger name, level, and message match
                 if (exp_record[0] == actual_record[0]
                         and exp_record[1] == actual_record[1]

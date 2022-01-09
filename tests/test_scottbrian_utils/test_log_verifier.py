@@ -388,9 +388,6 @@ class TestLogVerExamples:
 
         """
         # add two log messages, each different level
-
-        # t_logger = logging.getLogger(__name__)
-        # log_ver = LogVer(__name__)
         t_logger = logging.getLogger('add_msg')
         log_ver = LogVer('add_msg')
         log_msg1 = 'hello'
