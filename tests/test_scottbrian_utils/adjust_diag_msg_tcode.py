@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 """Adjust line_num values.
 
-This routine is used to adjust the line_num values in the test cases for the
-diag_msg item. The line_num values are hand coded to specify the line number
-in the test case code that needs to be checked against the line number
-returned by the get_caller_info, get_formatted_call_sequence, and diag_msg
-functions. Any change to the test code that inserts or deletes  one of more
-lines of code will require the line_num values to be changed so that correctly
-match any changed line numbers. doing the adjustment by hand could take hours,
+This routine is used to adjust the line_num values in the test cases for
+the diag_msg item. The line_num values are hand coded to specify the
+line number in the test case code that needs to be checked against the
+line number returned by the get_caller_info,
+get_formatted_call_sequence, and diag_msg functions. Any change to the
+test code that inserts or deletes  one of more lines of code will
+require the line_num values to be changed so that correctly match any
+changed line numbers. doing the adjustment by hand could take hours,
 so the code in this module was created to do the adjustment.
 
 """
@@ -198,7 +199,7 @@ def adjust_line_nums() -> None:
 
 
 def main() -> None:
-    """Main routine that gets control when this module is run as a script."""
+    """Main routine gets control when this module is run as a script."""
     adjust_line_nums()
     # use_update_stack()
     # add_add()

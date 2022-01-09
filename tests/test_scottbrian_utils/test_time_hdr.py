@@ -395,7 +395,7 @@ class TestTimeBox:
             if file != 'None':
                 expected_file = file
 
-        # Note: we can specify flush but we can not verify whether it works
+        # Note: we can specify flush, but we can't verify that it works
         expected_flush = False
         if flush != '0':
             route_num = route_num | TestTimeBox.FLUSH1
@@ -428,10 +428,11 @@ class TestTimeBox:
         Args:
             expected_func_msg: message issued by wrapped function
             actual: the message captured by capsys
-            expected_dt_format: dt_format to use to build expected message
+            expected_dt_format: dt_format to use to build expected
+                                  message
             expected_end: end arg to use to build expected message
-            expected_enabled_tf: expected enabled arg to use to build expected
-                                   message
+            expected_enabled_tf: expected enabled arg to use to build
+                                   expected message
 
         Returns:
             the expected message that is built based on the input args
@@ -465,8 +466,8 @@ class TestTimeBox:
 
         msg0 += ' ' * (flower_len - len(msg0) - 1) + '*'
 
-        expected0 = '\n' + flowers + expected_end + msg0 + expected_end \
-            + flowers + expected_end
+        expected0 = ('\n' + flowers + expected_end + msg0 + expected_end
+                     + flowers + expected_end)
 
         # build expected1
         msg1 = '* Ending func on ' + end_time_marks
@@ -485,26 +486,28 @@ class TestTimeBox:
         end_time_index = expected.index(end_time_marks)
         elapsed_time_index = expected.index(elapsed_time_marks)
 
-        modified_expected = expected[0:start_time_index] \
-            + actual[start_time_index:start_time_index+start_time_len] \
-            + expected[start_time_index+start_time_len:end_time_index] \
-            + actual[end_time_index:end_time_index+end_time_len] \
-            + expected[end_time_index+end_time_len:elapsed_time_index] \
-            + actual[elapsed_time_index:elapsed_time_index+elapsed_time_len] \
-            + expected[elapsed_time_index+elapsed_time_len:]
+        modified_expected = (
+                expected[0:start_time_index]
+                + actual[start_time_index:start_time_index+start_time_len]
+                + expected[start_time_index+start_time_len:end_time_index]
+                + actual[end_time_index:end_time_index+end_time_len]
+                + expected[end_time_index+end_time_len:elapsed_time_index]
+                + actual[
+                  elapsed_time_index:elapsed_time_index+elapsed_time_len]
+                + expected[elapsed_time_index+elapsed_time_len:])
 
         return modified_expected
 
     """
-    The following section tests each combination of arguments to the time_box
-    decorator for three styles of decoration (using pie, calling
-    with the function as the first parameter, and calling the decorator with
-    the function specified after the call. This test is especially useful to
-    ensure that the type hints are working correctly, and that all
-    combinations are accepted by python.
+    The following section tests each combination of arguments to the
+    time_box decorator for three styles of decoration (using pie,
+    calling with the function as the first parameter, and calling the
+    decorator with the function specified after the call. This test is
+    especially useful to ensure that the type hints are working
+    correctly, and that all combinations are accepted by python.
 
-    The following keywords with various values and in all combinations are
-    tested:
+    The following keywords with various values and in all combinations
+    are tested:
         dt_format - several different datetime formats - see format_list
         end - either '\n' for single space, and '\n\n' for double space
         file - either sys.stdout or sys.stderr

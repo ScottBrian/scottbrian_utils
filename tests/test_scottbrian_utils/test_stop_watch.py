@@ -152,7 +152,7 @@ class TestStopWatchExamples:
 # TestStopWatchClock class
 ########################################################################
 class TestStopWatch:
-    """Test the start_clock, pause, and duration methods of StopWatch."""
+    """Test start_clock, pause, and duration methods of StopWatch."""
 
     ####################################################################
     # test_stop_watch1

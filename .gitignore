@@ -106,8 +106,7 @@ celerybeat.pid
 .venv
 env/
 venv/
-venv36/
-venv37/
+venv39/
 ENV/
 env.bak/
 venv.bak/
@@ -129,3 +128,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# sbt: type_stubs build for scottbrian_utils
+type_stubs/mypywrapt/build
+type_stubs/mypywrapt/wrapt_stubs.egg-info

@@ -185,6 +185,7 @@ The log_verifier module contains:
 ########################################################################
 from dataclasses import dataclass
 import logging
+import pytest
 import re
 from typing import Any, Optional, Union
 
@@ -364,11 +365,12 @@ class LogVer:
                                        re.compile(log_msg)
                                        ))
 
-    ###########################################################################
+    ####################################################################
     # get_match_results
-    ###########################################################################
+    ####################################################################
     def get_match_results(self,
-                          caplog: Any) -> MatchResults:
+                          caplog: pytest.CaptureFixture[str]
+                          ) -> MatchResults:
         """Match the expected to actual log records.
 
         Args:
@@ -424,9 +426,9 @@ class LogVer:
                             unmatched_actual_records=unmatched_actual_records,
                             matched_records=matched_records)
 
-    ###########################################################################
+    ####################################################################
     # print_match_results
-    ###########################################################################
+    ####################################################################
     def print_match_results(self,
                             match_results: MatchResults) -> None:
         """Print the match results.
@@ -467,9 +469,9 @@ class LogVer:
         for log_msg in match_results.matched_records:
             print(log_msg)
 
-    ###########################################################################
+    ####################################################################
     # verify log messages
-    ###########################################################################
+    ####################################################################
     def verify_log_results(self,
                            match_results: MatchResults,
                            log_enabled_tf: bool = True) -> None:

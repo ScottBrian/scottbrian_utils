@@ -249,7 +249,8 @@ class TestFileCatalog:
         assert len(a_catalog) == len(file_specs)
 
         for (file_name, path) in file_specs.items():
-            # the number of entries should remain the same throughout tests
+            # the number of entries should remain the same throughout
+            # tests
             assert len(a_catalog) == len(file_specs)
 
             # we should always find the entries we added earlier
@@ -262,7 +263,8 @@ class TestFileCatalog:
 
             diff_path = Path('different/path')
 
-            # should get the exception with same file name but different path
+            # should get the exception with same file name but different
+            # path
 
             with pytest.raises(cat.IllegalAddAttempt):
                 a_catalog.add_paths({file_name: diff_path})
@@ -303,7 +305,8 @@ class TestFileCatalog:
             file_specs: the list of file names and paths to use
 
         """
-        expected = 'FileCatalog()\n'  # all cases will expect zero entries
+        # all cases will expect zero entries
+        expected = 'FileCatalog()\n'
 
         a_catalog = cat.FileCatalog()  # start with empty catalog
         assert len(a_catalog) == 0
@@ -320,7 +323,8 @@ class TestFileCatalog:
         a_catalog.add_paths(file_specs)
         assert len(a_catalog) == len(file_specs)
         print(a_catalog)
-        assert capsys.readouterr().out != expected  # should not be empty
+        # should not be empty
+        assert capsys.readouterr().out != expected
 
         # delete all paths
         a_catalog.del_paths(file_specs)
@@ -343,9 +347,11 @@ class TestFileCatalog:
                 assert len(a_catalog) == 1
 
                 if i == 0:
-                    a_catalog.del_paths(a_file_spec)  # delete specific path
+                    # delete specific path
+                    a_catalog.del_paths(a_file_spec)
                 else:
-                    a_catalog.del_paths(file_specs)  # delete them all
+                    # delete them all
+                    a_catalog.del_paths(file_specs)
 
                 assert len(a_catalog) == 0
                 with pytest.raises(cat.FileNameNotFound):
@@ -357,12 +363,14 @@ class TestFileCatalog:
                 assert len(a_catalog) == len(file_specs)
 
                 if i == 0:
-                    a_catalog.del_paths(a_file_spec)  # delete specific path
+                    # delete specific path
+                    a_catalog.del_paths(a_file_spec)
                     assert len(a_catalog) == len(file_specs) - 1
                     with pytest.raises(cat.FileNameNotFound):
                         _ = a_catalog.get_path(file_name)
                 else:
-                    a_catalog.del_paths(file_specs)  # delete them all
+                    # delete them all
+                    a_catalog.del_paths(file_specs)
                     assert len(a_catalog) == 0
                     with pytest.raises(cat.FileNameNotFound):
                         _ = a_catalog.get_path(file_name)
@@ -396,7 +404,8 @@ class TestFileCatalog:
             a_catalog.del_paths({'file1': 'path_dir/path1'})  # type: ignore
 
         for (file_name, path) in file_specs.items():
-            # the number of entries should remain the same throughout tests
+            # the number of entries should remain the same throughout
+            # tests
             assert len(a_catalog) == len(file_specs)
 
             # we should always find the entries we added earlier
@@ -405,7 +414,8 @@ class TestFileCatalog:
             file_name2 = 'filename2'
             diff_path = Path('different/path')
 
-            # should get del exception with same file name but different path
+            # should get del exception with same file name but different
+            # path
 
             with pytest.raises(cat.IllegalDelAttempt):
                 a_catalog.del_paths({file_name: diff_path})

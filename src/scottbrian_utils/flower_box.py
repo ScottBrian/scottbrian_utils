@@ -4,7 +4,8 @@
 flower_box
 ==========
 
-With **print_flower_box_msg** you can print messages in a flower_box like this:
+With **print_flower_box_msg** you can print messages in a flower_box,
+meaning a box of asterisks.
 
 :Example: print a one line message in a flower box
 
@@ -22,7 +23,7 @@ from typing import Any, List, Union
 
 def print_flower_box_msg(msgs: Union[str, List[str]],
                          **kwargs: Any) -> None:
-    """Print a single or multi-line message inside a flower box (asterisks).
+    """Print a single or multi-line message inside a flower box.
 
     Args:
         msgs: single message or list of messages to print
@@ -33,7 +34,8 @@ def print_flower_box_msg(msgs: Union[str, List[str]],
 
     >>> from scottbrian_utils.flower_box import print_flower_box_msg
 
-    >>> msg_list = ['This is my first line test message', 'and my second line']
+    >>> msg_list = ['This is my first line test message',
+    ...             'and my second line']
     >>> print_flower_box_msg(msg_list)
     <BLANKLINE>
     **************************************

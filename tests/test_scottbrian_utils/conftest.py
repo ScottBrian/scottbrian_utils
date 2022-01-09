@@ -7,10 +7,10 @@ from typing import Any, cast
 
 import logging
 
-###############################################################################
+########################################################################
 # logging
-###############################################################################
-logging.basicConfig(filename='Throttle.log',
+########################################################################
+logging.basicConfig(filename='MyLogFile.log',
                     filemode='w',
                     level=logging.DEBUG,
                     format='%(asctime)s '
@@ -23,13 +23,13 @@ logging.basicConfig(filename='Throttle.log',
 logger = logging.getLogger(__name__)
 
 
-###############################################################################
+########################################################################
 # Thread exceptions
 # The following fixture depends on the following pytest specification:
 # -p no:threadexception
 
-# For PyCharm, the above specification goes into field Additional Arguments
-# found at Run -> edit configurations
+# For PyCharm, the above specification goes into field Additional
+# Arguments found at Run -> edit configurations
 #
 # For tox, the above specification goes into tox.ini in the
 # the string for the commands=
@@ -43,13 +43,13 @@ logger = logging.getLogger(__name__)
 #     pytest --import-mode=importlib -p no:threadexception {posargs}
 #
 # Usage:
-# The thread_exc is an autouse fixture which means it does not need to be
-# specified as an argument in the test case methods. If a thread fails,
-# such as an assert error, then thread_exc will capture the error and
-# raise it for the thread, and will also raise it during cleanup
+# The thread_exc is an autouse fixture which means it does not need to
+# be specified as an argument in the test case methods. If a thread
+# fails, such as an assert error, then thread_exc will capture the error
+# and raise it for the thread, and will also raise it during cleanup
 # processing for the mainline to ensure the test case fails. Without
-# thread_exc, any uncaptured thread failure will appear in the output, but the
-# test case itself will not fail.
+# thread_exc, any uncaptured thread failure will appear in the output,
+# but the test case itself will not fail.
 # Also, if you need to issue the thread error earlier, before cleanup,
 # then specify thread_exc as an argument on the test method and then in
 # mainline issue:
@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 #
 # When the above is done, cleanup will not raise the error again.
 #
-###############################################################################
+########################################################################
 @pytest.fixture(autouse=True)
 def thread_exc(monkeypatch: Any) -> None:
     """Instantiate and return a ThreadExc for testing.
@@ -105,9 +105,9 @@ def thread_exc(monkeypatch: Any) -> None:
     assert threading.excepthook == new_hook
 
 
-###############################################################################
+########################################################################
 # dt_format_arg_list
-###############################################################################
+########################################################################
 dt_format_arg_list = [None,
                       '%H:%M',
                       '%H:%M:%S',

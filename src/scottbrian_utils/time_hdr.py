@@ -4,8 +4,8 @@
 time_hdr
 ========
 
-With **@time_box**, you can decorate a function to be sandwiched between start
-time and end time messages like this:
+With **@time_box**, you can decorate a function to be sandwiched between
+start time and end time messages like this:
 
 :Example: decorate a function with time_box
 
@@ -30,11 +30,11 @@ time and end time messages like this:
 
 The time_hdr module contains two items:
 
-    1) StartStopHeader class with two functions that will repectively print
-       a starting time and ending time messages in a flower box (see
-       flower_box module in scottbrian_utils package).
-    2) a time_box decorator that wraps a function and uses the StartStopHeader
-       to print the starting and ending time messages.
+    1) StartStopHeader class with two functions that will repectively
+       print a starting time and ending time messages in a flower box
+       (see flower_box module in scottbrian_utils package).
+    2) a time_box decorator that wraps a function and uses the
+       StartStopHeader to print the starting and ending time messages.
 
 time_box imports functools, sys, datetime, wrapt, and types from typing
 
@@ -42,8 +42,8 @@ time_box imports functools, sys, datetime, wrapt, and types from typing
 
 import functools
 from datetime import datetime
-from typing import Any, Callable, cast, Dict, NewType, Optional, \
-    Tuple, TypeVar, Union
+from typing import (Any, Callable, cast, NewType, Optional,
+                    TypeVar, Union)
 
 from typing import overload
 
@@ -61,22 +61,23 @@ class StartStopHeader:
      Provides:
 
         1) a place to store the start time and end time
-        2) method print_start_msg to print the start header with the start time
-        3) method print_end_msg to print the end trailer with end time and
-           elapsed time
+        2) method print_start_msg to print the start header with the
+           start time
+        3) method print_end_msg to print the end trailer with end time
+           and elapsed time
 
-    While there might be some standalone uses for this class and its methods,
-    its intended use is by the time_box decorator described later in this
-    module.
+    While there might be some standalone uses for this class and its
+    methods, its intended use is by the time_box decorator described
+    later in this module.
     """
     default_dt_format: DT_Format = DT_Format('%a %b %d %Y %H:%M:%S')
 
     def __init__(self, func_name: str) -> None:
-        """Store the input func_name and set the start and end times to None.
+        """Store func_name and set the start and end times to None.
 
         Args:
-            func_name: The name of the function to appear in the start and
-                         stop messages
+            func_name: The name of the function to appear in the start
+                         and stop messages
         """
         self.func_name = func_name
         self.start_DT: datetime = datetime.max
@@ -87,12 +88,12 @@ class StartStopHeader:
         """Issue end time message in a flower box.
 
         The end message includes the current datetime and elapsed time
-        (calculated as the difference between the end time and the saved start
-        time - see the *print_start_msg* method).
+        (calculated as the difference between the end time and the saved
+        start time - see the *print_start_msg* method).
 
         Args:
-            dt_format: Specifies the datetime format to use in the end time
-                         message. The default is
+            dt_format: Specifies the datetime format to use in the end
+                         time message. The default is
                          StartStopHeader.default_dt_format.
             kwargs: Specifies the print arguments to use on the print
                       statement, such as *end*, *file*, or *flush*.
@@ -107,9 +108,9 @@ class StartStopHeader:
                         **kwargs: Any) -> None:
         """Issue start time message in a flower box.
 
-        The start message includes the current datetime which is also saved to
-        be used later to calculate the elapsed time for the *print_end_msg*
-        invocation.
+        The start message includes the current datetime which is also
+        saved to be used later to calculate the elapsed time for the
+        *print_end_msg* invocation.
 
         Args:
             dt_format: Specifies the datetime format to use in the start
@@ -172,20 +173,21 @@ def time_box(wrapped: Optional[F] = None, *,
              **kwargs: Any) -> F:
     """Decorator to wrap a function in start time and end time messages.
 
-    The time_box decorator can be invoked with or without arguments, and the
-    function being wrapped can optionally take arguments and optionally
-    return a value. The wrapt.decorator is used to preserve the wrapped
-    function introspection capabilities, and functools.partial is used to
-    handle the case where decorator arguments are specified. The examples
-    further below will help demonstrate the various ways in which the
-    time_box decorator can be used.
+    The time_box decorator can be invoked with or without arguments, and
+    the function being wrapped can optionally take arguments and
+    optionally return a value. The wrapt.decorator is used to preserve
+    the wrapped function introspection capabilities, and
+    functools.partial is used to handle the case where decorator
+    arguments are specified. The examples further below will help
+    demonstrate the various ways in which the time_box decorator can be
+    used.
 
     Args:
         wrapped: Any callable function that accepts optional positional
-                   and/or optional keyword arguments, and optionally returns a
-                   value. The default is None, which will be the case when
-                   the pie decorator version is used with any of the following
-                   arguments specified.
+                   and/or optional keyword arguments, and optionally
+                   returns a value. The default is None, which will be
+                   the case when the pie decorator version is used with
+                   any of the following arguments specified.
         dt_format: Specifies the datetime format to use in the start
                      time message. The default is
                      StartStopHeader.default_dt_format.
@@ -197,8 +199,8 @@ def time_box(wrapped: Optional[F] = None, *,
 
     Returns:
         A callable function that issues a starting time message, calls
-        the wrapped function, issues the ending time message, and returns any
-        return values that the wrapped function returns.
+        the wrapped function, issues the ending time message, and
+        returns any return values that the wrapped function returns.
 
 
     :Example: statically wrapping function with time_box
@@ -209,7 +211,8 @@ def time_box(wrapped: Optional[F] = None, *,
 
     >>> @time_box(time_box_enabled=_tbe)
     ... def func4a() -> None:
-    ...      print('this is sample text for _tbe = False static example')
+    ...      print('this is sample text for _tbe = False static '
+    ...            'example')
 
     >>> func4a()  # func4a is not wrapped by time box
     this is sample text for _tbe = False static example
@@ -283,10 +286,10 @@ def time_box(wrapped: Optional[F] = None, *,
     *************************************
 
     """
-    # ========================================================================
-    #  The following code covers cases where time_box is used with or without
-    #  parameters, and where the decorated function has or does not have
-    #  parameters.
+    # ==================================================================
+    #  The following code covers cases where time_box is used with or
+    #  without parameters, and where the decorated function has or does
+    #  not have parameters.
     #
     #     Here's an example of time_box without args:
     #         @time_box
@@ -298,8 +301,8 @@ def time_box(wrapped: Optional[F] = None, *,
     #             print('42')
     #         aFunc = time_box(aFunc)
     #
-    #     In fact, the above direct call can be coded as shown instead of using
-    #     the pie decorator style.
+    #     In fact, the above direct call can be coded as shown instead
+    #     of using the pie decorator style.
     #
     #     Here's an example of time_box with args:
     #         @time_box(end='\n\n')
@@ -311,10 +314,10 @@ def time_box(wrapped: Optional[F] = None, *,
     #             print('42')
     #         aFunc = time_box(end='\n\n')(aFunc)
     #
-    #     Note that this is a bit more tricky: time_box(end='\n\n') portion
-    #     results in a function being returned that takes as its first
-    #     argument the separate aFunc specification in parens that we see at
-    #     the end of the first portion.
+    #     Note that this is a bit more tricky: time_box(end='\n\n')
+    #     portion results in a function being returned that takes as its
+    #     first argument the separate aFunc specification in parens that
+    #     we see at the end of the first portion.
     #
     #     Note that we can also code the above as shown and get the same
     #     result.
@@ -324,17 +327,18 @@ def time_box(wrapped: Optional[F] = None, *,
     #             print('42')
     #         aFunc = time_box(aFunc, end='\n\n')
     #
-    #     What happens in the tricky case is time_box gets control and tests
-    #     whether aFunc was specified, and if not returns a call to
-    #     functools.partial which is the function that accepts the aFunc
-    #     specification and then calls time_box with aFunc as the first
-    #     argument with the end='\n\n' as the second argument as we now have
-    #     something that time_box can decorate.
+    #     What happens in the tricky case is time_box gets control and
+    #     tests whether aFunc was specified, and if not returns a call
+    #     to functools.partial which is the function that accepts the
+    #     aFunc specification and then calls time_box with aFunc as the
+    #     first argument with the end='\n\n' as the second argument as
+    #     we now have something that time_box can decorate.
     #
-    #     One other complication is that we are also using the wrapt.decorator
-    #     for the inner wrapper function which does some more smoke and
-    #     mirrors to ensure introspection will work as expected.
-    # ========================================================================
+    #     One other complication is that we are also using the
+    #     wrapt.decorator for the inner wrapper function which does some
+    #     more smoke and mirrors to ensure introspection will work as
+    #     expected.
+    # ==================================================================
 
     if wrapped is None:
         return cast(F, functools.partial(time_box, dt_format=dt_format,
@@ -343,8 +347,8 @@ def time_box(wrapped: Optional[F] = None, *,
 
     @decorator(enabled=time_box_enabled)  # type: ignore
     def wrapper(func_to_wrap: F, instance: Optional[Any],
-                args: Tuple[Any, ...],
-                kwargs2: Dict[str, Any]) -> Any:
+                args: tuple[Any, ...],
+                kwargs2: dict[str, Any]) -> Any:
         header = StartStopHeader(func_to_wrap.__name__)
         header.print_start_msg(dt_format=dt_format, **kwargs)
 

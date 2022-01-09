@@ -26,10 +26,11 @@ def file_num(request: Any) -> int:
 class TestFlowerBox:
     """TestFlowerBox class."""
     # build case list for tests
-    # first tuple item is the msg or msg list passed on the flower box call
+    # first tuple item is the msg or msg list passed on the flower box
+    # call
     # second tuple item is the expected result captured in sys.sysout
-    # note: first few single messages are passed first as single strings, and
-    # then as single item lists
+    # note: first few single messages are passed first as single
+    # strings, and then as single item lists
     case_list = [('', '\n'
                       '****\n'
                       '*  *\n'
@@ -185,7 +186,8 @@ class TestFlowerBox:
         Args:
             capsys: the capture stdout and stdserr fixture
             msg_list: the list of messages to issue
-            expected_result: the expected result to compare against capsys
+            expected_result: the expected result to compare against
+                               capsys
             file_num: specifies whether to use stdout of stderr
         """
         if file_num == 0:

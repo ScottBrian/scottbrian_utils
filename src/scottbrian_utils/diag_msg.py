@@ -90,7 +90,9 @@ def diag_msg(*args: Any,
     >>> class Cls1:
     ...     def f1(self, x):
     ...         # use different datetime format
-    ...         diag_msg('diagnostic info', x, dt_format='%a %b-%d %H:%M:%S')
+    ...         diag_msg('diagnostic info',
+    ...                  x,
+    ...                  dt_format='%a %b-%d %H:%M:%S')
     >>> Cls1().f1(24)
     Tue Feb-16 10:38:32 <input>::Cls1.f1:4 diagnostic info 24
 
@@ -123,9 +125,16 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
     >>> import inspect
     >>> def f1():
     ...     frame = inspect.currentframe()
-    ...     return get_caller_info(frame)
+    ...     caller_info = get_caller_info(frame)
+    ...     print(f'{caller_info.mod_name=}')
+    ...     print(f'{caller_info.cls_name=}')
+    ...     print(f'{caller_info.func_name=}')
+    ...     print(f'{caller_info.line_num=}')
     >>> f1()
-    CallerInfo(mod_name='<input>', cls_name='', func_name='f1', line_num=3)
+    caller_info.mod_name='<input>'
+    caller_info.cls_name='',
+    caller_info.func_name='f1'
+    caller_info.line_num=3
 
     """
     code = frame.f_code
@@ -242,7 +251,8 @@ def get_formatted_call_sequence(latest: int = 0,
 
     :Example: get call sequence for three callers
 
-    >>> from scottbrian_utils.diag_msg import get_formatted_call_sequence
+    >>> from scottbrian_utils.diag_msg import (
+    ...     get_formatted_call_sequence)
     >>> def f1():
     ...     # f1 now on stack
     ...     # call f2
@@ -264,7 +274,8 @@ def get_formatted_call_sequence(latest: int = 0,
 
     :Example: get call sequence for last two callers
 
-    >>> from scottbrian_utils.diag_msg import get_formatted_call_sequence
+    >>> from scottbrian_utils.diag_msg import (
+    ...     get_formatted_call_sequence)
     >>> def f1():
     ...     # f1 now on stack
     ...     # call f2
@@ -282,7 +293,8 @@ def get_formatted_call_sequence(latest: int = 0,
 
     :Example: get call sequence for two callers, one caller back
 
-    >>> from scottbrian_utils.diag_msg import get_formatted_call_sequence
+    >>> from scottbrian_utils.diag_msg import (
+    ...     get_formatted_call_sequence)
     >>> def f1():
     ...     # f1 now on stack
     ...     # call f2
@@ -301,7 +313,8 @@ def get_formatted_call_sequence(latest: int = 0,
 
     :Example: get sequence for script call to class method
 
-    >>> from scottbrian_utils.diag_msg import get_formatted_call_sequence
+    >>> from scottbrian_utils.diag_msg import (
+    ...     get_formatted_call_sequence)
     >>> class Cls1:
     ...     def f1(self):
     ...         # limit to two calls
@@ -334,11 +347,11 @@ def get_formatted_call_sequence(latest: int = 0,
         dot = '.' if caller_info.cls_name else ''
         colon = '::' if caller_info.func_name else ''
 
-        caller_sequence = f'{caller_info.mod_name}{colon}' \
-                          f'{caller_info.cls_name}{dot}' \
-                          f'{caller_info.func_name}:'\
-                          f'{caller_info.line_num}{arrow}' \
-                          f'{caller_sequence}'
+        caller_sequence = (f'{caller_info.mod_name}{colon}'
+                           f'{caller_info.cls_name}{dot}'
+                           f'{caller_info.func_name}:'
+                           f'{caller_info.line_num}{arrow}'
+                           f'{caller_sequence}')
         arrow = ' -> '  # set arrow for subsequent iterations
 
     return caller_sequence
