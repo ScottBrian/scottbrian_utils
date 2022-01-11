@@ -4,6 +4,7 @@
 # Standard Library
 ########################################################################
 import logging
+import re
 import threading
 from typing import Any, cast, Optional, Union
 
@@ -184,7 +185,8 @@ class TestMsgsErrors:
         f1_thread = threading.Thread(target=f1)
 
         # we expect to get this log message in the following code
-        log_msg = (f'Thread {threading.current_thread()} '
+        thread_info = re.escape(f'{threading.current_thread()}')
+        log_msg = (f'Thread {thread_info} '
                    f'timed out on get_msg for recipient: beta '
                    f'{log_ver.get_call_seq("alpha")}')
         log_ver.add_msg(

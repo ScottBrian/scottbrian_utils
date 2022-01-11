@@ -210,6 +210,5 @@ class Msgs:
                 err_msg = (f'Thread {threading.current_thread()} '
                            f'timed out on get_msg for recipient: {recipient} '
                            f'{caller_info}')
-
                 self.logger.debug(err_msg)
                 raise GetMsgTimedOut(err_msg)

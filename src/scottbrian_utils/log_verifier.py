@@ -281,7 +281,7 @@ class LogVer:
                    get_formatted_call_sequence in diag_msg.py
 
         """
-        self.call_seqs[name] = seq
+        self.call_seqs[name] = seq + ':[0-9]*'
 
     ####################################################################
     # add_call_seq
@@ -300,7 +300,7 @@ class LogVer:
               number to match
 
         """
-        return self.call_seqs[name] + ':[0-9]*'
+        return self.call_seqs[name]
 
     ####################################################################
     # add_msg
@@ -398,8 +398,9 @@ class LogVer:
         # find matches, update working copies to reflect results
         for actual_record in caplog.record_tuples:
             for idx, exp_record in enumerate(unmatched_exp_records):
-                print(f'exp_record: {exp_record}')
-                print(f'actual_record: {actual_record}')
+                # print(f'exp_record: {exp_record}')
+                # print(f'actual_record: {actual_record}')
+                # print(f'{exp_record[2].pattern=}')
                 # check that the logger name, level, and message match
                 if (exp_record[0] == actual_record[0]
                         and exp_record[1] == actual_record[1]
