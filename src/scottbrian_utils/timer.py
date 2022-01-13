@@ -11,15 +11,17 @@ specified amount of time.
 
 >>> from scottbrian_utils.timer import Timer
 >>> import time
->>> print('mainline entered')
->>> timer = Timer(timeout=3)
->>> for idx in range(10):
-...   print(f'idx = {idx}')
-...   time.sleep(1)
-...   if timer.is_expired():
-...       print('timer has expired')
-...       break
->>> print('mainline exiting')
+>>> def main() -> None:
+...     print('mainline entered')
+...     timer = Timer(timeout=3)
+...     for idx in range(10):
+...         print(f'idx = {idx}')
+...         time.sleep(1)
+...         if timer.is_expired():
+...             print('timer has expired')
+...             break
+...     print('mainline exiting')
+>>> main()
 mainline entered
 idx = 0
 idx = 1

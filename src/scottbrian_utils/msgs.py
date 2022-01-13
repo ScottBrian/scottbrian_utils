@@ -9,19 +9,22 @@ messages between threads.
 
 :Example: send a message to remote thread
 
->>> import threading from scottbrian_utils.msgs import Msgs
->>> def f1() -> None:
-...     print('f1 beta entered')
-...     my_msg = msgs.get_msg('beta')
-...     print(my_msg)
-...     print('f1 beta exiting')
->>> print('mainline entered')
->>> msgs = Msgs()
->>> f1_thread = threading.Thread(target=f1)
->>> f1_thread.start()
->>> msgs.queue_msg('beta', 'hello beta')
->>> f1_thread.join()
->>> print('mainline exiting')
+>>> import threading
+>>> from scottbrian_utils.msgs import Msgs
+>>> def main() -> None:
+...     def f1() -> None:
+...         print('f1 beta entered')
+...         my_msg = msgs.get_msg('beta')
+...         print(my_msg)
+...         print('f1 beta exiting')
+...     print('mainline entered')
+...     msgs = Msgs()
+...     f1_thread = threading.Thread(target=f1)
+...     f1_thread.start()
+...     msgs.queue_msg('beta', 'hello beta')
+...     f1_thread.join()
+...     print('mainline exiting')
+>>> main()
 mainline entered
 f1 beta entered
 hello beta
@@ -31,38 +34,42 @@ mainline exiting
 
 :Example: a command loop using Msgs
 
->>> import threading from scottbrian_utils.msgs import Msgs
+>>> import threading
+>>> from scottbrian_utils.msgs import Msgs
 >>> import time
->>> def f1() -> None:
-...     print('f1 beta entered')
-...     while True:
-...         my_msg = msgs.get_msg('beta')
-...         if my_msg == 'exit':
-...             break
-...         else:
-...             # handle message
+>>> def main() -> None:
+...     def f1() -> None:
+...         print('f1 beta entered')
+...         while True:
+...             my_msg = msgs.get_msg('beta')
 ...             print(f'beta received msg: {my_msg}')
-...             msgs.queue_msg('alpha', f'msg "{my_msg}" completed')
-...     print('f1 beta exiting')
->>> print('mainline alpha entered')
->>> msgs = Msgs()
->>> f1_thread = threading.Thread(target=f1)
->>> f1_thread.start()
->>> msgs.queue_msg('beta', 'do command a')
->>> print(msgs.get_msg('alpha'))
->>> msgs.queue_msg('beta', 'do command b')
->>> print(f"alpha received response: {msgs.get_msg('alpha')}")
->>> msgs.queue_msg('beta', 'exit')
->>> f1_thread.join()
->>> print('mainline alpha exiting')
-mainline alpha entered
+...             if my_msg == 'exit':
+...                 break
+...             else:
+...                 # handle message
+...                 msgs.queue_msg('alpha', f'msg "{my_msg}" completed')
+...         print('f1 beta exiting')
+...     print('mainline entered')
+...     msgs = Msgs()
+...     f1_thread = threading.Thread(target=f1)
+...     f1_thread.start()
+...     msgs.queue_msg('beta', 'do command a')
+...     print(f"alpha received response: {msgs.get_msg('alpha')}")
+...     msgs.queue_msg('beta', 'do command b')
+...     print(f"alpha received response: {msgs.get_msg('alpha')}")
+...     msgs.queue_msg('beta', 'exit')
+...     f1_thread.join()
+...     print('mainline exiting')
+>>> main()
+mainline entered
 f1 beta entered
 beta received msg: do command a
 alpha received response: msg "do command a" completed
 beta received msg: do command b
 alpha received response: msg "do command b" completed
+beta received msg: exit
 f1 beta exiting
-mainline alpha exiting
+mainline exiting
 
 
 The msgs module contains:
@@ -135,7 +142,7 @@ class Msgs:
     def __init__(self) -> None:
         """Initialize the object."""
         self.msg_array: dict[str, Any] = {}
-        self.msg_lock: Threading.Lock = threading.Lock()
+        self.msg_lock: threading.Lock = threading.Lock()
 
         # add a logger
         self.logger = logging.getLogger(__name__)

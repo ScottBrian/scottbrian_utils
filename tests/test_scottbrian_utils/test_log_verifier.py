@@ -695,6 +695,7 @@ class TestLogVerBasic:
     # test_log_verifier_add_call_seq3
     ####################################################################
     def test_log_verifier_add_call_seq3(self,
+                                        simple_str_arg: str,
                                         capsys: pytest.CaptureFixture[str],
                                         caplog: pytest.CaptureFixture[str]
                                         ) -> None:
@@ -705,19 +706,25 @@ class TestLogVerBasic:
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
-        t_logger = logging.getLogger('call_seq2')
-        log_ver = LogVer(log_name='call_seq2')
+        t_logger = logging.getLogger('call_seq3')
+        log_ver = LogVer(log_name='call_seq3')
 
         log_ver.add_call_seq(
             name='alpha',
             seq=('test_log_verifier.py::TestLogVerBasic'
-                 '.test_log_verifier_add_call_seq2'))
-        a_msg = f'{threading.current_thread()}'
-        a_msg2 = re.escape(f'{threading.current_thread()}')
-        log_ver.add_msg(log_msg=a_msg2)
-        # t_logger.debug(f'{simple_str_arg}:{get_formatted_call_sequence()}')
-        my_seq = get_formatted_call_sequence(depth=1)
-        t_logger.debug(a_msg)
+                 '.test_log_verifier_add_call_seq3'))
+
+        esc_thread_str = re.escape(f'{threading.current_thread()}')
+        add_msg = (f'{esc_thread_str} '
+                   f'{simple_str_arg} '
+                   f'{log_ver.get_call_seq(name="alpha")}')
+        log_ver.add_msg(log_msg=add_msg)
+
+        log_msg = (f'{threading.current_thread()} '
+                   f'{simple_str_arg} '
+                   f'{get_formatted_call_sequence(depth=1)}')
+        t_logger.debug(log_msg)
+
         log_ver.print_match_results(
             log_results := log_ver.get_match_results(caplog))
         log_ver.verify_log_results(log_results)
@@ -745,7 +752,7 @@ class TestLogVerBasic:
         expected_result += '* matched records               *\n'
         expected_result += '* (logger name, level, message) *\n'
         expected_result += '*********************************\n'
-        expected_result += f"('call_seq2', 10, '{a_msg}')\n"
+        expected_result += f"('call_seq3', 10, '{log_msg}')\n"
 
         captured = capsys.readouterr().out
 

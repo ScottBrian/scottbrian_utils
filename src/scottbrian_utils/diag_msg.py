@@ -131,8 +131,8 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
     ...     print(f'{caller_info.func_name=}')
     ...     print(f'{caller_info.line_num=}')
     >>> f1()
-    caller_info.mod_name='<input>'
-    caller_info.cls_name='',
+    caller_info.mod_name='<doctest scottbrian_utils.diag_msg.get_caller_info[2]>'
+    caller_info.cls_name=''
     caller_info.func_name='f1'
     caller_info.line_num=3
 

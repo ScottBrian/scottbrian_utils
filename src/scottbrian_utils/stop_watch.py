@@ -13,30 +13,32 @@ stop the clock and get the elapsed time.
 >>> import threading
 >>> import time
 >>> from scottbrian_utils.stop_watch import StopWatch
->>> def f1():
-...     print('f1 entered')
-...     stop_watch.start_clock(clock_iter=1)
-...     print('f1 about to wait')
-...     f1_event.wait()
-...     print('f1 back from wait')
-...     assert 2.5 <= stop_watch.duration() <= 2.6
-...     print('f1 exiting')
->>> print('mainline entered')
->>> stop_watch = StopWatch()
->>> f1_thread = threading.Thread(target=f1)
->>> f1_event = threading.Event()
->>> print('mainline about to start f1')
->>> f1_thread.start()
->>> stop_watch.pause(2.5, clock_iter=1)
->>> print('mainline about set f1_event')
->>> f1_event.set()
->>> f1_thread.join()
->>> print('mainline exiting')
+>>> def main() -> None:
+...     def f1():
+...         print('f1 entered')
+...         stop_watch.start_clock(clock_iter=1)
+...         print('f1 about to wait')
+...         f1_event.wait()
+...         print('f1 back from wait')
+...         assert 2.5 <= stop_watch.duration() <= 2.6
+...         print('f1 exiting')
+...     print('mainline entered')
+...     stop_watch = StopWatch()
+...     f1_thread = threading.Thread(target=f1)
+...     f1_event = threading.Event()
+...     print('mainline about to start f1')
+...     f1_thread.start()
+...     stop_watch.pause(2.5, clock_iter=1)
+...     print('mainline about to set f1_event')
+...     f1_event.set()
+...     f1_thread.join()
+...     print('mainline exiting')
+>>> main()
 mainline entered
 mainline about to start f1
 f1 entered
 f1 about to wait
-mainline about set f1_event
+mainline about to set f1_event
 f1 back from wait
 f1 exiting
 mainline exiting
@@ -123,7 +125,7 @@ class StopWatch:
         >>> from scottbrian_utils.stop_watch import StopWatch
         >>> stop_watch = StopWatch()
         >>> repr(stop_watch)
-        StopWatch()
+        'StopWatch()'
 
         """
         if TYPE_CHECKING:

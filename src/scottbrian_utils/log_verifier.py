@@ -12,14 +12,17 @@ have been issued.
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
->>> logger = logging.getLogger('example_1')
->>> log_ver = LogVer('example_1')
->>> log_msg = 'hello'
->>> log_ver.add_msg(log_msg=log_msg)
->>> logger.debug(log_msg)
->>> log_ver.get_match_results()
->>> log_ver.print_match_results()
->>> log_ver.verify_log_results()
+>>> import pytest
+>>> def test_example1(caplog: pytest.CaptureFixture[str]) -> None:
+...     logger = logging.getLogger('example_1')
+...     log_ver = LogVer('example_1')
+...     log_msg = 'hello'
+...     log_ver.add_msg(log_msg=log_msg)
+...     logger.debug(log_msg)
+...     match_results = log_ver.get_match_results(caplog=caplog)
+...     log_ver.print_match_results(match_results)
+...     log_ver.verify_log_results(match_results)
+
 <BLANKLINE>
 **********************************
 * number expected log records: 1 *
@@ -50,15 +53,17 @@ have been issued.
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
->>> logger = logging.getLogger('example_2')
->>> log_ver = LogVer('example_2')
->>> log_msg1 = 'hello'
->>> log_ver.add_msg(log_msg=log_msg1)
->>> log_msg2 = 'goodbye'
->>> log_ver.add_msg(log_msg=log_msg2)
->>> logger.debug(log_msg1)
->>> log_ver.get_match_results()
->>> log_ver.print_match_results()
+>>> def test_example2(caplog: pytest.CaptureFixture[str]) -> None:
+...      logger = logging.getLogger('example_2')
+...      log_ver = LogVer('example_2')
+...      log_msg1 = 'hello'
+...      log_ver.add_msg(log_msg=log_msg1)
+...      log_msg2 = 'goodbye'
+...      log_ver.add_msg(log_msg=log_msg2)
+...      logger.debug(log_msg1)
+...      log_ver.get_match_results()
+...      log_ver.print_match_results()
+
 <BLANKLINE>
 **********************************
 * number expected log records: 2 *
@@ -90,15 +95,17 @@ have been issued.
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
->>> logger = logging.getLogger('example_3')
->>> log_ver = LogVer('example_3')
->>> log_msg1 = 'hello'
->>> log_ver.add_msg(log_msg=log_msg1)
->>> log_msg2 = 'goodbye'
->>> logger.debug(log_msg1)
->>> logger.debug(log_msg2)
->>> log_ver.get_match_results()
->>> log_ver.print_match_results()
+>>> def test_example3(caplog: pytest.CaptureFixture[str]) -> None:
+...      logger = logging.getLogger('example_3')
+...      log_ver = LogVer('example_3')
+...      log_msg1 = 'hello'
+...      log_ver.add_msg(log_msg=log_msg1)
+...      log_msg2 = 'goodbye'
+...      logger.debug(log_msg1)
+...      logger.debug(log_msg2)
+...      log_ver.get_match_results()
+...      log_ver.print_match_results()
+
 <BLANKLINE>
 **********************************
 * number expected log records: 1 *
@@ -130,17 +137,19 @@ have been issued.
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
->>> logger = logging.getLogger('example_4')
->>> log_ver = LogVer('example_4')
->>> log_msg1 = 'hello'
->>> log_ver.add_msg(log_msg=log_msg1)
->>> log_msg2a = 'goodbye'
->>> log_ver.add_msg(log_msg=log_msg2a)
->>> log_msg2b = 'see you soon'
->>> logger.debug(log_msg1)
->>> logger.debug(log_msg2b)
->>> log_ver.get_match_results()
->>> log_ver.print_match_results()
+>>> def test_example4(caplog: pytest.CaptureFixture[str]) -> None:
+...      logger = logging.getLogger('example_4')
+...      log_ver = LogVer('example_4')
+...      log_msg1 = 'hello'
+...      log_ver.add_msg(log_msg=log_msg1)
+...      log_msg2a = 'goodbye'
+...      log_ver.add_msg(log_msg=log_msg2a)
+...      log_msg2b = 'see you soon'
+...      logger.debug(log_msg1)
+...      logger.debug(log_msg2b)
+...      log_ver.get_match_results()
+...      log_ver.print_match_results()
+
 <BLANKLINE>
 **********************************
 * number expected log records: 2 *
@@ -317,18 +326,19 @@ class LogVer:
             log_name: expected logger name
 
         Example: add two messages, each at a different level
+        >>> def test_example(caplog: pytest.CaptureFixture[str]) -> None:
+        ...      logger = logging.getLogger('add_msg')
+        ...      log_ver = LogVer('add_msg')
+        ...      log_msg1 = 'hello'
+        ...      log_msg2 = 'goodbye'
+        ...      log_ver.add_msg(log_msg=log_msg1)
+        ...      log_ver.add_msg(log_msg=log_msg2, log_level=logging.ERROR)
+        ...      logger.debug(log_msg1)
+        ...      logger.error(log_msg2)
+        ...      match_results = log_ver.get_match_results()
+        ...      log_ver.print_match_results(match_results)
+        ...      log_ver.verify_log_results(match_results)
 
-        >>> logger = logging.getLogger('add_msg')
-        >>> log_ver = LogVer('add_msg')
-        >>> log_msg1 = 'hello'
-        >>> log_msg2 = 'goodbye'
-        >>> log_ver.add_msg(log_msg=log_msg1)
-        >>> log_ver.add_msg(log_msg=log_msg2, log_level=logging.ERROR)
-        >>> logger.debug(log_msg1)
-        >>> logger.error(log_msg2)
-        >>> match_results = log_ver.get_match_results()
-        >>> log_ver.print_match_results(match_results)
-        >>> log_ver.verify_log_results(match_results)
         <BLANKLINE>
         **********************************
         * number expected log records: 2 *
@@ -398,9 +408,6 @@ class LogVer:
         # find matches, update working copies to reflect results
         for actual_record in caplog.record_tuples:
             for idx, exp_record in enumerate(unmatched_exp_records):
-                # print(f'exp_record: {exp_record}')
-                # print(f'actual_record: {actual_record}')
-                # print(f'{exp_record[2].pattern=}')
                 # check that the logger name, level, and message match
                 if (exp_record[0] == actual_record[0]
                         and exp_record[1] == actual_record[1]
