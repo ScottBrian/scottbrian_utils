@@ -10,15 +10,21 @@
    :maxdepth: 4
    :caption: API Reference:
 
-   throttle <throttle_link>
-
    diag_msg <diag_msg_link>
 
    file_catalog <file_catalog_link>
 
    flower_box <flower_box_link>
 
+   log_verifier <log_verifier_link>
+
+   msgs <msgs_link>
+
+   stop_watch <stop_watch_link>
+
    time_hdr <time_hdr_link>
+
+   timer <timer_link>
 
 
 Indices and tables

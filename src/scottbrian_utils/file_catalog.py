@@ -24,7 +24,7 @@ could be used for testing purposes and another for normal production.
 /test_files/test_file1.csv
 
 
-:Example: instantiate a catalog for two files with:
+:Example: instantiate a catalog for two files:
 
 >>> a_cat = FileCatalog({'sales': Path('/home/T/files/file1.csv'),
 ...                      'inventory': Path('/home/T/files/file2.csv')})

@@ -12,7 +12,6 @@ have been issued.
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
->>> import pytest
 >>> def test_example1(caplog: pytest.CaptureFixture[str]) -> None:
 ...     logger = logging.getLogger('example_1')
 ...     log_ver = LogVer('example_1')
@@ -22,7 +21,6 @@ have been issued.
 ...     match_results = log_ver.get_match_results(caplog=caplog)
 ...     log_ver.print_match_results(match_results)
 ...     log_ver.verify_log_results(match_results)
-
 <BLANKLINE>
 **********************************
 * number expected log records: 1 *
@@ -63,7 +61,6 @@ have been issued.
 ...      logger.debug(log_msg1)
 ...      log_ver.get_match_results()
 ...      log_ver.print_match_results()
-
 <BLANKLINE>
 **********************************
 * number expected log records: 2 *
@@ -105,7 +102,6 @@ have been issued.
 ...      logger.debug(log_msg2)
 ...      log_ver.get_match_results()
 ...      log_ver.print_match_results()
-
 <BLANKLINE>
 **********************************
 * number expected log records: 1 *
@@ -149,7 +145,6 @@ have been issued.
 ...      logger.debug(log_msg2b)
 ...      log_ver.get_match_results()
 ...      log_ver.print_match_results()
-
 <BLANKLINE>
 **********************************
 * number expected log records: 2 *
@@ -266,10 +261,14 @@ class LogVer:
     ####################################################################
     def __init__(self,
                  log_name: str = 'root') -> None:
-        """Initialize object.
+        """Initialize a LogVer object.
 
         Args:
             log_name: name of the logger
+
+        Example: create a logger and a LogVer instance
+        >>> logger = logging.getLogger('example_logger')
+        >>> log_ver = LogVer('example_logger')
 
         """
         self.call_seqs: dict[str, str] = {}
@@ -288,6 +287,7 @@ class LogVer:
             name: name for whom the call sequence represents
             seq: the call sequence in a format as described by
                    get_formatted_call_sequence in diag_msg.py
+                   from the scottbrian_utils package
 
         """
         self.call_seqs[name] = seq + ':[0-9]*'
@@ -326,6 +326,7 @@ class LogVer:
             log_name: expected logger name
 
         Example: add two messages, each at a different level
+
         >>> def test_example(caplog: pytest.CaptureFixture[str]) -> None:
         ...      logger = logging.getLogger('add_msg')
         ...      log_ver = LogVer('add_msg')
@@ -338,7 +339,6 @@ class LogVer:
         ...      match_results = log_ver.get_match_results()
         ...      log_ver.print_match_results(match_results)
         ...      log_ver.verify_log_results(match_results)
-
         <BLANKLINE>
         **********************************
         * number expected log records: 2 *

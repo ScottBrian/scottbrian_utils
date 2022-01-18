@@ -15,7 +15,7 @@ and the line number relative to the start of the module.
 >>> diag_msg('this is a diagnostic message')
 16:20:05.909260 <input>:1 this is a diagnostic message
 
-Note that all of the examples are done as if entered in a python session
+Note that the examples are done as if entered in a python session
 from the console. As such, the module name will show as <input>. When
 coded in a module, however, you will see the module name instead of
 <input>.
@@ -123,15 +123,18 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
 
     >>> from scottbrian_utils.diag_msg import get_caller_info
     >>> import inspect
+    >>> from os import fspath
+    >>> from pathlib import Path
     >>> def f1():
-    ...     frame = inspect.currentframe()
-    ...     caller_info = get_caller_info(frame)
+    ...     a_frame = inspect.currentframe()
+    ...     caller_info = get_caller_info(a_frame)
     ...     print(f'{caller_info.mod_name=}')
     ...     print(f'{caller_info.cls_name=}')
     ...     print(f'{caller_info.func_name=}')
     ...     print(f'{caller_info.line_num=}')
+    >>>
     >>> f1()
-    caller_info.mod_name='<doctest scottbrian_utils.diag_msg.get_caller_info[2]>'
+    caller_info.mod_name='<input>'
     caller_info.cls_name=''
     caller_info.func_name='f1'
     caller_info.line_num=3
@@ -140,6 +143,11 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
     code = frame.f_code
     mod_name = fspath(Path(code.co_filename).name)
     func_name = code.co_name
+
+    # print(f'{frame.f_code=}')
+    # print(f'{frame.f_code.co_filename=}')
+    # print(f'{Path(frame.f_code.co_filename).name=}')
+    # print(f'{fspath(Path(frame.f_code.co_filename).name)=}')
 
     if func_name == '<module>':  # if we are a script
         func_name = ''  # no func_name, no cls_name
@@ -355,3 +363,7 @@ def get_formatted_call_sequence(latest: int = 0,
         arrow = ' -> '  # set arrow for subsequent iterations
 
     return caller_sequence
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

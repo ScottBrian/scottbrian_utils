@@ -11,20 +11,20 @@ messages between threads.
 
 >>> import threading
 >>> from scottbrian_utils.msgs import Msgs
->>> def main() -> None:
-...     def f1() -> None:
-...         print('f1 beta entered')
-...         my_msg = msgs.get_msg('beta')
-...         print(my_msg)
-...         print('f1 beta exiting')
+>>> def f1(msgs) -> None:
+...     print('f1 beta entered')
+...     my_msg = msgs.get_msg('beta')
+...     print(my_msg)
+...     print('f1 beta exiting')
+>>> def example1() -> None:
 ...     print('mainline entered')
 ...     msgs = Msgs()
-...     f1_thread = threading.Thread(target=f1)
+...     f1_thread = threading.Thread(target=f1, args=(msgs,))
 ...     f1_thread.start()
 ...     msgs.queue_msg('beta', 'hello beta')
 ...     f1_thread.join()
 ...     print('mainline exiting')
->>> main()
+>>> example1()
 mainline entered
 f1 beta entered
 hello beta

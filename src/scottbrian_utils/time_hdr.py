@@ -39,24 +39,42 @@ The time_hdr module contains two items:
 time_box imports functools, sys, datetime, wrapt, and types from typing
 
 """
-
+########################################################################
+# Standard Library
+########################################################################
 import functools
 from datetime import datetime
+import re
 from typing import (Any, Callable, cast, NewType, Optional,
                     TypeVar, Union)
 
 from typing import overload
 
+########################################################################
+# Third Party
+########################################################################
 from wrapt.decorators import decorator  # type: ignore
 
+########################################################################
+# Local
+########################################################################
 from scottbrian_utils.flower_box import print_flower_box_msg
 
+########################################################################
+# type aliases
+########################################################################
 
+########################################################################
+# NewType
+########################################################################
 DT_Format = NewType('DT_Format', str)
 
 
+########################################################################
+# StartStopHeader
+########################################################################
 class StartStopHeader:
-    """Supports the time_box decorator.
+    """Provide support for the time_box decorator.
 
      Provides:
 
@@ -359,3 +377,55 @@ def time_box(wrapped: Optional[F] = None, *,
         return ret_value
 
     return cast(F, wrapper(wrapped))
+
+
+########################################################################
+# get_datetime_match_string
+########################################################################
+def get_datetime_match_string(format: str) -> str:
+    """Return a regex string to match a datetime string.
+
+    Args:
+        format: string used to format a datetime that is to be used to
+                  create a match string
+
+    Returns:
+        string that is to be used in a regex expression to match a
+        datetime string
+
+    """
+    match_str_a = r'(Sun|Mon|Tue|Wed|Thu|Fri|Sat)'
+    match_str_A = r'(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)'
+    match_str_d = r'([0-2][0-9]|3[0-1])'
+    match_str_b = r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
+    match_str_B = (r'(January|February|March|April|May|June|July|August'
+                   r'|September|October|November|December)')
+    match_str_m = r'(0[1-9]|1[0-2])'
+    match_str_w = r'[0-7]'
+    match_str_y = r'[0-9]{2,2}'
+    match_str_Y = r'[2-9][0-9]{3,3}'
+
+    match_str_H = r'([0-1][0-9]|2[0-3])'
+    match_str_I = r'(0[1-9]|1[0-2])'
+    match_str_p = r'(AM|PM)'
+    match_str_M_S = r'[0-5][0-9]'
+    match_str_f = r'[0-9]{6,6}'
+
+    match_str = re.escape(format)
+    match_str = re.sub('%a', match_str_a, match_str)
+    match_str = re.sub('%A', match_str_A, match_str)
+    match_str = re.sub('%d', match_str_d, match_str)
+    match_str = re.sub('%b', match_str_b, match_str)
+    match_str = re.sub('%B', match_str_B, match_str)
+    match_str = re.sub('%m', match_str_m, match_str)
+    match_str = re.sub('%w', match_str_w, match_str)
+    match_str = re.sub('%y', match_str_y, match_str)
+    match_str = re.sub('%Y', match_str_Y, match_str)
+    match_str = re.sub('%H', match_str_H, match_str)
+    match_str = re.sub('%I', match_str_I, match_str)
+    match_str = re.sub('%p', match_str_p, match_str)
+    match_str = re.sub('%M', match_str_M_S, match_str)
+    match_str = re.sub('%S', match_str_M_S, match_str)
+    match_str = re.sub('%f', match_str_f, match_str)
+
+    return match_str

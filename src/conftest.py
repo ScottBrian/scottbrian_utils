@@ -13,9 +13,9 @@ import pytest
 
 
 class DateTimeOutputChecker(OutputChecker):
-    """This class is used to intercept the output of the doctest examples.
+    """This class is used to intercept the output of doctest examples.
 
-    The datetime fields are changed so they match the expected datetimes that
+    The datetime fields are changed to match the expected datetimes that
     are documented in the module examples.
     """
 
@@ -25,8 +25,8 @@ class DateTimeOutputChecker(OutputChecker):
         Args:
             want: the expected output specified in the example
             got: the output collected by doctest when the example is run
-            optionFlags : provides some customization options - see doctest
-                            documentation for details
+            optionFlags : provides some customization options - see
+                            doctest documentation for details
 
         Returns:
             True if the example want matches the got, False if not

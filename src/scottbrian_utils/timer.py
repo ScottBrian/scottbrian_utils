@@ -11,8 +11,8 @@ specified amount of time.
 
 >>> from scottbrian_utils.timer import Timer
 >>> import time
->>> def main() -> None:
-...     print('mainline entered')
+>>> def example1() -> None:
+...     print('example1 entered')
 ...     timer = Timer(timeout=3)
 ...     for idx in range(10):
 ...         print(f'idx = {idx}')
@@ -20,14 +20,14 @@ specified amount of time.
 ...         if timer.is_expired():
 ...             print('timer has expired')
 ...             break
-...     print('mainline exiting')
->>> main()
-mainline entered
+...     print('example1 exiting')
+>>> example1()
+example1 entered
 idx = 0
 idx = 1
 idx = 2
 timer has expired
-mainline exiting
+example1 exiting
 
 
 The timer module contains:
@@ -96,15 +96,17 @@ class Timer:
         ...         if timer.is_expired():
         ...             return False
         ...         return True
-        >>> print('mainline entered')
-        >>> my_a = A()
-        >>> print(my_a.m1(0.5))
-        >>> print(my_a.m1(1.5))
-        >>> print('mainline exiting')
-        mainline entered
+        >>> def example2() -> None:
+        ...     print('example2 entered')
+        ...     my_a = A()
+        ...     print(my_a.m1(0.5))
+        ...     print(my_a.m1(1.5))
+        ...     print('example2 exiting')
+        >>> example2()
+        example2 entered
         True
         False
-        mainline exiting
+        example2 exiting
 
         Example: class with a method that uses Timer and timeout parm
 
@@ -117,17 +119,19 @@ class Timer:
         ...         if timer.is_expired():
         ...             return False
         ...         return True
-        >>> print('mainline entered')
-        >>> my_a = A()
-        >>> print(my_a.m1(sleep_time=0.5, timeout=0.7))
-        >>> print(my_a.m1(sleep_time=1.5, timeout=1.2))
-        >>> print(my_a.m1(sleep_time=1.5, timeout=1.8))
-        >>> print('mainline exiting')
-        mainline entered
+        >>> def example3() -> None:
+        ...     print('example3 entered')
+        ...     my_a = A()
+        ...     print(my_a.m1(sleep_time=0.5, timeout=0.7))
+        ...     print(my_a.m1(sleep_time=1.5, timeout=1.2))
+        ...     print(my_a.m1(sleep_time=1.5, timeout=1.8))
+        ...     print('example3 exiting')
+        >>> example3()
+        example3 entered
         True
         False
         True
-        mainline exiting
+        example3 exiting
 
         Example: class with default timeout and method with timeout parm
 
@@ -144,21 +148,23 @@ class Timer:
         ...         if timer.is_expired():
         ...             return False
         ...         return True
-        >>> print('mainline entered')
-        >>> my_a = A(default_timeout=1.2)
-        >>> print(my_a.m1(sleep_time=0.5))
-        >>> print(my_a.m1(sleep_time=1.5))
-        >>> print(my_a.m1(sleep_time=0.5, timeout=0.3))
-        >>> print(my_a.m1(sleep_time=1.5, timeout=1.8))
-        >>> print(my_a.m1(sleep_time=1.5, timeout=0))
-        >>> print('mainline exiting')
-        mainline entered
+        >>> def example4() -> None:
+        ...     print('example4 entered')
+        ...     my_a = A(default_timeout=1.2)
+        ...     print(my_a.m1(sleep_time=0.5))
+        ...     print(my_a.m1(sleep_time=1.5))
+        ...     print(my_a.m1(sleep_time=0.5, timeout=0.3))
+        ...     print(my_a.m1(sleep_time=1.5, timeout=1.8))
+        ...     print(my_a.m1(sleep_time=1.5, timeout=0))
+        ...     print('example4 exiting')
+        >>> example4()
+        example4 entered
         True
         False
         False
         True
         True
-        mainline exiting
+        example4 exiting
 
         Notes:
             1) The reason for having both a timeout parm and a
@@ -228,7 +234,7 @@ class Timer:
         >>> import threading
         >>> import time
         >>> from scottbrian_utils.timer import Timer
-        >>> def f1():
+        >>> def f1(f1_event):
         ...     print('f1 entered')
         ...     time.sleep(1)
         ...     f1_event.set()
@@ -237,29 +243,31 @@ class Timer:
         ...     time.sleep(1)
         ...     f1_event.set()
         ...     print('f1 exiting')
-        >>> print('mainline entered')
-        >>> timer = Timer(timeout=2.5)
-        >>> f1_thread = threading.Thread(target=f1)
-        >>> f1_event = threading.Event()
-        >>> f1_thread.start()
-        >>> wait_result = f1_event.wait(timeout=timer.remaining_time())
-        >>> print(f'wait1 result = {wait_result}')
-        >>> f1_event.clear()
-        >>> print(f'remaining time = {timer.remaining_time():0.1f}')
-        >>> print(f'timer expired = {timer.is_expired()}')
-        >>> wait_result = f1_event.wait(timeout=timer.remaining_time())
-        >>> print(f'wait2 result = {wait_result}')
-        >>> f1_event.clear()
-        >>> print(f'remaining time = {timer.remaining_time():0.1f}')
-        >>> print(f'timer expired = {timer.is_expired()}')
-        >>> wait_result = f1_event.wait(timeout=timer.remaining_time())
-        >>> print(f'wait3 result = {wait_result}')
-        >>> f1_event.clear()
-        >>> print(f'remaining time = {timer.remaining_time():0.4f}')
-        >>> print(f'timer expired = {timer.is_expired()}')
-        >>> f1_thread.join()
-        >>> print('mainline exiting')
-        mainline entered
+        >>> def example5() -> None:
+        ...     print('example5 entered')
+        ...     timer = Timer(timeout=2.5)
+        ...     f1_event = threading.Event()
+        ...     f1_thread = threading.Thread(target=f1, args=(f1_event,))
+        ...     f1_thread.start()
+        ...     wait_result = f1_event.wait(timeout=timer.remaining_time())
+        ...     print(f'wait1 result = {wait_result}')
+        ...     f1_event.clear()
+        ...     print(f'remaining time = {timer.remaining_time():0.1f}')
+        ...     print(f'timer expired = {timer.is_expired()}')
+        ...     wait_result = f1_event.wait(timeout=timer.remaining_time())
+        ...     print(f'wait2 result = {wait_result}')
+        ...     f1_event.clear()
+        ...     print(f'remaining time = {timer.remaining_time():0.1f}')
+        ...     print(f'timer expired = {timer.is_expired()}')
+        ...     wait_result = f1_event.wait(timeout=timer.remaining_time())
+        ...     print(f'wait3 result = {wait_result}')
+        ...     f1_event.clear()
+        ...     print(f'remaining time = {timer.remaining_time():0.4f}')
+        ...     print(f'timer expired = {timer.is_expired()}')
+        ...     f1_thread.join()
+        ...     print('example5 exiting')
+        >>> example5()
+        example5 entered
         f1 entered
         wait1 result = True
         remaining time = 1.5
@@ -271,7 +279,7 @@ class Timer:
         remaining time = 0.0001
         timer expired = True
         f1 exiting
-        mainline exiting
+        example5 exiting
 
 
         Notes:
@@ -320,20 +328,22 @@ class Timer:
 
         >>> import time
         >>> from scottbrian_utils.timer import Timer
-        >>> print('mainline entered')
-        >>> timer = Timer(timeout=2.5)
-        >>> time.sleep(1)
-        >>> print(f'timer expired = {timer.is_expired()}')
-        >>> time.sleep(1)
-        >>> print(f'timer expired = {timer.is_expired()}')
-        >>> time.sleep(1)
-        >>> print(f'timer expired = {timer.is_expired()}')
-        >>> print('mainline exiting')
-        mainline entered
+        >>> def example6() -> None:
+        ...     print('example6 entered')
+        ...     timer = Timer(timeout=2.5)
+        ...     time.sleep(1)
+        ...     print(f'timer expired = {timer.is_expired()}')
+        ...     time.sleep(1)
+        ...     print(f'timer expired = {timer.is_expired()}')
+        ...     time.sleep(1)
+        ...     print(f'timer expired = {timer.is_expired()}')
+        ...     print('example6 exiting')
+        >>> example6()
+        example6 entered
         timer expired = False
         timer expired = False
         timer expired = True
-        mainline exiting
+        example6 exiting
 
         """
         if self._timeout and self._timeout < (time.time() - self.start_time):
