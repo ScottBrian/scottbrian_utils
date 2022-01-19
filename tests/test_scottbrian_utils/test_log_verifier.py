@@ -21,6 +21,7 @@ from scottbrian_utils.diag_msg import get_formatted_call_sequence
 from scottbrian_utils.log_verifier import LogVer
 from scottbrian_utils.log_verifier import UnmatchedExpectedMessages
 from scottbrian_utils.log_verifier import UnmatchedActualMessages
+from scottbrian_utils.time_hdr import get_datetime_match_string
 
 logger = logging.getLogger(__name__)
 
@@ -529,14 +530,7 @@ class TestLogVerBasic:
         log_ver = LogVer(log_name='time_match')
         fmt_str = '%d %b %Y %H:%M:%S'
 
-        match_str_d = r'([0-2][0-9]|3[0-1])'
-        match_str_b = r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
-        match_str_Y = r'[2-9][0-9]{3,3}'
-        match_str_H = r'([0-1][0-9]|2[0-3])'
-        match_str_M_S = r'[0-5][0-9]'
-        match_str = (f'{match_str_d} {match_str_b} {match_str_Y} '
-                     f'{match_str_H}:{match_str_M_S}:{match_str_M_S}')
-
+        match_str = get_datetime_match_string(fmt_str)
         time_str = datetime.datetime.now().strftime(fmt_str)
 
         exp_msg = f'the date and time is: {match_str}'

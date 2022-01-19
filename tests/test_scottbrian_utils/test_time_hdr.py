@@ -173,6 +173,7 @@ def dt_format_arg(request: Any) -> str:
 
 dt_format_date_arg_list = ['',
                            'weekday: %w, %m/%y',
+                           '(weekday): %w, %m/%Y',
                            '%m/%d/%y',
                            '%m/%d/%Y',
                            '%a %b %Y',
@@ -184,6 +185,7 @@ dt_format_date_arg_list = ['',
 
 dt_format_time_arg_list = ['',
                            'hour: %H',
+                           '[hour/min]: %H:%M',
                            '%H:%M',
                            '%H:%M:%S',
                            '%I:%M %p',
@@ -306,9 +308,49 @@ def enabled_arg(request: Any) -> str:
 class TestGetMatchStr:
     """Test formatted re strings."""
 
-    def test_get_datetime_match_string(self,
-                                       dt_format_date_arg,
-                                       dt_format_time_arg) -> None:
+    ####################################################################
+    # test_get_datetime_match_string_mid
+    ####################################################################
+    def test_get_datetime_match_string_start(self,
+                                             dt_format_date_arg,
+                                             dt_format_time_arg) -> None:
+        """Test the datetime match string at start of text.
+
+        Args:
+            dt_format_date_arg: pytest fixture for date arg
+            dt_format_time_arg: pytest fixture for time arg
+
+        """
+        if dt_format_date_arg == '':
+            dt_format = f'{dt_format_time_arg}'
+        else:
+            dt_format = f'{dt_format_date_arg} {dt_format_time_arg}'
+
+        old_datetime = (datetime(2007, 5, 2, 14, 33, 27, 56)
+                        .strftime(dt_format))
+
+        new_datetime = datetime.now().strftime(dt_format)
+
+        formatted_old_dt = (f"{old_datetime} was a good time.")
+        print(f'\n{formatted_old_dt=}')
+
+        formatted_new_dt = (f"{new_datetime} was a good time.")
+        print(f'{formatted_new_dt=}')
+
+        match_str = get_datetime_match_string(dt_format)
+        print(f'{match_str=}')
+
+        adjusted_new_dt = re.sub(match_str, old_datetime, formatted_new_dt)
+        print(f'{adjusted_new_dt=}')
+
+        assert formatted_old_dt == adjusted_new_dt
+
+    ####################################################################
+    # test_get_datetime_match_string_mid
+    ####################################################################
+    def test_get_datetime_match_string_mid(self,
+                                           dt_format_date_arg,
+                                           dt_format_time_arg) -> None:
         """Test the datetime match string.
 
         Args:
@@ -329,6 +371,42 @@ class TestGetMatchStr:
 
         formatted_new_dt = (f"Here it is: {new_datetime} with "
                             f"the formatting we want.")
+        print(f'{formatted_new_dt=}')
+
+        match_str = get_datetime_match_string(dt_format)
+        print(f'{match_str=}')
+
+        adjusted_new_dt = re.sub(match_str, old_datetime, formatted_new_dt)
+        print(f'{adjusted_new_dt=}')
+
+        assert formatted_old_dt == adjusted_new_dt
+
+    ####################################################################
+    # test_get_datetime_match_string_end
+    ####################################################################
+    def test_get_datetime_match_string_end(self,
+                                           dt_format_date_arg,
+                                           dt_format_time_arg) -> None:
+        """Test the datetime match string at end of test.
+
+        Args:
+            dt_format_date_arg: pytest fixture for date arg
+            dt_format_time_arg: pytest fixture for time arg
+
+        """
+        dt_format = f'{dt_format_date_arg} {dt_format_time_arg}'
+
+        old_datetime = (datetime(2007, 5, 2, 14, 33, 27, 56)
+                        .strftime(dt_format))
+
+        new_datetime = datetime.now().strftime(dt_format)
+
+        formatted_old_dt = (f"Time is on your side:"
+                            f" {old_datetime}")
+        print(f'\n{formatted_old_dt=}')
+
+        formatted_new_dt = (f"Time is on your side:"
+                            f" {new_datetime}")
         print(f'{formatted_new_dt=}')
 
         match_str = get_datetime_match_string(dt_format)
