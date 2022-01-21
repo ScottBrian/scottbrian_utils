@@ -15,12 +15,12 @@ could be used for testing purposes and another for normal production.
 
 >>> from scottbrian_utils.file_catalog import FileCatalog
 >>> prod_cat = FileCatalog({'file1': Path('/prod_files/file1.csv')})
->>> print(prod_cat.get_path('file1').as_posix())
+>>> print(prod_cat.get_path('file1'))
 /prod_files/file1.csv
 
 >>> test_cat = FileCatalog(
 ...     {'file1': Path('/test_files/test_file1.csv')})
->>> print(test_cat.get_path('file1').as_posix())
+>>> print(test_cat.get_path('file1'))
 /test_files/test_file1.csv
 
 
@@ -32,11 +32,11 @@ could be used for testing purposes and another for normal production.
 FileCatalog({'sales': Path('/home/T/files/file1.csv'),
              'inventory': Path('/home/T/files/file2.csv')})
 
->>> print(a_cat.get_path('inventory').as_posix())
+>>> print(a_cat.get_path('inventory'))
 /home/T/files/file2.csv
 
 >>> from os import fspath
->>> print(fspath(a_cat.get_path('sales').as_posix()))
+>>> print(fspath(a_cat.get_path('sales')))
 /home/T/files/file1.csv
 
 
@@ -111,7 +111,7 @@ class FileCatalog:
         >>> a_catalog = FileCatalog(
         ...     {'file_1': Path('/run/media/file1.csv'),
         ...      'file_2': Path('/run/media/file2.pdf')})
-        >>> print(a_catalog.get_path('file_2').as_posix())
+        >>> print(a_catalog.get_path('file_2'))
         /run/media/file2.pdf
 
         """
@@ -208,11 +208,11 @@ class FileCatalog:
         ...    {'file1': Path('/run/media/file1.csv'),
         ...     'file2': Path('/run/media/file2.pdf')})
         >>> path1 = a_catalog.get_path('file1')
-        >>> print(path1.as_posix())
+        >>> print(path1)
         /run/media/file1.csv
 
         >>> from os import fspath
-        >>> fspath(a_catalog.get_path('file2').as_posix())
+        >>> fspath(a_catalog.get_path('file2'))
         '/run/media/file2.pdf'
 
         """

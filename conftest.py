@@ -1,5 +1,7 @@
 from doctest import ELLIPSIS
 from doctest import OutputChecker as BaseOutputChecker
+
+import pytest
 from sybil import Sybil
 from sybil.example import Example  # sbt
 from sybil.parsers.capture import parse_captures
@@ -8,40 +10,59 @@ from sybil.parsers.doctest import DocTestParser
 from sybil.parsers.doctest import DocTest  # sbt
 from scottbrian_utils.time_hdr import get_datetime_match_string
 import re
+import os
+from typing import Any
 
 class SbtOutputChecker(BaseOutputChecker):
     def __init__(self):
-        self.fix_num = 0
+        self.mod_name = None
+        self.msgs = []
 
     def check_output(self, want, got, optionflags):
-        if self.fix_num == 1:
-            diag_msg_dt_fmt = "%H:%M:%S.%f"
-            modname_match_str = " <.+>"
-            match_str = (get_datetime_match_string(diag_msg_dt_fmt)
-                         + modname_match_str)
+        old_want = want
+        old_got = got
 
-            replacement = '16:20:05.909260 <input>'
+        def repl_dt(match_obj: Any) -> str:
+            return found_items.__next__().group()
+
+        if self.mod_name == 'time_hdr' or self.mod_name == 'README':
+            # find the actual occurrences and replace in want
+            for time_hdr_dt_format in ["%a %b %d %Y %H:%M:%S",
+                                       "%m/%d/%y %H:%M:%S"]:
+                match_str = get_datetime_match_string(time_hdr_dt_format)
+
+                match_re = re.compile(match_str)
+                found_items = match_re.finditer(got)
+                want = match_re.sub(repl_dt, want)
+
+            # replace elapsed time in both want and got
+            match_str = 'Elapsed time: 0:00:00.[0-9| ]{6,6}'
+            replacement = 'Elapsed time: 0:00:00       '
+            want = re.sub(match_str, replacement, want)
             got = re.sub(match_str, replacement, got)
 
-            match_str = re.escape(r'\prod_files\file1.csv')
-            replacement = '/prod_files/file1.csv'
+        if self.mod_name == 'file_catalog' or self.mod_name == 'README':
+            match_str = r'\\'
+            replacement = '/'
             got = re.sub(match_str, replacement, got)
 
-            match_str = re.escape(r'\test_files\test_file1.csv')
-            replacement = '/test_files/test_file1.csv'
+            match_str = '//'
+            replacement = '/'
             got = re.sub(match_str, replacement, got)
 
-            time_hdr_dt_format = "%a %b %d %Y %H:%M:%S"
-            match_str = get_datetime_match_string(time_hdr_dt_format)
-            replacement = 'Mon Jun 29 2020 18:22:51'
-            got = re.sub(match_str, replacement, got)
-            replacement = 'Mon Jun 29 2020 18:22:50'
-            got = re.sub(match_str, replacement, got, count=1)
+        if self.mod_name == 'diag_msg' or self.mod_name == 'README':
+            for diag_msg_dt_fmt in ["%H:%M:%S.%f","%a %b-%d %H:%M:%S"]:
+                match_str = get_datetime_match_string(diag_msg_dt_fmt)
 
-            match_str = 'Elapsed time: 0:00:00       '
-            replacement = 'Elapsed time: 0:00:00.001204'
+                match_re = re.compile(match_str)
+                found_items = match_re.finditer(got)
+                want = match_re.sub(repl_dt, want)
+
+            match_str = "<.+?>"
+            replacement = '<input>'
             got = re.sub(match_str, replacement, got)
 
+        self.msgs.append([old_want, want, old_got, got])
         return BaseOutputChecker.check_output(self, want, got, optionflags)
 
 
@@ -54,29 +75,18 @@ class SbtDocTestParser(DocTestParser):
         example = sybil_example.parsed
         namespace = sybil_example.namespace
         output = []
-        # original_checker = self.runner._checker
-        # if example.lineno == 26:
-        if 'README.rst' in sybil_example.path:
-            self.runner._checker.fix_num = 1
-            # self.runner._checker = SbtOutputChecker()
-            # sybil_example.parsed.want = (f"{'sbt_fix_readme'}"
-            #                              f"{sybil_example.parsed.want}")
-        print(f'{example.lineno=}')  # sbt
-        print(f'{type(example.lineno)=}')  # sbt
-        print(f'{sybil_example.parsed.source=}')  # sbt
-        print(f'{sybil_example.parsed.want=}')  # sbt
-        print(f'{sybil_example.path=}')  # sbt
-        print(f'{sybil_example.path=}')  # sbt
-        # print(f'{self.runner=}')  # sbt
-        # print(f'{self.runner._checker=}')  #sbt
+        mod_name = sybil_example.path.rsplit(sep=".", maxsplit=1)[0]
+        mod_name = mod_name.rsplit(sep="\\", maxsplit=1)[1]
+        self.runner._checker.mod_name = mod_name
+
         self.runner.run(
             DocTest([example], namespace, name=None,
                     filename=None, lineno=example.lineno, docstring=None),
             clear_globs=False,
             out=output.append
         )
-        # self.runner._checker = original_checker
-        self.runner._checker.fix_num = 0
+        # print(f'{self.runner._checker.msgs=}')
+        self.runner._checker.msgs = []
         return ''.join(output)
 
 
@@ -85,6 +95,6 @@ pytest_collect_file = Sybil(
         SbtDocTestParser(optionflags=ELLIPSIS),
         PythonCodeBlockParser(),
     ],
-    # patterns=['*.rst', '*.py'],
-    patterns=['*.rst'],
+    patterns=['*.rst', '*.py'],
+    excludes=['log_verifier.py']
 ).pytest()

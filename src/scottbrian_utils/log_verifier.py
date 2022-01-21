@@ -8,7 +8,7 @@ The LogVer class is intended to be used during testing to allow a
 test case to specify expected log messages and then verify that they
 have been issued.
 
-:Example1: log a message and verify
+:Example1: pytest test case logs a message and verifies
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
@@ -47,7 +47,7 @@ have been issued.
 ('example_1', 10, 'hello')
 
 
-:Example2: expect two log records, only one was issued
+:Example2: pytest test case expects two log records, only one was issued
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
@@ -88,7 +88,7 @@ have been issued.
 ('example_2', 10, 'hello')
 
 
-:Example3: expect one log record, two were issued
+:Example3: pytest test case expects one log record, two were issued
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
@@ -129,7 +129,8 @@ have been issued.
 ('example_3', 10, 'hello')
 
 
-:Example4: expect two log records, two were issued, one different
+:Example4: pytest test case expect two log records, two were issued,
+           one different
 
 >>> from scottbrian_utils.log_verifier import LogVer
 >>> import logging
