@@ -247,19 +247,23 @@ class Timer:
         ...     print('example5 entered')
         ...     timer = Timer(timeout=2.5)
         ...     f1_event = threading.Event()
-        ...     f1_thread = threading.Thread(target=f1, args=(f1_event,))
+        ...     f1_thread = threading.Thread(target=f1,
+        ...                                  args=(f1_event,))
         ...     f1_thread.start()
-        ...     wait_result = f1_event.wait(timeout=timer.remaining_time())
+        ...     wait_result = f1_event.wait(
+        ...         timeout=timer.remaining_time())
         ...     print(f'wait1 result = {wait_result}')
         ...     f1_event.clear()
         ...     print(f'remaining time = {timer.remaining_time():0.1f}')
         ...     print(f'timer expired = {timer.is_expired()}')
-        ...     wait_result = f1_event.wait(timeout=timer.remaining_time())
+        ...     wait_result = f1_event.wait(
+        ...         timeout=timer.remaining_time())
         ...     print(f'wait2 result = {wait_result}')
         ...     f1_event.clear()
         ...     print(f'remaining time = {timer.remaining_time():0.1f}')
         ...     print(f'timer expired = {timer.is_expired()}')
-        ...     wait_result = f1_event.wait(timeout=timer.remaining_time())
+        ...     wait_result = f1_event.wait(
+        ...         timeout=timer.remaining_time())
         ...     print(f'wait3 result = {wait_result}')
         ...     f1_event.clear()
         ...     print(f'remaining time = {timer.remaining_time():0.4f}')

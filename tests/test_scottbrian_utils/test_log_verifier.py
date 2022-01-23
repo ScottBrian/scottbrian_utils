@@ -535,7 +535,7 @@ class TestLogVerBasic:
 
         exp_msg = f'the date and time is: {match_str}'
         act_msg = f'the date and time is: {time_str}'
-        log_ver.add_msg(log_msg=exp_msg)
+        log_ver.add_msg(log_msg=exp_msg, log_name='time_match')
         t_logger.debug(act_msg)
         log_ver.print_match_results(
             log_results := log_ver.get_match_results(caplog))
@@ -771,18 +771,19 @@ class TestLogVerBasic:
         log_ver = LogVer(log_name='no_log')
         if log_enabled_arg:
             t_logger.setLevel(logging.DEBUG)
-            # logging.getLogger().setLevel(logging.DEBUG)
         else:
             t_logger.setLevel(logging.INFO)
-            # logging.getLogger().setLevel(logging.INFO)
 
         log_msg = f'the log_enabled_arg is: {log_enabled_arg}'
         log_ver.add_msg(log_msg=log_msg)
         t_logger.debug(log_msg)
         log_ver.print_match_results(
             log_results := log_ver.get_match_results(caplog))
-        log_ver.verify_log_results(log_results,
-                                   log_enabled_tf=log_enabled_arg)
+        if log_enabled_arg:
+            log_ver.verify_log_results(log_results)
+        else:
+            with pytest.raises(UnmatchedExpectedMessages):
+                log_ver.verify_log_results(log_results)
 
         expected_result = '\n'
         expected_result += '**********************************\n'

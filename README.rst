@@ -107,11 +107,10 @@ Release History
     * Added diag_msg
 
 * 2.0.0
-    * Added @throttle
     * changed get_formatted_call_sequence and diag_msg
-      (both in diag_msg.py) to skip getting class info
-      unless requested
-    * dropped support for python 3.6 and 3.7
+      (both in diag_msg.py) to get class name in additional
+      cases
+    * dropped support for python 3.6, 3.7, and 3.8
 
 Meta
 ====

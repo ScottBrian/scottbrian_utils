@@ -363,7 +363,3 @@ def get_formatted_call_sequence(latest: int = 0,
         arrow = ' -> '  # set arrow for subsequent iterations
 
     return caller_sequence
-
-if __name__ == "__main__":
-    import doctest
-    doctest.testmod()

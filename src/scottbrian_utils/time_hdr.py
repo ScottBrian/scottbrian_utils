@@ -53,7 +53,7 @@ from typing import overload
 ########################################################################
 # Third Party
 ########################################################################
-from wrapt.decorators import decorator  # type: ignore
+from wrapt.decorators import decorator
 
 ########################################################################
 # Local

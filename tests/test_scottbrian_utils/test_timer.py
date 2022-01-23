@@ -3,6 +3,7 @@
 ########################################################################
 # Standard Library
 ########################################################################
+import inspect
 import logging
 import threading
 import time
@@ -17,6 +18,7 @@ import pytest
 # Local
 ########################################################################
 from scottbrian_utils.timer import Timer
+from scottbrian_utils.stop_watch import StopWatch
 
 logger = logging.getLogger(__name__)
 
@@ -387,6 +389,23 @@ class TestTimerBasic:
     ####################################################################
     # test_timer_case1a
     ####################################################################
+    def test_timer_correct_source(self) -> None:
+        """Test timer correct source."""
+        print('\nmainline entered')
+        print(f'{inspect.getsourcefile(Timer)=}')
+        exp1 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
+                '\\py39-pytest\\lib\\site-packages\\scottbrian_utils\\timer'
+                '.py')
+        exp2 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
+                '\\py39-coverage\\lib\\site-packages\\scottbrian_utils\\timer'
+                '.py')
+        actual = inspect.getsourcefile(Timer)
+        assert (actual == exp1) or (actual == exp2)
+        print('mainline exiting')
+
+    ####################################################################
+    # test_timer_case1a
+    ####################################################################
     def test_timer_case1a(self) -> None:
         """Test timer case1a."""
         print('mainline entered')
@@ -720,28 +739,44 @@ class TestTimerRemainingTime:
         """
         tolerance_factor = 0.80
         logger.debug('mainline entered')
+        stop_watch = StopWatch()
         sleep_time = timeout_arg/3
+        exp_remaining_time1: float = timeout_arg - sleep_time
+        exp_remaining_time2: float = timeout_arg - sleep_time * 2
+        exp_remaining_time3 = 0.0001
+
         timer = Timer(timeout=timeout_arg)
-        time.sleep(sleep_time)
-        exp_remaining_time = timeout_arg - sleep_time
+        stop_watch.start_clock(clock_iter=1)
+        stop_watch.pause(sleep_time, clock_iter=1)
 
-        assert ((exp_remaining_time * tolerance_factor)
-                <= timer.remaining_time()
-                <= exp_remaining_time)
+        rem_time = timer.remaining_time()
+        assert ((exp_remaining_time1 * tolerance_factor)
+                <= cast(float, rem_time)
+                <= exp_remaining_time1)
         assert not timer.is_expired()
+        logger.debug(f'after third 1: '
+                     f'{exp_remaining_time1=}, {rem_time=}')
 
-        time.sleep(sleep_time)
-        exp_remaining_time = timeout_arg - sleep_time * 2
+        stop_watch.pause(sleep_time * 2, clock_iter=1)
 
-        assert ((exp_remaining_time * tolerance_factor)
-                <= timer.remaining_time()
-                <= exp_remaining_time)
+        rem_time = timer.remaining_time()
+        assert ((exp_remaining_time2 * tolerance_factor)
+                <= cast(float, rem_time)
+                <= exp_remaining_time2)
         assert not timer.is_expired()
+        logger.debug(f'after third 2: '
+                     f'{exp_remaining_time2=}, {rem_time=}')
 
         time.sleep(sleep_time + 0.1)
-        exp_remaining_time = 0.0001
 
-        assert exp_remaining_time == timer.remaining_time()
+        rem_time = timer.remaining_time()
+        assert exp_remaining_time3 == cast(float, rem_time)
         assert timer.is_expired()
+
+        logger.debug(f'after third 3: '
+                     f'{exp_remaining_time3=}, {rem_time=}')
+
+        logger.debug(f'{stop_watch.start_time=} '
+                     f'{timer.start_time=}')
 
         logger.debug('mainline exiting')

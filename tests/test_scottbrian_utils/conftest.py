@@ -58,8 +58,28 @@ logger = logging.getLogger(__name__)
 # When the above is done, cleanup will not raise the error again.
 #
 ########################################################################
-@pytest.fixture(autouse=True)
-def thread_exc(monkeypatch: Any) -> Generator:
+class ExcHook:
+    """ExcHook class."""
+
+    def __init__(self) -> None:
+        """Initialize the ExcHook class instance."""
+        self.exc_err_msg1 = ''
+
+    def raise_exc_if_one(self) -> None:
+        """Raise and error is we have one.
+
+        Raises:
+            Exception: exc_msg
+
+        """
+        if self.exc_err_msg1:
+            exc_msg = self.exc_err_msg1
+            self.exc_err_msg1 = ''
+            raise Exception(f'{exc_msg}')
+
+
+@pytest.fixture(autouse=True)  # type: ignore
+def thread_exc(monkeypatch: Any) -> Generator[ExcHook, None, None]:
     """Instantiate and return a ThreadExc for testing.
 
     Args:
@@ -69,18 +89,23 @@ def thread_exc(monkeypatch: Any) -> Generator:
         a thread exception handler
 
     """
-    class ExcHook:
-        """ExcHook class."""
-        def __init__(self) -> None:
-            """Initialize the ExcHook class instance."""
-            self.exc_err_msg1 = ''
-
-        def raise_exc_if_one(self) -> None:
-            """Raise and error is we have one."""
-            if self.exc_err_msg1:
-                exc_msg = self.exc_err_msg1
-                self.exc_err_msg1 = ''
-                raise Exception(f'{exc_msg}')
+    # class ExcHook:
+    #     """ExcHook class."""
+    #     def __init__(self) -> None:
+    #         """Initialize the ExcHook class instance."""
+    #         self.exc_err_msg1 = ''
+    #
+    #     def raise_exc_if_one(self) -> None:
+    #         """Raise and error is we have one.
+    #
+    #         Raises:
+    #             Exception: exc_msg
+    #
+    #         """
+    #         if self.exc_err_msg1:
+    #             exc_msg = self.exc_err_msg1
+    #             self.exc_err_msg1 = ''
+    #             raise Exception(f'{exc_msg}')
 
     logger.debug(f'hook before: {threading.excepthook}')
     exc_hook = ExcHook()
@@ -89,9 +114,14 @@ def thread_exc(monkeypatch: Any) -> Generator:
         """Build error message from exception.
 
         Args:
-            args.exc_type: Optional[Type[BaseException]]
-            args.exc_value: Optional[BaseException]
-            args.exc_traceback: Optional[TracebackType]
+            args: contains:
+                      args.exc_type: Optional[Type[BaseException]]
+                      args.exc_value: Optional[BaseException]
+                      args.exc_traceback: Optional[TracebackType]
+
+        Raises:
+            Exception: Test case thread test error
+
         """
         exc_err_msg = (f'Test case excepthook: {args.exc_type}, '
                        f'{args.exc_value}, {args.exc_traceback},'

@@ -1,16 +1,30 @@
 """test_time_hdr.py module."""
-import re
+
+########################################################################
+# Standard Library
+########################################################################
 from datetime import datetime, timedelta
-import pytest
+import logging
+import re
 import sys
 
 from typing import Any, Callable, cast, Tuple, Union
 from typing_extensions import Final
 
+########################################################################
+# Third Party
+########################################################################
+import pytest
+
+########################################################################
+# Local
+########################################################################
 from scottbrian_utils.time_hdr import StartStopHeader as StartStopHeader
 from scottbrian_utils.time_hdr import time_box as time_box
 from scottbrian_utils.time_hdr import DT_Format as DT_Format
 from scottbrian_utils.time_hdr import get_datetime_match_string
+
+logger = logging.getLogger(__name__)
 
 
 class ErrorTstTimeHdr(Exception):
@@ -312,8 +326,9 @@ class TestGetMatchStr:
     # test_get_datetime_match_string_mid
     ####################################################################
     def test_get_datetime_match_string_start(self,
-                                             dt_format_date_arg,
-                                             dt_format_time_arg) -> None:
+                                             dt_format_date_arg: str,
+                                             dt_format_time_arg: str
+                                             ) -> None:
         """Test the datetime match string at start of text.
 
         Args:
@@ -349,8 +364,9 @@ class TestGetMatchStr:
     # test_get_datetime_match_string_mid
     ####################################################################
     def test_get_datetime_match_string_mid(self,
-                                           dt_format_date_arg,
-                                           dt_format_time_arg) -> None:
+                                           dt_format_date_arg: str,
+                                           dt_format_time_arg: str
+                                           ) -> None:
         """Test the datetime match string.
 
         Args:
@@ -385,8 +401,9 @@ class TestGetMatchStr:
     # test_get_datetime_match_string_end
     ####################################################################
     def test_get_datetime_match_string_end(self,
-                                           dt_format_date_arg,
-                                           dt_format_time_arg) -> None:
+                                           dt_format_date_arg: str,
+                                           dt_format_time_arg: str
+                                           ) -> None:
         """Test the datetime match string at end of test.
 
         Args:
@@ -726,23 +743,28 @@ class TestTimeBox:
             else:
                 return expected_func_msg + '\n'
 
-        start_dt = datetime.now()
-        end_dt = datetime.now() + timedelta(microseconds=42)
-        formatted_delta = str(end_dt - start_dt)
-        formatted_delta_len = len(formatted_delta)
+        match_fmt_string = get_datetime_match_string(expected_dt_format)
 
-        formatted_dt = start_dt.strftime(expected_dt_format)
-        formatted_dt_len = len(formatted_dt)
+        # get start time
+        match_re = re.compile('Starting func on ' + match_fmt_string)
+        match_obj = match_re.search(actual)
+        assert match_obj
+        start_time = match_obj.group()
 
-        start_time_marks = '#' * formatted_dt_len
+        # get end time
+        match_re = re.compile('Ending func on ' + match_fmt_string)
+        match_obj = match_re.search(actual)
+        assert match_obj
+        end_time = match_obj.group()
 
-        start_time_len = len(start_time_marks)
-        end_time_marks = '%' * formatted_dt_len
-        end_time_len = len(end_time_marks)
-        elapsed_time_marks = '$' * formatted_delta_len
-        elapsed_time_len = len(elapsed_time_marks)
-        # build expected0
-        msg0 = '* Starting func on ' + start_time_marks
+        # get elapsed time
+        match_re = re.compile('Elapsed time: '
+                              '[0-9]:[0-9]{2}:[0-9]{2}( |.[0-9]{1,6} )')
+        match_obj = match_re.search(actual)
+        assert match_obj
+        elapsed_time = match_obj.group()[0:-1]
+
+        msg0 = '* ' + start_time
 
         flower_len = len(msg0) + len(' *')
         flowers = '*' * flower_len
@@ -753,8 +775,8 @@ class TestTimeBox:
                      + flowers + expected_end)
 
         # build expected1
-        msg1 = '* Ending func on ' + end_time_marks
-        msg2 = '* Elapsed time: ' + elapsed_time_marks
+        msg1 = '* ' + end_time
+        msg2 = '* ' + elapsed_time
 
         expected1 = TestStartStopHeader.get_flower_box(msg1, msg2,
                                                        expected_end)
@@ -764,22 +786,7 @@ class TestTimeBox:
         else:
             expected = expected0 + expected_func_msg + '\n' + expected1
 
-        # find positions of the start, end, and elapsed times
-        start_time_index = expected.index(start_time_marks)
-        end_time_index = expected.index(end_time_marks)
-        elapsed_time_index = expected.index(elapsed_time_marks)
-
-        modified_expected = (
-                expected[0:start_time_index]
-                + actual[start_time_index:start_time_index+start_time_len]
-                + expected[start_time_index+start_time_len:end_time_index]
-                + actual[end_time_index:end_time_index+end_time_len]
-                + expected[end_time_index+end_time_len:elapsed_time_index]
-                + actual[
-                  elapsed_time_index:elapsed_time_index+elapsed_time_len]
-                + expected[elapsed_time_index+elapsed_time_len:])
-
-        return modified_expected
+        return expected
 
     """
     The following section tests each combination of arguments to the

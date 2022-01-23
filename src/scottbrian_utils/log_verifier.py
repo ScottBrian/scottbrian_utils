@@ -228,16 +228,6 @@ class UnmatchedActualMessages(LogVerError):
     pass
 
 
-class IncorrectNumberOfMatchedMessages(LogVerError):
-    """Number of matched expected messages not equal to actual."""
-    pass
-
-
-class NonZeroNumberOfMatchedMessages(LogVerError):
-    """Number of matched expected messages not equal to zero."""
-    pass
-
-
 @dataclass
 class MatchResults:
     """Match results returned by get_match_results method."""
@@ -328,13 +318,15 @@ class LogVer:
 
         Example: add two messages, each at a different level
 
-        >>> def test_example(caplog: pytest.CaptureFixture[str]) -> None:
+        >>> def test_example(caplog: pytest.CaptureFixture[str]
+        ...                 ) -> None:
         ...      logger = logging.getLogger('add_msg')
         ...      log_ver = LogVer('add_msg')
         ...      log_msg1 = 'hello'
         ...      log_msg2 = 'goodbye'
         ...      log_ver.add_msg(log_msg=log_msg1)
-        ...      log_ver.add_msg(log_msg=log_msg2, log_level=logging.ERROR)
+        ...      log_ver.add_msg(log_msg=log_msg2,
+        ...                      log_level=logging.ERROR)
         ...      logger.debug(log_msg1)
         ...      logger.error(log_msg2)
         ...      match_results = log_ver.get_match_results()
@@ -482,53 +474,28 @@ class LogVer:
     ####################################################################
     # verify log messages
     ####################################################################
-    def verify_log_results(self,
-                           match_results: MatchResults,
-                           log_enabled_tf: bool = True) -> None:
+    @staticmethod
+    def verify_log_results(match_results: MatchResults) -> None:
         """Verify that each log message issued is as expected.
 
         Args:
             match_results: contains the results to be verified
-            log_enabled_tf: indicated whether log is enabled
 
         Raises:
             UnmatchedExpectedMessages: There are expected log messages
                 that failed to match actual log messages.
             UnmatchedActualMessages: There are actual log messages that
                 failed to match expected log messages.
-            IncorrectNumberOfMatchedMessages: The number of expected log
-                messages that were matched is not equal to the number of
-                actual log messages.
-            NonZeroNumberOfMatchedMessages: The number of expected log
-                messages that were matched is not equal to zero when
-                logging was not enabled
 
         """
-        if log_enabled_tf:
-            if match_results.num_exp_unmatched:
-                raise UnmatchedExpectedMessages(
-                    f'There are {match_results.num_exp_unmatched} '
-                    'expected log messages that failed to match actual log '
-                    'messages.')
+        if match_results.num_exp_unmatched:
+            raise UnmatchedExpectedMessages(
+                f'There are {match_results.num_exp_unmatched} '
+                'expected log messages that failed to match actual log '
+                'messages.')
 
-            if match_results.num_actual_unmatched:
-                raise UnmatchedActualMessages(
-                    f'There are {match_results.num_actual_unmatched} '
-                    'actual log messages that failed to match expected log '
-                    'messages.')
-
-            if (match_results.num_records_matched
-                    != match_results.num_actual_records):
-                raise IncorrectNumberOfMatchedMessages(
-                    'The number of expected log messages that were matched '
-                    f'({match_results.num_records_matched}) is not equal to '
-                    'the number of actual log messages '
-                    f'({match_results.num_actual_records})'
-                )
-        else:
-            if match_results.num_records_matched:
-                raise NonZeroNumberOfMatchedMessages(
-                    'The number of expected log messages that were matched '
-                    f'({match_results.num_records_matched}) is not equal to '
-                    'zero when logging was not enabled'
-                )
+        if match_results.num_actual_unmatched:
+            raise UnmatchedActualMessages(
+                f'There are {match_results.num_actual_unmatched} '
+                'actual log messages that failed to match expected log '
+                'messages.')
