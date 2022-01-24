@@ -3,7 +3,7 @@
 ########################################################################
 # Standard Library
 ########################################################################
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import re
 import sys
@@ -64,126 +64,131 @@ def dt_format_arg(request: Any) -> str:
     """
     return cast(str, request.param)
 
-# dt_format_weekday_arg_list = ['',
-#                               '%a',
-#                               '%A',
-#                               '%w',
-#                               '%d']
-# dt_format_month_arg_list = ['',
-#                             '%b',
-#                             '%B',
-#                             '%m']
-# dt_format_year_arg_list = ['',
-#                            '%y',
-#                            '%Y']
-# dt_format_hour_arg_list = ['',
-#                            '%H',
-#                            '%I']
-# dt_format_AM_PM_arg_list = ['',
-#                             '%p']
-# dt_format_minute_arg_list = ['',
-#                              '%M']
-# dt_format_second_arg_list = ['',
-#                              '%S']
-# dt_format_u_second_arg_list = ['',
-#                                '%f']
 
-# @pytest.fixture(params=dt_format_weekday_arg_list)  # type: ignore
-# def dt_format_weekday_arg(request: Any) -> str:
-#     """Using different time formats.
-#
-#     Args:
-#         request: special fixture that returns the fixture params
-#
-#     Returns:
-#         The params values are returned one at a time
-#     """
-#     return cast(str, request.param)
-#
-# @pytest.fixture(params=dt_format_month_arg_list)  # type: ignore
-# def dt_format_month_arg(request: Any) -> str:
-#     """Using different time formats.
-#
-#     Args:
-#         request: special fixture that returns the fixture params
-#
-#     Returns:
-#         The params values are returned one at a time
-#     """
-#     return cast(str, request.param)
-#
-# @pytest.fixture(params=dt_format_year_arg_list)  # type: ignore
-# def dt_format_year_arg(request: Any) -> str:
-#     """Using different time formats.
-#
-#     Args:
-#         request: special fixture that returns the fixture params
-#
-#     Returns:
-#         The params values are returned one at a time
-#     """
-#     return cast(str, request.param)
-#
-# @pytest.fixture(params=dt_format_hour_arg_list)  # type: ignore
-# def dt_format_hour_arg(request: Any) -> str:
-#     """Using different time formats.
-#
-#     Args:
-#         request: special fixture that returns the fixture params
-#
-#     Returns:
-#         The params values are returned one at a time
-#     """
-#     return cast(str, request.param)
-#
-# @pytest.fixture(params=dt_format_AM_PM_arg_list)  # type: ignore
-# def dt_format_AM_PM_arg(request: Any) -> str:
-#     """Using different time formats.
-#
-#     Args:
-#         request: special fixture that returns the fixture params
-#
-#     Returns:
-#         The params values are returned one at a time
-#     """
-#     return cast(str, request.param)
-#
-# @pytest.fixture(params=dt_format_minute_arg_list)  # type: ignore
-# def dt_format_minute_arg(request: Any) -> str:
-#     """Using different time formats.
-#
-#     Args:
-#         request: special fixture that returns the fixture params
-#
-#     Returns:
-#         The params values are returned one at a time
-#     """
-#     return cast(str, request.param)
-#
-# @pytest.fixture(params=dt_format_second_arg_list)  # type: ignore
-# def dt_format_second_arg(request: Any) -> str:
-#     """Using different time formats.
-#
-#     Args:
-#         request: special fixture that returns the fixture params
-#
-#     Returns:
-#         The params values are returned one at a time
-#     """
-#     return cast(str, request.param)
-#
-# @pytest.fixture(params=dt_format_AM_PM_arg_list)  # type: ignore
-# def dt_format_u_second_arg(request: Any) -> str:
-#     """Using different time formats.
-#
-#     Args:
-#         request: special fixture that returns the fixture params
-#
-#     Returns:
-#         The params values are returned one at a time
-#     """
-#     return cast(str, request.param)
+dt_format_char_arg_list = ['',
+                           '%a',
+                           '%A',
+                           '%w',
+                           '%d',
+                           '%b',
+                           '%B',
+                           '%m',
+                           '%y',
+                           '%Y',
+                           '%H',
+                           '%I',
+                           '%p',
+                           '%M',
+                           '%S',
+                           '%f',
+                           '%z',
+                           '%Z'
+                           '%j',
+                           '%U',
+                           '%W',
+                           '%c',
+                           '%x',
+                           '%X',
+                           '%%',
+                           '%G',
+                           '%u',
+                           '%V']
 
+
+@pytest.fixture(params=dt_format_char_arg_list)  # type: ignore
+def dt_format_char_arg(request: Any) -> str:
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(str, request.param)
+
+
+dt_datetime_arg_list = [datetime(1999,  1,  1,  0,  0,  0,  0,
+                                 tzinfo=timezone.utc
+                                 ),
+                        datetime(2000,  2,  2,  1,  1,  1,  1,
+                                 tzinfo=timezone.utc
+                                 ),
+                        datetime(2001,  3,  9,  9,  9,  9,  9,
+                                 tzinfo=timezone(timedelta(hours=-23,
+                                                           minutes=-59))
+                                 ),
+                        datetime(2002,  4, 10, 10, 10, 10, 10,
+                                 tzinfo=timezone(timedelta(hours=-23))
+                                 ),
+                        datetime(2009,  5, 11, 11, 11, 11, 11,
+                                 tzinfo=timezone(timedelta(hours=-5))
+                                 ),
+                        datetime(2010,  6, 19, 19, 19, 19, 19,
+                                 tzinfo=timezone(timedelta(hours=-5)),
+                                 ),
+                        datetime(2011,  7, 20, 20, 20, 20, 20,
+                                 tzinfo=timezone(timedelta(hours=0))
+                                 ),
+                        datetime(2019,  9, 21, 21, 21, 21, 21,
+                                 tzinfo=timezone(timedelta(minutes=1))
+                                 ),
+                        datetime(2020, 10, 29, 22, 29, 29, 29,
+                                 tzinfo=timezone(timedelta(hours=1))
+                                 ),
+                        datetime(2021, 11, 30, 23, 30, 30, 30,
+                                 tzinfo=timezone(timedelta(hours=23,
+                                                           minutes=59))
+                                 ),
+                        datetime(2022, 12, 31, 23, 59, 59, 999999,
+                                 tzinfo=timezone(timedelta(hours=23,
+                                                           minutes=59)),
+                                 )]
+
+
+@pytest.fixture(params=dt_datetime_arg_list)  # type: ignore
+def dt_datetime_arg(request: Any) -> datetime:
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(datetime, request.param)
+
+
+dt_datetime_month_arg_list = [1, 5, 9, 10, 11, 12]
+
+
+@pytest.fixture(params=dt_datetime_month_arg_list)  # type: ignore
+def dt_datetime_month_arg(request: Any) -> int:
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+dt_datetime_day_arg_list = [1, 2, 9, 10, 11, 19, 20, 21, 29, 30, 31]
+
+
+@pytest.fixture(params=dt_datetime_day_arg_list)  # type: ignore
+def dt_datetime_day_arg(request: Any) -> int:
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
 
 dt_format_date_arg_list = ['',
                            'weekday: %w, %m/%y',
@@ -204,7 +209,9 @@ dt_format_time_arg_list = ['',
                            '%H:%M:%S',
                            '%I:%M %p',
                            '%I:%M:%S %p',
-                           '%H:%M:%S.%f'
+                           '%H:%M:%S.%f',
+                           '%H:%M:%S.%f%z',
+                           '%H:%M:%S.%f %Z'
                            ]
 
 
@@ -325,15 +332,52 @@ class TestGetMatchStr:
     ####################################################################
     # test_get_datetime_match_string_mid
     ####################################################################
+    def test_get_datetime_char_match(self,
+                                     dt_format_char_arg: str,
+                                     dt_datetime_arg: datetime
+                                     ) -> None:
+        """Test the datetime match string for one char.
+
+        Args:
+            dt_format_char_arg: pytest fixture for char arg
+            dt_datetime_arg: pytest fixture for datetime arg
+
+        """
+        print(f'\n{dt_format_char_arg=}')
+
+        old_datetime = dt_datetime_arg.strftime(dt_format_char_arg)
+
+        new_datetime = datetime.now(
+            timezone(timedelta(hours=1))).strftime(dt_format_char_arg)
+
+        formatted_old_dt = (f"{old_datetime} was a good time.")
+        print(f'{formatted_old_dt=}')
+
+        formatted_new_dt = (f"{new_datetime} was a good time.")
+        print(f'{formatted_new_dt=}')
+
+        match_str = get_datetime_match_string(dt_format_char_arg)
+        print(f'{match_str=}')
+
+        adjusted_old_dt = re.sub(match_str, new_datetime, formatted_old_dt)
+        print(f'{adjusted_old_dt=}')
+
+        assert formatted_new_dt == adjusted_old_dt
+
+    ####################################################################
+    # test_get_datetime_match_string_mid
+    ####################################################################
     def test_get_datetime_match_string_start(self,
                                              dt_format_date_arg: str,
-                                             dt_format_time_arg: str
+                                             dt_format_time_arg: str,
+                                             dt_datetime_arg: datetime
                                              ) -> None:
         """Test the datetime match string at start of text.
 
         Args:
             dt_format_date_arg: pytest fixture for date arg
             dt_format_time_arg: pytest fixture for time arg
+            dt_datetime_arg: pytest fixture for datetime arg
 
         """
         if dt_format_date_arg == '':
@@ -341,13 +385,15 @@ class TestGetMatchStr:
         else:
             dt_format = f'{dt_format_date_arg} {dt_format_time_arg}'
 
-        old_datetime = (datetime(2007, 5, 2, 14, 33, 27, 56)
-                        .strftime(dt_format))
+        print(f'\n{dt_format=}')
 
-        new_datetime = datetime.now().strftime(dt_format)
+        old_datetime = dt_datetime_arg.strftime(dt_format)
+
+        new_datetime = datetime.now(
+            timezone(timedelta(hours=1))).strftime(dt_format)
 
         formatted_old_dt = (f"{old_datetime} was a good time.")
-        print(f'\n{formatted_old_dt=}')
+        print(f'{formatted_old_dt=}')
 
         formatted_new_dt = (f"{new_datetime} was a good time.")
         print(f'{formatted_new_dt=}')
@@ -355,35 +401,42 @@ class TestGetMatchStr:
         match_str = get_datetime_match_string(dt_format)
         print(f'{match_str=}')
 
-        adjusted_new_dt = re.sub(match_str, old_datetime, formatted_new_dt)
-        print(f'{adjusted_new_dt=}')
+        adjusted_old_dt = re.sub(match_str, new_datetime, formatted_old_dt)
+        print(f'{adjusted_old_dt=}')
 
-        assert formatted_old_dt == adjusted_new_dt
+        assert formatted_new_dt == adjusted_old_dt
 
     ####################################################################
     # test_get_datetime_match_string_mid
     ####################################################################
     def test_get_datetime_match_string_mid(self,
                                            dt_format_date_arg: str,
-                                           dt_format_time_arg: str
+                                           dt_format_time_arg: str,
+                                           dt_datetime_arg: datetime
                                            ) -> None:
         """Test the datetime match string.
 
         Args:
             dt_format_date_arg: pytest fixture for date arg
             dt_format_time_arg: pytest fixture for time arg
+            dt_datetime_arg: pytest fixture for datetime arg
 
         """
-        dt_format = f'{dt_format_date_arg} {dt_format_time_arg}'
+        if dt_format_date_arg == '':
+            dt_format = f'{dt_format_time_arg}'
+        else:
+            dt_format = f'{dt_format_date_arg} {dt_format_time_arg}'
 
-        old_datetime = (datetime(2007, 5, 2, 14, 33, 27, 56)
-                        .strftime(dt_format))
+        print(f'\n{dt_format=}')
 
-        new_datetime = datetime.now().strftime(dt_format)
+        old_datetime = dt_datetime_arg.strftime(dt_format)
+
+        new_datetime = datetime.now(
+            timezone(timedelta(hours=1))).strftime(dt_format)
 
         formatted_old_dt = (f"Here it is: {old_datetime} with "
                             f"the formatting we want.")
-        print(f'\n{formatted_old_dt=}')
+        print(f'{formatted_old_dt=}')
 
         formatted_new_dt = (f"Here it is: {new_datetime} with "
                             f"the formatting we want.")
@@ -392,35 +445,42 @@ class TestGetMatchStr:
         match_str = get_datetime_match_string(dt_format)
         print(f'{match_str=}')
 
-        adjusted_new_dt = re.sub(match_str, old_datetime, formatted_new_dt)
-        print(f'{adjusted_new_dt=}')
+        adjusted_old_dt = re.sub(match_str, new_datetime, formatted_old_dt)
+        print(f'{adjusted_old_dt=}')
 
-        assert formatted_old_dt == adjusted_new_dt
+        assert formatted_new_dt == adjusted_old_dt
 
     ####################################################################
     # test_get_datetime_match_string_end
     ####################################################################
     def test_get_datetime_match_string_end(self,
                                            dt_format_date_arg: str,
-                                           dt_format_time_arg: str
+                                           dt_format_time_arg: str,
+                                           dt_datetime_arg: datetime
                                            ) -> None:
         """Test the datetime match string at end of test.
 
         Args:
             dt_format_date_arg: pytest fixture for date arg
             dt_format_time_arg: pytest fixture for time arg
+            dt_datetime_arg: pytest fixture for datetime arg
 
         """
-        dt_format = f'{dt_format_date_arg} {dt_format_time_arg}'
+        if dt_format_date_arg == '':
+            dt_format = f'{dt_format_time_arg}'
+        else:
+            dt_format = f'{dt_format_date_arg} {dt_format_time_arg}'
 
-        old_datetime = (datetime(2007, 5, 2, 14, 33, 27, 56)
-                        .strftime(dt_format))
+        print(f'\n{dt_format=}')
 
-        new_datetime = datetime.now().strftime(dt_format)
+        old_datetime = dt_datetime_arg.strftime(dt_format)
+
+        new_datetime = datetime.now(
+            timezone(timedelta(hours=1))).strftime(dt_format)
 
         formatted_old_dt = (f"Time is on your side:"
                             f" {old_datetime}")
-        print(f'\n{formatted_old_dt=}')
+        print(f'{formatted_old_dt=}')
 
         formatted_new_dt = (f"Time is on your side:"
                             f" {new_datetime}")
@@ -429,10 +489,10 @@ class TestGetMatchStr:
         match_str = get_datetime_match_string(dt_format)
         print(f'{match_str=}')
 
-        adjusted_new_dt = re.sub(match_str, old_datetime, formatted_new_dt)
-        print(f'{adjusted_new_dt=}')
+        adjusted_old_dt = re.sub(match_str, new_datetime, formatted_old_dt)
+        print(f'{adjusted_old_dt=}')
 
-        assert formatted_old_dt == adjusted_new_dt
+        assert formatted_new_dt == adjusted_old_dt
 
 
 class TestStartStopHeader:

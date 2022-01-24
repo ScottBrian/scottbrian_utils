@@ -401,15 +401,29 @@ def get_datetime_match_string(format: str) -> str:
     match_str_B = (r'(January|February|March|April|May|June|July|August'
                    r'|September|October|November|December)')
     match_str_m = r'(0[1-9]|1[0-2])'
-    match_str_w = r'[0-7]'
+    match_str_w = r'[0-6]'
     match_str_y = r'[0-9]{2,2}'
-    match_str_Y = r'[2-9][0-9]{3,3}'
+    match_str_Y = r'[1-9][0-9]{3,3}'
 
     match_str_H = r'([0-1][0-9]|2[0-3])'
     match_str_I = r'(0[1-9]|1[0-2])'
     match_str_p = r'(AM|PM)'
-    match_str_M_S = r'[0-5][0-9]'
+    match_str_M = r'[0-5][0-9]'
+    match_str_S = r'[0-5][0-9]'
     match_str_f = r'[0-9]{6,6}'
+    match_str_z = r'[+-]' + f'{match_str_H}{match_str_M}'
+    match_str_Z = r'(UTC|GMT)([+-]' + f'({match_str_H}:{match_str_M}))*'
+    match_str_j = r'[0-3][0-9]{2,2}'
+    match_str_U = r'[0-5][0-9]'
+    match_str_W = r'[0-5][0-9]'
+    match_str_c = (f'{match_str_a} {match_str_b} ( [1-9]|[0-2][0-9]|3[0-1]) '
+                   f'{match_str_H}:{match_str_M}:{match_str_S} {match_str_Y}')
+    # match_str_x = f'{match_str_m}/{match_str_d}/{match_str_Y}'
+    match_str_x = f'{match_str_m}/{match_str_d}/{match_str_y}'
+    match_str_X = f'{match_str_H}:{match_str_M}:{match_str_S}'
+    match_str_G = match_str_Y
+    match_str_u = r'[1-7]'
+    match_str_V = r'(0[1-9]|[1-5][0-9])'
 
     match_str = re.escape(format)
     match_str = re.sub('%a', match_str_a, match_str)
@@ -424,8 +438,18 @@ def get_datetime_match_string(format: str) -> str:
     match_str = re.sub('%H', match_str_H, match_str)
     match_str = re.sub('%I', match_str_I, match_str)
     match_str = re.sub('%p', match_str_p, match_str)
-    match_str = re.sub('%M', match_str_M_S, match_str)
-    match_str = re.sub('%S', match_str_M_S, match_str)
+    match_str = re.sub('%M', match_str_M, match_str)
+    match_str = re.sub('%S', match_str_S, match_str)
     match_str = re.sub('%f', match_str_f, match_str)
-
+    match_str = re.sub('%z', match_str_z, match_str)
+    match_str = re.sub('%Z', match_str_Z, match_str)
+    match_str = re.sub('%j', match_str_j, match_str)
+    match_str = re.sub('%U', match_str_U, match_str)
+    match_str = re.sub('%W', match_str_W, match_str)
+    match_str = re.sub('%c', match_str_c, match_str)
+    match_str = re.sub('%x', match_str_x, match_str)
+    match_str = re.sub('%X', match_str_X, match_str)
+    match_str = re.sub('%G', match_str_G, match_str)
+    match_str = re.sub('%u', match_str_u, match_str)
+    match_str = re.sub('%V', match_str_V, match_str)
     return match_str
