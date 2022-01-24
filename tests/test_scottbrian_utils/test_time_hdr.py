@@ -190,6 +190,7 @@ def dt_datetime_day_arg(request: Any) -> int:
     """
     return cast(int, request.param)
 
+
 dt_format_date_arg_list = ['',
                            'weekday: %w, %m/%y',
                            '(weekday): %w, %m/%Y',

@@ -780,3 +780,22 @@ class TestTimerRemainingTime:
                      f'{timer.start_time=}')
 
         logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_timer_remaining_time_none
+    ####################################################################
+    def test_timer_remaining_time_none(self) -> None:
+        """Test timer remaining time none2."""
+        logger.debug('mainline entered')
+
+        timer = Timer(timeout=None)
+        time.sleep(1)
+        assert timer.remaining_time() is None
+        assert not timer.is_expired()
+
+        time.sleep(1)
+
+        assert timer.remaining_time() is None
+        assert not timer.is_expired()
+
+        logger.debug('mainline exiting')

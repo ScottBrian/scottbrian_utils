@@ -1,7 +1,7 @@
 """test_file_catalog.py module."""
 
 # standard library imports
-from pathlib import Path, PosixPath
+from pathlib import Path
 import pytest
 from typing import Any, cast, Dict
 
@@ -153,8 +153,7 @@ class TestFileCatalog:
 
             assert len(a_catalog) == 1
 
-            assert a_catalog.get_path('file1') == \
-                   PosixPath('/run/media/file1.csv')
+            assert a_catalog.get_path('file1') == Path('/run/media/file1.csv')
 
             with pytest.raises(cat.FileNameNotFound):
                 _ = a_catalog.get_path('file2')
@@ -162,8 +161,8 @@ class TestFileCatalog:
             print(a_catalog)  # test of __repr__
             captured = capsys.readouterr().out
 
-            expected = \
-                "FileCatalog({'file1': Path('/run/media/file1.csv')})\n"
+            expected = ("FileCatalog("
+                        "{'file1': Path('/run/media/file1.csv')})\n")
 
             assert captured == expected
 
@@ -215,7 +214,7 @@ class TestFileCatalog:
                         (i < 2) or (i == len(a_file_specs)-1):  # first 2 or
                     # last
                     parms = parms + indent_spaces + "'" + name + "': " + \
-                            "Path('" + str(path) + "'),\n"
+                            "Path('" + str(path.as_posix()) + "'),\n"
                 if len(file_specs) > 4:
                     if (i == 2) and (i != len(a_file_specs)-1):  # middle,
                         # not last

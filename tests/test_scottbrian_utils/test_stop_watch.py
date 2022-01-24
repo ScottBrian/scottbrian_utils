@@ -21,7 +21,8 @@ from scottbrian_utils.stop_watch import StopWatch
 ########################################################################
 # type aliases
 ########################################################################
-OptIntFloat = Optional[Union[int, float]]
+IntFloat = Union[int, float]
+OptIntFloat = Optional[IntFloat]
 
 ########################################################################
 # Set up logging
@@ -60,7 +61,7 @@ def timeout_arg(request: Any) -> float:
 #######################################################################
 # sleep_arg fixture
 ########################################################################
-sleep_arg_list = [0.3, 1.0, 2.5]
+sleep_arg_list = [0.3, 1.0, 2, 2.5]
 
 
 @pytest.fixture(params=sleep_arg_list)  # type: ignore
@@ -92,6 +93,37 @@ class TestBasicStopWatch:
         stop_watch = StopWatch()
         expected_repr_string = 'StopWatch()'
         assert repr(stop_watch) == expected_repr_string
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_stop_watch_pause
+    ####################################################################
+    def test_stop_watch_pause(self,
+                              sleep_arg: IntFloat) -> None:
+        """Test StopWatch pause.
+
+        Args:
+            sleep_arg: pytest fixture for number seconds to pause
+
+        """
+        logger.debug('mainline entered')
+
+        stop_watch = StopWatch()
+        start_time = time.time()
+        stop_watch.start_clock(clock_iter=1)
+        stop_watch.pause(seconds=sleep_arg, clock_iter=1)
+        duration = stop_watch.duration()
+        time_paused = time.time() - start_time
+
+        assert (sleep_arg
+                <= duration
+                <= (sleep_arg * 1.1)
+                )
+        assert (sleep_arg
+                <= time_paused
+                <= (sleep_arg * 1.1)
+                )
 
         logger.debug('mainline exiting')
 
@@ -369,4 +401,86 @@ class TestStopWatch:
         assert stop_watch.clock_in_use is False
         assert stop_watch.clock_iter == 2
 
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_stop_watch_start_multi
+    ####################################################################
+    def test_stop_watch_start_multi(self,
+                                    sleep_arg: IntFloat) -> None:
+        """Test StopWatch repr.
+
+        Args:
+            sleep_arg: pytest fixture for number seconds to pause
+
+        """
+        def f1() -> None:
+            """F1 thread."""
+            logger.debug('f1 entered')
+            ml_event.set()
+            f1_event.wait()
+            f1_start_time = time.time()
+            stop_watch.start_clock(clock_iter=2)
+            f1_start_clock_wait_time = time.time() - f1_start_time
+
+            stop_watch.pause(seconds=sleep_arg, clock_iter=2)
+            f1_duration = stop_watch.duration()
+
+            assert (sleep_arg
+                    <= f1_start_clock_wait_time
+                    <= (sleep_arg * 1.1)
+                    )
+            assert (sleep_arg
+                    <= f1_duration
+                    <= (sleep_arg * 1.1)
+                    )
+
+            f1_start_time = time.time()
+            ml_event.set()
+            stop_watch.pause(seconds=sleep_arg, clock_iter=3)
+            f1_total_pause_time = time.time() - f1_start_time
+            f1_duration = stop_watch.duration()
+
+            assert ((sleep_arg * 2)
+                    <= f1_total_pause_time
+                    <= (sleep_arg * 2 * 1.1)
+                    )
+            assert (sleep_arg
+                    <= f1_duration
+                    <= (sleep_arg * 1.1)
+                    )
+
+            logger.debug('f1 exiting')
+
+        logger.debug('mainline entered')
+        ml_event = threading.Event()
+        f1_event = threading.Event()
+        stop_watch = StopWatch()
+
+        f1_thread = threading.Thread(target=f1)
+
+        start_time = time.time()
+
+        f1_thread.start()
+        ml_event.wait()
+        ml_event.clear()
+        stop_watch.start_clock(clock_iter=1)
+        f1_event.set()
+        stop_watch.pause(seconds=sleep_arg, clock_iter=1)
+        duration = stop_watch.duration()
+        time_paused = time.time() - start_time
+
+        assert (sleep_arg
+                <= duration
+                <= (sleep_arg * 1.1)
+                )
+        assert (sleep_arg
+                <= time_paused
+                <= (sleep_arg * 1.1)
+                )
+
+        ml_event.wait()
+        time.sleep(sleep_arg)
+        stop_watch.start_clock(clock_iter=3)
+        f1_thread.join()
         logger.debug('mainline exiting')
