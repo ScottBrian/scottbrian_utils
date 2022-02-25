@@ -26,6 +26,8 @@
 
    timer <timer_link>
 
+   pauser <pauser_link>
+
 
 Indices and tables
 ==================

@@ -15,6 +15,7 @@ This is a collection of generally useful functions for use with any application.
 6. The msgs item is a simple facility you can use to send messages between threads.
 7. The stop_watch item is a simple timing function that you can use in test cases.
 8. The timer item provides a way to keep track of time to determine when a function has timed out.
+9. The Pauser class provides a pause function similar to the python sleep function, but with improved accuracy.
 
 Examples:
 =========
@@ -65,6 +66,13 @@ time and end time messages like this:
 ********************************************
 
 
+With **Pauser**, you can pause execution for a specified number of seconds like this:
+
+.. code-block:: python
+
+   pauser = Pauser()
+   pauser.pause(1.5)  # pause for 1.5 seconds
+
 
 .. image:: https://img.shields.io/badge/security-bandit-yellow.svg
     :target: https://github.com/PyCQA/bandit
@@ -111,6 +119,10 @@ Release History
       (both in diag_msg.py) to get class name in additional
       cases
     * dropped support for python 3.6, 3.7, and 3.8
+
+* 2.1.0
+    * added pauser
+    * support for python 3.10
 
 Meta
 ====
