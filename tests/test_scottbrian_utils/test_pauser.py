@@ -3,6 +3,7 @@
 ########################################################################
 # Standard Library
 ########################################################################
+import itertools
 import logging
 import re
 import threading
@@ -19,6 +20,7 @@ import pytest
 ########################################################################
 from scottbrian_utils.pauser import Pauser
 from scottbrian_utils.pauser import NegativePauseTime
+from scottbrian_utils.diag_msg import get_formatted_call_sequence as cseq
 
 ########################################################################
 # type aliases
@@ -61,14 +63,14 @@ def interval_arg(request: Any) -> IntFloat:
 
 
 ########################################################################
-# who_arg fixture
+# min_max_interval_msecs_arg
 ########################################################################
-who_arg_list = ['beta', 'charlie', 'both']
+min_max_interval_msecs_arg_list = [(1, 300), (301, 400)]
 
 
-@pytest.fixture(params=who_arg_list)  # type: ignore
-def who_arg(request: Any) -> str:
-    """Using different msg targets.
+@pytest.fixture(params=min_max_interval_msecs_arg_list)  # type: ignore
+def min_max_interval_msecs_arg(request: Any) -> tuple[int, int]:
+    """Using different interval ranges.
 
     Args:
         request: special fixture that returns the fixture params
@@ -76,18 +78,18 @@ def who_arg(request: Any) -> str:
     Returns:
         The params values are returned one at a time
     """
-    return cast(str, request.param)
+    return cast(tuple[int, int], request.param)
 
 
 #######################################################################
-# msg_arg fixture
+# part_time_factor_arg
 ########################################################################
-msg_arg_list = [0, '0', 0.0, 'hello', 1, [1, 2, 3], ('a', 'b', 'c')]
+part_time_factor_arg_list = [0.2, 0.3, 0.4, 0.5]
 
 
-@pytest.fixture(params=msg_arg_list)  # type: ignore
-def msg_arg(request: Any) -> Any:
-    """Using different msgs.
+@pytest.fixture(params=part_time_factor_arg_list)  # type: ignore
+def part_time_factor_arg(request: Any) -> float:
+    """Using different part time ratios.
 
     Args:
         request: special fixture that returns the fixture params
@@ -95,18 +97,18 @@ def msg_arg(request: Any) -> Any:
     Returns:
         The params values are returned one at a time
     """
-    return request.param
+    return cast(float, request.param)
 
 
 #######################################################################
-# start_arg fixture
+# sleep_late_ratio_arg
 ########################################################################
-start_arg_list = ['before', 'mid1', 'mid2', 'after']
+sleep_late_ratio_arg_list = [0.90, 1.0]
 
 
-@pytest.fixture(params=start_arg_list)  # type: ignore
-def start_arg(request: Any) -> str:
-    """Using different remote thread start points.
+@pytest.fixture(params=sleep_late_ratio_arg_list)  # type: ignore
+def sleep_late_ratio_arg(request: Any) -> float:
+    """Using different sleep ratios.
 
     Args:
         request: special fixture that returns the fixture params
@@ -114,7 +116,26 @@ def start_arg(request: Any) -> str:
     Returns:
         The params values are returned one at a time
     """
-    return cast(str, request.param)
+    return cast(float, request.param)
+
+
+#######################################################################
+# iterations_arg
+########################################################################
+iterations_arg_list = [3, 6]
+
+
+@pytest.fixture(params=iterations_arg_list)  # type: ignore
+def iterations_arg(request: Any) -> int:
+    """Using different calibration iterations.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
 
 
 ########################################################################
@@ -181,7 +202,7 @@ class TestPauserPause:
     ####################################################################
     def test_pauser_pause(self,
                           interval_arg: IntFloat) -> None:
-        """Test msgs queue_msg and get_msg methods.
+        """Test pauser pause meethod.
 
         Args:
             interval_arg: number of seconds to pause
@@ -189,6 +210,22 @@ class TestPauserPause:
         """
         logger.debug('mainline entered')
         pauser = Pauser()
+        pauser.calibrate()
+        low_metric_results = pauser.get_metrics(1, 500)
+        high_metric_results = pauser.get_metrics(501, 1000)
+
+        logger.debug(f'calibration results: '
+                     f'{total_requested_pause_time=:.4f}, '
+                     f'{total_actual_pause_time=:.4f}, '
+                     f'{actual_interval_pct=:.4f}%')
+
+        logger.debug(f'calibration results: '
+                     f'{total_sleep_time=:.4f}, '
+                     f'{sleep_pct=:.2f}%')
+
+        logger.debug(f'{pauser.min_interval=}')
+        logger.debug(f'{pauser.part_time_factor=}')
+        pauser.total_sleep_time = 0.0
         start_time = time.time()
         pauser.pause(interval_arg)
         stop_time = time.time()
@@ -201,12 +238,187 @@ class TestPauserPause:
             sleep_pct = 0.0
             actual_interval_pct = 0.0
 
-
         logger.debug(f'{interval_arg=}, '
                      f'{actual_interval=:.4f}, '
                      f'{actual_interval_pct=:.4f}%')
         logger.debug(f'{sleep_time=:.4f}, {sleep_pct=:.2f}%')
 
         assert actual_interval_pct <= 102.0
+
+        logger.debug('mainline exiting')
+
+########################################################################
+# TestPauserPause class
+########################################################################
+class TestPauserCalibrate:
+    """Test pause calibration."""
+
+    ####################################################################
+    # test_pauser_pause
+    ####################################################################
+    def test_pauser_calibration_defaults(self) -> None:
+        """Test pauser calibration method with defaults."""
+        logger.debug('mainline entered')
+        pauser = Pauser()
+        pauser.calibrate()
+
+        logger.debug(f'calibration results: '
+                     f'{pauser.min_interval_secs=}, '
+                     f'{pauser.part_time_factor=} ')
+
+        metric_results = pauser.get_metrics()
+        logger.debug(f'metrics results: '
+                     f'{metric_results.actual_pause_ratio=:.4f}, '
+                     f'{metric_results.sleep_ratio=:.4f}')
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_pauser_pause
+    ####################################################################
+    def test_pauser_calibration(self,
+                                monkeypatch: Any,
+                                # min_max_interval_msecs_arg: tuple[int, int],
+                                # part_time_factor_arg: float,
+                                # sleep_late_ratio_arg: float,
+                                # iterations_arg: int
+                                ) -> None:
+        """Test pauser calibration method.
+
+        Args:
+            min_max_interval_msecs_arg: range to span
+            part_time_factor_arg: factor to bee applied to sleep time
+            sleep_late_ratio_arg: threshold of lateness
+            iterations_arg: number of iteration per interval
+
+        """
+        logger.debug('mainline entered')
+        min_interval = 1
+        for max_interval in range(1, 3):
+            for num_iterations in range(1, 4):
+
+                num_intervals = max_interval - min_interval + 1
+                num_combos = num_intervals * num_iterations
+                print(f'{num_combos=}')
+                combos = itertools.product((0.0, 4.2), repeat=num_combos)
+
+                for combo in combos:
+                    rt_vals = []
+                    for sub_inter_idx in range(max_interval):
+                        sub_t = []
+                        for sub_idx in range(num_iterations):
+                            sub_t.append(combo[sub_idx])
+                        rt_vals.append(sub_t.copy())
+
+                    # rt_vals = [[0.0, 0.0, 0.0]
+                    #            for _ in range(num_intervals)]
+                    # for idx in range(1, num_intervals * 2, 2):
+                    #     rt_vals[idx] = 4.2
+                    print(f'\n{max_interval=}, '
+                          f'{num_iterations=}, '
+                          f'{rt_vals=}')
+
+                    expected_min_interval_secs = 0.001
+                    found_min = False
+                    for rev_interval_idx in range(
+                            len(rt_vals)-1, -1, -1):
+                        for rev_iter_idx in range(num_iterations-1, -1, -1):
+                            print(f'{rev_interval_idx=}, '
+                                  f'{rev_iter_idx=}, '
+                                  f'{rt_vals[rev_interval_idx][rev_iter_idx]}')
+                            if rt_vals[rev_interval_idx][rev_iter_idx] >= 4.2:
+                                expected_min_interval_secs = (
+                                        (rev_interval_idx + 1) * 0.001)
+                                found_min = True
+                                break
+                        if found_min:
+                            break
+
+                    call_num: int = -2
+
+                    def mock_time():
+                        nonlocal call_num
+                        call_num += 1
+                        if call_num % 2 != 0:  # if odd
+                            iter_num: int = 0
+                            iter_idx: int = 0
+                            interval_idx = 0
+                            ret_time_value = 0.0
+                        else:  # even
+                            iter_num: int = call_num // 2
+                            iter_idx: int = iter_num % num_iterations
+                            interval_idx: int = iter_num // num_iterations
+                            ret_time_value = rt_vals[interval_idx][iter_idx]
+                        print(f'{call_num=}, '
+                              f'{iter_num=}, '
+                              f'{iter_idx=}, '
+                              f'{interval_idx=}, '
+                              f'{ret_time_value=}, '
+                              f'{cseq()=}')
+                        return ret_time_value
+
+                    monkeypatch.setattr(time, 'time', mock_time)
+
+                    pauser = Pauser()
+                    pauser.calibrate(
+                        min_interval_msecs=min_interval,
+                        max_interval_msecs=max_interval,
+                        part_time_factor=0.4,  # part_time_factor_arg,
+                        max_sleep_late_ratio=1.0,  # sleep_late_ratio_arg,
+                        iterations=num_iterations)
+
+                    print(f'calibration results: '
+                          f'{expected_min_interval_secs=}, '
+                          f'{pauser.min_interval_secs=}, '
+                          f'{pauser.part_time_factor=} ')
+
+                    assert expected_min_interval_secs == pauser.min_interval_secs
+
+    ####################################################################
+    # test_pauser_pause
+    ####################################################################
+    def test_pauser_calibration2(self,
+                                 min_max_interval_msecs_arg: tuple[int, int],
+                                 part_time_factor_arg: float,
+                                 sleep_late_ratio_arg: float,
+                                 iterations_arg: int) -> None:
+        """Test pauser calibration method.
+
+        Args:
+            min_max_interval_msecs_arg: range to span
+            part_time_factor_arg: factor to bee applied to sleep time
+            sleep_late_ratio_arg: threshold of lateness
+            iterations_arg: number of iteration per interval
+
+        """
+        logger.debug('mainline entered')
+        pauser = Pauser()
+        pauser.calibrate(
+            min_interval_msecs=min_max_interval_msecs_arg[0],
+            max_interval_msecs=min_max_interval_msecs_arg[1],
+            part_time_factor=part_time_factor_arg,
+            max_sleep_late_ratio=sleep_late_ratio_arg,
+            iterations=iterations_arg)
+
+        logger.debug(f'calibration results: '
+                     f'{pauser.min_interval_secs=}, '
+                     f'{pauser.part_time_factor=} ')
+
+        low_metric_results = pauser.get_metrics(
+            min_interval_msecs=1,
+            max_interval_msecs=500,
+            num_iterations=3)
+        logger.debug(f'low metrics results: '
+                     f'{low_metric_results.actual_pause_ratio=:.4f}, '
+                     f'{low_metric_results.sleep_ratio=:.4f}')
+
+        high_metric_results = pauser.get_metrics(
+            min_interval_msecs=501,
+            max_interval_msecs=1000,
+            num_iterations=3)
+
+        logger.debug(f'high metrics results: '
+                     f'{high_metric_results.actual_pause_ratio=:.4f}, '
+                     f'{high_metric_results.sleep_ratio=:.4f}')
 
         logger.debug('mainline exiting')
