@@ -19,6 +19,7 @@ import pytest
 # Local
 ########################################################################
 from scottbrian_utils.pauser import Pauser
+from scottbrian_utils.pauser import IncorrectInput
 from scottbrian_utils.pauser import NegativePauseTime
 from scottbrian_utils.diag_msg import get_formatted_call_sequence as cseq
 
@@ -144,9 +145,40 @@ def iterations_arg(request: Any) -> int:
 class TestPauserErrors:
     """TestPauserErrors class."""
     ####################################################################
-    # test_pauser_negative_pause
+    # test_pauser_bad_min_interval_secs
     ####################################################################
-    def test_pauser_negative_pause(self) -> None:
+    def test_pauser_bad_min_interval_secs(self) -> None:
+        """Test bad pause min_interval_secs raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser(min_interval_secs=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser(min_interval_secs=0)
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_pauser_bad_part_time_factor
+    ####################################################################
+    def test_pauser_bad_part_time_factor(self) -> None:
+        """Test bad part_time_factor raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser(part_time_factor=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser(part_time_factor=0)
+
+        with pytest.raises(IncorrectInput):
+            Pauser(part_time_factor=1.1)
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_pause_negative_interval
+    ####################################################################
+    def test_pause_negative_interval(self) -> None:
         """Test negative pause time raises error."""
         logger.debug('mainline entered')
         with pytest.raises(NegativePauseTime):
@@ -154,6 +186,149 @@ class TestPauserErrors:
 
         logger.debug('mainline exiting')
 
+    ####################################################################
+    # test_calibrate_bad_min_interval_msecs
+    ####################################################################
+    def test_calibrate_bad_min_interval_msecs(self) -> None:
+        """Test zero or negative min_interval_msecs raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(min_interval_msecs=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(min_interval_msecs=0)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(min_interval_msecs=1.1)  # type: ignore
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_calibrate_bad_max_interval_msecs
+    ####################################################################
+    def test_calibrate_bad_max_interval_msecs(self) -> None:
+        """Test bad max_interval_msecs raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(max_interval_msecs=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(max_interval_msecs=0)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(max_interval_msecs=1.1)  # type: ignore
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(min_interval_msecs=2,
+                               max_interval_msecs=1)
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_calibrate_bad_part_time_factor
+    ####################################################################
+    def test_calibrate_bad_part_time_factor(self) -> None:
+        """Test bad part_time_factor raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(part_time_factor=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(part_time_factor=0)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(part_time_factor=1.1)
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_calibrate_bad_max_sleep_late_ratio
+    ####################################################################
+    def test_calibrate_bad_max_sleep_late_ratio(self) -> None:
+        """Test bad part_time_factor raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(max_sleep_late_ratio=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(max_sleep_late_ratio=0)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(max_sleep_late_ratio=1.1)
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_calibrate_bad_iterations
+    ####################################################################
+    def test_calibrate_bad_iterations(self) -> None:
+        """Test bad part_time_factor raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(iterations=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(iterations=0)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(iterations=1.1)  # type: ignore
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_get_metrics_bad_min_interval_msecs
+    ####################################################################
+    def test_get_metrics_bad_min_interval_msecs(self) -> None:
+        """Test zero or negative min_interval_msecs raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser().get_metrics(min_interval_msecs=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().get_metrics(min_interval_msecs=0)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().get_metrics(min_interval_msecs=1.1)  # type: ignore
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_get_metrics_bad_max_interval_msecs
+    ####################################################################
+    def test_get_metrics_bad_max_interval_msecs(self) -> None:
+        """Test bad max_interval_msecs raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser().get_metrics(max_interval_msecs=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().get_metrics(max_interval_msecs=0)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().get_metrics(max_interval_msecs=1.1)  # type: ignore
+
+        with pytest.raises(IncorrectInput):
+            Pauser().get_metrics(min_interval_msecs=2,
+                                 max_interval_msecs=1)
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_get_metrics_bad_iterations
+    ####################################################################
+    def test_get_metrics_bad_iterations(self) -> None:
+        """Test bad part_time_factor raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser().get_metrics(iterations=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().get_metrics(iterations=0)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().get_metrics(iterations=1.1)  # type: ignore
+
+        logger.debug('mainline exiting')
 
 ########################################################################
 # TestPauserExamples class
@@ -202,7 +377,7 @@ class TestPauserPause:
     ####################################################################
     def test_pauser_pause(self,
                           interval_arg: IntFloat) -> None:
-        """Test pauser pause meethod.
+        """Test pauser pause method.
 
         Args:
             interval_arg: number of seconds to pause
@@ -278,45 +453,30 @@ class TestPauserCalibrate:
     ####################################################################
     def test_pauser_calibration(self,
                                 monkeypatch: Any,
-                                # min_max_interval_msecs_arg: tuple[int, int],
-                                # part_time_factor_arg: float,
-                                # sleep_late_ratio_arg: float,
-                                # iterations_arg: int
                                 ) -> None:
         """Test pauser calibration method.
 
         Args:
-            min_max_interval_msecs_arg: range to span
-            part_time_factor_arg: factor to bee applied to sleep time
-            sleep_late_ratio_arg: threshold of lateness
-            iterations_arg: number of iteration per interval
+            monkeypatch: pytest fixture for monkeypatching
 
         """
         logger.debug('mainline entered')
         min_interval = 1
-        for max_interval in range(1, 3):
+        for max_interval in range(1, 4):
             for num_iterations in range(1, 4):
 
                 num_intervals = max_interval - min_interval + 1
                 num_combos = num_intervals * num_iterations
-                print(f'{num_combos=}')
-                combos = itertools.product((0.0, 4.2), repeat=num_combos)
+                print(f'\n{num_combos=}')
+                combos = itertools.product(
+                    itertools.product((0.0, 4.2),
+                                      repeat=num_iterations),
+                    repeat=num_intervals)
 
-                for combo in combos:
-                    rt_vals = []
-                    for sub_inter_idx in range(max_interval):
-                        sub_t = []
-                        for sub_idx in range(num_iterations):
-                            sub_t.append(combo[sub_idx])
-                        rt_vals.append(sub_t.copy())
-
-                    # rt_vals = [[0.0, 0.0, 0.0]
-                    #            for _ in range(num_intervals)]
-                    # for idx in range(1, num_intervals * 2, 2):
-                    #     rt_vals[idx] = 4.2
+                for rt_vals in combos:
+                    print(f'\n{rt_vals=}')
                     print(f'\n{max_interval=}, '
-                          f'{num_iterations=}, '
-                          f'{rt_vals=}')
+                          f'{num_iterations=}')
 
                     expected_min_interval_secs = 0.001
                     found_min = False
@@ -349,6 +509,8 @@ class TestPauserCalibrate:
                             iter_idx: int = iter_num % num_iterations
                             interval_idx: int = iter_num // num_iterations
                             ret_time_value = rt_vals[interval_idx][iter_idx]
+                            if ret_time_value == 4.2:
+                                call_num += (num_iterations - (iter_idx+1)) * 2
                         print(f'{call_num=}, '
                               f'{iter_num=}, '
                               f'{iter_idx=}, '
@@ -372,7 +534,8 @@ class TestPauserCalibrate:
                           f'{pauser.min_interval_secs=}, '
                           f'{pauser.part_time_factor=} ')
 
-                    assert expected_min_interval_secs == pauser.min_interval_secs
+                    assert (expected_min_interval_secs
+                            == pauser.min_interval_secs)
 
     ####################################################################
     # test_pauser_pause

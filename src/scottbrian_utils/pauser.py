@@ -68,6 +68,11 @@ class PauserError(Exception):
     pass
 
 
+class IncorrectInput(PauserError):
+    """Input for a method is not correct."""
+    pass
+
+
 class NegativePauseTime(PauserError):
     """Pauser pause method time arg is negative."""
     pass
@@ -110,10 +115,22 @@ class Pauser:
             part_time_factor: the value to multiply the sleep interval
                                 by to reduce the sleep time
 
-        Raise:
-            NegativePauseTime: The interval arg is not valid - please
-                provide a non-negative value.
+        Raises:
+            IncorrectInput: The argument for min_interval_secs must be a
+                positive non-zero float.
+            IncorrectInput: The argument for part_time_factor must be a
+                positive non-zero float no greater than 1.0.
+
         """
+        if min_interval_secs <= 0:
+            raise IncorrectInput(
+                'The argument for min_interval_secs must be a positive '
+                'non-zero float.')
+        if (part_time_factor <= 0.0) or (part_time_factor > 1.0):
+            raise IncorrectInput(
+                'The argument for part_time_factor must be a positive '
+                'non-zero float no greater than 1.0.')
+
         self.min_interval_secs = min_interval_secs
         self.part_time_factor = part_time_factor
         self.total_sleep_time = 0.0
@@ -135,7 +152,39 @@ class Pauser:
             part_time_factor: factor of sleep time to try
             max_sleep_late_ratio: allowed error threshold
             iterations: number of iteration per interval
+
+        Raises:
+            IncorrectInput: The argument for min_interval_msecs must be
+                a positive non-zero integer.
         """
+        if ((not isinstance(min_interval_msecs, int))
+                or (min_interval_msecs <= 0)):
+            raise IncorrectInput(
+                'The argument for min_interval_msecs must be a positive '
+                'non-zero integer.')
+
+        if ((not isinstance(max_interval_msecs, int))
+                or (max_interval_msecs < min_interval_msecs)):
+            raise IncorrectInput(
+                'The argument for max_interval_msecs must be a positive '
+                'non-zero integer equal to or greater than '
+                'min_interval_msecs.')
+
+        if (part_time_factor <= 0.0) or (part_time_factor > 1.0):
+            raise IncorrectInput(
+                'The argument for part_time_factor must be a positive '
+                'non-zero float no greater than 1.0.')
+
+        if (max_sleep_late_ratio <= 0.0) or (max_sleep_late_ratio > 1.0):
+            raise IncorrectInput(
+                'The argument for max_sleep_late_ratio must be a '
+                'positive non-zero float no greater than 1.0.')
+
+        if (not isinstance(iterations, int)) or (iterations <= 0):
+            raise IncorrectInput(
+                'The argument for iterations must be a positive '
+                'non-zero integer.')
+
         min_interval_secs = min_interval_msecs * Pauser.MSECS_2_SECS
         for interval_msecs in range(min_interval_msecs, max_interval_msecs+1):
             interval_secs = interval_msecs * Pauser.MSECS_2_SECS
@@ -157,20 +206,41 @@ class Pauser:
     def get_metrics(self,
                     min_interval_msecs: int = CALIBRATION_MIN_INTERVAL_MSECS,
                     max_interval_msecs: int = CALIBRATION_MAX_INTERVAL_MSECS,
-                    num_iterations: int = CALIBRATION_ITERATIONS
+                    iterations: int = CALIBRATION_ITERATIONS
                     ) -> MetricResults:
         """Get the pauser metrics.
 
         Args:
             min_interval_msecs: starting number of milliseconds for scan
             max_interval_msecs: ending number of milliseconds for scan
-            num_iterations: number of iterations to run each interval
+            iterations: number of iterations to run each interval
 
         Returns:
             The pause interval ratio (actual/requested) and the sleep
               ratio (sleep/requested)
 
+        Raises:
+            IncorrectInput: The argument for min_interval_msecs must be
+                a positive non-zero integer.
         """
+        if ((not isinstance(min_interval_msecs, int))
+                or (min_interval_msecs <= 0)):
+            raise IncorrectInput(
+                'The argument for min_interval_msecs must be a positive '
+                'non-zero integer.')
+
+        if ((not isinstance(max_interval_msecs, int))
+                or (max_interval_msecs < min_interval_msecs)):
+            raise IncorrectInput(
+                'The argument for max_interval_msecs must be a positive '
+                'non-zero integer equal to or greater than '
+                'min_interval_msecs.')
+
+        if (not isinstance(iterations, int)) or (iterations <= 0):
+            raise IncorrectInput(
+                'The argument for iterations must be a positive '
+                'non-zero integer.')
+
         metric_pauser = Pauser(min_interval_secs=self.min_interval_secs,
                                part_time_factor=self.part_time_factor)
         metric_pauser.total_sleep_time = 0.0
@@ -180,7 +250,7 @@ class Pauser:
                                     max_interval_msecs):
             pause_time = interval_msecs * Pauser.MSECS_2_SECS
 
-            for _ in range(num_iterations):
+            for _ in range(iterations):
                 total_requested_pause_time += pause_time
                 start_time = time.time()
                 metric_pauser.pause(pause_time)
@@ -203,6 +273,10 @@ class Pauser:
 
         Args:
             interval: number of seconds to pause
+
+                Raise:
+        NegativePauseTime: The interval arg is not valid - please
+            provide a non-negative value.
         """
         now_time = time.time()  # start the timing
         if interval < 0:
