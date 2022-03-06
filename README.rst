@@ -70,6 +70,7 @@ With **Pauser**, you can pause execution for a specified number of seconds like 
 
 .. code-block:: python
 
+   from scottbrian_utils.pauser import Pauser
    pauser = Pauser()
    pauser.pause(1.5)  # pause for 1.5 seconds
 

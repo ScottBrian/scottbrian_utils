@@ -5,8 +5,6 @@
 ########################################################################
 import itertools
 import logging
-import re
-import threading
 import time
 from typing import Any, cast, Optional, Union
 
@@ -66,7 +64,11 @@ def interval_arg(request: Any) -> IntFloat:
 ########################################################################
 # min_max_interval_msecs_arg
 ########################################################################
-min_max_interval_msecs_arg_list = [(1, 300), (301, 400)]
+min_max_interval_msecs_arg_list = [(1, 1),
+                                   (1, 2),
+                                   (1, 3),
+                                   (1, 100),
+                                   (101, 200)]
 
 
 @pytest.fixture(params=min_max_interval_msecs_arg_list)  # type: ignore
@@ -83,9 +85,28 @@ def min_max_interval_msecs_arg(request: Any) -> tuple[int, int]:
 
 
 #######################################################################
+# increment_arg
+########################################################################
+increment_arg_list = [1, 2, 3, 5]
+
+
+@pytest.fixture(params=increment_arg_list)  # type: ignore
+def increment_arg(request: Any) -> int:
+    """Using different increments.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+#######################################################################
 # part_time_factor_arg
 ########################################################################
-part_time_factor_arg_list = [0.2, 0.3, 0.4, 0.5]
+part_time_factor_arg_list = [0.3, 0.4, 0.5]
 
 
 @pytest.fixture(params=part_time_factor_arg_list)  # type: ignore
@@ -123,7 +144,7 @@ def sleep_late_ratio_arg(request: Any) -> float:
 #######################################################################
 # iterations_arg
 ########################################################################
-iterations_arg_list = [3, 6]
+iterations_arg_list = [1, 2, 3]
 
 
 @pytest.fixture(params=iterations_arg_list)  # type: ignore
@@ -221,6 +242,23 @@ class TestPauserErrors:
         with pytest.raises(IncorrectInput):
             Pauser().calibrate(min_interval_msecs=2,
                                max_interval_msecs=1)
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_calibrate_bad_increment
+    ####################################################################
+    def test_calibrate_bad_increment(self) -> None:
+        """Test zero or negative min_interval_msecs raises error."""
+        logger.debug('mainline entered')
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(increment=-1)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(increment=0)
+
+        with pytest.raises(IncorrectInput):
+            Pauser().calibrate(increment=1.1)  # type: ignore
 
         logger.debug('mainline exiting')
 
@@ -330,6 +368,7 @@ class TestPauserErrors:
 
         logger.debug('mainline exiting')
 
+
 ########################################################################
 # TestPauserExamples class
 ########################################################################
@@ -385,26 +424,17 @@ class TestPauserPause:
         """
         logger.debug('mainline entered')
         pauser = Pauser()
-        pauser.calibrate()
-        low_metric_results = pauser.get_metrics(1, 500)
-        high_metric_results = pauser.get_metrics(501, 1000)
 
-        logger.debug(f'calibration results: '
-                     f'{total_requested_pause_time=:.4f}, '
-                     f'{total_actual_pause_time=:.4f}, '
-                     f'{actual_interval_pct=:.4f}%')
-
-        logger.debug(f'calibration results: '
-                     f'{total_sleep_time=:.4f}, '
-                     f'{sleep_pct=:.2f}%')
-
-        logger.debug(f'{pauser.min_interval=}')
+        logger.debug(f'{pauser.min_interval_secs=}')
         logger.debug(f'{pauser.part_time_factor=}')
+
         pauser.total_sleep_time = 0.0
-        start_time = time.time()
+
+        start_time = time.perf_counter_ns()
         pauser.pause(interval_arg)
-        stop_time = time.time()
-        actual_interval = stop_time - start_time
+        stop_time = time.perf_counter_ns()
+
+        actual_interval = (stop_time - start_time) * Pauser.NS_2_SECS
         sleep_time = pauser.total_sleep_time
         if 0 < interval_arg:
             actual_interval_pct = (actual_interval/interval_arg) * 100
@@ -418,9 +448,11 @@ class TestPauserPause:
                      f'{actual_interval_pct=:.4f}%')
         logger.debug(f'{sleep_time=:.4f}, {sleep_pct=:.2f}%')
 
-        assert actual_interval_pct <= 102.0
+        if 0 < interval_arg:
+            assert 99.0 <= actual_interval_pct <= 101.0
 
         logger.debug('mainline exiting')
+
 
 ########################################################################
 # TestPauserPause class
@@ -429,7 +461,7 @@ class TestPauserCalibrate:
     """Test pause calibration."""
 
     ####################################################################
-    # test_pauser_pause
+    # test_pauser_calibration_defaults
     ####################################################################
     def test_pauser_calibration_defaults(self) -> None:
         """Test pauser calibration method with defaults."""
@@ -443,24 +475,28 @@ class TestPauserCalibrate:
 
         metric_results = pauser.get_metrics()
         logger.debug(f'metrics results: '
-                     f'{metric_results.actual_pause_ratio=:.4f}, '
+                     f'{metric_results.pause_ratio=:.4f}, '
                      f'{metric_results.sleep_ratio=:.4f}')
 
         logger.debug('mainline exiting')
 
     ####################################################################
-    # test_pauser_pause
+    # test_pauser_calibration
     ####################################################################
     def test_pauser_calibration(self,
                                 monkeypatch: Any,
+                                sleep_late_ratio_arg: float
                                 ) -> None:
         """Test pauser calibration method.
 
         Args:
-            monkeypatch: pytest fixture for monkeypatching
+            monkeypatch: pytest fixture for monkey-patching
+            sleep_late_ratio_arg: threshold of lateness
 
         """
         logger.debug('mainline entered')
+        low_interval_ratio = sleep_late_ratio_arg - .01
+        high_interval_ratio = sleep_late_ratio_arg + .01
         min_interval = 1
         for max_interval in range(1, 4):
             for num_iterations in range(1, 4):
@@ -496,21 +532,29 @@ class TestPauserCalibrate:
 
                     call_num: int = -2
 
-                    def mock_time():
+                    def mock_time() -> float:
                         nonlocal call_num
                         call_num += 1
                         if call_num % 2 != 0:  # if odd
                             iter_num: int = 0
                             iter_idx: int = 0
-                            interval_idx = 0
+                            interval_idx: int = 0
                             ret_time_value = 0.0
                         else:  # even
-                            iter_num: int = call_num // 2
-                            iter_idx: int = iter_num % num_iterations
-                            interval_idx: int = iter_num // num_iterations
+                            iter_num = call_num // 2
+                            iter_idx = iter_num % num_iterations
+                            interval_idx = iter_num // num_iterations
+                            interval_value = (interval_idx + 1) * .001
                             ret_time_value = rt_vals[interval_idx][iter_idx]
                             if ret_time_value == 4.2:
+                                ret_time_value = ((interval_value
+                                                  * high_interval_ratio)
+                                                  * Pauser.SECS_2_NS)
                                 call_num += (num_iterations - (iter_idx+1)) * 2
+                            else:
+                                ret_time_value = ((interval_value
+                                                  * low_interval_ratio)
+                                                  * Pauser.SECS_2_NS)
                         print(f'{call_num=}, '
                               f'{iter_num=}, '
                               f'{iter_idx=}, '
@@ -519,14 +563,15 @@ class TestPauserCalibrate:
                               f'{cseq()=}')
                         return ret_time_value
 
-                    monkeypatch.setattr(time, 'time', mock_time)
+                    monkeypatch.setattr(time, 'perf_counter_ns', mock_time)
 
                     pauser = Pauser()
                     pauser.calibrate(
                         min_interval_msecs=min_interval,
                         max_interval_msecs=max_interval,
+                        increment=1,
                         part_time_factor=0.4,  # part_time_factor_arg,
-                        max_sleep_late_ratio=1.0,  # sleep_late_ratio_arg,
+                        max_sleep_late_ratio=sleep_late_ratio_arg,
                         iterations=num_iterations)
 
                     print(f'calibration results: '
@@ -538,18 +583,20 @@ class TestPauserCalibrate:
                             == pauser.min_interval_secs)
 
     ####################################################################
-    # test_pauser_pause
+    # test_pauser_calibration2
     ####################################################################
     def test_pauser_calibration2(self,
                                  min_max_interval_msecs_arg: tuple[int, int],
                                  part_time_factor_arg: float,
+                                 increment_arg: int,
                                  sleep_late_ratio_arg: float,
                                  iterations_arg: int) -> None:
         """Test pauser calibration method.
 
         Args:
             min_max_interval_msecs_arg: range to span
-            part_time_factor_arg: factor to bee applied to sleep time
+            increment_arg: increment to use for span
+            part_time_factor_arg: factor to be applied to sleep time
             sleep_late_ratio_arg: threshold of lateness
             iterations_arg: number of iteration per interval
 
@@ -559,6 +606,7 @@ class TestPauserCalibrate:
         pauser.calibrate(
             min_interval_msecs=min_max_interval_msecs_arg[0],
             max_interval_msecs=min_max_interval_msecs_arg[1],
+            increment=increment_arg,
             part_time_factor=part_time_factor_arg,
             max_sleep_late_ratio=sleep_late_ratio_arg,
             iterations=iterations_arg)
@@ -567,21 +615,117 @@ class TestPauserCalibrate:
                      f'{pauser.min_interval_secs=}, '
                      f'{pauser.part_time_factor=} ')
 
-        low_metric_results = pauser.get_metrics(
-            min_interval_msecs=1,
-            max_interval_msecs=500,
-            num_iterations=3)
-        logger.debug(f'low metrics results: '
-                     f'{low_metric_results.actual_pause_ratio=:.4f}, '
-                     f'{low_metric_results.sleep_ratio=:.4f}')
+        # low_metric_results = pauser.get_metrics(
+        #     min_interval_msecs=1,
+        #     max_interval_msecs=300,
+        #     iterations=3)
+        # logger.debug(f'low metrics results: '
+        #              f'{low_metric_results.pause_ratio=:.4f}, '
+        #              f'{low_metric_results.sleep_ratio=:.4f}')
+        #
+        # high_metric_results = pauser.get_metrics(
+        #     min_interval_msecs=301,
+        #     max_interval_msecs=600,
+        #     iterations=3)
+        #
+        # logger.debug(f'high metrics results: '
+        #              f'{high_metric_results.pause_ratio=:.4f}, '
+        #              f'{high_metric_results.sleep_ratio=:.4f}')
 
-        high_metric_results = pauser.get_metrics(
-            min_interval_msecs=501,
-            max_interval_msecs=1000,
-            num_iterations=3)
+        logger.debug('mainline exiting')
 
-        logger.debug(f'high metrics results: '
-                     f'{high_metric_results.actual_pause_ratio=:.4f}, '
-                     f'{high_metric_results.sleep_ratio=:.4f}')
+
+########################################################################
+# TestPauserPause class
+########################################################################
+class TestPauserGetMetrics:
+    """Test pause calibration."""
+
+    ####################################################################
+    # test_pauser_get_metrics_defaults
+    ####################################################################
+    def test_pauser_get_metrics_defaults(self) -> None:
+        """Test pauser calibration method with defaults."""
+        logger.debug('mainline entered')
+        pauser = Pauser()
+
+        logger.debug(f'calibration results: '
+                     f'{pauser.min_interval_secs=}, '
+                     f'{pauser.part_time_factor=} ')
+
+        metric_results = pauser.get_metrics()
+        logger.debug(f'metrics results: '
+                     f'{metric_results.pause_ratio=:.4f}, '
+                     f'{metric_results.sleep_ratio=:.4f}')
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_pauser_get_metrics_diff_inputs
+    ####################################################################
+    def test_pauser_get_metrics_diff_inputs(
+            self,
+            min_max_interval_msecs_arg: tuple[int, int],
+            iterations_arg: int) -> None:
+        """Test pauser calibration method.
+
+        Args:
+            min_max_interval_msecs_arg: range to span
+            iterations_arg: number of iteration per interval
+        """
+        logger.debug('mainline entered')
+        pauser = Pauser()
+
+        logger.debug(f'pauser settings: '
+                     f'{pauser.min_interval_secs=}, '
+                     f'{pauser.part_time_factor=} ')
+
+        metric_results = pauser.get_metrics(
+            min_interval_msecs=min_max_interval_msecs_arg[0],
+            max_interval_msecs=min_max_interval_msecs_arg[1],
+            iterations=iterations_arg)
+
+        logger.debug(f'metrics results: '
+                     f'{metric_results.pause_ratio=:.4f}, '
+                     f'{metric_results.sleep_ratio=:.4f}')
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_pauser_get_metrics
+    ####################################################################
+    def test_pauser_get_metrics(self) -> None:
+        """Test pauser calibration method."""
+        logger.debug('mainline entered')
+        pauser = Pauser(min_interval_secs=0.25,
+                        part_time_factor=0.3)
+
+        pause_ratios = []
+        sleep_ratios = []
+        for min_interval_seconds in [0.001, 0.250]:  # extremes
+            pauser.min_interval_secs = min_interval_seconds
+
+            logger.debug(f'metrics pauser settings: '
+                         f'{pauser.min_interval_secs=}, '
+                         f'{pauser.part_time_factor=} ')
+
+            metric_results = pauser.get_metrics(
+                min_interval_msecs=1,
+                max_interval_msecs=250,
+                iterations=1)
+
+            pause_ratios.append(metric_results.pause_ratio)
+            sleep_ratios.append(metric_results.sleep_ratio)
+            logger.debug(f'metrics results: '
+                         f'{metric_results.pause_ratio=:.4f}, '
+                         f'{metric_results.sleep_ratio=:.4f}')
+
+        assert 1.0 < pause_ratios[1]
+
+        assert pause_ratios[1] < pause_ratios[0]
+
+        assert sleep_ratios[1] == 0.0
+
+        assert sleep_ratios[1] < sleep_ratios[0]
 
         logger.debug('mainline exiting')
