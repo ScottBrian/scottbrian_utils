@@ -4,10 +4,10 @@
 Pauser
 ======
 
-The *Pauser* class provides a *pause* method similar to python
-``time.sleep()``. ``Pauser.pause()`` uses a ccombination of
-``time.sleep()`` and looping on python ``time.perf_counter_ns()`` in an
-attempt at being more accurate than using ``time.sleep()`` alone.
+The *Pauser* class provides a *pause* method that delays execution
+for a specified interval. When possible, it uses ``time.sleep()`` for
+the initial part of the delay, and then completes the delay by looping
+while checking the elapsed time using ``time.perf_counter_ns()``.
 
 :Example: pause execution for 1.5 seconds
 
@@ -16,16 +16,19 @@ attempt at being more accurate than using ``time.sleep()`` alone.
 >>> pauser = Pauser()
 >>> start_time = time.time()
 >>> pauser.pause(1.5)
->>> print(f'paused for {time.time() - start_time:.1f} seconds')
+>>> stop_time = time.time()
+>>> print(f'paused for {stop_time - start_time:.1f} seconds')
 paused for 1.5 seconds
 
-Python ``time.sleep()`` is useful for a rough pause, but at very small
-pause intervals it can pause for more time than requested. For example,
-``time.sleep(0.001)`` might return 0.015 seconds later in some cases.
-``Pauser.pause()`` uses ``time.sleep()`` for a portion of the
-pause time, and then finishes the pause using a simple loop while
-checking the remaining time with ``time.perf_counter_ns()`` to complete
-the requested interval.
+While ``time.sleep()`` is useful for a rough delay, at very small
+intervals it can delay for more time than requested. For example,
+``time.sleep(0.001)`` might return after 0.015 seconds.
+
+``Pauser.pause()`` provides accuracy at the expense of looping for some
+portion of the delay, perhaps the entire delay when a small interval is
+requested. ``time.sleep()`` should be preferred for applications that do
+not require acccracy since it will give up the processor and allow
+other work to make progress.
 
 
 The Pauser module contains:
@@ -150,9 +153,9 @@ class Pauser:
         self.part_time_factor = part_time_factor
         self.total_sleep_time = 0.0
 
-    ###########################################################################
+    ####################################################################
     # repr
-    ###########################################################################
+    ####################################################################
     def __repr__(self) -> str:
         """Return a representation of the class.
 
@@ -162,7 +165,8 @@ class Pauser:
         :Example: instantiate a Pauser and call repr
 
         >>> from scottbrian_utils.pauser import Pauser
-        >>> pauser = Pauser(min_interval_secs=0.02, part_time_factor=0.3)
+        >>> pauser = Pauser(min_interval_secs=0.02,
+        ...                 part_time_factor=0.3)
         >>> repr(pauser)
         'Pauser(min_interval_secs=0.02, part_time_factor=0.3)'
 
@@ -185,7 +189,15 @@ class Pauser:
                   part_time_factor: float = CALIBRATION_PART_TIME_FACTOR,
                   max_sleep_late_ratio: float = CALIBRATION_MAX_LATE_RATIO,
                   iterations: int = CALIBRATION_ITERATIONS) -> None:
-        """Calibrate the pause time.
+        """Calibrate the Pauser for the current environment.
+
+        The *calibrate* method determines and sets the correct value for
+        *min_interval_secs*, the lowest value for which the *pause*
+        method will use ``time.sleep()`` to achieve a portion of the
+        delay. This helps to ensure that ``time.sleep()`` is used for
+        as much of the delay as possible to help free up the processor
+        to perform other work. Note that *calibrate* does not affect the
+        accuracy of the delay provided by ``Pauser.pause``.
 
         Args:
             min_interval_msecs: starting interval of span to calibrate
@@ -286,8 +298,12 @@ class Pauser:
             iterations: number of iterations to run each interval
 
         Returns:
-            The pause interval ratio (actual/requested) and the sleep
-              ratio (sleep/requested)
+            The pause interval ratio (actual/requested) is returned in
+            Metrics.pause_ratio and is an indication of the accuarcy of
+            the requested delay with the value 1 being perfect.
+            The sleep ratio (sleep/requested) is returned in
+            Metrics.sleep_ratio and is the portion of the delay
+            accomplished using ``time.sleep()``.
 
         Raises:
             IncorrectInput: The *min_interval_msecs* argument is not
@@ -297,6 +313,37 @@ class Pauser:
                 or greater than min_interval_msecs.
             IncorrectInput: The *iterations* argument is not valid - it
                 must be a positive non-zero integer.
+
+        Example: get the metrics for a pause of 0.1 seconds. Note that
+                 the accuracy os very good at 1.0 and the portion of
+                 the delay provided by ``time.sleep()`` is about 60%.
+
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> pauser = Pauser()
+            >>> metrics = pauser.get_metrics(min_interval_msecs=100,
+            ...                              max_interval_msecs=100,
+            ...                              iterations=3)
+            >>> print(f'{metrics.pause_ratio=:.1f}, '
+            ...       f'{metrics.sleep_ratio=:.1f}')
+            metrics.pause_ratio=1.0, metrics.sleep_ratio=0.6
+
+        Example: get the metrics for a pause range of 0.98 to 1.0
+                 seconds. Note that the accuracy is very good at 1.0
+                 but the portion of the delay provided by
+                 ``time.sleep()`` is zero. This is so because the Pauser
+                  was instantiated with a *min_interval_secs* of 1.0
+                  which effectively prevents ``time.sleep()`` from being
+                  used for any requested delays af 1 second or less.
+
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> pauser = Pauser(min_interval_secs=1.0)
+            >>> metrics = pauser.get_metrics(min_interval_msecs=980,
+            ...                              max_interval_msecs=1000,
+            ...                              iterations=3)
+            >>> print(f'{metrics.pause_ratio=:.1f}, '
+            ...       f'{metrics.sleep_ratio=:.1f}')
+            metrics.pause_ratio=1.0, metrics.sleep_ratio=0.0
+
         """
         if ((not isinstance(min_interval_msecs, int))
                 or (min_interval_msecs <= 0)):

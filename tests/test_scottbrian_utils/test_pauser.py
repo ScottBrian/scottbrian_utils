@@ -18,7 +18,6 @@ import pytest
 ########################################################################
 from scottbrian_utils.pauser import Pauser
 from scottbrian_utils.pauser import IncorrectInput
-from scottbrian_utils.pauser import NegativePauseTime
 from scottbrian_utils.diag_msg import get_formatted_call_sequence as cseq
 
 ########################################################################
@@ -202,7 +201,7 @@ class TestPauserErrors:
     def test_pause_negative_interval(self) -> None:
         """Test negative pause time raises error."""
         logger.debug('mainline entered')
-        with pytest.raises(NegativePauseTime):
+        with pytest.raises(IncorrectInput):
             Pauser().pause(-1)
 
         logger.debug('mainline exiting')
