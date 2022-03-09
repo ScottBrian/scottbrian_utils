@@ -403,6 +403,245 @@ class TestPauserExamples:
 
         assert captured == expected_result
 
+    ####################################################################
+    # test_pauser_example2
+    ####################################################################
+    def test_pauser_example2(self,
+                             capsys: Any) -> None:
+        """Test pauser example2.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print('mainline entered')
+
+        from scottbrian_utils.pauser import Pauser
+        pauser = Pauser()
+        print(pauser)
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += ('Pauser(min_interval_secs=0.03, '
+                            'part_time_factor=0.4)\n')
+        expected_result += 'mainline exiting\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_pauser_example3
+    ####################################################################
+    def test_pauser_example3(self,
+                             capsys: Any) -> None:
+        """Test pauser example3.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print('mainline entered')
+
+        from scottbrian_utils.pauser import Pauser
+        pauser = Pauser(min_interval_secs=0.02,
+                        part_time_factor=0.3)
+        print(repr(pauser))
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += ('Pauser(min_interval_secs=0.02, '
+                            'part_time_factor=0.3)\n')
+        expected_result += 'mainline exiting\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_pauser_example4
+    ####################################################################
+    def test_pauser_example4(self,
+                             capsys: Any) -> None:
+        """Test pauser example4.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print('mainline entered')
+
+        from scottbrian_utils.pauser import Pauser
+        pauser = Pauser(min_interval_secs=1.0)
+        pauser.calibrate(min_interval_msecs=5,
+                         max_interval_msecs=100,
+                         increment=5)
+        print(f'{pauser.min_interval_secs=}')
+
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += 'pauser.min_interval_secs=0.015\n'
+        expected_result += 'mainline exiting\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_pauser_example5
+    ####################################################################
+    def test_pauser_example5(self,
+                             capsys: Any) -> None:
+        """Test pauser example5.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print('mainline entered')
+
+        from scottbrian_utils.pauser import Pauser
+        pauser = Pauser()
+        metrics = pauser.get_metrics(min_interval_msecs=100,
+                                     max_interval_msecs=100,
+                                     iterations=3)
+        print(f'{metrics.pause_ratio=:.1f}, '
+              f'{metrics.sleep_ratio=:.1f}')
+
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += ('metrics.pause_ratio=1.0, '
+                            'metrics.sleep_ratio=0.6\n')
+        expected_result += 'mainline exiting\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_pauser_example6
+    ####################################################################
+    def test_pauser_example6(self,
+                             capsys: Any) -> None:
+        """Test pauser example6.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print('mainline entered')
+
+        from scottbrian_utils.pauser import Pauser
+        pauser = Pauser(min_interval_secs=1.0)
+        metrics = pauser.get_metrics(min_interval_msecs=980,
+                                     max_interval_msecs=1000,
+                                     iterations=3)
+        print(f'{metrics.pause_ratio=:.1f}, '
+              f'{metrics.sleep_ratio=:.1f}')
+
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += ('metrics.pause_ratio=1.0, '
+                            'metrics.sleep_ratio=0.0\n')
+        expected_result += 'mainline exiting\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_pauser_example7
+    ####################################################################
+    def test_pauser_example7(self,
+                             capsys: Any) -> None:
+        """Test pauser example7.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print('mainline entered')
+
+        from scottbrian_utils.pauser import Pauser
+        pauser = Pauser()
+        pauser.pause(1)
+
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += 'mainline exiting\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_pauser_example8
+    ####################################################################
+    def test_pauser_example8(self,
+                             capsys: Any) -> None:
+        """Test pauser example8.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print('mainline entered')
+
+        from scottbrian_utils.pauser import Pauser
+        import time
+        pauser = Pauser()
+        start_time = time.time()
+        pauser.pause(0.5)
+        stop_time = time.time()
+        interval = (stop_time - start_time) * Pauser.NS_2_SECS
+        print(f'paused for {interval:.1f} seconds')
+
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += 'paused for 0.5 seconds\n'
+        expected_result += 'mainline exiting\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_pauser_example9
+    ####################################################################
+    def test_pauser_example9(self,
+                             capsys: Any) -> None:
+        """Test pauser example9.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print('mainline entered')
+
+        from scottbrian_utils.pauser import Pauser
+        import time
+        pauser = Pauser()
+        start_time = time.perf_counter_ns()
+        pauser.pause(0.25)
+        stop_time = time.perf_counter_ns()
+        interval = (stop_time - start_time) * Pauser.NS_2_SECS
+        print(f'paused for {interval:.2f} seconds')
+
+        print('mainline exiting')
+
+        expected_result = 'mainline entered\n'
+        expected_result += 'paused for 0.25 seconds\n'
+        expected_result += 'mainline exiting\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
 
 ########################################################################
 # TestPauserPause class
@@ -630,6 +869,24 @@ class TestPauserCalibrate:
         # logger.debug(f'high metrics results: '
         #              f'{high_metric_results.pause_ratio=:.4f}, '
         #              f'{high_metric_results.sleep_ratio=:.4f}')
+
+        logger.debug('mainline exiting')
+
+    ####################################################################
+    # test_pauser_calibration3
+    ####################################################################
+    def test_pauser_calibration3(self) -> None:
+        """Test pauser calibration method."""
+        logger.debug('mainline entered')
+        pauser = Pauser()
+        pauser.calibrate(
+            min_interval_msecs=5,
+            max_interval_msecs=100,
+            increment=5)
+
+        logger.debug(f'calibration results: '
+                     f'{pauser.min_interval_secs=}, '
+                     f'{pauser.part_time_factor=} ')
 
         logger.debug('mainline exiting')
 

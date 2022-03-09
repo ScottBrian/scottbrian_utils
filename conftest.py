@@ -96,5 +96,5 @@ pytest_collect_file = Sybil(
         PythonCodeBlockParser(),
     ],
     patterns=['*.rst', '*.py'],
-    excludes=['log_verifier.py']
+    # excludes=['log_verifier.py']
 ).pytest()

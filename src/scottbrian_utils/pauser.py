@@ -115,6 +115,8 @@ class Pauser:
         These values should be chosen based on the observed behavior of
         **time.sleep()** at low enough intervals to get an idea of
         where the sleep time fails to reflect the requested sleep time.
+        Note that ``Pauser.calibrate()`` can be used to find and set the
+        best value for *min_interval_secs*.
 
 
         Args:
@@ -196,8 +198,10 @@ class Pauser:
         method will use ``time.sleep()`` to achieve a portion of the
         delay. This helps to ensure that ``time.sleep()`` is used for
         as much of the delay as possible to help free up the processor
-        to perform other work. Note that *calibrate* does not affect the
-        accuracy of the delay provided by ``Pauser.pause``.
+        to perform other work. Note that setting the correct value for
+        *min_interval_secs* helps ensure delay accuracy be preventing
+        ``time.sleep()`` from being used at intervals that it is unable
+        to accurately process.
 
         Args:
             min_interval_msecs: starting interval of span to calibrate
@@ -224,6 +228,17 @@ class Pauser:
                 than 1.0.
             IncorrectInput: The *iterations* argument is not valid - it
                 must be a positive non-zero integer.
+
+        Example: calibrate the Pauser for a specific range of intervals
+
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> pauser = Pauser(min_interval_secs=1.0)
+            >>> pauser.calibrate(min_interval_msecs=5,
+            ...                  max_interval_msecs=100,
+            ...                  increment=5)
+            >>> print(f'{pauser.min_interval_secs=}')
+            pauser.min_interval_secs=0.015
+
         """
         if ((not isinstance(min_interval_msecs, int))
                 or (min_interval_msecs <= 0)):
@@ -315,7 +330,7 @@ class Pauser:
                 must be a positive non-zero integer.
 
         Example: get the metrics for a pause of 0.1 seconds. Note that
-                 the accuracy os very good at 1.0 and the portion of
+                 the accuracy is very good at 1.0 and the portion of
                  the delay provided by ``time.sleep()`` is about 60%.
 
             >>> from scottbrian_utils.pauser import Pauser
@@ -331,9 +346,9 @@ class Pauser:
                  seconds. Note that the accuracy is very good at 1.0
                  but the portion of the delay provided by
                  ``time.sleep()`` is zero. This is so because the Pauser
-                  was instantiated with a *min_interval_secs* of 1.0
-                  which effectively prevents ``time.sleep()`` from being
-                  used for any requested delays af 1 second or less.
+                 was instantiated with a *min_interval_secs* of 1.0
+                 which effectively prevents ``time.sleep()`` from being
+                 used for any requested delays af 1 second or less.
 
             >>> from scottbrian_utils.pauser import Pauser
             >>> pauser = Pauser(min_interval_secs=1.0)
@@ -403,6 +418,38 @@ class Pauser:
         Raises:
             IncorrectInput: The interval arg is not valid - please
                 provide a non-negative value.
+
+        Example: pause for 1 second
+
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> pauser = Pauser()
+            >>> pauser.pause(1)
+
+        Example: pause for 1 half second and verify using time.time
+
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> import time
+            >>> pauser = Pauser()
+            >>> start_time = time.time()
+            >>> pauser.pause(0.5)
+            >>> stop_time = time.time()
+            >>> interval = stop_time - start_time
+            >>> print(f'paused for {interval:.1f} seconds')
+            paused for 0.5 seconds
+
+        Example: pause for 1 quarter second and verify using
+                 time.perf_counter_ns
+
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> import time
+            >>> pauser = Pauser()
+            >>> start_time = time.perf_counter_ns()
+            >>> pauser.pause(0.25)
+            >>> stop_time = time.perf_counter_ns()
+            >>> interval = (stop_time - start_time) * Pauser.NS_2_SECS
+            >>> print(f'paused for {interval:.2f} seconds')
+            paused for 0.25 seconds
+
         """
         now_time = time.perf_counter_ns()  # start the timing
         if interval < 0:

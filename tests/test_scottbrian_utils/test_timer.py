@@ -5,6 +5,7 @@
 ########################################################################
 import inspect
 import logging
+import sys
 import threading
 import time
 from typing import Any, cast, Optional, Union
@@ -393,12 +394,24 @@ class TestTimerBasic:
         """Test timer correct source."""
         print('\nmainline entered')
         print(f'{inspect.getsourcefile(Timer)=}')
-        exp1 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
-                '\\py39-pytest\\lib\\site-packages\\scottbrian_utils\\timer'
-                '.py')
-        exp2 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
-                '\\py39-coverage\\lib\\site-packages\\scottbrian_utils\\timer'
-                '.py')
+        if sys.version_info.minor == 9:
+            exp1 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
+                    '\\py39-pytest\\lib\\site-packages\\scottbrian_utils'
+                    '\\timer.py')
+            exp2 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
+                    '\\py39-coverage\\lib\\site-packages\\scottbrian_utils'
+                    '\\timer.py')
+        elif sys.version_info.minor == 10:
+            exp1 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
+                    '\\py310-pytest\\lib\\site-packages\\scottbrian_utils'
+                    '\\timer.py')
+            exp2 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
+                    '\\py310-coverage\\lib\\site-packages\\scottbrian_utils'
+                    '\\timer.py')
+        else:
+            exp1 = ''
+            exp2 = ''
+
         actual = inspect.getsourcefile(Timer)
         assert (actual == exp1) or (actual == exp2)
         print('mainline exiting')

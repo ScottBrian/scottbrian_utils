@@ -6,7 +6,7 @@
 import logging
 import threading
 import time
-from typing import Any, cast, Optional, Union
+from typing import Any, cast, Final, Optional, Union
 
 ########################################################################
 # Third Party
@@ -23,6 +23,11 @@ from scottbrian_utils.stop_watch import StopWatch
 ########################################################################
 IntFloat = Union[int, float]
 OptIntFloat = Optional[IntFloat]
+
+########################################################################
+# Constants
+########################################################################
+NS_2_SECS: Final[float] = 0.000000001
 
 ########################################################################
 # Set up logging
@@ -110,11 +115,12 @@ class TestBasicStopWatch:
         logger.debug('mainline entered')
 
         stop_watch = StopWatch()
-        start_time = time.time()
+        start_time = time.perf_counter_ns()
         stop_watch.start_clock(clock_iter=1)
         stop_watch.pause(seconds=sleep_arg, clock_iter=1)
         duration = stop_watch.duration()
-        time_paused = time.time() - start_time
+        stop_time = time.perf_counter_ns()
+        time_paused = (stop_time - start_time) * NS_2_SECS
 
         assert (sleep_arg
                 <= duration
@@ -419,9 +425,11 @@ class TestStopWatch:
             logger.debug('f1 entered')
             ml_event.set()
             f1_event.wait()
-            f1_start_time = time.time()
+            f1_start_time = time.perf_counter_ns()
             stop_watch.start_clock(clock_iter=2)
-            f1_start_clock_wait_time = time.time() - f1_start_time
+            f1_stop_time = time.perf_counter_ns()
+            f1_start_clock_wait_time = ((f1_stop_time - f1_start_time)
+                                        * NS_2_SECS)
 
             stop_watch.pause(seconds=sleep_arg, clock_iter=2)
             f1_duration = stop_watch.duration()
@@ -435,10 +443,12 @@ class TestStopWatch:
                     <= (sleep_arg * 1.1)
                     )
 
-            f1_start_time = time.time()
+            f1_start_time = time.perf_counter_ns()
             ml_event.set()
             stop_watch.pause(seconds=sleep_arg, clock_iter=3)
-            f1_total_pause_time = time.time() - f1_start_time
+            f1_stop_time = time.perf_counter_ns()
+            f1_total_pause_time = ((f1_stop_time - f1_start_time)
+                                   * NS_2_SECS)
             f1_duration = stop_watch.duration()
 
             assert ((sleep_arg * 2)
@@ -459,7 +469,7 @@ class TestStopWatch:
 
         f1_thread = threading.Thread(target=f1)
 
-        start_time = time.time()
+        start_time = time.perf_counter_ns()
 
         f1_thread.start()
         ml_event.wait()
@@ -468,7 +478,8 @@ class TestStopWatch:
         f1_event.set()
         stop_watch.pause(seconds=sleep_arg, clock_iter=1)
         duration = stop_watch.duration()
-        time_paused = time.time() - start_time
+        stop_time = time.perf_counter_ns()
+        time_paused = (stop_time - start_time) * NS_2_SECS
 
         assert (sleep_arg
                 <= duration

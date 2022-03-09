@@ -10,169 +10,181 @@ have been issued.
 
 :Example1: pytest test case logs a message and verifies
 
->>> from scottbrian_utils.log_verifier import LogVer
->>> import logging
->>> def test_example1(caplog: pytest.CaptureFixture[str]) -> None:
-...     logger = logging.getLogger('example_1')
-...     log_ver = LogVer('example_1')
-...     log_msg = 'hello'
-...     log_ver.add_msg(log_msg=log_msg)
-...     logger.debug(log_msg)
-...     match_results = log_ver.get_match_results(caplog=caplog)
-...     log_ver.print_match_results(match_results)
-...     log_ver.verify_log_results(match_results)
-<BLANKLINE>
-**********************************
-* number expected log records: 1 *
-* number expected unmatched  : 0 *
-* number actual log records  : 1 *
-* number actual unmatched    : 0 *
-* number of matched records  : 1 *
-**********************************
-<BLANKLINE>
-*********************************
-* unmatched expected records    *
-* (logger name, level, message) *
-*********************************
-<BLANKLINE>
-*********************************
-* unmatched actual records      *
-* (logger name, level, message) *
-*********************************
-<BLANKLINE>
-*********************************
-* matched records               *
-* (logger name, level, message) *
-*********************************
-('example_1', 10, 'hello')
+.. code-block:: python
 
+    from scottbrian_utils.log_verifier import LogVer
+    import logging
+    def test_example1(caplog: pytest.CaptureFixture[str]) -> None:
+        logger = logging.getLogger('example_1')
+        log_ver = LogVer('example_1')
+        log_msg = 'hello'
+        log_ver.add_msg(log_msg=log_msg)
+        logger.debug(log_msg)
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results)
+        log_ver.verify_log_results(match_results)
+
+The output from ``LogVer.print_match_results()`` for test_example1::
+
+    **********************************
+    * number expected log records: 1 *
+    * number expected unmatched  : 0 *
+    * number actual log records  : 1 *
+    * number actual unmatched    : 0 *
+    * number of matched records  : 1 *
+    **********************************
+
+    *********************************
+    * unmatched expected records    *
+    * (logger name, level, message) *
+    *********************************
+
+    *********************************
+    * unmatched actual records      *
+    * (logger name, level, message) *
+    *********************************
+
+    *********************************
+    * matched records               *
+    * (logger name, level, message) *
+    *********************************
+    ('example_1', 10, 'hello')
 
 :Example2: pytest test case expects two log records, only one was issued
 
->>> from scottbrian_utils.log_verifier import LogVer
->>> import logging
->>> def test_example2(caplog: pytest.CaptureFixture[str]) -> None:
-...      logger = logging.getLogger('example_2')
-...      log_ver = LogVer('example_2')
-...      log_msg1 = 'hello'
-...      log_ver.add_msg(log_msg=log_msg1)
-...      log_msg2 = 'goodbye'
-...      log_ver.add_msg(log_msg=log_msg2)
-...      logger.debug(log_msg1)
-...      log_ver.get_match_results()
-...      log_ver.print_match_results()
-<BLANKLINE>
-**********************************
-* number expected log records: 2 *
-* number expected unmatched  : 1 *
-* number actual log records  : 1 *
-* number actual unmatched    : 0 *
-* number of matched records  : 1 *
-**********************************
-<BLANKLINE>
-*********************************
-* unmatched expected records    *
-* (logger name, level, message) *
-*********************************
-('example_2', 10, 'goodbye')
-<BLANKLINE>
-*********************************
-* unmatched actual records      *
-* (logger name, level, message) *
-*********************************
-<BLANKLINE>
-*********************************
-* matched records               *
-* (logger name, level, message) *
-*********************************
-('example_2', 10, 'hello')
+.. code-block:: python
 
+    from scottbrian_utils.log_verifier import LogVer
+    import logging
+    def test_example2(caplog: pytest.CaptureFixture[str]) -> None:
+        logger = logging.getLogger('example_2')
+        log_ver = LogVer('example_2')
+        log_msg1 = 'hello'
+        log_ver.add_msg(log_msg=log_msg1)
+        log_msg2 = 'goodbye'
+        log_ver.add_msg(log_msg=log_msg2)
+        logger.debug(log_msg1)
+        log_ver.get_match_results()
+        log_ver.print_match_results()
+
+The output from ``LogVer.print_match_results()`` for test_example2::
+
+    **********************************
+    * number expected log records: 2 *
+    * number expected unmatched  : 1 *
+    * number actual log records  : 1 *
+    * number actual unmatched    : 0 *
+    * number of matched records  : 1 *
+    **********************************
+
+    *********************************
+    * unmatched expected records    *
+    * (logger name, level, message) *
+    *********************************
+    ('example_2', 10, 'goodbye')
+
+    *********************************
+    * unmatched actual records      *
+    * (logger name, level, message) *
+    *********************************
+
+    *********************************
+    * matched records               *
+    * (logger name, level, message) *
+    *********************************
+    ('example_2', 10, 'hello')
 
 :Example3: pytest test case expects one log record, two were issued
 
->>> from scottbrian_utils.log_verifier import LogVer
->>> import logging
->>> def test_example3(caplog: pytest.CaptureFixture[str]) -> None:
-...      logger = logging.getLogger('example_3')
-...      log_ver = LogVer('example_3')
-...      log_msg1 = 'hello'
-...      log_ver.add_msg(log_msg=log_msg1)
-...      log_msg2 = 'goodbye'
-...      logger.debug(log_msg1)
-...      logger.debug(log_msg2)
-...      log_ver.get_match_results()
-...      log_ver.print_match_results()
-<BLANKLINE>
-**********************************
-* number expected log records: 1 *
-* number expected unmatched  : 0 *
-* number actual log records  : 2 *
-* number actual unmatched    : 1 *
-* number of matched records  : 1 *
-**********************************
-<BLANKLINE>
-*********************************
-* unmatched expected records    *
-* (logger name, level, message) *
-*********************************
-<BLANKLINE>
-*********************************
-* unmatched actual records      *
-* (logger name, level, message) *
-*********************************
-('example_3', 10, 'goodbye')
-<BLANKLINE>
-*********************************
-* matched records               *
-* (logger name, level, message) *
-*********************************
-('example_3', 10, 'hello')
+.. code-block:: python
 
+    from scottbrian_utils.log_verifier import LogVer
+    import logging
+    def test_example3(caplog: pytest.CaptureFixture[str]) -> None:
+        logger = logging.getLogger('example_3')
+        log_ver = LogVer('example_3')
+        log_msg1 = 'hello'
+        log_ver.add_msg(log_msg=log_msg1)
+        log_msg2 = 'goodbye'
+        logger.debug(log_msg1)
+        logger.debug(log_msg2)
+        log_ver.get_match_results()
+        log_ver.print_match_results()
+
+The output from ``LogVer.print_match_results()`` for test_example3::
+
+    **********************************
+    * number expected log records: 1 *
+    * number expected unmatched  : 0 *
+    * number actual log records  : 2 *
+    * number actual unmatched    : 1 *
+    * number of matched records  : 1 *
+    **********************************
+
+    *********************************
+    * unmatched expected records    *
+    * (logger name, level, message) *
+    *********************************
+
+    *********************************
+    * unmatched actual records      *
+    * (logger name, level, message) *
+    *********************************
+    ('example_3', 10, 'goodbye')
+
+    *********************************
+    * matched records               *
+    * (logger name, level, message) *
+    *********************************
+    ('example_3', 10, 'hello')
 
 :Example4: pytest test case expect two log records, two were issued,
            one different
 
->>> from scottbrian_utils.log_verifier import LogVer
->>> import logging
->>> def test_example4(caplog: pytest.CaptureFixture[str]) -> None:
-...      logger = logging.getLogger('example_4')
-...      log_ver = LogVer('example_4')
-...      log_msg1 = 'hello'
-...      log_ver.add_msg(log_msg=log_msg1)
-...      log_msg2a = 'goodbye'
-...      log_ver.add_msg(log_msg=log_msg2a)
-...      log_msg2b = 'see you soon'
-...      logger.debug(log_msg1)
-...      logger.debug(log_msg2b)
-...      log_ver.get_match_results()
-...      log_ver.print_match_results()
-<BLANKLINE>
-**********************************
-* number expected log records: 2 *
-* number expected unmatched  : 1 *
-* number actual log records  : 2 *
-* number actual unmatched    : 1 *
-* number of matched records  : 1 *
-**********************************
-<BLANKLINE>
-*********************************
-* unmatched expected records    *
-* (logger name, level, message) *
-*********************************
-('example_4', 10, 'goodbye')
-<BLANKLINE>
-*********************************
-* unmatched actual records      *
-* (logger name, level, message) *
-*********************************
-('example_4', 10, 'see you soon')
-<BLANKLINE>
-*********************************
-* matched records               *
-* (logger name, level, message) *
-*********************************
-('example_4', 10, 'hello')
+.. code-block:: python
 
+    from scottbrian_utils.log_verifier import LogVer
+    import logging
+    def test_example4(caplog: pytest.CaptureFixture[str]) -> None:
+        logger = logging.getLogger('example_4')
+        log_ver = LogVer('example_4')
+        log_msg1 = 'hello'
+        log_ver.add_msg(log_msg=log_msg1)
+        log_msg2a = 'goodbye'
+        log_ver.add_msg(log_msg=log_msg2a)
+        log_msg2b = 'see you soon'
+        logger.debug(log_msg1)
+        logger.debug(log_msg2b)
+        log_ver.get_match_results()
+        log_ver.print_match_results()
+
+The output from ``LogVer.print_match_results()`` for test_example4::
+
+    **********************************
+    * number expected log records: 2 *
+    * number expected unmatched  : 1 *
+    * number actual log records  : 2 *
+    * number actual unmatched    : 1 *
+    * number of matched records  : 1 *
+    **********************************
+
+    *********************************
+    * unmatched expected records    *
+    * (logger name, level, message) *
+    *********************************
+    ('example_4', 10, 'goodbye')
+
+    *********************************
+    * unmatched actual records      *
+    * (logger name, level, message) *
+    *********************************
+    ('example_4', 10, 'see you soon')
+
+    *********************************
+    * matched records               *
+    * (logger name, level, message) *
+    *********************************
+    ('example_4', 10, 'hello')
 
 The log_verifier module contains:
 
@@ -181,7 +193,9 @@ The log_verifier module contains:
        a. add_call_seq
        b. get_call_seq
        c. add_msg
-       d. verify_log_msgs
+       d. get_match_results
+       e. print_match_results
+       f. verify_log_results
 
 """
 
@@ -318,45 +332,50 @@ class LogVer:
 
         Example: add two messages, each at a different level
 
-        >>> def test_example(caplog: pytest.CaptureFixture[str]
-        ...                 ) -> None:
-        ...      logger = logging.getLogger('add_msg')
-        ...      log_ver = LogVer('add_msg')
-        ...      log_msg1 = 'hello'
-        ...      log_msg2 = 'goodbye'
-        ...      log_ver.add_msg(log_msg=log_msg1)
-        ...      log_ver.add_msg(log_msg=log_msg2,
-        ...                      log_level=logging.ERROR)
-        ...      logger.debug(log_msg1)
-        ...      logger.error(log_msg2)
-        ...      match_results = log_ver.get_match_results()
-        ...      log_ver.print_match_results(match_results)
-        ...      log_ver.verify_log_results(match_results)
-        <BLANKLINE>
-        **********************************
-        * number expected log records: 2 *
-        * number expected unmatched  : 1 *
-        * number actual log records  : 1 *
-        * number actual unmatched    : 0 *
-        * number of matched records  : 1 *
-        **********************************
-        <BLANKLINE>
-        *********************************
-        * unmatched expected records    *
-        * (logger name, level, message) *
-        *********************************
-        <BLANKLINE>
-        *********************************
-        * unmatched actual records      *
-        * (logger name, level, message) *
-        *********************************
-        <BLANKLINE>
-        *********************************
-        * matched records               *
-        * (logger name, level, message) *
-        *********************************
-        ('add_msg', 10, 'hello')
-        ('add_msg', 40, 'goodbye')
+        .. code-block:: python
+
+            def test_example(caplog: pytest.CaptureFixture[str]
+                            ) -> None:
+                logger = logging.getLogger('add_msg')
+                log_ver = LogVer('add_msg')
+                log_msg1 = 'hello'
+                log_msg2 = 'goodbye'
+                log_ver.add_msg(log_msg=log_msg1)
+                log_ver.add_msg(log_msg=log_msg2,
+                                log_level=logging.ERROR)
+                logger.debug(log_msg1)
+                logger.error(log_msg2)
+                match_results = log_ver.get_match_results()
+                log_ver.print_match_results(match_results)
+                log_ver.verify_log_results(match_results)
+
+        The output from ``LogVer.print_match_results()`` for
+        test_example::
+
+            **********************************
+            * number expected log records: 2 *
+            * number expected unmatched  : 1 *
+            * number actual log records  : 1 *
+            * number actual unmatched    : 0 *
+            * number of matched records  : 1 *
+            **********************************
+
+            *********************************
+            * unmatched expected records    *
+            * (logger name, level, message) *
+            *********************************
+
+            *********************************
+            * unmatched actual records      *
+            * (logger name, level, message) *
+            *********************************
+
+            *********************************
+            * matched records               *
+            * (logger name, level, message) *
+            *********************************
+            ('add_msg', 10, 'hello')
+            ('add_msg', 40, 'goodbye')
 
         """
         if log_name:
@@ -431,8 +450,8 @@ class LogVer:
     ####################################################################
     # print_match_results
     ####################################################################
-    def print_match_results(self,
-                            match_results: MatchResults) -> None:
+    @staticmethod
+    def print_match_results(match_results: MatchResults) -> None:
         """Print the match results.
 
         Args:
