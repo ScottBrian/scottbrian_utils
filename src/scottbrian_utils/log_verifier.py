@@ -206,7 +206,7 @@ from dataclasses import dataclass
 import logging
 import pytest
 import re
-from typing import Any, Optional, Union
+from typing import Any, Optional, Type, TYPE_CHECKING, Union
 
 ########################################################################
 # Third Party
@@ -276,9 +276,37 @@ class LogVer:
         >>> log_ver = LogVer('example_logger')
 
         """
+        self.specified_args = locals()  # used for __repr__, see below
         self.call_seqs: dict[str, str] = {}
         self.expected_messages: list[tuple[str, int, Any]] = []
         self.log_name = log_name
+
+    ####################################################################
+    # __repr__
+    ####################################################################
+    def __repr__(self) -> str:
+        """Return a representation of the class.
+
+        Returns:
+            The representation as how the class is instantiated
+
+        """
+        if TYPE_CHECKING:
+            __class__: Type[LogVer]
+        classname = self.__class__.__name__
+        parms = ""
+        comma = ''
+
+        for key, item in self.specified_args.items():
+            if item:  # if not None
+                if key in ('log_name', ):
+                    if type(item) is str:
+                        parms += comma + f"{key}='{item}'"
+                    else:
+                        parms += comma + f"{key}={item}"
+                    comma = ', '  # after first item, now need comma
+
+        return f'{classname}({parms})'
 
     ####################################################################
     # add_call_seq

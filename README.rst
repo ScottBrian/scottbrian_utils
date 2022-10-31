@@ -125,6 +125,9 @@ Release History
     * added pauser
     * support for python 3.10
 
+* 2.2.0
+    * added repr for LogVer
+
 Meta
 ====
 

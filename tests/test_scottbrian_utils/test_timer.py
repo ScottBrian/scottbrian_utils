@@ -388,7 +388,7 @@ class TestTimerBasic:
     """Test basic functions of Timer."""
 
     ####################################################################
-    # test_timer_case1a
+    # test_timer_correct_source
     ####################################################################
     def test_timer_correct_source(self) -> None:
         """Test timer correct source."""

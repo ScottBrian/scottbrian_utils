@@ -48,7 +48,8 @@ class TestFileCatalog:
     """TestFileCatalog class."""
 
     def test_file_catalog_with_no_file_specs(self,
-                                             capsys: Any) -> None:
+                                             capsys: pytest.CaptureFixture[str]
+                                             ) -> None:
         """test_file_catalog with no file_specs not in list.
 
         Args:

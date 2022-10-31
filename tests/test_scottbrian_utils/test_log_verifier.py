@@ -463,6 +463,25 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_time_match
     ####################################################################
+    def test_log_verifier_repr(self,
+                               capsys: pytest.CaptureFixture[str]
+                               ) -> None:
+        """Test log_verifier repr function.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        log_ver = LogVer(log_name='simple_repr')
+        print(log_ver)  # test of __repr__
+        captured = capsys.readouterr().out
+
+        expected = "LogVer(log_name='simple_repr')\n"
+        assert captured == expected
+
+    ####################################################################
+    # test_log_verifier_time_match
+    ####################################################################
     def test_log_verifier_simple_match(self,
                                        simple_str_arg: str,
                                        capsys: pytest.CaptureFixture[str],
