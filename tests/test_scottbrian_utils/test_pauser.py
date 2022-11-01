@@ -594,9 +594,9 @@ class TestPauserExamples:
         from scottbrian_utils.pauser import Pauser
         import time
         pauser = Pauser()
-        start_time = time.time()
+        start_time = time.perf_counter_ns()
         pauser.pause(0.5)
-        stop_time = time.time()
+        stop_time = time.perf_counter_ns()
         interval = (stop_time - start_time) * Pauser.NS_2_SECS
         print(f'paused for {interval:.1f} seconds')
 
