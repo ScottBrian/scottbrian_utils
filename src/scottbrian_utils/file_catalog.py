@@ -158,7 +158,7 @@ class FileCatalog:
 
         """
         if TYPE_CHECKING:
-            __class__: Type[FileCatalog]
+            __class__: Type[FileCatalog]  # noqa: F842
         classname = self.__class__.__name__
         indent_spaces = ''  # start with no indent for first entry
         num_entries = len(self)

@@ -129,7 +129,7 @@ class StopWatch:
 
         """
         if TYPE_CHECKING:
-            __class__: Type[StopWatch]
+            __class__: Type[StopWatch]  # noqa: F842
         classname = self.__class__.__name__
         parms = ''
 

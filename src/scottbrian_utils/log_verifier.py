@@ -292,7 +292,7 @@ class LogVer:
 
         """
         if TYPE_CHECKING:
-            __class__: Type[LogVer]
+            __class__: Type[LogVer]  # noqa: F842
         classname = self.__class__.__name__
         parms = ""
         comma = ''

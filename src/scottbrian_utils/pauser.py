@@ -174,7 +174,7 @@ class Pauser:
 
         """
         if TYPE_CHECKING:
-            __class__: Type[Pauser]
+            __class__: Type[Pauser]  # noqa: F842
         classname = self.__class__.__name__
         parms = (f'min_interval_secs={self.min_interval_secs}, '
                  f'part_time_factor={self.part_time_factor}')

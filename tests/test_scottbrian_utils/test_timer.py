@@ -380,6 +380,101 @@ class TestTimerExamples:
 
         assert captured == expected_result
 
+    ####################################################################
+    # test_timer_example6
+    ####################################################################
+    def test_timer_example7(self,
+                            capsys: Any) -> None:
+        """Test timer example7.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print('example7 entered')
+        timer_a = Timer()
+        print(f'timer_a specified = {timer_a.is_specified()}')
+        timer_b = Timer(timeout=None)
+        print(f'timer_b specified = {timer_b.is_specified()}')
+        timer_c = Timer(timeout=-1)
+        print(f'timer_c specified = {timer_c.is_specified()}')
+        timer_d = Timer(timeout=0)
+        print(f'timer_d specified = {timer_d.is_specified()}')
+        timer_e = Timer(timeout=1)
+        print(f'timer_e specified = {timer_e.is_specified()}')
+        timer_f = Timer(default_timeout=None)
+        print(f'timer_f specified = {timer_f.is_specified()}')
+        timer_g = Timer(default_timeout=-1)
+        print(f'timer_g specified = {timer_g.is_specified()}')
+        timer_h = Timer(default_timeout=0)
+        print(f'timer_h specified = {timer_h.is_specified()}')
+        timer_i = Timer(default_timeout=1)
+        print(f'timer_i specified = {timer_i.is_specified()}')
+        timer_j = Timer(timeout=None, default_timeout=None)
+        print(f'timer_j specified = {timer_j.is_specified()}')
+        timer_k = Timer(timeout=None, default_timeout=-1)
+        print(f'timer_k specified = {timer_k.is_specified()}')
+        timer_l = Timer(timeout=None, default_timeout=0)
+        print(f'timer_l specified = {timer_l.is_specified()}')
+        timer_m = Timer(timeout=None, default_timeout=1)
+        print(f'timer_m specified = {timer_m.is_specified()}')
+        timer_n = Timer(timeout=-1, default_timeout=None)
+        print(f'timer_n specified = {timer_n.is_specified()}')
+        timer_o = Timer(timeout=-1, default_timeout=-1)
+        print(f'timer_o specified = {timer_o.is_specified()}')
+        timer_p = Timer(timeout=-1, default_timeout=0)
+        print(f'timer_p specified = {timer_p.is_specified()}')
+        timer_q = Timer(timeout=-1, default_timeout=1)
+        print(f'timer_q specified = {timer_q.is_specified()}')
+        timer_r = Timer(timeout=0, default_timeout=None)
+        print(f'timer_r specified = {timer_r.is_specified()}')
+        timer_s = Timer(timeout=0, default_timeout=-1)
+        print(f'timer_s specified = {timer_s.is_specified()}')
+        timer_t = Timer(timeout=0, default_timeout=0)
+        print(f'timer_t specified = {timer_t.is_specified()}')
+        timer_u = Timer(timeout=0, default_timeout=1)
+        print(f'timer_u specified = {timer_u.is_specified()}')
+        timer_v = Timer(timeout=1, default_timeout=None)
+        print(f'timer_v specified = {timer_v.is_specified()}')
+        timer_w = Timer(timeout=1, default_timeout=-1)
+        print(f'timer_w specified = {timer_w.is_specified()}')
+        timer_x = Timer(timeout=1, default_timeout=0)
+        print(f'timer_x specified = {timer_x.is_specified()}')
+        timer_y = Timer(timeout=1, default_timeout=1)
+        print(f'timer_y specified = {timer_y.is_specified()}')
+        print('example7 exiting')
+
+        expected_result = 'example7 entered\n'
+        expected_result += 'timer_a specified = False\n'
+        expected_result += 'timer_b specified = False\n'
+        expected_result += 'timer_c specified = False\n'
+        expected_result += 'timer_d specified = False\n'
+        expected_result += 'timer_e specified = True\n'
+        expected_result += 'timer_f specified = False\n'
+        expected_result += 'timer_g specified = False\n'
+        expected_result += 'timer_h specified = False\n'
+        expected_result += 'timer_i specified = True\n'
+        expected_result += 'timer_j specified = False\n'
+        expected_result += 'timer_k specified = False\n'
+        expected_result += 'timer_l specified = False\n'
+        expected_result += 'timer_m specified = True\n'
+        expected_result += 'timer_n specified = False\n'
+        expected_result += 'timer_o specified = False\n'
+        expected_result += 'timer_p specified = False\n'
+        expected_result += 'timer_q specified = False\n'
+        expected_result += 'timer_r specified = False\n'
+        expected_result += 'timer_s specified = False\n'
+        expected_result += 'timer_t specified = False\n'
+        expected_result += 'timer_u specified = False\n'
+        expected_result += 'timer_v specified = True\n'
+        expected_result += 'timer_w specified = True\n'
+        expected_result += 'timer_x specified = True\n'
+        expected_result += 'timer_y specified = True\n'
+        expected_result += 'example7 exiting\n'
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
 
 ########################################################################
 # TestTimerBasic class

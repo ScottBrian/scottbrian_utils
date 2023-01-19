@@ -128,6 +128,9 @@ Release History
 * 2.2.0
     * added repr for LogVer
 
+* 2.3.0
+    * added is_specified method for Timer
+
 Meta
 ====
 

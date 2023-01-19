@@ -355,3 +355,110 @@ class Timer:
         else:
             # time remaining, or timeout is None which never expires
             return False
+
+    ####################################################################
+    # is_specified
+    ####################################################################
+    def is_specified(self) -> bool:
+        """Return True or False for timeout being specified.
+
+        Returns:
+            True if a positive timeout value was specified, False if not
+
+        Notes:
+            1) This method simply indicates whether a positive timeout
+               value was initially specified during instatiation, either
+               via a timeout or default_timeout. It does not provide any
+               indication whether the time has expired.
+
+        Example: using is_specified
+
+        >>> import time
+        >>> from scottbrian_utils.timer import Timer
+        >>> def example7() -> None:
+        ...     print('example7 entered')
+        ...     timer_a = Timer()
+        ...     print(f'timer_a specified = {timer_a.is_specified()}')
+        ...     timer_b = Timer(timeout=None)
+        ...     print(f'timer_b specified = {timer_b.is_specified()}')
+        ...     timer_c = Timer(timeout=-1)
+        ...     print(f'timer_c specified = {timer_c.is_specified()}')
+        ...     timer_d = Timer(timeout=0)
+        ...     print(f'timer_d specified = {timer_d.is_specified()}')
+        ...     timer_e = Timer(timeout=1)
+        ...     print(f'timer_e specified = {timer_e.is_specified()}')
+        ...     timer_f = Timer(default_timeout=None)
+        ...     print(f'timer_f specified = {timer_f.is_specified()}')
+        ...     timer_g = Timer(default_timeout=-1)
+        ...     print(f'timer_g specified = {timer_g.is_specified()}')
+        ...     timer_h = Timer(default_timeout=0)
+        ...     print(f'timer_h specified = {timer_h.is_specified()}')
+        ...     timer_i = Timer(default_timeout=1)
+        ...     print(f'timer_i specified = {timer_i.is_specified()}')
+        ...     timer_j = Timer(timeout=None, default_timeout=None)
+        ...     print(f'timer_j specified = {timer_j.is_specified()}')
+        ...     timer_k = Timer(timeout=None, default_timeout=-1)
+        ...     print(f'timer_k specified = {timer_k.is_specified()}')
+        ...     timer_l = Timer(timeout=None, default_timeout=0)
+        ...     print(f'timer_l specified = {timer_l.is_specified()}')
+        ...     timer_m = Timer(timeout=None, default_timeout=1)
+        ...     print(f'timer_m specified = {timer_m.is_specified()}')
+        ...     timer_n = Timer(timeout=-1, default_timeout=None)
+        ...     print(f'timer_n specified = {timer_n.is_specified()}')
+        ...     timer_o = Timer(timeout=-1, default_timeout=-1)
+        ...     print(f'timer_o specified = {timer_o.is_specified()}')
+        ...     timer_p = Timer(timeout=-1, default_timeout=0)
+        ...     print(f'timer_p specified = {timer_p.is_specified()}')
+        ...     timer_q = Timer(timeout=-1, default_timeout=1)
+        ...     print(f'timer_q specified = {timer_q.is_specified()}')
+        ...     timer_r = Timer(timeout=0, default_timeout=None)
+        ...     print(f'timer_r specified = {timer_r.is_specified()}')
+        ...     timer_s = Timer(timeout=0, default_timeout=-1)
+        ...     print(f'timer_s specified = {timer_s.is_specified()}')
+        ...     timer_t = Timer(timeout=0, default_timeout=0)
+        ...     print(f'timer_t specified = {timer_t.is_specified()}')
+        ...     timer_u = Timer(timeout=0, default_timeout=1)
+        ...     print(f'timer_u specified = {timer_u.is_specified()}')
+        ...     timer_v = Timer(timeout=1, default_timeout=None)
+        ...     print(f'timer_v specified = {timer_v.is_specified()}')
+        ...     timer_w = Timer(timeout=1, default_timeout=-1)
+        ...     print(f'timer_w specified = {timer_w.is_specified()}')
+        ...     timer_x = Timer(timeout=1, default_timeout=0)
+        ...     print(f'timer_x specified = {timer_x.is_specified()}')
+        ...     timer_y = Timer(timeout=1, default_timeout=1)
+        ...     print(f'timer_y specified = {timer_y.is_specified()}')
+        ...     print('example7 exiting')
+        >>> example7()
+        example7 entered
+        timer_a specified = False
+        timer_b specified = False
+        timer_c specified = False
+        timer_d specified = False
+        timer_e specified = True
+        timer_f specified = False
+        timer_g specified = False
+        timer_h specified = False
+        timer_i specified = True
+        timer_j specified = False
+        timer_k specified = False
+        timer_l specified = False
+        timer_m specified = True
+        timer_n specified = False
+        timer_o specified = False
+        timer_p specified = False
+        timer_q specified = False
+        timer_r specified = False
+        timer_s specified = False
+        timer_t specified = False
+        timer_u specified = False
+        timer_v specified = True
+        timer_w specified = True
+        timer_x specified = True
+        timer_y specified = True
+        example6 exiting
+
+        """
+        if self._timeout:
+            return True  # timeout with positive value was specified
+        else:
+            return False
