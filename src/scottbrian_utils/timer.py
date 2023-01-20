@@ -455,7 +455,7 @@ class Timer:
         timer_w specified = True
         timer_x specified = True
         timer_y specified = True
-        example6 exiting
+        example7 exiting
 
         """
         if self._timeout:

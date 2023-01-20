@@ -4,14 +4,23 @@ from doctest import OutputChecker as BaseOutputChecker
 import pytest
 from sybil import Sybil
 from sybil.example import Example  # sbt
-from sybil.parsers.capture import parse_captures
-from sybil.parsers.codeblock import PythonCodeBlockParser
-from sybil.parsers.doctest import DocTestParser
-from sybil.parsers.doctest import DocTest  # sbt
+# from sybil.parsers.capture import parse_captures
+# from sybil.parsers.codeblock import PythonCodeBlockParser
+
+# from sybil.parsers.doctest import DocTestParser
+# from sybil.parsers.doctest import DocTest  # sbt
+
+from sybil.parsers.rest import DocTestParser, PythonCodeBlockParser
+from sybil.parsers.abstract import DocTestStringParser
+from sybil.evaluators.doctest import DocTestEvaluator, DocTest
+from sybil.document import Document
+from sybil.region import Region
+
 from scottbrian_utils.time_hdr import get_datetime_match_string
+
 import re
-import os
-from typing import Any
+from typing import Any, Iterable
+
 
 class SbtOutputChecker(BaseOutputChecker):
     def __init__(self):
@@ -51,14 +60,18 @@ class SbtOutputChecker(BaseOutputChecker):
             got = re.sub(match_str, replacement, got)
 
         if self.mod_name == 'diag_msg' or self.mod_name == 'README':
-            for diag_msg_dt_fmt in ["%H:%M:%S.%f","%a %b-%d %H:%M:%S"]:
+            for diag_msg_dt_fmt in ["%H:%M:%S.%f", "%a %b-%d %H:%M:%S"]:
                 match_str = get_datetime_match_string(diag_msg_dt_fmt)
 
                 match_re = re.compile(match_str)
                 found_items = match_re.finditer(got)
                 want = match_re.sub(repl_dt, want)
 
-            match_str = "<.+?>"
+            # match_str = "<.+?>"
+            if self.mod_name == 'diag_msg':
+                match_str = "diag_msg.py\[0\]>"
+            else:
+                match_str = "README.rst\[0\]>"
             replacement = '<input>'
             got = re.sub(match_str, replacement, got)
 
@@ -66,12 +79,54 @@ class SbtOutputChecker(BaseOutputChecker):
         return BaseOutputChecker.check_output(self, want, got, optionflags)
 
 
-class SbtDocTestParser(DocTestParser):
-    def __init__(self, optionflags=0):
-        DocTestParser.__init__(self, optionflags=optionflags)
-        self.runner._checker = SbtOutputChecker()
+# class SbtDocTestParser(DocTestParser):
+#     def __init__(self, optionflags=0):
+#         DocTestParser.__init__(self, optionflags=optionflags)
+#         self.runner._checker = SbtOutputChecker()
+#
+#     def evaluate(self, sybil_example: Example) -> str:
+#         example = sybil_example.parsed
+#         namespace = sybil_example.namespace
+#         output = []
+#         mod_name = sybil_example.path.rsplit(sep=".", maxsplit=1)[0]
+#         mod_name = mod_name.rsplit(sep="\\", maxsplit=1)[1]
+#         self.runner._checker.mod_name = mod_name
+#
+#         self.runner.run(
+#             DocTest([example], namespace, name=None,
+#                     filename=None, lineno=example.lineno, docstring=None),
+#             clear_globs=False,
+#             out=output.append
+#         )
+#         # print(f'{self.runner._checker.msgs=}')
+#         self.runner._checker.msgs = []
+#         return ''.join(output)
 
-    def evaluate(self, sybil_example: Example) -> str:
+class SbtDocTestEvaluator(DocTestEvaluator):
+    def __init__(self, optionflags=0):
+        DocTestEvaluator.__init__(self, optionflags=optionflags)
+        self.runner._checker = SbtOutputChecker()
+    # def __init__(self, optionflags=0):
+    #     self.runner = DocTestRunner(optionflags)
+    # def evaluate(self, sybil_example: Example) -> str:
+    #     example = sybil_example.parsed
+    #     namespace = sybil_example.namespace
+    #     output = []
+    #     mod_name = sybil_example.path.rsplit(sep=".", maxsplit=1)[0]
+    #     mod_name = mod_name.rsplit(sep="\\", maxsplit=1)[1]
+    #     self.runner._checker.mod_name = mod_name
+    #
+    #     self.runner.run(
+    #         DocTest([example], namespace, name=None,
+    #                 filename=None, lineno=example.lineno, docstring=None),
+    #         clear_globs=False,
+    #         out=output.append
+    #     )
+    #     # print(f'{self.runner._checker.msgs=}')
+    #     self.runner._checker.msgs = []
+    #     return ''.join(output)
+
+    def __call__(self, sybil_example: Example) -> str:
         example = sybil_example.parsed
         namespace = sybil_example.namespace
         output = []
@@ -80,18 +135,27 @@ class SbtDocTestParser(DocTestParser):
         self.runner._checker.mod_name = mod_name
 
         self.runner.run(
-            DocTest([example], namespace, name=None,
+            DocTest([example], namespace, name=sybil_example.path,
                     filename=None, lineno=example.lineno, docstring=None),
             clear_globs=False,
             out=output.append
         )
-        # print(f'{self.runner._checker.msgs=}')
+        print(f'{self.runner._checker.msgs=}')
         self.runner._checker.msgs = []
         return ''.join(output)
+
+class SbtDocTestParser:
+    def __init__(self, optionflags=0):
+        self.string_parser = DocTestStringParser(
+            SbtDocTestEvaluator(optionflags))
+
+    def __call__(self, document: Document) -> Iterable[Region]:
+        return self.string_parser(document.text, document.path)
 
 
 pytest_collect_file = Sybil(
     parsers=[
+        # DocTestParser(optionflags=ELLIPSIS),
         SbtDocTestParser(optionflags=ELLIPSIS),
         PythonCodeBlockParser(),
     ],

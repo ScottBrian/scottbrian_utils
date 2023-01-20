@@ -14,6 +14,7 @@ logging.basicConfig(filename='MyLogFile.log',
                     filemode='w',
                     level=logging.DEBUG,
                     format='%(asctime)s '
+                           '%(msecs)03d '
                            '[%(levelname)8s] '
                            '%(filename)s:'
                            '%(funcName)s:'
