@@ -87,8 +87,6 @@ With **Pauser**, you can pause execution for a specified number of seconds like 
 Installation
 ============
 
-Linux:
-
 ``pip install scottbrian-utils``
 
 
@@ -130,6 +128,7 @@ Release History
 
 * 2.3.0
     * added is_specified method for Timer
+    * support for python 3.11
 
 Meta
 ====

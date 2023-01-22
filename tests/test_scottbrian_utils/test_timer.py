@@ -504,6 +504,13 @@ class TestTimerBasic:
             exp2 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
                     '\\py310-coverage\\lib\\site-packages\\scottbrian_utils'
                     '\\timer.py')
+        elif sys.version_info.minor == 11:
+            exp1 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
+                    '\\py311-pytest\\Lib\\site-packages\\scottbrian_utils'
+                    '\\timer.py')
+            exp2 = ('C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox'
+                    '\\py311-coverage\\Lib\\site-packages\\scottbrian_utils'
+                    '\\timer.py')
         else:
             exp1 = ''
             exp2 = ''

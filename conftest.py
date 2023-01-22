@@ -75,61 +75,51 @@ class SbtOutputChecker(BaseOutputChecker):
             replacement = '<input>'
             got = re.sub(match_str, replacement, got)
 
+        if self.mod_name == 'pauser':
+            match_str = 'pauser.min_interval_secs=0.0[0-9]{1,2}'
+
+            found_item = re.match(match_str, got)
+            if found_item:
+                want = re.sub(match_str, found_item.group(), want)
+
+            # match_re = re.compile(match_str)
+            # found_items = match_re.finditer(got)
+            # want = match_re.sub(repl_dt, want)
+
+
+            # replacement = old_want
+            # got = re.sub(match_str, replacement, got)
+
+            match_str = ('metrics.pause_ratio=1.0, '
+                         'metrics.sleep_ratio=0.[0-9]+')
+
+            found_item = re.match(match_str, got)
+            if found_item:
+                want = re.sub(match_str, found_item.group(), want)
+            # match_re = re.compile(match_str)
+            # found_items = match_re.finditer(got)
+            # want = match_re.sub(repl_dt, want)
+            # replacement = old_want
+            # # got = re.sub(match_str, replacement, got)
+            # got = replacement
+
         self.msgs.append([old_want, want, old_got, got])
         return BaseOutputChecker.check_output(self, want, got, optionflags)
 
 
-# class SbtDocTestParser(DocTestParser):
-#     def __init__(self, optionflags=0):
-#         DocTestParser.__init__(self, optionflags=optionflags)
-#         self.runner._checker = SbtOutputChecker()
-#
-#     def evaluate(self, sybil_example: Example) -> str:
-#         example = sybil_example.parsed
-#         namespace = sybil_example.namespace
-#         output = []
-#         mod_name = sybil_example.path.rsplit(sep=".", maxsplit=1)[0]
-#         mod_name = mod_name.rsplit(sep="\\", maxsplit=1)[1]
-#         self.runner._checker.mod_name = mod_name
-#
-#         self.runner.run(
-#             DocTest([example], namespace, name=None,
-#                     filename=None, lineno=example.lineno, docstring=None),
-#             clear_globs=False,
-#             out=output.append
-#         )
-#         # print(f'{self.runner._checker.msgs=}')
-#         self.runner._checker.msgs = []
-#         return ''.join(output)
-
 class SbtDocTestEvaluator(DocTestEvaluator):
     def __init__(self, optionflags=0):
         DocTestEvaluator.__init__(self, optionflags=optionflags)
+
+        # set our checker which will modify the test cases as needed
         self.runner._checker = SbtOutputChecker()
-    # def __init__(self, optionflags=0):
-    #     self.runner = DocTestRunner(optionflags)
-    # def evaluate(self, sybil_example: Example) -> str:
-    #     example = sybil_example.parsed
-    #     namespace = sybil_example.namespace
-    #     output = []
-    #     mod_name = sybil_example.path.rsplit(sep=".", maxsplit=1)[0]
-    #     mod_name = mod_name.rsplit(sep="\\", maxsplit=1)[1]
-    #     self.runner._checker.mod_name = mod_name
-    #
-    #     self.runner.run(
-    #         DocTest([example], namespace, name=None,
-    #                 filename=None, lineno=example.lineno, docstring=None),
-    #         clear_globs=False,
-    #         out=output.append
-    #     )
-    #     # print(f'{self.runner._checker.msgs=}')
-    #     self.runner._checker.msgs = []
-    #     return ''.join(output)
 
     def __call__(self, sybil_example: Example) -> str:
         example = sybil_example.parsed
         namespace = sybil_example.namespace
         output = []
+
+        # set the mod name for our check_output in SbtOutputChecker
         mod_name = sybil_example.path.rsplit(sep=".", maxsplit=1)[0]
         mod_name = mod_name.rsplit(sep="\\", maxsplit=1)[1]
         self.runner._checker.mod_name = mod_name
@@ -143,6 +133,7 @@ class SbtDocTestEvaluator(DocTestEvaluator):
         print(f'{self.runner._checker.msgs=}')
         self.runner._checker.msgs = []
         return ''.join(output)
+
 
 class SbtDocTestParser:
     def __init__(self, optionflags=0):

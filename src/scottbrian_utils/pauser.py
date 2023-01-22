@@ -231,13 +231,13 @@ class Pauser:
 
         Example: calibrate the Pauser for a specific range of intervals
 
-            >>> from scottbrian_utils.pauser import Pauser
-            >>> pauser = Pauser(min_interval_secs=1.0)
-            >>> pauser.calibrate(min_interval_msecs=5,
-            ...                  max_interval_msecs=100,
-            ...                  increment=5)
-            >>> print(f'{pauser.min_interval_secs=}')
-            pauser.min_interval_secs=0.015
+        >>> from scottbrian_utils.pauser import Pauser
+        >>> pauser = Pauser(min_interval_secs=1.0)
+        >>> pauser.calibrate(min_interval_msecs=5,
+        ...                  max_interval_msecs=100,
+        ...                  increment=5)
+        >>> print(f'{pauser.min_interval_secs=}')
+        pauser.min_interval_secs=0.015
 
         """
         if ((not isinstance(min_interval_msecs, int))
@@ -329,9 +329,10 @@ class Pauser:
             IncorrectInput: The *iterations* argument is not valid - it
                 must be a positive non-zero integer.
 
-        Example: get the metrics for a pause of 0.1 seconds. Note that
-                 the accuracy is very good at 1.0 and the portion of
-                 the delay provided by ``time.sleep()`` is about 60%.
+        Example: get the metrics for a pause of 0.1 seconds.
+                 Note that the accuracy is very good at 1.0 and the
+                 portion of the delay provided by ``time.sleep()`` is
+                 about 60%.
 
             >>> from scottbrian_utils.pauser import Pauser
             >>> pauser = Pauser()
