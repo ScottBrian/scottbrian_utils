@@ -82,14 +82,6 @@ class SbtOutputChecker(BaseOutputChecker):
             if found_item:
                 want = re.sub(match_str, found_item.group(), want)
 
-            # match_re = re.compile(match_str)
-            # found_items = match_re.finditer(got)
-            # want = match_re.sub(repl_dt, want)
-
-
-            # replacement = old_want
-            # got = re.sub(match_str, replacement, got)
-
             match_str = ('metrics.pause_ratio=1.0, '
                          'metrics.sleep_ratio=0.[0-9]+')
 

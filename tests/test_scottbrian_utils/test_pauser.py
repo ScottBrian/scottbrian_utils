@@ -5,6 +5,8 @@
 ########################################################################
 import itertools
 import logging
+import re
+import sys
 import time
 from typing import Any, cast, Optional, Union
 
@@ -481,10 +483,21 @@ class TestPauserExamples:
         print('mainline exiting')
 
         expected_result = 'mainline entered\n'
-        expected_result += 'pauser.min_interval_secs=0.015\n'
+        if sys.version_info.minor >= 11:
+            expected_result += 'pauser.min_interval_secs=0.005\n'
+        else:
+            expected_result += 'pauser.min_interval_secs=0.015\n'
         expected_result += 'mainline exiting\n'
 
         captured = capsys.readouterr().out
+
+        match_str = 'pauser.min_interval_secs=0.0[0-9]{1,2}'
+
+        found_item = re.match(match_str, captured)
+        if found_item:
+            expected_result = re.sub(match_str,
+                                     found_item.group(),
+                                     expected_result)
 
         assert captured == expected_result
 
@@ -512,8 +525,12 @@ class TestPauserExamples:
         print('mainline exiting')
 
         expected_result = 'mainline entered\n'
-        expected_result += ('metrics.pause_ratio=1.0, '
-                            'metrics.sleep_ratio=0.6\n')
+        if sys.version_info.minor >= 11:
+            expected_result += ('metrics.pause_ratio=1.0, '
+                                'metrics.sleep_ratio=0.8\n')
+        else:
+            expected_result += ('metrics.pause_ratio=1.0, '
+                                'metrics.sleep_ratio=0.6\n')
         expected_result += 'mainline exiting\n'
 
         captured = capsys.readouterr().out

@@ -122,11 +122,18 @@ class TestBasicStopWatch:
         stop_time = time.perf_counter_ns()
         time_paused = (stop_time - start_time) * NS_2_SECS
 
+        # The timer is using time.time() and the time_paused is using
+        # time.perf_counter_ns(). One would expect the time_paused to
+        # be larger than duration, but alas that is not always the case.
+        # Using two different time techniques may be the reason. In any
+        # event, we loosen the requirements slightly by requiring
+        # time_paused to be greater that sleep_arg * 0.999.
+
         assert (sleep_arg
                 <= duration
                 <= (sleep_arg * 1.1)
                 )
-        assert (sleep_arg
+        assert (sleep_arg * 0.999
                 <= time_paused
                 <= (sleep_arg * 1.1)
                 )

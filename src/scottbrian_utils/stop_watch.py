@@ -59,7 +59,7 @@ The stop_watch module contains:
 ########################################################################
 import threading
 import time
-from typing import Final, Optional, Type, TYPE_CHECKING, Union
+from typing import Optional, Type, TYPE_CHECKING, Union
 
 ########################################################################
 # Third Party
@@ -97,9 +97,6 @@ class StopWatch:
     The start_clock and duration methods are used to verify event times.
 
     """
-
-    GET_CMD_TIMEOUT: Final[float] = 3.0
-
     ####################################################################
     # __init__
     ####################################################################

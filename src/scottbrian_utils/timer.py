@@ -462,3 +462,102 @@ class Timer:
             return True  # timeout with positive value was specified
         else:
             return False
+
+    ####################################################################
+    # is_specified
+    ####################################################################
+    def timeout_value(self) -> Optional[IntFloat]:
+        """Return the timeout value that was specified.
+
+        Returns:
+            The timeout value that was specified, either via the timeout
+                value or the default timeout value, or None.
+
+        Example: using timeout_value
+
+        >>> import time
+        >>> from scottbrian_utils.timer import Timer
+        >>> def example8() -> None:
+        ...     print('example8 entered')
+        ...     timer_a = Timer()
+        ...     print(f'time_a timeout value = {timer_a.timeout_value()}')
+        ...     timer_b = Timer(timeout=None)
+        ...     print(f'timer_b timeout value = {timer_b.timeout_value()}')
+        ...     timer_c = Timer(timeout=-1)
+        ...     print(f'timer_c timeout value = {timer_c.timeout_value()}')
+        ...     timer_d = Timer(timeout=0)
+        ...     print(f'timer_d timeout value = {timer_d.timeout_value()}')
+        ...     timer_e = Timer(timeout=1)
+        ...     print(f'timer_e timeout value = {timer_e.timeout_value()}')
+        ...     timer_f = Timer(default_timeout=None)
+        ...     print(f'timer_f timeout value = {timer_f.timeout_value()}')
+        ...     timer_g = Timer(default_timeout=-1)
+        ...     print(f'timer_g timeout value = {timer_g.timeout_value()}')
+        ...     timer_h = Timer(default_timeout=0)
+        ...     print(f'timer_h timeout value = {timer_h.timeout_value()}')
+        ...     timer_i = Timer(default_timeout=1.1)
+        ...     print(f'timer_i timeout value = {timer_i.timeout_value()}')
+        ...     timer_j = Timer(timeout=None, default_timeout=None)
+        ...     print(f'timer_j timeout value = {timer_j.timeout_value()}')
+        ...     timer_k = Timer(timeout=None, default_timeout=-1)
+        ...     print(f'timer_k timeout value = {timer_k.timeout_value()}')
+        ...     timer_l = Timer(timeout=None, default_timeout=0)
+        ...     print(f'timer_l timeout value = {timer_l.timeout_value()}')
+        ...     timer_m = Timer(timeout=None, default_timeout=1.1)
+        ...     print(f'timer_m timeout value = {timer_m.timeout_value()}')
+        ...     timer_n = Timer(timeout=-1, default_timeout=None)
+        ...     print(f'timer_n timeout value = {timer_n.timeout_value()}')
+        ...     timer_o = Timer(timeout=-1, default_timeout=-1)
+        ...     print(f'timer_o timeout value = {timer_o.timeout_value()}')
+        ...     timer_p = Timer(timeout=-1, default_timeout=0)
+        ...     print(f'timer_p timeout value = {timer_p.timeout_value()}')
+        ...     timer_q = Timer(timeout=-1, default_timeout=1.1)
+        ...     print(f'timer_q timeout value = {timer_q.timeout_value()}')
+        ...     timer_r = Timer(timeout=0, default_timeout=None)
+        ...     print(f'timer_r timeout value = {timer_r.timeout_value()}')
+        ...     timer_s = Timer(timeout=0, default_timeout=-1)
+        ...     print(f'timer_s timeout value = {timer_s.timeout_value()}')
+        ...     timer_t = Timer(timeout=0, default_timeout=0)
+        ...     print(f'timer_t timeout value = {timer_t.timeout_value()}')
+        ...     timer_u = Timer(timeout=0, default_timeout=1.1)
+        ...     print(f'timer_u timeout value = {timer_u.timeout_value()}')
+        ...     timer_v = Timer(timeout=1, default_timeout=None)
+        ...     print(f'timer_v timeout value = {timer_v.timeout_value()}')
+        ...     timer_w = Timer(timeout=1, default_timeout=-1)
+        ...     print(f'timer_w timeout value = {timer_w.timeout_value()}')
+        ...     timer_x = Timer(timeout=1, default_timeout=0)
+        ...     print(f'timer_x timeout value = {timer_x.timeout_value()}')
+        ...     timer_y = Timer(timeout=1, default_timeout=1.1)
+        ...     print(f'timer_y timeout value = {timer_y.timeout_value)}')
+        ...     print('example8 exiting')
+        >>> example8()
+        example7 entered
+        timer_a timeout value = None
+        timer_b timeout value = None
+        timer_c timeout value = None
+        timer_d timeout value = None
+        timer_e timeout value = 1
+        timer_f timeout value = None
+        timer_g timeout value = None
+        timer_h timeout value = None
+        timer_i timeout value = 1.1
+        timer_j timeout value = None
+        timer_k timeout value = None
+        timer_l timeout value = None
+        timer_m timeout value = 1
+        timer_n timeout value = None
+        timer_o timeout value = None
+        timer_p timeout value = None
+        timer_q timeout value = None
+        timer_r timeout value = None
+        timer_s timeout value = None
+        timer_t timeout value = None
+        timer_u timeout value = None
+        timer_v timeout value = 1
+        timer_w timeout value = 1
+        timer_x timeout value = 1
+        timer_y timeout value = 1
+        example7 exiting
+
+        """
+        return self._timeout
