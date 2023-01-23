@@ -489,83 +489,83 @@ class TestTimerExamples:
         """
         print('example8 entered')
         timer_a = Timer()
-        print(f'timer_a timeout value = {timer_a.timeout_value()}')
+        print(f'timer_a timeout = {timer_a.timeout_value()}')
         timer_b = Timer(timeout=None)
-        print(f'timer_b timeout value = {timer_b.timeout_value()}')
+        print(f'timer_b timeout = {timer_b.timeout_value()}')
         timer_c = Timer(timeout=-1)
-        print(f'timer_c timeout value = {timer_c.timeout_value()}')
+        print(f'timer_c timeout = {timer_c.timeout_value()}')
         timer_d = Timer(timeout=0)
-        print(f'timer_d timeout value = {timer_d.timeout_value()}')
+        print(f'timer_d timeout = {timer_d.timeout_value()}')
         timer_e = Timer(timeout=1)
-        print(f'timer_e timeout value = {timer_e.timeout_value()}')
+        print(f'timer_e timeout = {timer_e.timeout_value()}')
         timer_f = Timer(default_timeout=None)
-        print(f'timer_f timeout value = {timer_f.timeout_value()}')
+        print(f'timer_f timeout = {timer_f.timeout_value()}')
         timer_g = Timer(default_timeout=-1)
-        print(f'timer_g timeout value = {timer_g.timeout_value()}')
+        print(f'timer_g timeout = {timer_g.timeout_value()}')
         timer_h = Timer(default_timeout=0)
-        print(f'timer_h timeout value = {timer_h.timeout_value()}')
-        timer_i = Timer(default_timeout=1)
-        print(f'timer_i timeout value = {timer_i.timeout_value()}')
+        print(f'timer_h timeout = {timer_h.timeout_value()}')
+        timer_i = Timer(default_timeout=2.2)
+        print(f'timer_i timeout = {timer_i.timeout_value()}')
         timer_j = Timer(timeout=None, default_timeout=None)
-        print(f'timer_j timeout value = {timer_j.timeout_value()}')
+        print(f'timer_j timeout = {timer_j.timeout_value()}')
         timer_k = Timer(timeout=None, default_timeout=-1)
-        print(f'timer_k timeout value = {timer_k.timeout_value()}')
+        print(f'timer_k timeout = {timer_k.timeout_value()}')
         timer_l = Timer(timeout=None, default_timeout=0)
-        print(f'timer_l timeout value = {timer_l.timeout_value()}')
-        timer_m = Timer(timeout=None, default_timeout=1)
-        print(f'timer_m timeout value = {timer_m.timeout_value()}')
+        print(f'timer_l timeout = {timer_l.timeout_value()}')
+        timer_m = Timer(timeout=None, default_timeout=2.2)
+        print(f'timer_m timeout = {timer_m.timeout_value()}')
         timer_n = Timer(timeout=-1, default_timeout=None)
-        print(f'timer_n timeout value = {timer_n.timeout_value()}')
+        print(f'timer_n timeout = {timer_n.timeout_value()}')
         timer_o = Timer(timeout=-1, default_timeout=-1)
-        print(f'timer_o timeout value = {timer_o.timeout_value()}')
+        print(f'timer_o timeout = {timer_o.timeout_value()}')
         timer_p = Timer(timeout=-1, default_timeout=0)
-        print(f'timer_p timeout value = {timer_p.timeout_value()}')
-        timer_q = Timer(timeout=-1, default_timeout=1)
-        print(f'timer_q timeout value = {timer_q.timeout_value()}')
+        print(f'timer_p timeout = {timer_p.timeout_value()}')
+        timer_q = Timer(timeout=-1, default_timeout=2.2)
+        print(f'timer_q timeout = {timer_q.timeout_value()}')
         timer_r = Timer(timeout=0, default_timeout=None)
-        print(f'timer_r timeout value = {timer_r.timeout_value()}')
+        print(f'timer_r timeout = {timer_r.timeout_value()}')
         timer_s = Timer(timeout=0, default_timeout=-1)
-        print(f'timer_s timeout value = {timer_s.timeout_value()}')
+        print(f'timer_s timeout = {timer_s.timeout_value()}')
         timer_t = Timer(timeout=0, default_timeout=0)
-        print(f'timer_t timeout value = {timer_t.timeout_value()}')
-        timer_u = Timer(timeout=0, default_timeout=1)
-        print(f'timer_u timeout value = {timer_u.timeout_value()}')
+        print(f'timer_t timeout = {timer_t.timeout_value()}')
+        timer_u = Timer(timeout=0, default_timeout=2.2)
+        print(f'timer_u timeout = {timer_u.timeout_value()}')
         timer_v = Timer(timeout=1, default_timeout=None)
-        print(f'timer_v timeout value = {timer_v.timeout_value()}')
+        print(f'timer_v timeout = {timer_v.timeout_value()}')
         timer_w = Timer(timeout=1, default_timeout=-1)
-        print(f'timer_w timeout value = {timer_w.timeout_value()}')
+        print(f'timer_w timeout = {timer_w.timeout_value()}')
         timer_x = Timer(timeout=1, default_timeout=0)
-        print(f'timer_x timeout value = {timer_x.timeout_value()}')
-        timer_y = Timer(timeout=1, default_timeout=1)
-        print(f'timer_y timeout value = {timer_y.timeout_value()}')
+        print(f'timer_x timeout = {timer_x.timeout_value()}')
+        timer_y = Timer(timeout=1, default_timeout=2.2)
+        print(f'timer_y timeout = {timer_y.timeout_value()}')
         print('example8 exiting')
 
         expected_result = 'example8 entered\n'
-        expected_result += 'timer_a timeout value = None\n'
-        expected_result += 'timer_b timeout value = None\n'
-        expected_result += 'timer_c timeout value = None\n'
-        expected_result += 'timer_d timeout value = None\n'
-        expected_result += 'timer_e timeout value = 1\n'
-        expected_result += 'timer_f timeout value = None\n'
-        expected_result += 'timer_g timeout value = None\n'
-        expected_result += 'timer_h timeout value = None\n'
-        expected_result += 'timer_i timeout value = 1.1\n'
-        expected_result += 'timer_j timeout value = None\n'
-        expected_result += 'timer_k timeout value = None\n'
-        expected_result += 'timer_l timeout value = None\n'
-        expected_result += 'timer_m timeout value = 1\n'
-        expected_result += 'timer_n timeout value = None\n'
-        expected_result += 'timer_o timeout value = None\n'
-        expected_result += 'timer_p timeout value = None\n'
-        expected_result += 'timer_q timeout value = None\n'
-        expected_result += 'timer_r timeout value = None\n'
-        expected_result += 'timer_s timeout value = None\n'
-        expected_result += 'timer_t timeout value = None\n'
-        expected_result += 'timer_u timeout value = None\n'
-        expected_result += 'timer_v timeout value = 1\n'
-        expected_result += 'timer_w timeout value = 1\n'
-        expected_result += 'timer_x timeout value = 1\n'
-        expected_result += 'timer_y timeout value = 1\n'
+        expected_result += 'timer_a timeout = None\n'
+        expected_result += 'timer_b timeout = None\n'
+        expected_result += 'timer_c timeout = None\n'
+        expected_result += 'timer_d timeout = None\n'
+        expected_result += 'timer_e timeout = 1\n'
+        expected_result += 'timer_f timeout = None\n'
+        expected_result += 'timer_g timeout = None\n'
+        expected_result += 'timer_h timeout = None\n'
+        expected_result += 'timer_i timeout = 2.2\n'
+        expected_result += 'timer_j timeout = None\n'
+        expected_result += 'timer_k timeout = None\n'
+        expected_result += 'timer_l timeout = None\n'
+        expected_result += 'timer_m timeout = 2.2\n'
+        expected_result += 'timer_n timeout = None\n'
+        expected_result += 'timer_o timeout = None\n'
+        expected_result += 'timer_p timeout = None\n'
+        expected_result += 'timer_q timeout = None\n'
+        expected_result += 'timer_r timeout = None\n'
+        expected_result += 'timer_s timeout = None\n'
+        expected_result += 'timer_t timeout = None\n'
+        expected_result += 'timer_u timeout = None\n'
+        expected_result += 'timer_v timeout = 1\n'
+        expected_result += 'timer_w timeout = 1\n'
+        expected_result += 'timer_x timeout = 1\n'
+        expected_result += 'timer_y timeout = 1\n'
         expected_result += 'example8 exiting\n'
 
         captured = capsys.readouterr().out
