@@ -158,8 +158,9 @@ class StopWatch:
             time.sleep(0.1)
 
         remaining_seconds = seconds - (time.time() - self.start_time)
-        if remaining_seconds > 0:
+        while remaining_seconds > 0:
             time.sleep(remaining_seconds)
+            remaining_seconds = seconds - (time.time() - self.start_time)
 
     ####################################################################
     # start_clock

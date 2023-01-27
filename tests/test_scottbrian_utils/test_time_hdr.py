@@ -523,6 +523,8 @@ class TestStartStopHeader:
             file_arg: specifies file_arg fixture
             flush_arg: specifies the flush_arg fixture
         """
+        logger.debug(f'mainline entered: {dt_format_arg=}, {end_arg=},'
+                     f'{file_arg=}, {flush_arg=}')
         route_num, expected_dt_format, end, file, \
             flush, enabled_tf = TestTimeBox.get_arg_flags(
                       dt_format=dt_format_arg,
@@ -530,7 +532,8 @@ class TestStartStopHeader:
                       file=file_arg,
                       flush=flush_arg,
                       enabled='0')
-
+        logger.debug(f'arg flags: {route_num=:05b}, {expected_dt_format=},'
+                     f'{ end=}, {file=}, {flush=}, {enabled_tf=}')
         if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
             hdr.print_start_msg()
         elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB0:
@@ -569,6 +572,8 @@ class TestStartStopHeader:
             hdr.print_start_msg(dt_format=dt_format_arg, end=end_arg,
                                 file=eval(file_arg), flush=flush)
 
+        logger.debug('back from router')
+
         if file == 'sys.stdout':
             captured = capsys.readouterr().out
         else:
@@ -580,6 +585,8 @@ class TestStartStopHeader:
         flowers = '*' * len(msg)
         expected = '\n' + flowers + end + msg + end + flowers + end
         assert captured == expected
+
+        logger.debug('mainline exiting')
 
     def test_print_end_msg(self, hdr: "StartStopHeader", capsys: Any,
                            dt_format_arg: DT_Format,

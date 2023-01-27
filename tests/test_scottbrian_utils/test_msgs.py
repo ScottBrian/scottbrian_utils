@@ -133,42 +133,56 @@ class TestMsgsErrors:
             caplog: pytest fixture to capture log output
 
         """
+        ################################################################
+        # log_test_msg
+        ################################################################
+        def log_test_msg(log_ver: LogVer,
+                         log_msg: str) -> None:
+            """Issue log msgs for test rtn.
+
+            Args:
+                log_ver: instance of LogVer
+                log_msg: the message to log
+
+            """
+            log_ver.add_msg(log_msg=re.escape(log_msg))
+            logger.debug(log_msg, stacklevel=2)
+
+        ################################################################
+        # f1
+        ################################################################
         def f1() -> None:
             """Beta f1 function."""
-            f1_log_msg = 'f1 beta entered'
-            log_ver.add_msg(f1_log_msg)
-            logger.debug(f1_log_msg)
+            log_test_msg(log_ver, 'f1 beta entered')
+
             f1_to_low = f1_timeout
             f1_to_high = f1_timeout * 1.1
 
             f1_stop_watch = StopWatch()
 
-            f1_log_msg = 'f1 beta starting timeout -1'
-            log_ver.add_msg(f1_log_msg)
-            logger.debug(f1_log_msg)
+            log_test_msg(log_ver, 'f1 beta starting timeout -1')
+
             f1_stop_watch.start_clock(clock_iter=1)
             msgs.get_msg('beta', timeout=-1)
             assert f1_to_low <= f1_stop_watch.duration() <= f1_to_high
 
-            f1_log_msg = 'f1 beta starting timeout 0'
-            log_ver.add_msg(f1_log_msg)
-            logger.debug(f1_log_msg)
+            log_test_msg(log_ver, 'f1 beta starting timeout 0')
+
             f1_stop_watch.start_clock(clock_iter=2)
             msgs.get_msg('beta', timeout=0)
             assert f1_to_low <= f1_stop_watch.duration() <= f1_to_high
 
-            f1_log_msg = 'f1 beta starting timeout None'
-            log_ver.add_msg(f1_log_msg)
-            logger.debug(f1_log_msg)
+            log_test_msg(log_ver, 'f1 beta starting timeout None')
+
             f1_stop_watch.start_clock(clock_iter=3)
             msgs.get_msg('beta', timeout=None)
             assert f1_to_low <= f1_stop_watch.duration() <= f1_to_high
 
-            f1_log_msg = 'f1 beta exiting'
-            log_ver.add_msg(f1_log_msg)
-            logger.debug(f1_log_msg)
+            log_test_msg(log_ver, 'f1 beta exiting')
 
-        logger.debug('mainline entered')
+        ################################################################
+        # mainline
+        ################################################################
         msgs = Msgs()
         ml_stop_watch = StopWatch()
         log_ver = LogVer(log_name='test_msgs')
@@ -176,10 +190,7 @@ class TestMsgsErrors:
         log_ver.add_call_seq(name='alpha',
                              seq=alpha_call_seq)
 
-        log_msg = 'mainline entered'
-        log_ver.add_msg(log_name='test_msgs',
-                        log_level=logging.DEBUG,
-                        log_msg=log_msg)
+        log_test_msg(log_ver, 'mainline entered')
 
         f1_timeout = 5
         f1_thread = threading.Thread(target=f1)
@@ -209,18 +220,16 @@ class TestMsgsErrors:
             assert to_low <= ml_stop_watch.duration() <= to_high
 
             f1_thread.start()
-            log_msg = 'mainline starting timeout loop'
-            log_ver.add_msg(log_msg)
-            logger.debug(log_msg)
+            log_test_msg(log_ver, 'mainline starting timeout loop')
+
             for idx in range(2, 5):  # 2, 3, 4
-                log_msg = f'mainline starting timeout loop {idx}'
-                log_ver.add_msg(log_msg)
-                logger.debug(log_msg)
+                log_test_msg(log_ver, f'mainline starting timeout loop {idx}')
+
                 ml_stop_watch.start_clock(clock_iter=idx)
                 ml_stop_watch.pause(seconds=f1_timeout, clock_iter=idx)
-                log_msg = f'mainline duration {ml_stop_watch.duration()}'
-                log_ver.add_msg(log_msg)
-                logger.debug(log_msg)
+                log_test_msg(log_ver,
+                             f'mainline duration {ml_stop_watch.duration()}')
+
                 msgs.queue_msg('beta')
 
         else:
@@ -229,9 +238,8 @@ class TestMsgsErrors:
             ############################################################
             to_low = timeout_arg
             to_high = timeout_arg * 1.2
-            log_msg = f'mainline starting timeout {timeout_arg}'
-            log_ver.add_msg(log_msg)
-            logger.debug(log_msg)
+            log_test_msg(log_ver, f'mainline starting timeout {timeout_arg}')
+
             ml_stop_watch.start_clock(clock_iter=1)
             with pytest.raises(GetMsgTimedOut):
                 _ = msgs.get_msg('beta', timeout_arg)

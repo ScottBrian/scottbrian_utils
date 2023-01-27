@@ -486,7 +486,7 @@ class Timer:
         >>> def example8() -> None:
         ...     print('example8 entered')
         ...     timer_a = Timer()
-        ...     print(f'time_a timeout = {timer_a.timeout_value()}')
+        ...     print(f'timer_a timeout = {timer_a.timeout_value()}')
         ...     timer_b = Timer(timeout=None)
         ...     print(f'timer_b timeout = {timer_b.timeout_value()}')
         ...     timer_c = Timer(timeout=-1)
@@ -537,7 +537,7 @@ class Timer:
         ...     print(f'timer_y timeout = {timer_y.timeout_value()}')
         ...     print('example8 exiting')
         >>> example8()
-        example7 entered
+        example8 entered
         timer_a timeout = None
         timer_b timeout = None
         timer_c timeout = None
@@ -563,7 +563,7 @@ class Timer:
         timer_w timeout = 1
         timer_x timeout = 1
         timer_y timeout = 1
-        example7 exiting
+        example8 exiting
 
         """
         return self._timeout

@@ -479,7 +479,7 @@ class TestStopWatch:
         start_time = time.perf_counter_ns()
 
         f1_thread.start()
-        ml_event.wait()
+        assert ml_event.wait(timeout=60)
         ml_event.clear()
         stop_watch.start_clock(clock_iter=1)
         f1_event.set()
@@ -497,7 +497,7 @@ class TestStopWatch:
                 <= (sleep_arg * 1.1)
                 )
 
-        ml_event.wait()
+        assert ml_event.wait(timeout=60)
         time.sleep(sleep_arg)
         stop_watch.start_clock(clock_iter=3)
         f1_thread.join()
