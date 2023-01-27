@@ -479,6 +479,14 @@ class TestLogVerBasic:
         expected = "LogVer(log_name='simple_repr')\n"
         assert captured == expected
 
+        a_log_name = 'simple_repr2_log_name'
+        log_ver2 = LogVer(log_name=a_log_name)
+        print(log_ver2)  # test of __repr__
+        captured = capsys.readouterr().out
+
+        expected = "LogVer(log_name='simple_repr2_log_name')\n"
+        assert captured == expected
+
     ####################################################################
     # test_log_verifier_time_match
     ####################################################################
