@@ -29,7 +29,8 @@ from datetime import datetime
 from os import fspath
 from pathlib import Path
 # noinspection PyProtectedMember
-from sys import _getframe
+# from sys import _getframe
+import sys
 import types
 from types import FrameType
 from typing import Any, NamedTuple
@@ -338,7 +339,7 @@ def get_formatted_call_sequence(latest: int = 0,
     for caller_depth in range(latest+1, latest+1+depth):
         try:
             # sys._getframe is faster than inspect.currentframe
-            frame = _getframe(caller_depth)
+            frame = sys._getframe(caller_depth)
         except ValueError:
             break  # caller_depth beyond depth of frames
         except Exception:  # anything else, such as _getframe missing

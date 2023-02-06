@@ -127,7 +127,8 @@ Release History
     * added repr for LogVer
 
 * 2.3.0
-    * added is_specified method for Timer
+    * added is_specified method in Timer
+    * added timeout_value in Timer
     * support for python 3.11
 
 Meta
