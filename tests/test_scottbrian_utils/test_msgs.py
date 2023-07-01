@@ -47,7 +47,7 @@ class ErrorTstMsgs(Exception):
 timeout_arg_list = [0.0, 0.3, 0.5, 1, 2, 4]
 
 
-@pytest.fixture(params=timeout_arg_list)  # type: ignore
+@pytest.fixture(params=timeout_arg_list)
 def timeout_arg(request: Any) -> float:
     """Using different seconds for timeout.
 
@@ -66,7 +66,7 @@ def timeout_arg(request: Any) -> float:
 who_arg_list = ['beta', 'charlie', 'both']
 
 
-@pytest.fixture(params=who_arg_list)  # type: ignore
+@pytest.fixture(params=who_arg_list)
 def who_arg(request: Any) -> str:
     """Using different msg targets.
 
@@ -85,7 +85,7 @@ def who_arg(request: Any) -> str:
 msg_arg_list = [0, '0', 0.0, 'hello', 1, [1, 2, 3], ('a', 'b', 'c')]
 
 
-@pytest.fixture(params=msg_arg_list)  # type: ignore
+@pytest.fixture(params=msg_arg_list)
 def msg_arg(request: Any) -> Any:
     """Using different msgs.
 
@@ -104,7 +104,7 @@ def msg_arg(request: Any) -> Any:
 start_arg_list = ['before', 'mid1', 'mid2', 'after']
 
 
-@pytest.fixture(params=start_arg_list)  # type: ignore
+@pytest.fixture(params=start_arg_list)
 def start_arg(request: Any) -> str:
     """Using different remote thread start points.
 
@@ -124,7 +124,7 @@ class TestMsgsErrors:
     """TestMsgsErrors class."""
     def test_msgs_timeout(self,
                           timeout_arg: float,
-                          caplog: pytest.CaptureFixture[str]) -> None:
+                          caplog: pytest.LogCaptureFixture) -> None:
         """test_msgs_timeout.
 
         Args:

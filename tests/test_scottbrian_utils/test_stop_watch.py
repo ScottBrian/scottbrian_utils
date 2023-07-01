@@ -50,7 +50,7 @@ class ErrorTstStopWatch(Exception):
 timeout_arg_list = [0.0, 0.3, 0.5, 1, 2, 4]
 
 
-@pytest.fixture(params=timeout_arg_list)  # type: ignore
+@pytest.fixture(params=timeout_arg_list)
 def timeout_arg(request: Any) -> float:
     """Using different seconds for timeout.
 
@@ -69,7 +69,7 @@ def timeout_arg(request: Any) -> float:
 sleep_arg_list = [0.3, 1.0, 2, 2.5]
 
 
-@pytest.fixture(params=sleep_arg_list)  # type: ignore
+@pytest.fixture(params=sleep_arg_list)
 def sleep_arg(request: Any) -> float:
     """Using different remote thread start points.
 

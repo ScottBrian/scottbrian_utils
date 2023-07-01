@@ -57,7 +57,7 @@ class DiagMsgArgs(NamedTuple):
 depth_arg_list = [None, 0, 1, 2, 3]
 
 
-@pytest.fixture(params=depth_arg_list)  # type: ignore
+@pytest.fixture(params=depth_arg_list)
 def depth_arg(request: Any) -> int:
     """Using different depth args.
 
@@ -76,7 +76,7 @@ def depth_arg(request: Any) -> int:
 file_arg_list = [None, 'sys.stdout', 'sys.stderr']
 
 
-@pytest.fixture(params=file_arg_list)  # type: ignore
+@pytest.fixture(params=file_arg_list)
 def file_arg(request: Any) -> str:
     """Using different file arg.
 
@@ -95,7 +95,7 @@ def file_arg(request: Any) -> str:
 latest_arg_list = [None, 0, 1, 2, 3]
 
 
-@pytest.fixture(params=latest_arg_list)  # type: ignore
+@pytest.fixture(params=latest_arg_list)
 def latest_arg(request: Any) -> Union[int, None]:
     """Using different depth args.
 
@@ -121,7 +121,7 @@ msg_arg_list = [[None],
                 ['here', 'some', 'math', 4 + 1]]
 
 
-@pytest.fixture(params=msg_arg_list)  # type: ignore
+@pytest.fixture(params=msg_arg_list)
 def msg_arg(request: Any) -> List[str]:
     """Using different message arg.
 

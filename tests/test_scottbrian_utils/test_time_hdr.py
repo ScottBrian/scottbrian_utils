@@ -52,7 +52,7 @@ dt_format_arg_list = ['0',
                       ]
 
 
-@pytest.fixture(params=dt_format_arg_list)  # type: ignore
+@pytest.fixture(params=dt_format_arg_list)
 def dt_format_arg(request: Any) -> str:
     """Using different time formats.
 
@@ -95,7 +95,7 @@ dt_format_char_arg_list = ['',
                            '%V']
 
 
-@pytest.fixture(params=dt_format_char_arg_list)  # type: ignore
+@pytest.fixture(params=dt_format_char_arg_list)
 def dt_format_char_arg(request: Any) -> str:
     """Using different time formats.
 
@@ -146,7 +146,7 @@ dt_datetime_arg_list = [datetime(1999,  1,  1,  0,  0,  0,  0,
                                  )]
 
 
-@pytest.fixture(params=dt_datetime_arg_list)  # type: ignore
+@pytest.fixture(params=dt_datetime_arg_list)
 def dt_datetime_arg(request: Any) -> datetime:
     """Using different time formats.
 
@@ -162,7 +162,7 @@ def dt_datetime_arg(request: Any) -> datetime:
 dt_datetime_month_arg_list = [1, 5, 9, 10, 11, 12]
 
 
-@pytest.fixture(params=dt_datetime_month_arg_list)  # type: ignore
+@pytest.fixture(params=dt_datetime_month_arg_list)
 def dt_datetime_month_arg(request: Any) -> int:
     """Using different time formats.
 
@@ -178,7 +178,7 @@ def dt_datetime_month_arg(request: Any) -> int:
 dt_datetime_day_arg_list = [1, 2, 9, 10, 11, 19, 20, 21, 29, 30, 31]
 
 
-@pytest.fixture(params=dt_datetime_day_arg_list)  # type: ignore
+@pytest.fixture(params=dt_datetime_day_arg_list)
 def dt_datetime_day_arg(request: Any) -> int:
     """Using different time formats.
 
@@ -216,7 +216,7 @@ dt_format_time_arg_list = ['',
                            ]
 
 
-@pytest.fixture(params=dt_format_date_arg_list)  # type: ignore
+@pytest.fixture(params=dt_format_date_arg_list)
 def dt_format_date_arg(request: Any) -> str:
     """Using different time formats.
 
@@ -229,7 +229,7 @@ def dt_format_date_arg(request: Any) -> str:
     return cast(str, request.param)
 
 
-@pytest.fixture(params=dt_format_time_arg_list)  # type: ignore
+@pytest.fixture(params=dt_format_time_arg_list)
 def dt_format_time_arg(request: Any) -> str:
     """Using different time formats.
 
@@ -245,7 +245,7 @@ def dt_format_time_arg(request: Any) -> str:
 style_num_list = [1, 2, 3]
 
 
-@pytest.fixture(params=style_num_list)  # type: ignore
+@pytest.fixture(params=style_num_list)
 def style_num(request: Any) -> int:
     """Using different time_box styles.
 
@@ -261,7 +261,7 @@ def style_num(request: Any) -> int:
 end_arg_list = ['0', '\n', '\n\n']
 
 
-@pytest.fixture(params=end_arg_list)  # type: ignore
+@pytest.fixture(params=end_arg_list)
 def end_arg(request: Any) -> str:
     """Choose single or double space.
 
@@ -277,7 +277,7 @@ def end_arg(request: Any) -> str:
 file_arg_list = ['0', 'None', 'sys.stdout', 'sys.stderr']
 
 
-@pytest.fixture(params=file_arg_list)  # type: ignore
+@pytest.fixture(params=file_arg_list)
 def file_arg(request: Any) -> str:
     """Using different file arg.
 
@@ -293,7 +293,7 @@ def file_arg(request: Any) -> str:
 flush_arg_list = ['0', 'True', 'False']
 
 
-@pytest.fixture(params=flush_arg_list)  # type: ignore
+@pytest.fixture(params=flush_arg_list)
 def flush_arg(request: Any) -> str:
     """False: do not flush print stream, True: flush print stream.
 
@@ -314,7 +314,7 @@ enabled_arg_list = ['0',
                     ]
 
 
-@pytest.fixture(params=enabled_arg_list)  # type: ignore
+@pytest.fixture(params=enabled_arg_list)
 def enabled_arg(request: Any) -> str:
     """Determines how to specify time_box_enabled.
 
@@ -499,7 +499,7 @@ class TestGetMatchStr:
 class TestStartStopHeader:
     """TestStartStopHeader class."""
 
-    @pytest.fixture(scope='class')  # type: ignore
+    @pytest.fixture(scope='class')
     def hdr(self) -> "StartStopHeader":
         """Method hdr.
 

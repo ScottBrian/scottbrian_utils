@@ -49,7 +49,7 @@ class ErrorTstPauser(Exception):
 interval_arg_list = [0.0, 0.001, 0.010, 0.100, 0.500, 0.900, 1, 2, 5]
 
 
-@pytest.fixture(params=interval_arg_list)  # type: ignore
+@pytest.fixture(params=interval_arg_list)
 def interval_arg(request: Any) -> IntFloat:
     """Using different seconds for interval.
 
@@ -72,7 +72,7 @@ min_max_interval_msecs_arg_list = [(1, 1),
                                    (101, 200)]
 
 
-@pytest.fixture(params=min_max_interval_msecs_arg_list)  # type: ignore
+@pytest.fixture(params=min_max_interval_msecs_arg_list)
 def min_max_interval_msecs_arg(request: Any) -> tuple[int, int]:
     """Using different interval ranges.
 
@@ -91,7 +91,7 @@ def min_max_interval_msecs_arg(request: Any) -> tuple[int, int]:
 increment_arg_list = [1, 2, 3, 5]
 
 
-@pytest.fixture(params=increment_arg_list)  # type: ignore
+@pytest.fixture(params=increment_arg_list)
 def increment_arg(request: Any) -> int:
     """Using different increments.
 
@@ -110,7 +110,7 @@ def increment_arg(request: Any) -> int:
 part_time_factor_arg_list = [0.3, 0.4, 0.5]
 
 
-@pytest.fixture(params=part_time_factor_arg_list)  # type: ignore
+@pytest.fixture(params=part_time_factor_arg_list)
 def part_time_factor_arg(request: Any) -> float:
     """Using different part time ratios.
 
@@ -129,7 +129,7 @@ def part_time_factor_arg(request: Any) -> float:
 sleep_late_ratio_arg_list = [0.90, 1.0]
 
 
-@pytest.fixture(params=sleep_late_ratio_arg_list)  # type: ignore
+@pytest.fixture(params=sleep_late_ratio_arg_list)
 def sleep_late_ratio_arg(request: Any) -> float:
     """Using different sleep ratios.
 
@@ -148,7 +148,7 @@ def sleep_late_ratio_arg(request: Any) -> float:
 iterations_arg_list = [1, 2, 3]
 
 
-@pytest.fixture(params=iterations_arg_list)  # type: ignore
+@pytest.fixture(params=iterations_arg_list)
 def iterations_arg(request: Any) -> int:
     """Using different calibration iterations.
 

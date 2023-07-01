@@ -10,7 +10,7 @@ from scottbrian_utils.flower_box import print_flower_box_msg \
 file_num_list = [0, 1, 2, 3]
 
 
-@pytest.fixture(params=file_num_list)  # type: ignore
+@pytest.fixture(params=file_num_list)
 def file_num(request: Any) -> int:
     """Using different file arg.
 
@@ -176,7 +176,7 @@ class TestFlowerBox:
                   '*************************\n'
                   )]
 
-    @pytest.mark.parametrize('msg_list, expected_result',  # type: ignore
+    @pytest.mark.parametrize('msg_list, expected_result',
                              case_list)
     def test_flower_box(self, capsys: Any, msg_list: List[str],
                         expected_result: str,

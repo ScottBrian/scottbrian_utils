@@ -31,7 +31,7 @@ file_specs_list = [{'file1': Path('/run/media/file1.csv')},
                    ]
 
 
-@pytest.fixture(params=file_specs_list)  # type: ignore
+@pytest.fixture(params=file_specs_list)
 def file_specs(request: Any) -> Dict[str, Path]:
     """Pytest fixture for different file_specs args.
 

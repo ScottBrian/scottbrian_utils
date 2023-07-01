@@ -79,7 +79,7 @@ class ExcHook:
             raise Exception(f'{exc_msg}')
 
 
-@pytest.fixture(autouse=True)  # type: ignore
+@pytest.fixture(autouse=True)
 def thread_exc(monkeypatch: Any) -> Generator[ExcHook, None, None]:
     """Instantiate and return a ThreadExc for testing.
 
@@ -146,7 +146,7 @@ dt_format_arg_list = [None,
                       ]
 
 
-@pytest.fixture(params=dt_format_arg_list)  # type: ignore
+@pytest.fixture(params=dt_format_arg_list)
 def dt_format_arg(request: Any) -> str:
     """Using different time formats.
 

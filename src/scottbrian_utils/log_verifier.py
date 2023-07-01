@@ -14,7 +14,7 @@ have been issued.
 
     from scottbrian_utils.log_verifier import LogVer
     import logging
-    def test_example1(caplog: pytest.CaptureFixture[str]) -> None:
+    def test_example1(caplog: pytest.LogCaptureFixture) -> None:
         logger = logging.getLogger('example_1')
         log_ver = LogVer('example_1')
         log_msg = 'hello'
@@ -56,7 +56,7 @@ The output from ``LogVer.print_match_results()`` for test_example1::
 
     from scottbrian_utils.log_verifier import LogVer
     import logging
-    def test_example2(caplog: pytest.CaptureFixture[str]) -> None:
+    def test_example2(caplog: pytest.LogCaptureFixture) -> None:
         logger = logging.getLogger('example_2')
         log_ver = LogVer('example_2')
         log_msg1 = 'hello'
@@ -100,7 +100,7 @@ The output from ``LogVer.print_match_results()`` for test_example2::
 
     from scottbrian_utils.log_verifier import LogVer
     import logging
-    def test_example3(caplog: pytest.CaptureFixture[str]) -> None:
+    def test_example3(caplog: pytest.LogCaptureFixture) -> None:
         logger = logging.getLogger('example_3')
         log_ver = LogVer('example_3')
         log_msg1 = 'hello'
@@ -145,7 +145,7 @@ The output from ``LogVer.print_match_results()`` for test_example3::
 
     from scottbrian_utils.log_verifier import LogVer
     import logging
-    def test_example4(caplog: pytest.CaptureFixture[str]) -> None:
+    def test_example4(caplog: pytest.LogCaptureFixture) -> None:
         logger = logging.getLogger('example_4')
         log_ver = LogVer('example_4')
         log_msg1 = 'hello'
@@ -366,7 +366,7 @@ class LogVer:
 
         .. code-block:: python
 
-            def test_example(caplog: pytest.CaptureFixture[str]
+            def test_example(caplog: pytest.LogCaptureFixture
                             ) -> None:
                 logger = logging.getLogger('add_msg')
                 log_ver = LogVer('add_msg')
@@ -430,7 +430,7 @@ class LogVer:
     # get_match_results
     ####################################################################
     def get_match_results(self,
-                          caplog: pytest.CaptureFixture[str]
+                          caplog: pytest.LogCaptureFixture
                           ) -> MatchResults:
         """Match the expected to actual log records.
 

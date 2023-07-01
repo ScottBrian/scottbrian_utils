@@ -46,7 +46,7 @@ class ErrorTstLogVer(Exception):
 log_enabled_arg_list = [True, False]
 
 
-@pytest.fixture(params=log_enabled_arg_list)  # type: ignore
+@pytest.fixture(params=log_enabled_arg_list)
 def log_enabled_arg(request: Any) -> bool:
     """Using enabled and disabled logging.
 
@@ -65,7 +65,7 @@ def log_enabled_arg(request: Any) -> bool:
 simple_str_arg_list = ['a', 'ab', 'a1', 'xyz123']
 
 
-@pytest.fixture(params=simple_str_arg_list)  # type: ignore
+@pytest.fixture(params=simple_str_arg_list)
 def simple_str_arg(request: Any) -> str:
     """Using different string messages.
 
@@ -84,7 +84,7 @@ def simple_str_arg(request: Any) -> str:
 num_msgs_arg_list = [0, 1, 2, 3]
 
 
-@pytest.fixture(params=num_msgs_arg_list)  # type: ignore
+@pytest.fixture(params=num_msgs_arg_list)
 def num_exp_msgs1(request: Any) -> int:
     """Using different number of messages.
 
@@ -97,7 +97,7 @@ def num_exp_msgs1(request: Any) -> int:
     return cast(int, request.param)
 
 
-@pytest.fixture(params=num_msgs_arg_list)  # type: ignore
+@pytest.fixture(params=num_msgs_arg_list)
 def num_exp_msgs2(request: Any) -> int:
     """Using different number of messages.
 
@@ -110,7 +110,7 @@ def num_exp_msgs2(request: Any) -> int:
     return cast(int, request.param)
 
 
-@pytest.fixture(params=num_msgs_arg_list)  # type: ignore
+@pytest.fixture(params=num_msgs_arg_list)
 def num_exp_msgs3(request: Any) -> int:
     """Using different number of messages.
 
@@ -123,7 +123,7 @@ def num_exp_msgs3(request: Any) -> int:
     return cast(int, request.param)
 
 
-@pytest.fixture(params=num_msgs_arg_list)  # type: ignore
+@pytest.fixture(params=num_msgs_arg_list)
 def num_act_msgs1(request: Any) -> int:
     """Using different number of messages.
 
@@ -136,7 +136,7 @@ def num_act_msgs1(request: Any) -> int:
     return cast(int, request.param)
 
 
-@pytest.fixture(params=num_msgs_arg_list)  # type: ignore
+@pytest.fixture(params=num_msgs_arg_list)
 def num_act_msgs2(request: Any) -> int:
     """Using different number of messages.
 
@@ -149,7 +149,7 @@ def num_act_msgs2(request: Any) -> int:
     return cast(int, request.param)
 
 
-@pytest.fixture(params=num_msgs_arg_list)  # type: ignore
+@pytest.fixture(params=num_msgs_arg_list)
 def num_act_msgs3(request: Any) -> int:
     """Using different number of messages.
 
@@ -173,7 +173,7 @@ class TestLogVerExamples:
     ####################################################################
     def test_log_verifier_example1(self,
                                    capsys: pytest.CaptureFixture[str],
-                                   caplog: pytest.CaptureFixture[str]
+                                   caplog: pytest.LogCaptureFixture
                                    ) -> None:
         """Test log_verifier example1.
 
@@ -226,7 +226,7 @@ class TestLogVerExamples:
     ####################################################################
     def test_log_verifier_example2(self,
                                    capsys: pytest.CaptureFixture[str],
-                                   caplog: pytest.CaptureFixture[str]
+                                   caplog: pytest.LogCaptureFixture
                                    ) -> None:
         """Test log_verifier example2.
 
@@ -283,7 +283,7 @@ class TestLogVerExamples:
     ####################################################################
     def test_log_verifier_example3(self,
                                    capsys: pytest.CaptureFixture[str],
-                                   caplog: pytest.CaptureFixture[str]
+                                   caplog: pytest.LogCaptureFixture
                                    ) -> None:
         """Test log_verifier example3.
 
@@ -340,7 +340,7 @@ class TestLogVerExamples:
     ####################################################################
     def test_log_verifier_example4(self,
                                    capsys: pytest.CaptureFixture[str],
-                                   caplog: pytest.CaptureFixture[str]
+                                   caplog: pytest.LogCaptureFixture
                                    ) -> None:
         """Test log_verifier example4.
 
@@ -401,7 +401,7 @@ class TestLogVerExamples:
     ####################################################################
     def test_log_verifier_example5(self,
                                    capsys: pytest.CaptureFixture[str],
-                                   caplog: pytest.CaptureFixture[str]
+                                   caplog: pytest.LogCaptureFixture
                                    ) -> None:
         """Test log_verifier example5 for add_msg.
 
@@ -494,7 +494,7 @@ class TestLogVerBasic:
     def test_log_verifier_simple_match(self,
                                        simple_str_arg: str,
                                        capsys: pytest.CaptureFixture[str],
-                                       caplog: pytest.CaptureFixture[str]
+                                       caplog: pytest.LogCaptureFixture
                                        ) -> None:
         """Test log_verifier time match.
 
@@ -551,7 +551,7 @@ class TestLogVerBasic:
             print_matched_arg: Union[bool, None],
             num_msgs_arg: int,
             capsys: pytest.CaptureFixture[str],
-            caplog: pytest.CaptureFixture[str]
+            caplog: pytest.LogCaptureFixture
             ) -> None:
         """Test log_verifier with print_matched args.
 
@@ -624,7 +624,7 @@ class TestLogVerBasic:
     def test_log_verifier_simple_fullmatch(self,
                                            double_str_arg: str,
                                            capsys: pytest.CaptureFixture[str],
-                                           caplog: pytest.CaptureFixture[str]
+                                           caplog: pytest.LogCaptureFixture
                                            ) -> None:
         """Test log_verifier time match.
 
@@ -840,7 +840,7 @@ class TestLogVerBasic:
     ####################################################################
     def test_log_verifier_time_match(self,
                                      capsys: pytest.CaptureFixture[str],
-                                     caplog: pytest.CaptureFixture[str]
+                                     caplog: pytest.LogCaptureFixture
                                      ) -> None:
         """Test log_verifier time match.
 
@@ -899,7 +899,7 @@ class TestLogVerBasic:
     def test_log_verifier_add_call_seq(self,
                                        simple_str_arg: str,
                                        capsys: pytest.CaptureFixture[str],
-                                       caplog: pytest.CaptureFixture[str]
+                                       caplog: pytest.LogCaptureFixture
                                        ) -> None:
         """Test log_verifier add_call_seq method.
 
@@ -954,7 +954,7 @@ class TestLogVerBasic:
     def test_log_verifier_add_call_seq2(self,
                                         simple_str_arg: str,
                                         capsys: pytest.CaptureFixture[str],
-                                        caplog: pytest.CaptureFixture[str]
+                                        caplog: pytest.LogCaptureFixture
                                         ) -> None:
         """Test log_verifier add_call_seq method.
 
@@ -1013,7 +1013,7 @@ class TestLogVerBasic:
     def test_log_verifier_add_call_seq3(self,
                                         simple_str_arg: str,
                                         capsys: pytest.CaptureFixture[str],
-                                        caplog: pytest.CaptureFixture[str]
+                                        caplog: pytest.LogCaptureFixture
                                         ) -> None:
         """Test log_verifier add_call_seq method.
 
@@ -1080,7 +1080,7 @@ class TestLogVerBasic:
     def test_log_verifier_no_log(self,
                                  log_enabled_arg: bool,
                                  capsys: pytest.CaptureFixture[str],
-                                 caplog: pytest.CaptureFixture[str]
+                                 caplog: pytest.LogCaptureFixture
                                  ) -> None:
         """Test log_verifier with logging disabled and enabled.
 
@@ -1172,7 +1172,7 @@ class TestLogVerCombos:
                                  num_act_msgs2: int,
                                  num_act_msgs3: int,
                                  capsys: pytest.CaptureFixture[str],
-                                 caplog: pytest.CaptureFixture[str]
+                                 caplog: pytest.LogCaptureFixture
                                  ) -> None:
         """Test log_verifier combos.
 

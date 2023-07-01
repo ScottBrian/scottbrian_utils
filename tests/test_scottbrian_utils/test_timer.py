@@ -49,7 +49,7 @@ greater_than_zero_timeout_arg_list = [0.3, 0.5, 1, 1.5, 2, 4]
 ########################################################################
 # timeout_arg fixture
 ########################################################################
-@pytest.fixture(params=greater_than_zero_timeout_arg_list)  # type: ignore
+@pytest.fixture(params=greater_than_zero_timeout_arg_list)
 def timeout_arg(request: Any) -> IntFloat:
     """Using different seconds for timeout.
 
@@ -65,7 +65,7 @@ def timeout_arg(request: Any) -> IntFloat:
 ########################################################################
 # zero_or_less_timeout_arg fixture
 ########################################################################
-@pytest.fixture(params=zero_or_less_timeout_arg_list)  # type: ignore
+@pytest.fixture(params=zero_or_less_timeout_arg_list)
 def zero_or_less_timeout_arg(request: Any) -> IntFloat:
     """Using different seconds for timeout.
 
@@ -81,7 +81,7 @@ def zero_or_less_timeout_arg(request: Any) -> IntFloat:
 ########################################################################
 # greater_than_zero_timeout_arg fixture
 ########################################################################
-@pytest.fixture(params=greater_than_zero_timeout_arg_list)  # type: ignore
+@pytest.fixture(params=greater_than_zero_timeout_arg_list)
 def greater_than_zero_timeout_arg(request: Any) -> IntFloat:
     """Using different seconds for timeout.
 
@@ -97,7 +97,7 @@ def greater_than_zero_timeout_arg(request: Any) -> IntFloat:
 ########################################################################
 # zero_or_less_default_timeout_arg fixture
 ########################################################################
-@pytest.fixture(params=zero_or_less_timeout_arg_list)  # type: ignore
+@pytest.fixture(params=zero_or_less_timeout_arg_list)
 def zero_or_less_default_timeout_arg(request: Any) -> IntFloat:
     """Using different seconds for timeout_default.
 
@@ -113,7 +113,7 @@ def zero_or_less_default_timeout_arg(request: Any) -> IntFloat:
 ########################################################################
 # greater_than_zero_default_timeout_arg fixture
 ########################################################################
-@pytest.fixture(params=greater_than_zero_timeout_arg_list)  # type: ignore
+@pytest.fixture(params=greater_than_zero_timeout_arg_list)
 def greater_than_zero_default_timeout_arg(request: Any) -> IntFloat:
     """Using different seconds for timeout_default.
 
