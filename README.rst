@@ -131,6 +131,10 @@ Release History
     * added timeout_value in Timer
     * support for python 3.11
 
+* 2.4.0
+    * added fullmatch parm to add_msg in log_ver.py
+    * added print_matched parm to print_match_results in log_ver.py
+
 Meta
 ====
 

@@ -279,6 +279,7 @@ class LogVer:
         self.specified_args = locals()  # used for __repr__, see below
         self.call_seqs: dict[str, str] = {}
         self.expected_messages: list[tuple[str, int, Any]] = []
+        self.expected_messages_fullmatch: list[tuple[str, int, Any]] = []
         self.log_name = log_name
 
     ####################################################################
@@ -350,13 +351,16 @@ class LogVer:
     def add_msg(self,
                 log_msg: str,
                 log_level: int = logging.DEBUG,
-                log_name: Optional[str] = None) -> None:
+                log_name: Optional[str] = None,
+                fullmatch: bool = False) -> None:
         """Add a message to the expected log messages.
 
         Args:
             log_msg: expected message to add
             log_level: expected logging level
             log_name: expected logger name
+            fullmatch: if True, use regex fullmatch instead of
+                match in method get_match_results
 
         Example: add two messages, each at a different level
 
@@ -410,10 +414,17 @@ class LogVer:
             log_name_to_use = log_name
         else:
             log_name_to_use = self.log_name
-        self.expected_messages.append((log_name_to_use,
-                                       log_level,
-                                       re.compile(log_msg)
-                                       ))
+
+        if fullmatch:
+            self.expected_messages_fullmatch.append((log_name_to_use,
+                                                     log_level,
+                                                     re.compile(log_msg)
+                                                     ))
+        else:
+            self.expected_messages.append((log_name_to_use,
+                                           log_level,
+                                           re.compile(log_msg)
+                                           ))
 
     ####################################################################
     # get_match_results
@@ -433,57 +444,95 @@ class LogVer:
               or matching records
 
         """
-        unmatched_exp_records: list[tuple[str, int, Any]] = []
-        unmatched_actual_records: list[tuple[str, int, Any]] = []
-        matched_records: list[tuple[str, int, Any]] = []
+        # make a work copy of fullmatch expected records
+        unmatched_exp_records_fullmatch: list[tuple[str, int, Any]] = (
+            self.expected_messages_fullmatch.copy()
+        )
 
         # make a work copy of expected records
-        for record in self.expected_messages:
-            unmatched_exp_records.append(record)
+        unmatched_exp_records: list[tuple[str, int, Any]] = (
+            self.expected_messages.copy()
+        )
 
         # make a work copy of actual records
-        for record in caplog.record_tuples:
-            unmatched_actual_records.append(record)
+        unmatched_actual_records: list[tuple[str, int, Any]] = (
+            caplog.record_tuples.copy()
+        )
 
+        matched_records: list[tuple[str, int, Any]] = []
+
+        ################################################################
         # find matches, update working copies to reflect results
-        for actual_record in caplog.record_tuples:
-            for idx, exp_record in enumerate(unmatched_exp_records):
-                # check that the logger name, level, and message match
-                if (exp_record[0] == actual_record[0]
-                        and exp_record[1] == actual_record[1]
-                        and exp_record[2].match(actual_record[2])):
-                    unmatched_exp_records.pop(idx)
-                    unmatched_actual_records.remove(actual_record)
-                    matched_records.append((actual_record[0],
-                                            actual_record[1],
-                                            actual_record[2]))
-                    break
+        ################################################################
+        if unmatched_exp_records_fullmatch:  # if fullmatch records
+            for actual_record in caplog.record_tuples:
+                # look for fullmatch
+                for idx, exp_record in enumerate(
+                        unmatched_exp_records_fullmatch):
+                    # check that the logger name, level, and message
+                    # match
+                    if (exp_record[0] == actual_record[0]
+                            and exp_record[1] == actual_record[1]
+                            and exp_record[2].fullmatch(actual_record[2])):
+                        unmatched_exp_records_fullmatch.pop(idx)
+                        unmatched_actual_records.remove(actual_record)
+                        matched_records.append((actual_record[0],
+                                                actual_record[1],
+                                                actual_record[2]))
+                        break
+
+        if unmatched_exp_records:  # if partial match records
+            for actual_record in unmatched_actual_records.copy():
+                # look for partial match in unmatched_exp_records
+                for idx, exp_record in enumerate(unmatched_exp_records):
+                    # check that the logger name, level, and message
+                    # match
+                    if (exp_record[0] == actual_record[0]
+                            and exp_record[1] == actual_record[1]
+                            and exp_record[2].match(actual_record[2])):
+                        unmatched_exp_records.pop(idx)
+                        unmatched_actual_records.remove(actual_record)
+                        matched_records.append((actual_record[0],
+                                                actual_record[1],
+                                                actual_record[2]))
+                        break
 
         # convert unmatched expected records to string form
         unmatched_exp_records_2 = []
+        for item in unmatched_exp_records_fullmatch:
+            unmatched_exp_records_2.append((item[0],
+                                            item[1],
+                                            item[2].pattern))
+
         for item in unmatched_exp_records:
             unmatched_exp_records_2.append((item[0],
                                             item[1],
                                             item[2].pattern))
 
-        return MatchResults(num_exp_records=len(self.expected_messages),
-                            num_exp_unmatched=len(unmatched_exp_records_2),
-                            num_actual_records=len(caplog.records),
-                            num_actual_unmatched=len(unmatched_actual_records),
-                            num_records_matched=len(matched_records),
-                            unmatched_exp_records=unmatched_exp_records_2,
-                            unmatched_actual_records=unmatched_actual_records,
-                            matched_records=matched_records)
+        return MatchResults(
+            num_exp_records=(
+                len(self.expected_messages)
+                + len(self.expected_messages_fullmatch)),
+            num_exp_unmatched=len(unmatched_exp_records_2),
+            num_actual_records=len(caplog.records),
+            num_actual_unmatched=len(unmatched_actual_records),
+            num_records_matched=len(matched_records),
+            unmatched_exp_records=unmatched_exp_records_2,
+            unmatched_actual_records=unmatched_actual_records,
+            matched_records=matched_records)
 
     ####################################################################
     # print_match_results
     ####################################################################
     @staticmethod
-    def print_match_results(match_results: MatchResults) -> None:
+    def print_match_results(match_results: MatchResults,
+                            print_matched: bool = True) -> None:
         """Print the match results.
 
         Args:
             match_results: contains the results to be printed
+            print_matched: if True, print the matched records, otherwise
+                skip printing the matched records
 
         """
         max_num = max(match_results.num_exp_records,
@@ -514,9 +563,10 @@ class LogVer:
         for log_msg in match_results.unmatched_actual_records:
             print(log_msg)
 
-        print_flower_box_msg(['matched records', legend_msg])
-        for log_msg in match_results.matched_records:
-            print(log_msg)
+        if print_matched:
+            print_flower_box_msg(['matched records', legend_msg])
+            for log_msg in match_results.matched_records:
+                print(log_msg)
 
     ####################################################################
     # verify log messages

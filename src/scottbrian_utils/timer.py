@@ -470,7 +470,7 @@ class Timer:
             return False
 
     ####################################################################
-    # is_specified
+    # timeout_value
     ####################################################################
     def timeout_value(self) -> Optional[IntFloat]:
         """Return the timeout value that was specified.
