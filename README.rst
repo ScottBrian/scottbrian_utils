@@ -16,6 +16,7 @@ This is a collection of generally useful functions for use with any application.
 7. The stop_watch item is a simple timing function that you can use in test cases.
 8. The timer item provides a way to keep track of time to determine when a function has timed out.
 9. The Pauser class provides a pause function similar to the python sleep function, but with improved accuracy.
+10. The UniqueTS class provides a way to obtain a unique timestamp.
 
 Examples:
 =========
@@ -134,6 +135,10 @@ Release History
 * 2.4.0
     * added fullmatch parm to add_msg in log_ver.py
     * added print_matched parm to print_match_results in log_ver.py
+
+* 2.5.0
+    * added unique_ts
+
 
 Meta
 ====

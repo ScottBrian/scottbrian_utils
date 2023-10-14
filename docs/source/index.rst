@@ -28,6 +28,8 @@
 
    pauser <pauser_link>
 
+   unique_ts <unique_ts_link>
+
 
 Indices and tables
 ==================
