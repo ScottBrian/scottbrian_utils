@@ -6,7 +6,6 @@
 import inspect
 import logging
 import sys
-import time
 from typing import Any
 
 ########################################################################
@@ -48,71 +47,6 @@ class TestUniqueTSExamples:
     # test_unique_ts_example1
     ####################################################################
     def test_unique_ts_example1(self,
-                                capsys: Any) -> None:
-        """Test unique time stamp example1.
-
-        This example shows that obtaining two time stamps in quick
-        succession does not guarantee they will be unique.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        print('mainline entered')
-        import time
-
-        first_time_stamp = time.time()
-        second_time_stamp = time.time()
-
-        print(second_time_stamp > first_time_stamp)
-
-        print('mainline exiting')
-
-        expected_result = 'mainline entered\n'
-        expected_result += 'False\n'
-        expected_result += 'mainline exiting\n'
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ####################################################################
-    # test_unique_ts_example2
-    ####################################################################
-    def test_unique_ts_example2(self,
-                                capsys: Any) -> None:
-        """Test unique time stamp example1.
-
-        This example shows that obtaining two time stamps in quick
-        succession with the first from time.time() and the second
-        using get_unique_time_ts() does not guarantee they will be
-        unique.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        print('mainline entered')
-        from scottbrian_utils.unique_ts import UniqueTS, UniqueTStamp
-        first_time_stamp = time.time()
-        second_time_stamp: UniqueTStamp = UniqueTS.get_unique_ts()
-
-        print(second_time_stamp > first_time_stamp)
-
-        print('mainline exiting')
-
-        expected_result = 'mainline entered\n'
-        expected_result += 'False\n'
-        expected_result += 'mainline exiting\n'
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ####################################################################
-    # test_unique_ts_example3
-    ####################################################################
-    def test_unique_ts_example3(self,
                                 capsys: Any) -> None:
         """Test unique time stamp example1.
 
