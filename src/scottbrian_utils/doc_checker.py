@@ -1,11 +1,102 @@
 """Module doc_checker.
 
-======
+==========
 DocChecker
-======
+==========
 
 The DocChecker class is used to help verify the documentation code
 examples.
+
+:Example 1: For standard doctest checking with no special cases, place
+            the following code into a conftest.py file in the project
+            top directory (see scottbrian-locking for an example).
+
+.. code-block:: python
+
+    from doctest import ELLIPSIS
+
+    from sybil import Sybil
+    from sybil.parsers.rest import PythonCodeBlockParser
+
+    from scottbrian_utils.doc_checker import DocCheckerTestParser
+
+
+    pytest_collect_file = Sybil(
+        parsers=[
+            DocCheckerTestParser(optionflags=ELLIPSIS,
+                                 ),
+            PythonCodeBlockParser(),],
+        patterns=['*.rst', '*.py'],
+        # excludes=['log_verifier.py']
+        ).pytest()
+
+:Example 2: This example shows how to make an adjustment to accommodate
+            doc examples in a module called time_hdr that have
+            timestamps in the output. The code needs to replace the
+            timestamps in the 'want' variable so that it will match
+            the timestamp from running the example at the time of the
+            doctest. Place the following code into a conftest.py file in
+            the project top directory (see scottbrian-utils for an
+            example).
+
+.. code-block:: python
+
+    from doctest import ELLIPSIS
+    from doctest import OutputChecker as BaseOutputChecker
+
+    import re
+
+    from sybil import Sybil
+    from sybil.parsers.rest import PythonCodeBlockParser
+
+    from scottbrian_utils.time_hdr import get_datetime_match_string
+    from scottbrian_utils.doc_checker import DocCheckerTestParser
+
+    from typing import Any
+
+
+    class SbtDocCheckerOutputChecker(BaseOutputChecker):
+        def __init__(self):
+            self.mod_name = None
+            self.msgs = []
+
+        def check_output(self, want, got, optionflags):
+            old_want = want
+            old_got = got
+
+            def repl_dt(match_obj: Any) -> str:
+                return found_items.__next__().group()
+
+            if self.mod_name == 'time_hdr' or self.mod_name == 'README':
+                # find the actual occurrences and replace in want
+                for time_hdr_dt_format in ["%a %b %d %Y %H:%M:%S",
+                                           "%m/%d/%y %H:%M:%S"]:
+                    match_str = get_datetime_match_string(time_hdr_dt_format)
+
+                    match_re = re.compile(match_str)
+                    found_items = match_re.finditer(got)
+                    want = match_re.sub(repl_dt, want)
+
+                # replace elapsed time in both want and got
+                match_str = 'Elapsed time: 0:00:00.[0-9| ]{6,6}'
+                replacement = 'Elapsed time: 0:00:00       '
+                want = re.sub(match_str, replacement, want)
+                got = re.sub(match_str, replacement, got)
+
+            self.msgs.append([old_want, want, old_got, got])
+            return BaseOutputChecker.check_output(self, want, got, optionflags)
+
+
+    pytest_collect_file = Sybil(
+        parsers=[
+            DocCheckerTestParser(optionflags=ELLIPSIS,
+                                 doc_checker_output_checker=SbtDocCheckerOutputChecker()
+                                 ),
+            PythonCodeBlockParser(),],
+        patterns=['*.rst', '*.py'],
+        # excludes=['log_verifier.py']
+        ).pytest()
+
 """
 from doctest import OutputChecker as BaseOutputChecker
 
@@ -67,4 +158,12 @@ class DocCheckerTestParser:
             DocCheckerTestEvaluator(doc_checker_output_checker, optionflags))
 
     def __call__(self, document: Document) -> Iterable[Region]:
+        """Call method.
+
+        Args:
+            document: the document to be tested
+
+        Returns:
+            The region is returned
+        """
         return self.string_parser(document.text, document.path)

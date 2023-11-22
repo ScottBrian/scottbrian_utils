@@ -28,7 +28,7 @@ copyright = '2020, 2023, Scott Tuttle'
 author = 'Scott Tuttle'
 
 # The full version, including alpha/beta/rc tags
-release = '2.5.0'
+release = '3.0.0'
 
 
 # -- General configuration ---------------------------------------------------

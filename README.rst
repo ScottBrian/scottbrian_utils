@@ -17,6 +17,7 @@ This is a collection of generally useful functions for use with any application.
 8. The timer item provides a way to keep track of time to determine when a function has timed out.
 9. The Pauser class provides a pause function similar to the python sleep function, but with improved accuracy.
 10. The UniqueTS class provides a way to obtain a unique timestamp.
+11. The doc_checker module provides an easy way to do doctest.
 
 Examples:
 =========
@@ -138,6 +139,11 @@ Release History
 
 * 2.5.0
     * added unique_ts
+
+* 3.0.0
+    * added doc_checker
+    * support python 3.12
+    * drop support python < 3.12
 
 
 Meta

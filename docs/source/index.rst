@@ -7,10 +7,12 @@
 .. include:: ../../README.rst
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
    :caption: API Reference:
 
    diag_msg <diag_msg_link>
+
+   doc_checker <doc_checker_link>
 
    file_catalog <file_catalog_link>
 
@@ -20,13 +22,13 @@
 
    msgs <msgs_link>
 
+   pauser <pauser_link>
+
    stop_watch <stop_watch_link>
 
    time_hdr <time_hdr_link>
 
    timer <timer_link>
-
-   pauser <pauser_link>
 
    unique_ts <unique_ts_link>
 
