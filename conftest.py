@@ -1,28 +1,18 @@
 from doctest import ELLIPSIS
 from doctest import OutputChecker as BaseOutputChecker
 
-import pytest
+import re
+
 from sybil import Sybil
-from sybil.example import Example  # sbt
-# from sybil.parsers.capture import parse_captures
-# from sybil.parsers.codeblock import PythonCodeBlockParser
-
-# from sybil.parsers.doctest import DocTestParser
-# from sybil.parsers.doctest import DocTest  # sbt
-
-from sybil.parsers.rest import DocTestParser, PythonCodeBlockParser
-from sybil.parsers.abstract import DocTestStringParser
-from sybil.evaluators.doctest import DocTestEvaluator, DocTest
-from sybil.document import Document
-from sybil.region import Region
+from sybil.parsers.rest import PythonCodeBlockParser
 
 from scottbrian_utils.time_hdr import get_datetime_match_string
+from scottbrian_utils.doc_checker import DocCheckerTestParser
 
-import re
-from typing import Any, Iterable
+from typing import Any
 
 
-class SbtOutputChecker(BaseOutputChecker):
+class SbtDocCheckerOutputChecker(BaseOutputChecker):
     def __init__(self):
         self.mod_name = None
         self.msgs = []
@@ -88,60 +78,17 @@ class SbtOutputChecker(BaseOutputChecker):
             found_item = re.match(match_str, got)
             if found_item:
                 want = re.sub(match_str, found_item.group(), want)
-            # match_re = re.compile(match_str)
-            # found_items = match_re.finditer(got)
-            # want = match_re.sub(repl_dt, want)
-            # replacement = old_want
-            # # got = re.sub(match_str, replacement, got)
-            # got = replacement
 
         self.msgs.append([old_want, want, old_got, got])
         return BaseOutputChecker.check_output(self, want, got, optionflags)
 
 
-class SbtDocTestEvaluator(DocTestEvaluator):
-    def __init__(self, optionflags=0):
-        DocTestEvaluator.__init__(self, optionflags=optionflags)
-
-        # set our checker which will modify the test cases as needed
-        self.runner._checker = SbtOutputChecker()
-
-    def __call__(self, sybil_example: Example) -> str:
-        example = sybil_example.parsed
-        namespace = sybil_example.namespace
-        output = []
-
-        # set the mod name for our check_output in SbtOutputChecker
-        mod_name = sybil_example.path.rsplit(sep=".", maxsplit=1)[0]
-        mod_name = mod_name.rsplit(sep="\\", maxsplit=1)[1]
-        self.runner._checker.mod_name = mod_name
-
-        self.runner.run(
-            DocTest([example], namespace, name=sybil_example.path,
-                    filename=None, lineno=example.lineno, docstring=None),
-            clear_globs=False,
-            out=output.append
-        )
-        print(f'{self.runner._checker.msgs=}')
-        self.runner._checker.msgs = []
-        return ''.join(output)
-
-
-class SbtDocTestParser:
-    def __init__(self, optionflags=0):
-        self.string_parser = DocTestStringParser(
-            SbtDocTestEvaluator(optionflags))
-
-    def __call__(self, document: Document) -> Iterable[Region]:
-        return self.string_parser(document.text, document.path)
-
-
 pytest_collect_file = Sybil(
     parsers=[
-        # DocTestParser(optionflags=ELLIPSIS),
-        SbtDocTestParser(optionflags=ELLIPSIS),
-        PythonCodeBlockParser(),
-    ],
+        DocCheckerTestParser(optionflags=ELLIPSIS,
+                             doc_checker_output_checker=SbtDocCheckerOutputChecker()
+                             ),
+        PythonCodeBlockParser(),],
     patterns=['*.rst', '*.py'],
     # excludes=['log_verifier.py']
-).pytest()
+    ).pytest()
