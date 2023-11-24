@@ -13,11 +13,22 @@ from typing import Any
 
 
 class SbtDocCheckerOutputChecker(BaseOutputChecker):
-    def __init__(self):
-        self.mod_name = None
-        self.msgs = []
+    def __init__(self) -> None:
+        """Initialize the output checker object."""
+        self.mod_name: str = ""
+        self.msgs: list[str] = []
 
-    def check_output(self, want, got, optionflags):
+    def check_output(self, want: str, got: str, optionflags: int) -> bool:
+        """Check the output of the example against expected value.
+
+        Args:
+            want: the expected value of the example output
+            got: the actual value of the example output
+            optionflags: doctest option flags for the Sybil
+                BaseOutPutChecker check_output method
+        Returns:
+            True if the want and got values match, False otherwise
+        """
         old_want = want
         old_got = got
 

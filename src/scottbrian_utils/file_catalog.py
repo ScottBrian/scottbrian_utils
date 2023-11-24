@@ -62,26 +62,31 @@ FileSpecs = Dict[str, Path]
 
 class FileCatalogError(Exception):
     """Base class for exceptions in this module."""
+
     pass
 
 
 class FileNameNotFound(FileCatalogError):
     """FileNameNotFound when the file name is not in the catalog."""
+
     pass
 
 
 class FileSpecIncorrect(FileCatalogError):
     """FileCatalog incorrect file_specs specification."""
+
     pass
 
 
 class IllegalAddAttempt(FileCatalogError):
     """FileCatalog attempted add of existing but different path."""
+
     pass
 
 
 class IllegalDelAttempt(FileCatalogError):
     """FileCatalog attempted del of existing but different path."""
+
     pass
 
 
@@ -94,9 +99,7 @@ class FileCatalog:
     and another set is used for testing purposes.
     """
 
-    def __init__(self,
-                 file_specs: Optional[FileSpecs] = None
-                 ) -> None:
+    def __init__(self, file_specs: Optional[FileSpecs] = None) -> None:
         """Store the input file specs to a data frame.
 
         Args:
@@ -160,33 +163,39 @@ class FileCatalog:
         if TYPE_CHECKING:
             __class__: Type[FileCatalog]  # noqa: F842
         classname = self.__class__.__name__
-        indent_spaces = ''  # start with no indent for first entry
+        indent_spaces = ""  # start with no indent for first entry
         num_entries = len(self)
         num_start_entries = 2
-        parms = ''
+        parms = ""
 
         for i, (file_name, path) in enumerate(self.catalog.items()):
             # we will do only a few entries at the top, then an ellipse,
             # and finish with the last entry
-            if (num_entries <= 4) \
-                    or (i < num_start_entries) \
-                    or (i == num_entries-1):
-                parms = parms + indent_spaces + "'" + file_name \
-                         + "': " + "Path(" + "'" + str(path.as_posix()) \
-                         + "'),\n"
+            if (num_entries <= 4) or (i < num_start_entries) or (i == num_entries - 1):
+                parms = (
+                    parms
+                    + indent_spaces
+                    + "'"
+                    + file_name
+                    + "': "
+                    + "Path("
+                    + "'"
+                    + str(path.as_posix())
+                    + "'),\n"
+                )
 
             # put in the ellipse
             if num_entries > 4:
-                if (i == num_start_entries) and (i != num_entries-1):
-                    parms = parms + indent_spaces + '...\n'
+                if (i == num_start_entries) and (i != num_entries - 1):
+                    parms = parms + indent_spaces + "...\n"
 
             # for entries after the first, we need to indent
-            indent_spaces = ' ' * (len(classname) + len('({'))
+            indent_spaces = " " * (len(classname) + len("({"))
 
         if parms:  # if we have entries, strip the final comma and newline
-            parms = '{' + parms[:-2] + '}'
+            parms = "{" + parms[:-2] + "}"
 
-        return f'{classname}({parms})'
+        return f"{classname}({parms})"
 
     def get_path(self, file_name: str) -> Path:
         """Obtain a path given a file name.
@@ -219,8 +228,9 @@ class FileCatalog:
         try:
             return self.catalog[file_name]
         except KeyError:
-            raise FileNameNotFound('Catalog does not have an entry for'
-                                   f'file name: {file_name}')
+            raise FileNameNotFound(
+                "Catalog does not have an entry for" f"file name: {file_name}"
+            )
 
     def add_paths(self, file_specs: FileSpecs) -> None:
         """Add one or more paths to the catalog.
@@ -263,24 +273,28 @@ class FileCatalog:
 
         """
         if not isinstance(file_specs, dict):
-            raise FileSpecIncorrect('Specified file_specs', file_specs,
-                                    'is not a dictionary')
+            raise FileSpecIncorrect(
+                "Specified file_specs", file_specs, "is not a dictionary"
+            )
         for file_name, path in file_specs.items():
             if not isinstance(file_name, str):
-                raise FileSpecIncorrect('Specified file name', file_name,
-                                        'is not a string')
+                raise FileSpecIncorrect(
+                    "Specified file name", file_name, "is not a string"
+                )
             if not isinstance(path, Path):
-                raise FileSpecIncorrect(f'Specified path {path} is not a Path')
-            if ((file_name in self.catalog) and
-                    (self.catalog[file_name] != path)):
+                raise FileSpecIncorrect(f"Specified path {path} is not a Path")
+            if (file_name in self.catalog) and (self.catalog[file_name] != path):
                 raise IllegalAddAttempt(
-                    'Attempting to add file name', file_name,
-                    ' with path', path, 'to existing entry with '
-                    'path', self.catalog[file_name])
+                    "Attempting to add file name",
+                    file_name,
+                    " with path",
+                    path,
+                    "to existing entry with " "path",
+                    self.catalog[file_name],
+                )
         self.catalog.update(file_specs)
 
-    def del_paths(self,
-                  file_specs: FileSpecs) -> None:
+    def del_paths(self, file_specs: FileSpecs) -> None:
         """Delete one or more paths from the catalog.
 
         Args:
@@ -327,22 +341,27 @@ class FileCatalog:
 
         """
         if not isinstance(file_specs, dict):
-            raise FileSpecIncorrect('Specified file_specs', file_specs,
-                                    'is not a dictionary')
+            raise FileSpecIncorrect(
+                "Specified file_specs", file_specs, "is not a dictionary"
+            )
         del_index: List[str] = []
         for file_name, path in file_specs.items():
             if not isinstance(file_name, str):
-                raise FileSpecIncorrect('Specified file name ',
-                                        file_name, 'is not a string')
+                raise FileSpecIncorrect(
+                    "Specified file name ", file_name, "is not a string"
+                )
             if not isinstance(path, Path):
-                raise FileSpecIncorrect('Specified path', path,
-                                        'is not a pathlib Path')
+                raise FileSpecIncorrect("Specified path", path, "is not a pathlib Path")
             if file_name in self.catalog:
                 if self.catalog[file_name] != path:
                     raise IllegalDelAttempt(
-                        'Attempting to delete file name', file_name,
-                        ' with path', path, 'from to existing entry with path',
-                        self.catalog[file_name])
+                        "Attempting to delete file name",
+                        file_name,
+                        " with path",
+                        path,
+                        "from to existing entry with path",
+                        self.catalog[file_name],
+                    )
                 # if here then no exception and we can delete this path
                 del_index.append(file_name)
 
@@ -361,7 +380,7 @@ class FileCatalog:
         # save catalog
         fieldnames = self.catalog.keys()
 
-        with open(saved_cat_path, 'w', newline='') as csv_file:
+        with open(saved_cat_path, "w", newline="") as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerow(self.catalog)
@@ -379,7 +398,7 @@ class FileCatalog:
 
         """
         new_catalog: Dict[str, Path] = {}
-        with open(saved_cat_path, newline='') as csv_file:
+        with open(saved_cat_path, newline="") as csv_file:
             reader = csv.DictReader(csv_file)
             for row in reader:
                 catalog = row

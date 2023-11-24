@@ -28,6 +28,7 @@ coded in a module, however, you will see the module name instead of
 from datetime import datetime
 from os import fspath
 from pathlib import Path
+
 # noinspection PyProtectedMember
 # from sys import _getframe
 import sys
@@ -51,6 +52,7 @@ get_formatted_call_seq_depth = 3
 
 class CallerInfo(NamedTuple):
     """NamedTuple for the caller info used in diag_msg."""
+
     mod_name: str
     cls_name: str
     func_name: str
@@ -60,10 +62,12 @@ class CallerInfo(NamedTuple):
 ########################################################################
 # diag_msg
 ########################################################################
-def diag_msg(*args: Any,
-             depth: int = diag_msg_caller_depth,
-             dt_format: str = diag_msg_datetime_fmt,
-             **kwargs: Any) -> None:
+def diag_msg(
+    *args: Any,
+    depth: int = diag_msg_caller_depth,
+    dt_format: str = diag_msg_datetime_fmt,
+    **kwargs: Any,
+) -> None:
     """Print diagnostic message.
 
     Args:
@@ -104,7 +108,7 @@ def diag_msg(*args: Any,
 
     str_time = datetime.now().strftime(dt_format)
 
-    print(f'{str_time} {caller_sequence}', *args, **kwargs)
+    print(f"{str_time} {caller_sequence}", *args, **kwargs)
 
 
 ########################################################################
@@ -150,18 +154,19 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
     # print(f'{Path(frame.f_code.co_filename).name=}')
     # print(f'{fspath(Path(frame.f_code.co_filename).name)=}')
 
-    if func_name == '<module>':  # if we are a script
-        func_name = ''  # no func_name, no cls_name
+    if func_name == "<module>":  # if we are a script
+        func_name = ""  # no func_name, no cls_name
     else:
         for key, item in frame.f_globals.items():
-            if (isinstance(item, type)
-                    and func_in_class(func_name=func_name,
-                                      class_obj=item,
-                                      code=code)):
-                return CallerInfo(mod_name=mod_name,
-                                  cls_name=key,
-                                  func_name=func_name,
-                                  line_num=frame.f_lineno)
+            if isinstance(item, type) and func_in_class(
+                func_name=func_name, class_obj=item, code=code
+            ):
+                return CallerInfo(
+                    mod_name=mod_name,
+                    cls_name=key,
+                    func_name=func_name,
+                    line_num=frame.f_lineno,
+                )
 
         # if here, not found yet - try looking at locals for self class
         for item in frame.f_locals.values():
@@ -169,10 +174,12 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
                 if hasattr(item, "__dict__"):
                     if item.__class__.__dict__[func_name].__code__ is code:
                         class_name = item.__class__.__name__
-                        return CallerInfo(mod_name=mod_name,
-                                          cls_name=class_name,
-                                          func_name=func_name,
-                                          line_num=frame.f_lineno)
+                        return CallerInfo(
+                            mod_name=mod_name,
+                            cls_name=class_name,
+                            func_name=func_name,
+                            line_num=frame.f_lineno,
+                        )
             except (AttributeError, KeyError):
                 pass
 
@@ -180,28 +187,27 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
         # frame
         if frame.f_back:
             for key, item in frame.f_back.f_locals.items():
-                if (isinstance(item, type)
-                        and (key != 'cls')
-                        and func_in_class(func_name=func_name,
-                                          class_obj=item,
-                                          code=code)):
-                    return CallerInfo(mod_name=mod_name,
-                                      cls_name=key,
-                                      func_name=func_name,
-                                      line_num=frame.f_lineno)
+                if (
+                    isinstance(item, type)
+                    and (key != "cls")
+                    and func_in_class(func_name=func_name, class_obj=item, code=code)
+                ):
+                    return CallerInfo(
+                        mod_name=mod_name,
+                        cls_name=key,
+                        func_name=func_name,
+                        line_num=frame.f_lineno,
+                    )
 
-    return CallerInfo(mod_name=mod_name,
-                      cls_name='',
-                      func_name=func_name,
-                      line_num=frame.f_lineno)
+    return CallerInfo(
+        mod_name=mod_name, cls_name="", func_name=func_name, line_num=frame.f_lineno
+    )
 
 
 ########################################################################
 # get_formatted_call_sequence
 ########################################################################
-def func_in_class(func_name: str,
-                  class_obj: type,
-                  code: Any) -> bool:
+def func_in_class(func_name: str, class_obj: type, code: Any) -> bool:
     """Determine whether function is in class.
 
     Args:
@@ -215,12 +221,12 @@ def func_in_class(func_name: str,
     """
     try:
         func_obj = class_obj.__dict__[func_name]
-        if ((isinstance(func_obj, types.FunctionType)
-                and (func_obj.__code__ is code)
-             )
-                or (isinstance(func_obj, (staticmethod, classmethod))
-                    and (func_obj.__func__.__code__ is code)
-                    )):
+        if (
+            isinstance(func_obj, types.FunctionType) and (func_obj.__code__ is code)
+        ) or (
+            isinstance(func_obj, (staticmethod, classmethod))
+            and (func_obj.__func__.__code__ is code)
+        ):
             return True
 
     except (AttributeError, KeyError):
@@ -232,9 +238,9 @@ def func_in_class(func_name: str,
 ########################################################################
 # get_formatted_call_sequence
 ########################################################################
-def get_formatted_call_sequence(latest: int = 0,
-                                depth: int = get_formatted_call_seq_depth
-                                ) -> str:
+def get_formatted_call_sequence(
+    latest: int = 0, depth: int = get_formatted_call_seq_depth
+) -> str:
     """Return a formatted string showing the callers.
 
     Args:
@@ -334,9 +340,9 @@ def get_formatted_call_sequence(latest: int = 0,
     <input>:1 -> <input>::Cls1.f1:4
 
     """
-    caller_sequence = ''  # init to null
-    arrow = ''  # start with no arrow for first iteration
-    for caller_depth in range(latest+1, latest+1+depth):
+    caller_sequence = ""  # init to null
+    arrow = ""  # start with no arrow for first iteration
+    for caller_depth in range(latest + 1, latest + 1 + depth):
         try:
             # sys._getframe is faster than inspect.currentframe
             frame = sys._getframe(caller_depth)
@@ -353,14 +359,16 @@ def get_formatted_call_sequence(latest: int = 0,
         finally:
             del frame  # important to prevent storage leak
 
-        dot = '.' if caller_info.cls_name else ''
-        colon = '::' if caller_info.func_name else ''
+        dot = "." if caller_info.cls_name else ""
+        colon = "::" if caller_info.func_name else ""
 
-        caller_sequence = (f'{caller_info.mod_name}{colon}'
-                           f'{caller_info.cls_name}{dot}'
-                           f'{caller_info.func_name}:'
-                           f'{caller_info.line_num}{arrow}'
-                           f'{caller_sequence}')
-        arrow = ' -> '  # set arrow for subsequent iterations
+        caller_sequence = (
+            f"{caller_info.mod_name}{colon}"
+            f"{caller_info.cls_name}{dot}"
+            f"{caller_info.func_name}:"
+            f"{caller_info.line_num}{arrow}"
+            f"{caller_sequence}"
+        )
+        arrow = " -> "  # set arrow for subsequent iterations
 
     return caller_sequence

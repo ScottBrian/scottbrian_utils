@@ -71,7 +71,8 @@ examples.
                 # find the actual occurrences and replace in want
                 for time_hdr_dt_format in ["%a %b %d %Y %H:%M:%S",
                                            "%m/%d/%y %H:%M:%S"]:
-                    match_str = get_datetime_match_string(time_hdr_dt_format)
+                    match_str = get_datetime_match_string(
+                                    time_hdr_dt_format)
 
                     match_re = re.compile(match_str)
                     found_items = match_re.finditer(got)
@@ -84,7 +85,8 @@ examples.
                 got = re.sub(match_str, replacement, got)
 
             self.msgs.append([old_want, want, old_got, got])
-            return BaseOutputChecker.check_output(self, want, got, optionflags)
+            return BaseOutputChecker.check_output(
+                        self, want, got, optionflags)
 
 
     pytest_collect_file = Sybil(
@@ -110,52 +112,100 @@ from typing import Iterable
 
 
 class DocCheckerOutputChecker(BaseOutputChecker):
-    def __init__(self):
-        self.mod_name = None
-        self.msgs = []
+    def __init__(self) -> None:
+        """Initialize the output checker object."""
+        self.mod_name: str = ""
+        self.msgs: list[str] = []
 
-    def check_output(self, want, got, optionflags):
+    def check_output(self, want: str, got: str, optionflags: int) -> bool:
+        """Check the output of the example against expected value.
+
+        Args:
+            want: the expected value of the example output
+            got: the actual value of the example output
+            optionflags: doctest option flags for the Sybil
+                BaseOutPutChecker check_output method
+
+        Returns:
+            True if the want and got values match, False otherwise
+        """
         return BaseOutputChecker.check_output(self, want, got, optionflags)
 
 
 class DocCheckerTestEvaluator(DocTestEvaluator):
-    def __init__(self,
-                 doc_checker_output_checker,
-                 optionflags=0):
+    def __init__(
+        self, doc_checker_output_checker: DocCheckerOutputChecker, optionflags: int = 0
+    ) -> None:
+        """Initialize the evaluator object.
+
+        Args:
+            doc_checker_output_checker: invocation of the output
+                check to use
+            optionflags: flags passed along to the Sybil
+                DocTestEvaluator
+
+        """
         DocTestEvaluator.__init__(self, optionflags=optionflags)
 
-        # set our checker which will modify the test cases as needed
+        # set our checker which may modify the test cases as needed
         # self.runner._checker = DocCheckerOutputChecker()
-        self.runner._checker = doc_checker_output_checker
+        self.runner._checker = doc_checker_output_checker  # type: ignore
 
     def __call__(self, sybil_example: Example) -> str:
+        """Call method.
+
+        Args:
+            sybil_example: the doc example to check
+
+        Returns:
+            The string
+        """
         example = sybil_example.parsed
         namespace = sybil_example.namespace
-        output = []
+        output: list[str] = []
 
-        # set the mod name for our check_output in DocCheckerOutputChecker
+        # set the mod name for our check_output in
+        # DocCheckerOutputChecker
         mod_name = sybil_example.path.rsplit(sep=".", maxsplit=1)[0]
         mod_name = mod_name.rsplit(sep="\\", maxsplit=1)[1]
-        self.runner._checker.mod_name = mod_name
+        self.runner._checker.mod_name = mod_name  # type: ignore
 
         self.runner.run(
-            DocTest([example], namespace, name=sybil_example.path,
-                    filename=None, lineno=example.lineno, docstring=None),
+            DocTest(
+                [example],
+                namespace,
+                name=sybil_example.path,
+                filename=None,
+                lineno=example.lineno,
+                docstring=None,
+            ),
             clear_globs=False,
-            out=output.append
+            out=output.append,
         )
-        if self.runner._checker.msgs:
-            print(f'{self.runner._checker.msgs=}')
-        self.runner._checker.msgs = []
-        return ''.join(output)
+        if self.runner._checker.msgs:  # type: ignore
+            print(f"{self.runner._checker.msgs=}")  # type: ignore
+        self.runner._checker.msgs = []  # type: ignore
+        return "".join(output)
 
 
 class DocCheckerTestParser:
-    def __init__(self,
-                 optionflags=0,
-                 doc_checker_output_checker=DocCheckerOutputChecker()):
+    def __init__(
+        self,
+        optionflags: int = 0,
+        doc_checker_output_checker: DocCheckerOutputChecker = DocCheckerOutputChecker(),
+    ) -> None:
+        """Initialize the parser object.
+
+        Args:
+            optionflags: flags passed along to the Sybil
+                DocTestEvaluator
+            doc_checker_output_checker: invocation of the output
+                check to use
+
+        """
         self.string_parser = DocTestStringParser(
-            DocCheckerTestEvaluator(doc_checker_output_checker, optionflags))
+            DocCheckerTestEvaluator(doc_checker_output_checker, optionflags)
+        )
 
     def __call__(self, document: Document) -> Iterable[Region]:
         """Call method.
