@@ -13,6 +13,9 @@ changed line numbers. doing the adjustment by hand could take hours,
 so the code in this module was created to do the adjustment.
 
 """
+from typing import Final
+
+K_MAX_LINES_TO_SEARCH: Final[int] = 9
 
 
 def use_update_stack() -> None:
@@ -89,6 +92,7 @@ def add_add() -> None:
 
 def adjust_line_nums() -> None:
     """Routine to adjust the line_num values."""
+
     path_to_file = "test_diag_msg.py"
 
     with open(path_to_file, "r") as file:  # open for read
@@ -140,7 +144,7 @@ def adjust_line_nums() -> None:
                     break
         if phase == 2:
             l_count += 1
-            if l_count > 8 or search_text1 in file_lines[idx]:
+            if l_count > K_MAX_LINES_TO_SEARCH or search_text1 in file_lines[idx]:
                 print("*** error: did not find target")
                 break
             if (

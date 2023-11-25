@@ -123,7 +123,7 @@ class TestUniqueTSBasic:
                 "\\py311-coverage\\Lib\\site-packages\\scottbrian_utils"
                 "\\unique_ts.py"
             )
-        elif sys.version_info.minor == 11:
+        elif sys.version_info.minor == 12:
             exp1 = (
                 "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
                 "\\py312-pytest\\Lib\\site-packages\\scottbrian_utils"

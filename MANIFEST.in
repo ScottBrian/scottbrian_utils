@@ -16,3 +16,5 @@ recursive-include src *.typed
 recursive-include tests *.py
 recursive-include type_stubs *.py
 recursive-include type_stubs *.pyi
+exclude type_stubs/mypywrapt/build/lib/adjust_src/__init__.pyi
+exclude type_stubs/mypywrapt/build/lib/adjust_src/adjust_src.py
