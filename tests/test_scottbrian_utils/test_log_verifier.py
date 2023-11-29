@@ -166,6 +166,7 @@ def num_act_msgs3(request: Any) -> int:
 ########################################################################
 # TestLogVerExamples class
 ########################################################################
+@pytest.mark.cover2
 class TestLogVerExamples:
     """Test examples of LogVer."""
 
@@ -451,6 +452,7 @@ class TestLogVerExamples:
 ########################################################################
 # TestLogVerBasic class
 ########################################################################
+@pytest.mark.cover2
 class TestLogVerBasic:
     """Test basic functions of LogVer."""
 
@@ -817,6 +819,56 @@ class TestLogVerBasic:
 
         assert captured == expected_result
 
+        ################################################################
+        # step 4: use fullmatch and cause unmatched expected failure
+        ################################################################
+        caplog.clear()
+
+        log_name = "fullmatch_4"
+        t_logger = logging.getLogger(log_name)
+        log_ver = LogVer(log_name=log_name)
+
+        log_ver.add_msg(log_msg=double_str_arg[0], fullmatch=True)
+        log_ver.add_msg(log_msg=double_str_arg[1], fullmatch=True)
+
+        t_logger.debug(double_str_arg[0])
+        # t_logger.debug(double_str_arg[1])
+
+        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
+
+        with pytest.raises(UnmatchedExpectedMessages):
+            log_ver.verify_log_results(log_results)
+
+        expected_result = "\n"
+        expected_result += "**********************************\n"
+        expected_result += "* number expected log records: 2 *\n"
+        expected_result += "* number expected unmatched  : 1 *\n"
+        expected_result += "* number actual log records  : 1 *\n"
+        expected_result += "* number actual unmatched    : 0 *\n"
+        expected_result += "* number matched records     : 1 *\n"
+        expected_result += "**********************************\n"
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* unmatched expected records    *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        expected_result += f"('fullmatch_4', 10, '{double_str_arg[1]}')\n"
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* unmatched actual records      *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* matched records               *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        expected_result += f"('fullmatch_4', 10, '{double_str_arg[0]}')\n"
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
     ####################################################################
     # test_log_verifier_time_match
     ####################################################################
@@ -1145,6 +1197,7 @@ class TestLogVerBasic:
 ########################################################################
 # TestLogVerBasic class
 ########################################################################
+@pytest.mark.cover2
 class TestLogVerCombos:
     """Test LogVer with various combinations."""
 

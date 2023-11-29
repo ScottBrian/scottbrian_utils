@@ -137,10 +137,8 @@ Release History
     * added fullmatch parm to add_msg in log_ver.py
     * added print_matched parm to print_match_results in log_ver.py
 
-* 2.5.0
-    * added unique_ts
-
 * 3.0.0
+    * added unique_ts
     * added doc_checker
     * support python 3.12
     * drop support python < 3.12

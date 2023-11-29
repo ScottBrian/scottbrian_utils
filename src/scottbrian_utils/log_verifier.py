@@ -229,22 +229,26 @@ OptIntFloat = Optional[IntFloat]
 ########################################################################
 class LogVerError(Exception):
     """Base class for exception in this module."""
+
     pass
 
 
 class UnmatchedExpectedMessages(LogVerError):
     """Unmatched expected messages were found during verify."""
+
     pass
 
 
 class UnmatchedActualMessages(LogVerError):
     """Unmatched actual messages were found during verify."""
+
     pass
 
 
 @dataclass
 class MatchResults:
     """Match results returned by get_match_results method."""
+
     num_exp_records: int
     num_exp_unmatched: int
     num_actual_records: int
@@ -264,8 +268,7 @@ class LogVer:
     ####################################################################
     # __init__
     ####################################################################
-    def __init__(self,
-                 log_name: str = 'root') -> None:
+    def __init__(self, log_name: str = "root") -> None:
         """Initialize a LogVer object.
 
         Args:
@@ -296,25 +299,23 @@ class LogVer:
             __class__: Type[LogVer]  # noqa: F842
         classname = self.__class__.__name__
         parms = ""
-        comma = ''
+        comma = ""
 
         for key, item in self.specified_args.items():
             if item:  # if not None
-                if key in ('log_name', ):
+                if key in ("log_name",):
+                    sq = ""
                     if type(item) is str:
-                        parms += comma + f"{key}='{item}'"
-                    else:
-                        parms += comma + f"{key}={item}"
-                    comma = ', '  # after first item, now need comma
+                        sq = "'"
+                    parms += comma + f"{key}={sq}{item}{sq}"
+                    comma = ", "  # after first item, now need comma
 
-        return f'{classname}({parms})'
+        return f"{classname}({parms})"
 
     ####################################################################
     # add_call_seq
     ####################################################################
-    def add_call_seq(self,
-                     name: str,
-                     seq: str) -> None:
+    def add_call_seq(self, name: str, seq: str) -> None:
         """Add a call sequence for a given name.
 
         Args:
@@ -324,13 +325,12 @@ class LogVer:
                    from the scottbrian_utils package
 
         """
-        self.call_seqs[name] = seq + ':[0-9]*'
+        self.call_seqs[name] = seq + ":[0-9]*"
 
     ####################################################################
     # add_call_seq
     ####################################################################
-    def get_call_seq(self,
-                     name: str) -> str:
+    def get_call_seq(self, name: str) -> str:
         """Retrieve a call sequence by name.
 
         Args:
@@ -348,11 +348,13 @@ class LogVer:
     ####################################################################
     # add_msg
     ####################################################################
-    def add_msg(self,
-                log_msg: str,
-                log_level: int = logging.DEBUG,
-                log_name: Optional[str] = None,
-                fullmatch: bool = False) -> None:
+    def add_msg(
+        self,
+        log_msg: str,
+        log_level: int = logging.DEBUG,
+        log_name: Optional[str] = None,
+        fullmatch: bool = False,
+    ) -> None:
         """Add a message to the expected log messages.
 
         Args:
@@ -416,22 +418,18 @@ class LogVer:
             log_name_to_use = self.log_name
 
         if fullmatch:
-            self.expected_messages_fullmatch.append((log_name_to_use,
-                                                     log_level,
-                                                     re.compile(log_msg)
-                                                     ))
+            self.expected_messages_fullmatch.append(
+                (log_name_to_use, log_level, re.compile(log_msg))
+            )
         else:
-            self.expected_messages.append((log_name_to_use,
-                                           log_level,
-                                           re.compile(log_msg)
-                                           ))
+            self.expected_messages.append(
+                (log_name_to_use, log_level, re.compile(log_msg))
+            )
 
     ####################################################################
     # get_match_results
     ####################################################################
-    def get_match_results(self,
-                          caplog: pytest.LogCaptureFixture
-                          ) -> MatchResults:
+    def get_match_results(self, caplog: pytest.LogCaptureFixture) -> MatchResults:
         """Match the expected to actual log records.
 
         Args:
@@ -445,19 +443,19 @@ class LogVer:
 
         """
         # make a work copy of fullmatch expected records
-        unmatched_exp_records_fullmatch: list[tuple[str, int, Any]] = (
-            self.expected_messages_fullmatch.copy()
-        )
+        unmatched_exp_records_fullmatch: list[
+            tuple[str, int, Any]
+        ] = self.expected_messages_fullmatch.copy()
 
         # make a work copy of expected records
-        unmatched_exp_records: list[tuple[str, int, Any]] = (
-            self.expected_messages.copy()
-        )
+        unmatched_exp_records: list[
+            tuple[str, int, Any]
+        ] = self.expected_messages.copy()
 
         # make a work copy of actual records
-        unmatched_actual_records: list[tuple[str, int, Any]] = (
-            caplog.record_tuples.copy()
-        )
+        unmatched_actual_records: list[
+            tuple[str, int, Any]
+        ] = caplog.record_tuples.copy()
 
         matched_records: list[tuple[str, int, Any]] = []
 
@@ -467,18 +465,19 @@ class LogVer:
         if unmatched_exp_records_fullmatch:  # if fullmatch records
             for actual_record in caplog.record_tuples:
                 # look for fullmatch
-                for idx, exp_record in enumerate(
-                        unmatched_exp_records_fullmatch):
+                for idx, exp_record in enumerate(unmatched_exp_records_fullmatch):
                     # check that the logger name, level, and message
                     # match
-                    if (exp_record[0] == actual_record[0]
-                            and exp_record[1] == actual_record[1]
-                            and exp_record[2].fullmatch(actual_record[2])):
+                    if (
+                        exp_record[0] == actual_record[0]
+                        and exp_record[1] == actual_record[1]
+                        and exp_record[2].fullmatch(actual_record[2])
+                    ):
                         unmatched_exp_records_fullmatch.pop(idx)
                         unmatched_actual_records.remove(actual_record)
-                        matched_records.append((actual_record[0],
-                                                actual_record[1],
-                                                actual_record[2]))
+                        matched_records.append(
+                            (actual_record[0], actual_record[1], actual_record[2])
+                        )
                         break
 
         if unmatched_exp_records:  # if partial match records
@@ -487,46 +486,46 @@ class LogVer:
                 for idx, exp_record in enumerate(unmatched_exp_records):
                     # check that the logger name, level, and message
                     # match
-                    if (exp_record[0] == actual_record[0]
-                            and exp_record[1] == actual_record[1]
-                            and exp_record[2].match(actual_record[2])):
+                    if (
+                        exp_record[0] == actual_record[0]
+                        and exp_record[1] == actual_record[1]
+                        and exp_record[2].match(actual_record[2])
+                    ):
                         unmatched_exp_records.pop(idx)
                         unmatched_actual_records.remove(actual_record)
-                        matched_records.append((actual_record[0],
-                                                actual_record[1],
-                                                actual_record[2]))
+                        matched_records.append(
+                            (actual_record[0], actual_record[1], actual_record[2])
+                        )
                         break
 
         # convert unmatched expected records to string form
         unmatched_exp_records_2 = []
         for item in unmatched_exp_records_fullmatch:
-            unmatched_exp_records_2.append((item[0],
-                                            item[1],
-                                            item[2].pattern))
+            unmatched_exp_records_2.append((item[0], item[1], item[2].pattern))
 
         for item in unmatched_exp_records:
-            unmatched_exp_records_2.append((item[0],
-                                            item[1],
-                                            item[2].pattern))
+            unmatched_exp_records_2.append((item[0], item[1], item[2].pattern))
 
         return MatchResults(
             num_exp_records=(
-                len(self.expected_messages)
-                + len(self.expected_messages_fullmatch)),
+                len(self.expected_messages) + len(self.expected_messages_fullmatch)
+            ),
             num_exp_unmatched=len(unmatched_exp_records_2),
             num_actual_records=len(caplog.records),
             num_actual_unmatched=len(unmatched_actual_records),
             num_records_matched=len(matched_records),
             unmatched_exp_records=unmatched_exp_records_2,
             unmatched_actual_records=unmatched_actual_records,
-            matched_records=matched_records)
+            matched_records=matched_records,
+        )
 
     ####################################################################
     # print_match_results
     ####################################################################
     @staticmethod
-    def print_match_results(match_results: MatchResults,
-                            print_matched: bool = True) -> None:
+    def print_match_results(
+        match_results: MatchResults, print_matched: bool = True
+    ) -> None:
         """Print the match results.
 
         Args:
@@ -535,36 +534,48 @@ class LogVer:
                 skip printing the matched records
 
         """
-        max_num = max(match_results.num_exp_records,
-                      match_results.num_exp_unmatched,
-                      match_results.num_actual_records,
-                      match_results.num_actual_unmatched,
-                      match_results.num_records_matched)
+        max_num = max(
+            match_results.num_exp_records,
+            match_results.num_exp_unmatched,
+            match_results.num_actual_records,
+            match_results.num_actual_unmatched,
+            match_results.num_records_matched,
+        )
         max_len = len(str(max_num))
-        msg1 = ('number expected log records: '
-                f'{match_results.num_exp_records:>{max_len}}')
-        msg2 = ('number expected unmatched  : '
-                f'{match_results.num_exp_unmatched:>{max_len}}')
-        msg3 = ('number actual log records  : '
-                f'{match_results.num_actual_records:>{max_len}}')
-        msg4 = ('number actual unmatched    : '
-                f'{match_results.num_actual_unmatched:>{max_len}}')
-        msg5 = ('number matched records     : '
-                f'{match_results.num_records_matched:>{max_len}}')
+        msg1 = (
+            "number expected log records: "
+            f"{match_results.num_exp_records:>{max_len}}"
+        )
+        msg2 = (
+            "number expected unmatched  : "
+            f"{match_results.num_exp_unmatched:>{max_len}}"
+        )
+        msg3 = (
+            "number actual log records  : "
+            f"{match_results.num_actual_records:>{max_len}}"
+        )
+        msg4 = (
+            "number actual unmatched    : "
+            f"{match_results.num_actual_unmatched:>{max_len}}"
+        )
+        msg5 = (
+            "number matched records     : "
+            f"{match_results.num_records_matched:>{max_len}}"
+        )
 
         print_flower_box_msg([msg1, msg2, msg3, msg4, msg5])
 
-        legend_msg = '(logger name, level, message)'
-        print_flower_box_msg(['unmatched expected records', legend_msg])
+        legend_msg = "(logger name, level, message)"
+        print_flower_box_msg(["unmatched expected records", legend_msg])
         for log_msg in match_results.unmatched_exp_records:
             print(log_msg)
 
-        print_flower_box_msg(['unmatched actual records', legend_msg])
+        print_flower_box_msg(["unmatched actual records", legend_msg])
         for log_msg in match_results.unmatched_actual_records:
             print(log_msg)
 
         if print_matched:
-            print_flower_box_msg(['matched records', legend_msg])
+            print_flower_box_msg(["matched records", legend_msg])
             for log_msg in match_results.matched_records:
                 print(log_msg)
 
@@ -587,12 +598,14 @@ class LogVer:
         """
         if match_results.num_exp_unmatched:
             raise UnmatchedExpectedMessages(
-                f'There are {match_results.num_exp_unmatched} '
-                'expected log messages that failed to match actual log '
-                'messages.')
+                f"There are {match_results.num_exp_unmatched} "
+                "expected log messages that failed to match actual log "
+                "messages."
+            )
 
         if match_results.num_actual_unmatched:
             raise UnmatchedActualMessages(
-                f'There are {match_results.num_actual_unmatched} '
-                'actual log messages that failed to match expected log '
-                'messages.')
+                f"There are {match_results.num_actual_unmatched} "
+                "actual log messages that failed to match expected log "
+                "messages."
+            )

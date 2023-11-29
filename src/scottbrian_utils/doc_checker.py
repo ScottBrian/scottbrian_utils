@@ -5,7 +5,23 @@ DocChecker
 ==========
 
 The DocChecker class is used to help verify the documentation code
-examples.
+examples. It builds upon Sybil and provides the ability to adjust the
+doc examples so that they verify correctly. If, for instance, a code
+example involves a timestamp, the expected output written at the time of
+the example will fail to match the timestamp generated when the example
+is tested. Example 2 below shows a way to make the adjustment to the
+timestamp so that it will match.
+
+The DocChecker also has a way to print messages for troubleshooting
+cases that fail to verify. In example 2 below, the line
+
+.. sourcecode:: python
+
+    self.msgs.append([old_want, want, old_got, got])
+
+
+will show the input and output values to help solve problems. Using
+messages is optional and can be customized for any purpose.
 
 :Example 1: For standard doctest checking with no special cases, place
             the following code into a conftest.py file in the project
