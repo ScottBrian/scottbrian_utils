@@ -7,16 +7,15 @@ from sybil import Sybil
 from sybil.parsers.rest import PythonCodeBlockParser
 
 from scottbrian_utils.time_hdr import get_datetime_match_string
-from scottbrian_utils.doc_checker import DocCheckerTestParser
+from scottbrian_utils.doc_checker import DocCheckerTestParser, DocCheckerOutputChecker
 
 from typing import Any
 
 
-class SbtDocCheckerOutputChecker(BaseOutputChecker):
+class SbtDocCheckerOutputChecker(DocCheckerOutputChecker):
     def __init__(self) -> None:
         """Initialize the output checker object."""
-        self.mod_name: str = ""
-        self.msgs: list[str] = []
+        super().__init__()
 
     def check_output(self, want: str, got: str, optionflags: int) -> bool:
         """Check the output of the example against expected value.
@@ -100,7 +99,7 @@ class SbtDocCheckerOutputChecker(BaseOutputChecker):
                     want = re.sub(match_str, found_item.group(), want)
 
         self.msgs.append([old_want, want, old_got, got])
-        return BaseOutputChecker.check_output(self, want, got, optionflags)
+        return super().check_output(want, got, optionflags)
 
 
 pytest_collect_file = Sybil(

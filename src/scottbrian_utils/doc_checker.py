@@ -9,11 +9,11 @@ examples. It builds upon Sybil and provides the ability to adjust the
 doc examples so that they verify correctly. If, for instance, a code
 example involves a timestamp, the expected output written at the time of
 the example will fail to match the timestamp generated when the example
-is tested. Example 2 below shows a way to make the adjustment to the
+is tested. Example 1 below shows a way to make the adjustment to the
 timestamp so that it will match.
 
 The DocChecker also has a way to print messages for troubleshooting
-cases that fail to verify. In example 2 below, the line
+cases that fail to verify. In example 1 below, the line
 
 .. sourcecode:: python
 
@@ -23,30 +23,7 @@ cases that fail to verify. In example 2 below, the line
 will show the input and output values to help solve problems. Using
 messages is optional and can be customized for any purpose.
 
-:Example 1: For standard doctest checking with no special cases, place
-            the following code into a conftest.py file in the project
-            top directory (see scottbrian-locking for an example).
-
-.. code-block:: python
-
-    from doctest import ELLIPSIS
-
-    from sybil import Sybil
-    from sybil.parsers.rest import PythonCodeBlockParser
-
-    from scottbrian_utils.doc_checker import DocCheckerTestParser
-
-
-    pytest_collect_file = Sybil(
-        parsers=[
-            DocCheckerTestParser(optionflags=ELLIPSIS,
-                                 ),
-            PythonCodeBlockParser(),],
-        patterns=['*.rst', '*.py'],
-        # excludes=['log_verifier.py']
-        ).pytest()
-
-:Example 2: This example shows how to make an adjustment to accommodate
+:Example 1: This example shows how to make an adjustment to accommodate
             doc examples in a module called time_hdr that have
             timestamps in the output. The code needs to replace the
             timestamps in the 'want' variable so that it will match
@@ -70,11 +47,9 @@ messages is optional and can be customized for any purpose.
 
     from typing import Any
 
-
-    class SbtDocCheckerOutputChecker(BaseOutputChecker):
-        def __init__(self):
-            self.mod_name = None
-            self.msgs = []
+    class SbtDocCheckerOutputChecker(DocCheckerOutputChecker):
+        def __init__(self) -> None:
+            super().__init__()
 
         def check_output(self, want, got, optionflags):
             old_want = want
@@ -101,8 +76,7 @@ messages is optional and can be customized for any purpose.
                 got = re.sub(match_str, replacement, got)
 
             self.msgs.append([old_want, want, old_got, got])
-            return BaseOutputChecker.check_output(
-                        self, want, got, optionflags)
+            return super().check_output(want, got, optionflags)
 
 
     pytest_collect_file = Sybil(
@@ -112,7 +86,28 @@ messages is optional and can be customized for any purpose.
                                  ),
             PythonCodeBlockParser(),],
         patterns=['*.rst', '*.py'],
-        # excludes=['log_verifier.py']
+        ).pytest()
+
+:Example 2: For standard doctest checking with no special cases, place
+            the following code into a conftest.py file in the project
+            top directory (see scottbrian-locking for an example).
+
+.. code-block:: python
+
+    from doctest import ELLIPSIS
+
+    from sybil import Sybil
+    from sybil.parsers.rest import PythonCodeBlockParser
+
+    from scottbrian_utils.doc_checker import DocCheckerTestParser
+
+
+    pytest_collect_file = Sybil(
+        parsers=[
+            DocCheckerTestParser(optionflags=ELLIPSIS,
+                                 ),
+            PythonCodeBlockParser(),],
+        patterns=['*.rst', '*.py'],
         ).pytest()
 
 """
@@ -130,6 +125,9 @@ from typing import Iterable
 class DocCheckerOutputChecker(BaseOutputChecker):
     def __init__(self) -> None:
         """Initialize the output checker object."""
+        # note that BaseOutputChecker is actually OutputChecker in
+        # doctest.py (Sybil imports it as OutputChecker) and
+        # OutputChecker has no __init__ method
         self.mod_name: str = ""
         self.msgs: list[str] = []
 
@@ -145,7 +143,7 @@ class DocCheckerOutputChecker(BaseOutputChecker):
         Returns:
             True if the want and got values match, False otherwise
         """
-        return BaseOutputChecker.check_output(self, want, got, optionflags)
+        return super().check_output(want, got, optionflags)
 
 
 class DocCheckerTestEvaluator(DocTestEvaluator):
