@@ -229,7 +229,7 @@ class FileCatalog:
             return self.catalog[file_name]
         except KeyError:
             raise FileNameNotFound(
-                "Catalog does not have an entry for" f"file name: {file_name}"
+                "Catalog does not have an entry for file name: {file_name}"
             )
 
     def add_paths(self, file_specs: FileSpecs) -> None:

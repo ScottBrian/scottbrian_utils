@@ -143,6 +143,9 @@ Release History
     * support python 3.12
     * drop support python < 3.12
 
+* 3.1.0
+    * added check_actual_unmatched parm to verify_log_results
+
 
 Meta
 ====

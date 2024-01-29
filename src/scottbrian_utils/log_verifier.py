@@ -583,11 +583,15 @@ class LogVer:
     # verify log messages
     ####################################################################
     @staticmethod
-    def verify_log_results(match_results: MatchResults) -> None:
+    def verify_log_results(
+        match_results: MatchResults, check_actual_unmatched: bool = True
+    ) -> None:
         """Verify that each log message issued is as expected.
 
         Args:
             match_results: contains the results to be verified
+            check_actual_unmatched: If True, check that there are no
+                remaining unmatched actual records
 
         Raises:
             UnmatchedExpectedMessages: There are expected log messages
@@ -603,7 +607,7 @@ class LogVer:
                 "messages."
             )
 
-        if match_results.num_actual_unmatched:
+        if check_actual_unmatched and match_results.num_actual_unmatched:
             raise UnmatchedActualMessages(
                 f"There are {match_results.num_actual_unmatched} "
                 "actual log messages that failed to match expected log "
