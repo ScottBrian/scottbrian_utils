@@ -41,13 +41,19 @@ The timer module contains:
 ########################################################################
 # Standard Library
 ########################################################################
+from collections.abc import Iterable
 import functools
+import inspect
 import logging
+from os import fspath
+from pathlib import Path
+import sys
+from typing import Optional
 
 ########################################################################
 # Third Party
 ########################################################################
-from scottbrian_utils.diag_msg import get_formatted_call_sequence
+from scottbrian_utils.diag_msg import get_formatted_call_sequence, get_caller_info
 import wrapt
 
 logger = logging.getLogger(__name__)
@@ -59,8 +65,8 @@ logger = logging.getLogger(__name__)
 def fun_trace(
     wrapped=None,
     *,
-    log_msg_prefix: str = "",
     logger_is_enabled: bool = True,
+    log_msg_prefix: str = "",
     exclude_list: Optional[list[str]] = None,
     include_list: Optional[list[str]] = None,
     omit_args: Optional[Iterable[str]] = None,
@@ -79,7 +85,9 @@ def fun_trace(
         return functools.partial(
             fun_trace,
             logger_is_enabled=logger_is_enabled,
+            log_msg_prefix=log_msg_prefix,
             exclude_list=exclude_list,
+            include_list=include_list,
             omit_args=omit_args,
             extra_args=extra_args,
         )
@@ -102,33 +110,55 @@ def fun_trace(
     ):
         logger_is_enabled = True
 
+    target_file = inspect.getsourcefile(wrapped).split("\\")[-1]
+    target_name = wrapped.__name__
+    target_line_num = inspect.getsourcelines(wrapped)[1]
+
+    target = f"{target_file}:{target_name}:{target_line_num}"
+
     @wrapt.decorator(enabled=logger_is_enabled)
-    def fun_trace_wrapper(wrapped, instance, args, kwargs):
+    def trace_wrapper(wrapped, instance, args, kwargs):
         """Setup the trace."""
         log_args: str = ""
+        log_kwargs: str = ""
         comma: str = ""
         for key, item in kwargs.items():
             if key not in omit_args and item is not None:
-                log_args = f"{log_args}{comma} {key}={item}"
+                log_kwargs = f"{log_kwargs}{comma} {key}={item}"
                 comma = ","
 
         for extra_arg in extra_args:
             log_args = f"{log_args}{comma} {extra_arg}={eval(extra_arg)}"
             comma = ","
 
-        prefix = (
-            f"{log_msg_prefix}"
-            f"{get_formatted_call_sequence(latest=1, depth=1)}->"
-            f"{wrapped.__name__}"
-        )
-        entry_log_msg = f"{prefix} entry:{log_args}"
-        exit_log_msg = f"{prefix} exit:{log_args}"
+        # prefix = (
+        #     f"{target}"
+        #     f"{get_formatted_call_sequence(latest=1, depth=1)}->"
+        #     f"{wrapped.__name__}:{target_line_num}"
+        # )
+        # entry_log_msg = f"{prefix} entry:{log_args}"
+        # exit_log_msg = f"{prefix} exit:{log_args}"
+        frame = sys._getframe(1)
+        code = frame.f_code
+        mod_name = fspath(Path(code.co_filename).name)
+        func_name = code.co_name
+        line_num = frame.f_lineno
+        del frame
+        # caller_info = get_caller_info(frame: FrameType)
 
-        logger.debug(entry_log_msg)
+        # logger.debug(
+        #     f"{target} entry:{log_args}, caller: "
+        #     f"{get_formatted_call_sequence(latest=1, depth=1)}"
+        # )
+        logger.debug(
+            f"{target} entry: args=({log_args}), kwargs=({log_kwargs}), caller: "
+            f"{mod_name}:{func_name}:{line_num}"
+        )
 
         ret_value = wrapped(*args, **kwargs)
-        logger.debug(exit_log_msg)
+
+        logger.debug(f"{target} exit: {ret_value=}")
 
         return ret_value
 
-    return fun_trace_wrapper
+    return trace_wrapper(wrapped)
