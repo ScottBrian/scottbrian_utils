@@ -119,7 +119,14 @@ def etrace(
     ):
         enable_trace = True
 
-    target_file = inspect.getsourcefile(wrapped).split("\\")[-1]
+    print(f"{type(wrapped).__name__=}")
+    print(f"{dir(wrapped)=}")
+    print(f"{wrapped.__dict__=}")
+    print(f"{wrapped.__wrapped__=}")
+
+    target_file = inspect.getsourcefile(wrapped.__wrapped__).split("\\")[-1]
+
+    # target_file = inspect.getsourcefile(wrapped).split("\\")[-1]
     target_name = wrapped.__name__
     target_line_num = inspect.getsourcelines(wrapped)[1]
 
