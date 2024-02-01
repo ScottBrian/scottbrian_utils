@@ -91,6 +91,20 @@ def etrace(
 
     Args:
         wrapped: function to be decorated
+        enable_trace: when True, enable the trace unless the function or
+            method name is specified in the exclude_list (see below).
+            If False, the trace will be disabled unless the function or
+            method name is specified in the include_list (see below).
+        exclude_list: list of string values that name functions or
+            methods that should not be traced when enable_trace is True.
+        include_list: list of string values that name functions or
+            methods that should be traced when enable_trace is False or
+            when the name is also specified in the exclude_list.
+        omit_args: when False, cause the function or method input args
+            to be included in the trace. When True, no args will be
+            traced.
+        omit_kwargs: list of string values that are names of kwargs that
+            should not be traced.
 
     Returns:
         decorated function
@@ -119,15 +133,17 @@ def etrace(
     ):
         enable_trace = True
 
-    print(f"{type(wrapped).__name__=}")
-    print(f"{dir(wrapped)=}")
-    print(f"{wrapped.__dict__=}")
-    print(f"{wrapped.__wrapped__=}")
+    if type(wrapped).__name__ in ("staticmethod", "classmethod"):
+        target_file = inspect.getsourcefile(wrapped.__wrapped__).split("\\")[-1]
+    else:
+        target_file = inspect.getsourcefile(wrapped).split("\\")[-1]
 
-    target_file = inspect.getsourcefile(wrapped.__wrapped__).split("\\")[-1]
+    qual_name_list = wrapped.__qualname__.split(".")
+    if qual_name_list[-2] == "<locals>":
+        target_name = qual_name_list[-1]
+    else:
+        target_name = f":{qual_name_list[-2]}.{qual_name_list[-1]}"
 
-    # target_file = inspect.getsourcefile(wrapped).split("\\")[-1]
-    target_name = wrapped.__name__
     target_line_num = inspect.getsourcelines(wrapped)[1]
 
     target = f"{target_file}:{target_name}:{target_line_num}"
@@ -140,16 +156,6 @@ def etrace(
         else:
             log_args: str = f"{args=}, "
 
-        # log_kwargs: str = ""
-        # comma: str = ""
-        # for key, item in kwargs.items():
-        #     if key not in omit_kwargs and item is not None:
-        #         quote = ""
-        #         if isinstance(item, str):
-        #             quote = "'"
-        #         log_kwargs = f"{log_kwargs}{comma}{key}={quote}{str(item)}{quote}"
-        #         comma = ", "
-
         if omit_kwargs:
             kwargs_copy = kwargs.copy()
             for key in omit_kwargs:
@@ -160,25 +166,6 @@ def etrace(
             log_kwargs = f"{kwargs=}, "
             log_omit_kwargs = ""
 
-        # prefix = (
-        #     f"{target}"
-        #     f"{get_formatted_call_sequence(latest=1, depth=1)}->"
-        #     f"{wrapped.__name__}:{target_line_num}"
-        # )
-        # entry_log_msg = f"{prefix} entry:{log_args}"
-        # exit_log_msg = f"{prefix} exit:{log_args}"
-        # frame = sys._getframe(1)
-        # code = frame.f_code
-        # mod_name = fspath(Path(code.co_filename).name)
-        # func_name = code.co_name
-        # line_num = frame.f_lineno
-
-        # del frame
-
-        # logger.debug(
-        #     f"{target} entry: {log_args}{log_kwargs}{log_vars}caller: "
-        #     f"{mod_name}:{func_name}:{line_num}"
-        # )
         logger.debug(
             f"{target} entry: {log_args}{log_kwargs}{log_omit_kwargs}caller: "
             f"{get_formatted_call_sequence(latest=1, depth=1)}"
