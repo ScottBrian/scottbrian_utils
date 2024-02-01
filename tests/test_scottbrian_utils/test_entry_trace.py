@@ -196,8 +196,10 @@ class TestEntryTraceExamples:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(\), kwargs=\(\), "
-            "caller: test_entry_trace.py:test_etrace_example1:[0-9]+"
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(\), "
+            "kwargs={}, "
+            "caller: test_entry_trace.py::TestEntryTraceExamples."
+            "test_etrace_example1:[0-9]+"
         )
 
         log_ver.add_msg(
@@ -247,8 +249,9 @@ class TestEntryTraceExamples:
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
             rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(42,\), "
-            r"kwargs=\(kw1='forty two'\), "
-            "caller: test_entry_trace.py:test_etrace_example2:[0-9]+"
+            "kwargs={'kw1': 'forty two'}, "
+            "caller: test_entry_trace.py::TestEntryTraceExamples."
+            "test_etrace_example2:[0-9]+"
         )
 
         log_ver.add_msg(
@@ -262,6 +265,240 @@ class TestEntryTraceExamples:
         exp_exit_log_msg = (
             f'test_entry_trace.py:f1:{f1_line_num} exit: ret_value="a1=42, '
             f'kw1={quote}{kw_value}{quote}"'
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_log_results(match_results)
+
+    ####################################################################
+    # test_etrace_example3
+    ####################################################################
+    def test_etrace_example3(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Test etrace example3.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+        from scottbrian_utils.entry_trace import etrace
+
+        do_trace: bool = True
+
+        @etrace(enable_trace=do_trace)
+        def f1(a1: int, kw1: str = "42"):
+            return f"{a1=}, {kw1=}"
+
+        do_trace: bool = False
+
+        @etrace(enable_trace=do_trace)
+        def f2(a1: int, kw1: str = "42"):
+            return f"{a1=}, {kw1=}"
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer()
+        f1(42, kw1="forty two")
+        f2(24, kw1="twenty four")
+
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(42,\), "
+            "kwargs={'kw1': 'forty two'}, "
+            "caller: test_entry_trace.py::TestEntryTraceExamples."
+            "test_etrace_example3:[0-9]+"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        kw_value = "forty two"
+        quote = "'"
+        exp_exit_log_msg = (
+            f'test_entry_trace.py:f1:{f1_line_num} exit: ret_value="a1=42, '
+            f'kw1={quote}{kw_value}{quote}"'
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_log_results(match_results)
+
+    ####################################################################
+    # test_etrace_example4
+    ####################################################################
+    def test_etrace_example4(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Test etrace example4.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+        from scottbrian_utils.entry_trace import etrace
+
+        @etrace(omit_args=True)
+        def f1(a1: int, kw1: str = "42"):
+            return f"{a1=}, {kw1=}"
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer()
+        f1(42, kw1="forty two")
+
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: "
+            "omit_args=True, kwargs={'kw1': 'forty two'}, "
+            "caller: test_entry_trace.py::TestEntryTraceExamples."
+            "test_etrace_example4:[0-9]+"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        kw_value = "forty two"
+        quote = "'"
+        exp_exit_log_msg = (
+            f'test_entry_trace.py:f1:{f1_line_num} exit: ret_value="a1=42, '
+            f'kw1={quote}{kw_value}{quote}"'
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_log_results(match_results)
+
+    ####################################################################
+    # test_etrace_example5
+    ####################################################################
+    def test_etrace_example5(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Test etrace example5.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+        from scottbrian_utils.entry_trace import etrace
+
+        @etrace(omit_kwargs="kw1")
+        def f1(a1: int, kw1: str = "42", kw2: int = 24):
+            return f"{a1=}, {kw1=}, {kw2=}"
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer()
+        f1(42, kw1="forty two", kw2=84)
+
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(42,\), "
+            "kwargs={'kw2': 84}, omit_kwargs={'kw1'}, "
+            "caller: test_entry_trace.py::TestEntryTraceExamples."
+            "test_etrace_example5:[0-9]+"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        kw_value = "forty two"
+        quote = "'"
+        exp_exit_log_msg = (
+            f'test_entry_trace.py:f1:{f1_line_num} exit: ret_value="a1=42, '
+            f'kw1={quote}{kw_value}{quote}, kw2=84"'
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_log_results(match_results)
+
+    ####################################################################
+    # test_etrace_example6
+    ####################################################################
+    def test_etrace_example6(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Test etrace example6.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+        from scottbrian_utils.entry_trace import etrace
+
+        @etrace
+        def f1(a1: int, kw1: str = "42", kw2: int = 24):
+            return f"{a1=}, {kw1=}, {kw2=}"
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer()
+
+        f1(42, kw1="forty two", kw2=84)
+
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(42,\), "
+            "kwargs={'kw1': 'forty two', 'kw2': 84}, "
+            "caller: test_entry_trace.py::TestEntryTraceExamples."
+            "test_etrace_example6:[0-9]+"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        kw_value = "forty two"
+        quote = "'"
+        exp_exit_log_msg = (
+            f'test_entry_trace.py:f1:{f1_line_num} exit: ret_value="a1=42, '
+            f'kw1={quote}{kw_value}{quote}, kw2=84"'
         )
 
         log_ver.add_msg(

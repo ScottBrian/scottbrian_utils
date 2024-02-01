@@ -26,13 +26,11 @@ parameters as follows:
        methods that should be traced when enable_trace is False or when
        the name is also specified in the exclude_list. The default is
        None.
-    4) trace_args: boolean value that when True will cause the function
+    4) omit_args: boolean value that when True will cause the function
        or method input args to be traced. When False, no args will be
        traced. The default is True.
     5) omit_kwargs: list of string values that are names of kwargs that
        should not be traced. The default is None.
-    6) extra_args: list off string values that are names of variables
-       that should be included in the trace. The default is None.
 
 
 :Example 1: Decorate a function that has no args and no kwargs.
@@ -71,7 +69,7 @@ from typing import Optional
 ########################################################################
 # Third Party
 ########################################################################
-from scottbrian_utils.diag_msg import get_formatted_call_sequence, get_caller_info
+from scottbrian_utils.diag_msg import get_formatted_call_sequence
 import wrapt
 
 logger = logging.getLogger(__name__)
@@ -86,9 +84,8 @@ def etrace(
     enable_trace: bool = True,
     exclude_list: Optional[list[str]] = None,
     include_list: Optional[list[str]] = None,
-    trace_args: bool = True,
+    omit_args: bool = False,
     omit_kwargs: Optional[Iterable[str]] = None,
-    extra_args: Optional[Iterable[str]] = None,
 ):
     """Decorator to produce entry/exit log.
 
@@ -105,15 +102,13 @@ def etrace(
             enable_trace=enable_trace,
             exclude_list=exclude_list,
             include_list=include_list,
-            trace_args=trace_args,
+            omit_args=omit_args,
             omit_kwargs=omit_kwargs,
-            extra_args=extra_args,
         )
 
     omit_kwargs = set(
         {omit_kwargs} if isinstance(omit_kwargs, str) else omit_kwargs or ""
     )
-    extra_args = set({extra_args} if isinstance(extra_args, str) else extra_args or "")
 
     if enable_trace and exclude_list is not None and wrapped.__name__ in exclude_list:
         enable_trace = False
@@ -133,24 +128,30 @@ def etrace(
     @wrapt.decorator(enabled=enable_trace)
     def trace_wrapper(wrapped, instance, args, kwargs):
         """Setup the trace."""
-        if trace_args:
-            log_args: str = args
+        if omit_args:
+            log_args = f"{omit_args=}, "
         else:
-            log_args = ""
+            log_args: str = f"{args=}, "
 
-        log_kwargs: str = ""
-        comma: str = ""
-        for key, item in kwargs.items():
-            if key not in omit_kwargs and item is not None:
-                quote = ""
-                if isinstance(item, str):
-                    quote = "'"
-                log_kwargs = f"{log_kwargs}{comma}{key}={quote}{str(item)}{quote}"
-                comma = ", "
+        # log_kwargs: str = ""
+        # comma: str = ""
+        # for key, item in kwargs.items():
+        #     if key not in omit_kwargs and item is not None:
+        #         quote = ""
+        #         if isinstance(item, str):
+        #             quote = "'"
+        #         log_kwargs = f"{log_kwargs}{comma}{key}={quote}{str(item)}{quote}"
+        #         comma = ", "
 
-        for extra_arg in extra_args:
-            log_args = f"{log_args}{comma} {extra_arg}={eval(extra_arg)}"
-            comma = ","
+        if omit_kwargs:
+            kwargs_copy = kwargs.copy()
+            for key in omit_kwargs:
+                del kwargs_copy[key]
+            log_kwargs = f"kwargs={kwargs_copy}, "
+            log_omit_kwargs = f"{omit_kwargs=}, "
+        else:
+            log_kwargs = f"{kwargs=}, "
+            log_omit_kwargs = ""
 
         # prefix = (
         #     f"{target}"
@@ -159,21 +160,21 @@ def etrace(
         # )
         # entry_log_msg = f"{prefix} entry:{log_args}"
         # exit_log_msg = f"{prefix} exit:{log_args}"
-        frame = sys._getframe(1)
-        code = frame.f_code
-        mod_name = fspath(Path(code.co_filename).name)
-        func_name = code.co_name
-        line_num = frame.f_lineno
-        del frame
-        # caller_info = get_caller_info(frame: FrameType)
+        # frame = sys._getframe(1)
+        # code = frame.f_code
+        # mod_name = fspath(Path(code.co_filename).name)
+        # func_name = code.co_name
+        # line_num = frame.f_lineno
+
+        # del frame
 
         # logger.debug(
-        #     f"{target} entry:{log_args}, caller: "
-        #     f"{get_formatted_call_sequence(latest=1, depth=1)}"
+        #     f"{target} entry: {log_args}{log_kwargs}{log_vars}caller: "
+        #     f"{mod_name}:{func_name}:{line_num}"
         # )
         logger.debug(
-            f"{target} entry: args={log_args}, kwargs=({log_kwargs}), caller: "
-            f"{mod_name}:{func_name}:{line_num}"
+            f"{target} entry: {log_args}{log_kwargs}{log_omit_kwargs}caller: "
+            f"{get_formatted_call_sequence(latest=1, depth=1)}"
         )
 
         ret_value = wrapped(*args, **kwargs)
