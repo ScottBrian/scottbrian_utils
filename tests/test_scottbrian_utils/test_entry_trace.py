@@ -3,6 +3,7 @@
 ########################################################################
 # Standard Library
 ########################################################################
+from enum import Enum, auto
 import logging
 import datetime
 import inspect
@@ -812,6 +813,28 @@ class TestEntryTraceBasic:
 
 
 ########################################################################
+# FunctionType
+########################################################################
+class FunctionType(Enum):
+    """Resume scenario cases."""
+
+    Function = auto()
+    Method = auto()
+    StaticMethod = auto()
+    ClassMethod = auto()
+    InitMethod = auto()
+
+
+FunctionTypeList = [
+    FunctionType.Function,
+    FunctionType.Method,
+    FunctionType.StaticMethod,
+    FunctionType.ClassMethod,
+    FunctionType.InitMethod,
+]
+
+
+########################################################################
 # TestEntryTraceBasic class
 ########################################################################
 @pytest.mark.cover2
@@ -819,159 +842,151 @@ class TestEntryTraceCombos:
     """Test EntryTrace with various combinations."""
 
     ####################################################################
-    # test_log_verifier_remaining_time1
+    # test_etrace_combo_env
     ####################################################################
-    def test_log_verifier_combos(
+    @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
+    @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
+    def test_etrace_combo_env(
         self,
-        num_exp_msgs1: int,
-        num_exp_msgs2: int,
-        num_exp_msgs3: int,
-        num_act_msgs1: int,
-        num_act_msgs2: int,
-        num_act_msgs3: int,
-        capsys: pytest.CaptureFixture[str],
+        caller_type_arg: FunctionType,
+        target_type_arg: FunctionType,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test log_verifier combos.
+        """Test etrace on a function.
 
         Args:
-            num_exp_msgs1: number of expected messages for msg1
-            num_exp_msgs2: number of expected messages for msg2
-            num_exp_msgs3: number of expected messages for msg3
-            num_act_msgs1: number of actual messages for msg1
-            num_act_msgs2: number of actual messages for msg2
-            num_act_msgs3: number of actual messages for msg3
-            capsys: pytest fixture to capture print output
+            caller_type_arg: type of function that makes the call
             caplog: pytest fixture to capture log output
 
         """
-        t_logger = logging.getLogger("combos")
-        log_ver = LogVer(log_name="combos")
-
-        total_num_exp_msgs = 0
-        total_num_act_msgs = 0
-        total_num_exp_unmatched = 0
-        total_num_act_unmatched = 0
-        total_num_matched = 0
-
-        exp_unmatched_msgs = []
-        act_unmatched_msgs = []
-        matched_msgs = []
-
-        msg_table = [
-            (num_exp_msgs1, num_act_msgs1, "msg one"),
-            (num_exp_msgs2, num_act_msgs2, "msg two"),
-            (num_exp_msgs3, num_act_msgs3, "msg three"),
-        ]
-
-        for num_exp, num_act, the_msg in msg_table:
-            total_num_exp_msgs += num_exp
-            total_num_act_msgs += num_act
-            num_exp_unmatched = max(0, num_exp - num_act)
-            total_num_exp_unmatched += num_exp_unmatched
-            num_act_unmatched = max(0, num_act - num_exp)
-            total_num_act_unmatched += num_act_unmatched
-            num_matched_msgs = num_exp - num_exp_unmatched
-            total_num_matched += num_matched_msgs
-
-            for _ in range(num_exp):
-                log_ver.add_msg(log_msg=the_msg)
-
-            for _ in range(num_act):
-                t_logger.debug(the_msg)
-
-            for _ in range(num_exp_unmatched):
-                exp_unmatched_msgs.append(the_msg)
-
-            for _ in range(num_act_unmatched):
-                act_unmatched_msgs.append(the_msg)
-
-            for _ in range(num_matched_msgs):
-                matched_msgs.append(the_msg)
-
-        max_of_totals = max(
-            total_num_exp_msgs,
-            total_num_act_msgs,
-            total_num_exp_unmatched,
-            total_num_act_unmatched,
-            total_num_matched,
-        )
-
-        len_max_total = len(str(max_of_totals))
-        asterisks = "*********************************" + "*" * len_max_total
-
-        num_exp_space = len_max_total - len(str(total_num_exp_msgs))
-        num_exp_unm_space = len_max_total - len(str(total_num_exp_unmatched))
-        num_act_space = len_max_total - len(str(total_num_act_msgs))
-        num_act_unm_space = len_max_total - len(str(total_num_act_unmatched))
-        num_matched_space = len_max_total - len(str(total_num_matched))
-
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-
-        if total_num_exp_unmatched:
-            with pytest.raises(UnmatchedExpectedMessages):
-                log_ver.verify_log_results(log_results)
-        elif total_num_act_unmatched:
-            with pytest.raises(UnmatchedActualMessages):
-                log_ver.verify_log_results(log_results)
+        if target_type_arg == FunctionType.InitMethod:
+            trace_enabled = True
         else:
-            log_ver.verify_log_results(log_results)
+            trace_enabled = False
 
-        expected_result = "\n"
-        expected_result += asterisks + "\n"
-        expected_result += (
-            "* number expected log records: "
-            + " " * num_exp_space
-            + f"{total_num_exp_msgs} *\n"
+        @etrace
+        def f1():
+            pass
+
+        class Caller:
+            def __init__(self):
+                if caller_type_arg == FunctionType.InitMethod:
+                    eval(target_rtn)
+
+            def caller(self):
+                eval(target_rtn)
+
+            @staticmethod
+            def static_caller():
+                eval(target_rtn)
+
+            @classmethod
+            def class_caller(cls):
+                eval(target_rtn)
+
+        class Target:
+            @etrace(enable_trace=trace_enabled)
+            def __init__(self):
+                pass
+
+            @etrace
+            def target(self):
+                pass
+
+            @etrace
+            @staticmethod
+            def static_target():
+                pass
+
+            @etrace
+            @classmethod
+            def class_target(cls):
+                pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer()
+
+        file_name = "test_entry_trace.py"
+
+        if target_type_arg == FunctionType.Function:
+            target_rtn = f1
+            target_line_num = inspect.getsourcelines(f1)[1]
+            target_qual_name = ":f1"
+
+        elif target_type_arg == FunctionType.Method:
+            target_rtn = "Target().target()"
+            target_line_num = inspect.getsourcelines(Target.target)[1]
+            target_qual_name = "::Target.target"
+
+        elif target_type_arg == FunctionType.StaticMethod:
+            target_rtn = "Target().static_target()"
+            target_qual_name = "::Target.static_target"
+
+        elif target_type_arg == FunctionType.ClassMethod:
+            target_rtn = "Target().class_target()"
+            target_qual_name = "::Target.class_target"
+
+        elif target_type_arg == FunctionType.InitMethod:
+            target_rtn = "Target()"
+            target_qual_name = "::Target.__init__"
+
+        if caller_type_arg == FunctionType.Function:
+            if target_type_arg == FunctionType.Function:
+                target_rtn()
+            elif target_type_arg == FunctionType.Method:
+                Target().target()
+            elif target_type_arg == FunctionType.StaticMethod:
+                Target().static_target()
+            elif target_type_arg == FunctionType.ClassMethod:
+                Target().class_target()
+            elif target_type_arg == FunctionType.InitMethod:
+                Target()
+            caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_env"
+
+        elif caller_type_arg == FunctionType.Method:
+            Caller().caller()
+            caller_qual_name = "Caller.caller"
+
+        elif caller_type_arg == FunctionType.StaticMethod:
+            Caller().static_caller()
+            caller_qual_name = "Caller.static_caller"
+
+        elif caller_type_arg == FunctionType.ClassMethod:
+            Caller().class_caller()
+            caller_qual_name = "Caller.class_caller"
+
+        elif caller_type_arg == FunctionType.InitMethod:
+            Caller()
+            caller_qual_name = "Caller.__init__"
+
+        exp_entry_log_msg = (
+            rf"{file_name}{target_qual_name}:{target_line_num} entry: args=\(\), "
+            "kwargs={}, "
+            f"caller: {file_name}::{caller_qual_name}:[0-9]+"
         )
-        expected_result += (
-            "* number expected unmatched  : "
-            + " " * num_exp_unm_space
-            + f"{total_num_exp_unmatched} *\n"
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
         )
-        expected_result += (
-            "* number actual log records  : "
-            + " " * num_act_space
-            + f"{total_num_act_msgs} *\n"
+
+        exp_exit_log_msg = (
+            f"{file_name}{target_qual_name}:{target_line_num} exit: ret_value=None"
         )
-        expected_result += (
-            "* number actual unmatched    : "
-            + " " * num_act_unm_space
-            + f"{total_num_act_unmatched} *\n"
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
         )
-        expected_result += (
-            "* number matched records     : "
-            + " " * num_matched_space
-            + f"{total_num_matched} *\n"
-        )
-        expected_result += asterisks + "\n"
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-
-        for msg in exp_unmatched_msgs:
-            expected_result += f"('combos', 10, '{msg}')\n"
-
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-
-        for msg in act_unmatched_msgs:
-            expected_result += f"('combos', 10, '{msg}')\n"
-
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-
-        for msg in matched_msgs:
-            expected_result += f"('combos', 10, '{msg}')\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_log_results(match_results)
