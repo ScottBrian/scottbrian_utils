@@ -871,18 +871,18 @@ class TestEntryTraceCombos:
         class Caller:
             def __init__(self):
                 if caller_type_arg == FunctionType.InitMethod:
-                    eval(target_rtn)
+                    target_rtn()
 
             def caller(self):
-                eval(target_rtn)
+                target_rtn()
 
             @staticmethod
             def static_caller():
-                eval(target_rtn)
+                target_rtn()
 
             @classmethod
             def class_caller(cls):
-                eval(target_rtn)
+                target_rtn()
 
         class Target:
             @etrace(enable_trace=trace_enabled)
@@ -910,39 +910,39 @@ class TestEntryTraceCombos:
 
         file_name = "test_entry_trace.py"
 
+        ################################################################
+        # choose the target function or method
+        ################################################################
         if target_type_arg == FunctionType.Function:
             target_rtn = f1
             target_line_num = inspect.getsourcelines(f1)[1]
             target_qual_name = ":f1"
 
         elif target_type_arg == FunctionType.Method:
-            target_rtn = "Target().target()"
+            target_rtn = Target().target
             target_line_num = inspect.getsourcelines(Target.target)[1]
             target_qual_name = "::Target.target"
 
         elif target_type_arg == FunctionType.StaticMethod:
-            target_rtn = "Target().static_target()"
+            target_rtn = Target().static_target
+            target_line_num = inspect.getsourcelines(Target.static_target)[1]
             target_qual_name = "::Target.static_target"
 
         elif target_type_arg == FunctionType.ClassMethod:
-            target_rtn = "Target().class_target()"
+            target_rtn = Target().class_target
+            target_line_num = inspect.getsourcelines(Target.class_target)[1]
             target_qual_name = "::Target.class_target"
 
         elif target_type_arg == FunctionType.InitMethod:
-            target_rtn = "Target()"
+            target_rtn = Target
+            target_line_num = inspect.getsourcelines(Target.__init__)[1]
             target_qual_name = "::Target.__init__"
 
+        ################################################################
+        # call the function or method
+        ################################################################
         if caller_type_arg == FunctionType.Function:
-            if target_type_arg == FunctionType.Function:
-                target_rtn()
-            elif target_type_arg == FunctionType.Method:
-                Target().target()
-            elif target_type_arg == FunctionType.StaticMethod:
-                Target().static_target()
-            elif target_type_arg == FunctionType.ClassMethod:
-                Target().class_target()
-            elif target_type_arg == FunctionType.InitMethod:
-                Target()
+            target_rtn()
             caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_env"
 
         elif caller_type_arg == FunctionType.Method:
@@ -964,6 +964,179 @@ class TestEntryTraceCombos:
         exp_entry_log_msg = (
             rf"{file_name}{target_qual_name}:{target_line_num} entry: args=\(\), "
             "kwargs={}, "
+            f"caller: {file_name}::{caller_qual_name}:[0-9]+"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+
+        exp_exit_log_msg = (
+            f"{file_name}{target_qual_name}:{target_line_num} exit: ret_value=None"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_log_results(match_results)
+
+    ####################################################################
+    # test_etrace_combo_parms
+    ####################################################################
+    @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
+    @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
+    @pytest.mark.parametrize("num_args_arg", (0, 1, 2, 3, 4))
+    @pytest.mark.parametrize("num_kwargs_arg", (0, 1, 2, 3, 4))
+    def test_etrace_combo_parms(
+        self,
+        caller_type_arg: FunctionType,
+        target_type_arg: FunctionType,
+        num_args_arg: int,
+        num_kwargs_arg: int,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            caller_type_arg: type of function that makes the call
+            caplog: pytest fixture to capture log output
+
+        """
+        if target_type_arg == FunctionType.InitMethod:
+            trace_enabled = True
+        else:
+            trace_enabled = False
+
+        @etrace
+        def f1(*args, **kwargs):
+            pass
+
+        class Caller:
+            def __init__(self):
+                if caller_type_arg == FunctionType.InitMethod:
+                    target_rtn(*target_args, **target_kwargs)
+
+            def caller(self):
+                target_rtn(*target_args, **target_kwargs)
+
+            @staticmethod
+            def static_caller():
+                target_rtn(*target_args, **target_kwargs)
+
+            @classmethod
+            def class_caller(cls):
+                target_rtn(*target_args, **target_kwargs)
+
+        class Target:
+            @etrace(enable_trace=trace_enabled)
+            def __init__(self, *args, **kwargs):
+                pass
+
+            @etrace
+            def target(self, *args, **kwargs):
+                pass
+
+            @etrace
+            @staticmethod
+            def static_target(*args, **kwargs):
+                pass
+
+            @etrace
+            @classmethod
+            def class_target(cls, *args, **kwargs):
+                pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer()
+
+        file_name = "test_entry_trace.py"
+
+        ################################################################
+        # choose the target function or method
+        ################################################################
+        if target_type_arg == FunctionType.Function:
+            target_rtn = f1
+            target_line_num = inspect.getsourcelines(f1)[1]
+            target_qual_name = ":f1"
+
+        elif target_type_arg == FunctionType.Method:
+            target_rtn = Target().target
+            target_line_num = inspect.getsourcelines(Target.target)[1]
+            target_qual_name = "::Target.target"
+
+        elif target_type_arg == FunctionType.StaticMethod:
+            target_rtn = Target().static_target
+            target_line_num = inspect.getsourcelines(Target.static_target)[1]
+            target_qual_name = "::Target.static_target"
+
+        elif target_type_arg == FunctionType.ClassMethod:
+            target_rtn = Target().class_target
+            target_line_num = inspect.getsourcelines(Target.class_target)[1]
+            target_qual_name = "::Target.class_target"
+
+        elif target_type_arg == FunctionType.InitMethod:
+            target_rtn = Target
+            target_line_num = inspect.getsourcelines(Target.__init__)[1]
+            target_qual_name = "::Target.__init__"
+
+        ################################################################
+        # setup the args
+        ################################################################
+        target_args = (1, 2.2, "three", [4, 4.4, "four", (4,)])
+        target_args = target_args[0:num_args_arg]
+        print(f"1 {target_args=}")
+
+        ################################################################
+        # setup the kwargs
+        ################################################################
+        target_kwargs = (
+            ("v1", 1),
+            ("v2", 2.2),
+            ("v3", "three"),
+            ("v4", [4, 4.4, "four", (4,)]),
+        )
+        target_kwargs = dict(target_kwargs[0:num_kwargs_arg])
+
+        ################################################################
+        # call the function or method
+        ################################################################
+        if caller_type_arg == FunctionType.Function:
+            target_rtn(*target_args, **target_kwargs)
+            caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_parms"
+
+        elif caller_type_arg == FunctionType.Method:
+            Caller().caller()
+            caller_qual_name = "Caller.caller"
+
+        elif caller_type_arg == FunctionType.StaticMethod:
+            Caller().static_caller()
+            caller_qual_name = "Caller.static_caller"
+
+        elif caller_type_arg == FunctionType.ClassMethod:
+            Caller().class_caller()
+            caller_qual_name = "Caller.class_caller"
+
+        elif caller_type_arg == FunctionType.InitMethod:
+            Caller()
+            caller_qual_name = "Caller.__init__"
+
+        exp_entry_log_msg = (
+            rf"{file_name}{target_qual_name}:{target_line_num} entry: "
+            rf"args={re.escape(str(target_args))}, "
+            f"kwargs={re.escape(str(target_kwargs))}, "
             f"caller: {file_name}::{caller_qual_name}:[0-9]+"
         )
 
