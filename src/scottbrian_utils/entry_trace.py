@@ -159,7 +159,8 @@ def etrace(
         if omit_kwargs:
             kwargs_copy = kwargs.copy()
             for key in omit_kwargs:
-                del kwargs_copy[key]
+                if key in kwargs_copy:
+                    del kwargs_copy[key]
             log_kwargs = f"kwargs={kwargs_copy}, "
             log_omit_kwargs = f"{omit_kwargs=}, "
         else:

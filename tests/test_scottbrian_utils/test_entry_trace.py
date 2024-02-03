@@ -1163,3 +1163,208 @@ class TestEntryTraceCombos:
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
         log_ver.verify_log_results(match_results)
+
+    ####################################################################
+    # test_etrace_combo_omits
+    ####################################################################
+    @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
+    @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
+    @pytest.mark.parametrize("omit_args_arg", (True, False))
+    @pytest.mark.parametrize("num_kwargs_arg", (0, 1, 2, 3))
+    @pytest.mark.parametrize("omit_kwargs_arg", (0, 1, 2, 3, 4, 5, 6, 7))
+    def test_etrace_combo_omits(
+        self,
+        caller_type_arg: FunctionType,
+        target_type_arg: FunctionType,
+        omit_args_arg: bool,
+        num_kwargs_arg: int,
+        omit_kwargs_arg: int,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            caller_type_arg: type of function that makes the call
+            target_type_arg: type of function to be called
+            omit_args_arg: if true bool, don't trace args
+            num_kwargs_arg: number of keywords args to build
+            omit_kwargs_arg: int for binary mask
+            caplog: pytest fixture to capture log output
+
+        """
+        if target_type_arg == FunctionType.InitMethod:
+            trace_enabled = True
+        else:
+            trace_enabled = False
+
+        kwargs_to_omit: list[str] = []
+        if omit_kwargs_arg in [1, 3, 5, 7]:
+            kwargs_to_omit.append("v3")
+        if omit_kwargs_arg in [4, 5, 6, 7]:
+            kwargs_to_omit.append("v1")
+        if omit_kwargs_arg in [2, 3, 6, 7]:
+            kwargs_to_omit.append("v2")
+
+        @etrace(omit_args=omit_args_arg, omit_kwargs=kwargs_to_omit)
+        def f1(*args, **kwargs):
+            pass
+
+        class Caller:
+            def __init__(self):
+                if caller_type_arg == FunctionType.InitMethod:
+                    target_rtn(*target_args, **target_kwargs)
+
+            def caller(self):
+                target_rtn(*target_args, **target_kwargs)
+
+            @staticmethod
+            def static_caller():
+                target_rtn(*target_args, **target_kwargs)
+
+            @classmethod
+            def class_caller(cls):
+                target_rtn(*target_args, **target_kwargs)
+
+        class Target:
+            @etrace(
+                enable_trace=trace_enabled,
+                omit_args=omit_args_arg,
+                omit_kwargs=kwargs_to_omit,
+            )
+            def __init__(self, *args, **kwargs):
+                pass
+
+            @etrace(omit_args=omit_args_arg, omit_kwargs=kwargs_to_omit)
+            def target(self, *args, **kwargs):
+                pass
+
+            @etrace(omit_args=omit_args_arg, omit_kwargs=kwargs_to_omit)
+            @staticmethod
+            def static_target(*args, **kwargs):
+                pass
+
+            @etrace(omit_args=omit_args_arg, omit_kwargs=kwargs_to_omit)
+            @classmethod
+            def class_target(cls, *args, **kwargs):
+                pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer()
+
+        file_name = "test_entry_trace.py"
+
+        ################################################################
+        # choose the target function or method
+        ################################################################
+        if target_type_arg == FunctionType.Function:
+            target_rtn = f1
+            target_line_num = inspect.getsourcelines(f1)[1]
+            target_qual_name = ":f1"
+
+        elif target_type_arg == FunctionType.Method:
+            target_rtn = Target().target
+            target_line_num = inspect.getsourcelines(Target.target)[1]
+            target_qual_name = "::Target.target"
+
+        elif target_type_arg == FunctionType.StaticMethod:
+            target_rtn = Target().static_target
+            target_line_num = inspect.getsourcelines(Target.static_target)[1]
+            target_qual_name = "::Target.static_target"
+
+        elif target_type_arg == FunctionType.ClassMethod:
+            target_rtn = Target().class_target
+            target_line_num = inspect.getsourcelines(Target.class_target)[1]
+            target_qual_name = "::Target.class_target"
+
+        elif target_type_arg == FunctionType.InitMethod:
+            target_rtn = Target
+            target_line_num = inspect.getsourcelines(Target.__init__)[1]
+            target_qual_name = "::Target.__init__"
+
+        ################################################################
+        # setup the args
+        ################################################################
+        target_args = (1, 2.2, "three", [4, 4.4, "four", (4,)])
+
+        if omit_args_arg:
+            log_target_args = "omit_args=True"
+        else:
+            log_target_args = f"args={re.escape(str(target_args))}"
+        ################################################################
+        # setup the kwargs
+        ################################################################
+        target_kwargs = (
+            ("v1", 1),
+            ("v2", 2.2),
+            ("v3", "three"),
+        )
+        target_kwargs = dict(target_kwargs[0:num_kwargs_arg])
+
+        log_target_kwargs = {}
+        if num_kwargs_arg in [1, 2, 3] and omit_kwargs_arg in [0, 1, 2, 3]:
+            log_target_kwargs["v1"] = target_kwargs["v1"]
+        if num_kwargs_arg in [2, 3] and omit_kwargs_arg in [0, 1, 4, 5]:
+            log_target_kwargs["v2"] = target_kwargs["v2"]
+        if num_kwargs_arg == 3 and omit_kwargs_arg in [0, 2, 4, 6]:
+            log_target_kwargs["v3"] = target_kwargs["v3"]
+
+        if kwargs_to_omit:
+            log_omit_kwargs = f" omit_kwargs={set(kwargs_to_omit)},"
+        else:
+            log_omit_kwargs = ""
+
+        ################################################################
+        # call the function or method
+        ################################################################
+        if caller_type_arg == FunctionType.Function:
+            target_rtn(*target_args, **target_kwargs)
+            caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_omits"
+
+        elif caller_type_arg == FunctionType.Method:
+            Caller().caller()
+            caller_qual_name = "Caller.caller"
+
+        elif caller_type_arg == FunctionType.StaticMethod:
+            Caller().static_caller()
+            caller_qual_name = "Caller.static_caller"
+
+        elif caller_type_arg == FunctionType.ClassMethod:
+            Caller().class_caller()
+            caller_qual_name = "Caller.class_caller"
+
+        elif caller_type_arg == FunctionType.InitMethod:
+            Caller()
+            caller_qual_name = "Caller.__init__"
+
+        exp_entry_log_msg = (
+            rf"{file_name}{target_qual_name}:{target_line_num} entry: "
+            rf"{log_target_args}, "
+            f"kwargs={re.escape(str(log_target_kwargs))},{log_omit_kwargs} "
+            f"caller: {file_name}::{caller_qual_name}:[0-9]+"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+
+        exp_exit_log_msg = (
+            f"{file_name}{target_qual_name}:{target_line_num} exit: ret_value=None"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_log_results(match_results)
