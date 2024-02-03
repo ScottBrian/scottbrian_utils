@@ -1172,6 +1172,7 @@ class TestEntryTraceCombos:
     @pytest.mark.parametrize("omit_args_arg", (True, False))
     @pytest.mark.parametrize("num_kwargs_arg", (0, 1, 2, 3))
     @pytest.mark.parametrize("omit_kwargs_arg", (0, 1, 2, 3, 4, 5, 6, 7))
+    @pytest.mark.parametrize("omit_ret_val_arg", (True, False))
     def test_etrace_combo_omits(
         self,
         caller_type_arg: FunctionType,
@@ -1179,6 +1180,7 @@ class TestEntryTraceCombos:
         omit_args_arg: bool,
         num_kwargs_arg: int,
         omit_kwargs_arg: int,
+        omit_ret_val_arg: bool,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test etrace on a function.
@@ -1189,6 +1191,7 @@ class TestEntryTraceCombos:
             omit_args_arg: if true bool, don't trace args
             num_kwargs_arg: number of keywords args to build
             omit_kwargs_arg: int for binary mask
+            omit_ret_val_arg: if True, omit ret value fro exit trace
             caplog: pytest fixture to capture log output
 
         """
@@ -1205,9 +1208,19 @@ class TestEntryTraceCombos:
         if omit_kwargs_arg in [2, 3, 6, 7]:
             kwargs_to_omit.append("v2")
 
-        @etrace(omit_args=omit_args_arg, omit_kwargs=kwargs_to_omit)
+        if num_kwargs_arg in [2, 3] and target_type_arg != FunctionType.InitMethod:
+            ret_v2 = True
+        else:
+            ret_v2 = False
+
+        @etrace(
+            omit_args=omit_args_arg,
+            omit_kwargs=kwargs_to_omit,
+            omit_return_value=omit_ret_val_arg,
+        )
         def f1(*args, **kwargs):
-            pass
+            if ret_v2:
+                return kwargs["v2"]
 
         class Caller:
             def __init__(self):
@@ -1230,23 +1243,39 @@ class TestEntryTraceCombos:
                 enable_trace=trace_enabled,
                 omit_args=omit_args_arg,
                 omit_kwargs=kwargs_to_omit,
+                omit_return_value=omit_ret_val_arg,
             )
             def __init__(self, *args, **kwargs):
                 pass
 
-            @etrace(omit_args=omit_args_arg, omit_kwargs=kwargs_to_omit)
+            @etrace(
+                omit_args=omit_args_arg,
+                omit_kwargs=kwargs_to_omit,
+                omit_return_value=omit_ret_val_arg,
+            )
             def target(self, *args, **kwargs):
-                pass
+                if ret_v2:
+                    return kwargs["v2"]
 
-            @etrace(omit_args=omit_args_arg, omit_kwargs=kwargs_to_omit)
+            @etrace(
+                omit_args=omit_args_arg,
+                omit_kwargs=kwargs_to_omit,
+                omit_return_value=omit_ret_val_arg,
+            )
             @staticmethod
             def static_target(*args, **kwargs):
-                pass
+                if ret_v2:
+                    return kwargs["v2"]
 
-            @etrace(omit_args=omit_args_arg, omit_kwargs=kwargs_to_omit)
+            @etrace(
+                omit_args=omit_args_arg,
+                omit_kwargs=kwargs_to_omit,
+                omit_return_value=omit_ret_val_arg,
+            )
             @classmethod
             def class_target(cls, *args, **kwargs):
-                pass
+                if ret_v2:
+                    return kwargs["v2"]
 
         ################################################################
         # mainline
@@ -1352,8 +1381,15 @@ class TestEntryTraceCombos:
             fullmatch=True,
         )
 
+        if omit_ret_val_arg:
+            ret_value = "return value omitted"
+        elif ret_v2:
+            ret_value = "return_value=2.2"
+        else:
+            ret_value = "return_value=None"
+
         exp_exit_log_msg = (
-            f"{file_name}{target_qual_name}:{target_line_num} exit: ret_value=None"
+            f"{file_name}{target_qual_name}:{target_line_num} exit: {ret_value}"
         )
 
         log_ver.add_msg(

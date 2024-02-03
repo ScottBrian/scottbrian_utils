@@ -86,6 +86,7 @@ def etrace(
     include_list: Optional[list[str]] = None,
     omit_args: bool = False,
     omit_kwargs: Optional[Iterable[str]] = None,
+    omit_return_value: bool = False,
 ):
     """Decorator to produce entry/exit log.
 
@@ -105,6 +106,8 @@ def etrace(
             traced.
         omit_kwargs: list of string values that are names of kwargs that
             should not be traced.
+        omit_return_value: if True, do not trace the return value in the
+            exit trace entry.
 
     Returns:
         decorated function
@@ -118,6 +121,7 @@ def etrace(
             include_list=include_list,
             omit_args=omit_args,
             omit_kwargs=omit_kwargs,
+            omit_return_value=omit_return_value,
         )
 
     omit_kwargs = set(
@@ -172,10 +176,12 @@ def etrace(
             f"{get_formatted_call_sequence(latest=1, depth=1)}"
         )
 
-        ret_value = wrapped(*args, **kwargs)
+        return_value = wrapped(*args, **kwargs)
 
-        logger.debug(f"{target} exit: {ret_value=}")
-
-        return ret_value
+        if omit_return_value:
+            logger.debug(f"{target} exit: return value omitted")
+        else:
+            logger.debug(f"{target} exit: {return_value=}")
+        return return_value
 
     return trace_wrapper(wrapped)
