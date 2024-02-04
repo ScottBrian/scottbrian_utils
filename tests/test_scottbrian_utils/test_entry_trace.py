@@ -842,6 +842,191 @@ class TestEntryTraceCombos:
     """Test EntryTrace with various combinations."""
 
     ####################################################################
+    # test_etrace_combo_signature
+    ####################################################################
+    # @pytest.mark.parametrize("num_po_arg", [0, 1, 2])
+    def test_etrace_combo_signature(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+        # exec("def f1(a): return a")
+        # def f1(a): return 5
+        # f2 = locals()["f1"]
+        # exec("def f1(a): return 4")
+        # def eval("f2(a)"): return a
+        # f2 = locals()["f1"]
+        # print("\n", locals())
+        # f2 = f1
+        # f2 = etrace(f2)
+
+        # print(f2)
+
+        # l1 = f"def f1(a): return a"
+        # l2 = f"f1 = etrace(f1)"
+
+        # code = f"{l1};{l2}"
+
+        # code = f"z + x + y;print(z)"
+
+        # exec("def f1(a): return a;f1 = etrace(f1)")
+
+        # f2 = locals()["f1"]
+
+        # f2 = etrace(f2)
+
+        # code = f"def deco():\n    def f1(a): \n        return a\n    return f1"
+
+        # exec(code)
+        # print("\n", dir())
+        # print("\n", locals())
+        # deco = locals()["deco"]
+        # f2 = deco()
+        # exec("def f1(a): return a")
+        # print("\n", dir())
+        # print("\n", locals())
+        # f1(42)
+        # f2 = etrace(f1)
+        #
+        # f2(42)
+
+        # print(z)
+
+        # exec("global a;a = 42")
+
+        # print(f"\n{f42(5)=}")
+
+        # def make_code():
+        #     def f41(a):
+        #         return 15 + a
+        #
+        #     def f44(a):
+        #         return 16 + a
+        #
+        #     # exec("def f41(a): return a\nf41 = etrace(f41)")
+        #     exec(
+        #         "global f42\ndef f47(a): return a\nf47 = etrace(f47)\nf42=f47",
+        #         globals(),
+        #         {"f41": f41, "f44": f44},
+        #     )
+        #     # f44 = etrace(f44)
+        #     return f42
+        #
+        # f43 = make_code()
+        # print(f"1 {f43(5)=}")
+        # f42 = etrace(wrapped=f42)
+        # f2(77)
+        # def make_code():
+        #     # exec("def f41(a): return a\nf41 = etrace(f41)")
+        #     exec("def f47(a): return a\nf47 = etrace(f47)")
+        #     f44 = locals()["f47"]
+        #     return f44
+        #
+        # f43 = make_code()
+        sig = "a"
+        return_str = "return a"
+        exec(f"def f42({sig}): {return_str}\nf43 = etrace(f42)")
+        # exec("def f47(a): return a")
+        f42 = locals()["f43"]
+        # f43 = etrace(f43)
+        print(f"1 {f42(5)=}")
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer()
+
+        file_name = "test_entry_trace.py"
+
+        # f2(3)
+
+        # ################################################################
+        # # choose the target function or method
+        # ################################################################
+        # if target_type_arg == FunctionType.Function:
+        #     target_rtn = f1
+        #     target_line_num = inspect.getsourcelines(f1)[1]
+        #     target_qual_name = ":f1"
+        #
+        # elif target_type_arg == FunctionType.Method:
+        #     target_rtn = Target().target
+        #     target_line_num = inspect.getsourcelines(Target.target)[1]
+        #     target_qual_name = "::Target.target"
+        #
+        # elif target_type_arg == FunctionType.StaticMethod:
+        #     target_rtn = Target().static_target
+        #     target_line_num = inspect.getsourcelines(Target.static_target)[1]
+        #     target_qual_name = "::Target.static_target"
+        #
+        # elif target_type_arg == FunctionType.ClassMethod:
+        #     target_rtn = Target().class_target
+        #     target_line_num = inspect.getsourcelines(Target.class_target)[1]
+        #     target_qual_name = "::Target.class_target"
+        #
+        # elif target_type_arg == FunctionType.InitMethod:
+        #     target_rtn = Target
+        #     target_line_num = inspect.getsourcelines(Target.__init__)[1]
+        #     target_qual_name = "::Target.__init__"
+        #
+        # ################################################################
+        # # call the function or method
+        # ################################################################
+        # if caller_type_arg == FunctionType.Function:
+        #     target_rtn()
+        #     caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_env"
+        #
+        # elif caller_type_arg == FunctionType.Method:
+        #     Caller().caller()
+        #     caller_qual_name = "Caller.caller"
+        #
+        # elif caller_type_arg == FunctionType.StaticMethod:
+        #     Caller().static_caller()
+        #     caller_qual_name = "Caller.static_caller"
+        #
+        # elif caller_type_arg == FunctionType.ClassMethod:
+        #     Caller().class_caller()
+        #     caller_qual_name = "Caller.class_caller"
+        #
+        # elif caller_type_arg == FunctionType.InitMethod:
+        #     Caller()
+        #     caller_qual_name = "Caller.__init__"
+        #
+        # exp_entry_log_msg = (
+        #     rf"{file_name}{target_qual_name}:{target_line_num} entry: args=\(\), "
+        #     "kwargs={}, "
+        #     f"caller: {file_name}::{caller_qual_name}:[0-9]+"
+        # )
+        #
+        # log_ver.add_msg(
+        #     log_level=logging.DEBUG,
+        #     log_msg=exp_entry_log_msg,
+        #     log_name="scottbrian_utils.entry_trace",
+        #     fullmatch=True,
+        # )
+        #
+        # exp_exit_log_msg = (
+        #     f"{file_name}{target_qual_name}:{target_line_num} exit: ret_value=None"
+        # )
+        #
+        # log_ver.add_msg(
+        #     log_level=logging.DEBUG,
+        #     log_msg=exp_exit_log_msg,
+        #     log_name="scottbrian_utils.entry_trace",
+        #     fullmatch=True,
+        # )
+        # ################################################################
+        # # check log results
+        # ################################################################
+        # match_results = log_ver.get_match_results(caplog=caplog)
+        # log_ver.print_match_results(match_results, print_matched=True)
+        # log_ver.verify_log_results(match_results)
+
+    ####################################################################
     # test_etrace_combo_env
     ####################################################################
     @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
@@ -1456,7 +1641,8 @@ class TestEntryTraceCombos:
         )
         def f1(
             a1: int,
-            a2: float,/,
+            a2: float,
+            /,
             a3: str,
             *,
             kw1: int,
@@ -1666,10 +1852,12 @@ class TestEntryTraceCombos:
         elif target_type_arg == FunctionType.InitMethod:
             ret_value = "return_value=None"
         else:
-            ret_value = (f"return_value=[1, 2.2, 'three', "
-                         f"{log_target_kwargs["kw1"]}, "
-                         f"{log_target_kwargs["kw2"]}, "
-                         f"{log_target_kwargs["kw3"]}]")
+            ret_value = (
+                f"return_value=[1, 2.2, 'three', "
+                f"{log_target_kwargs['kw1']}, "
+                f"{log_target_kwargs['kw2']}, "
+                f"{log_target_kwargs['kw3']}]"
+            )
 
         exp_exit_log_msg = (
             f"{file_name}{target_qual_name}:{target_line_num} exit: {ret_value}"

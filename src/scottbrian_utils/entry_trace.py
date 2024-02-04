@@ -100,6 +100,7 @@ def etrace(
            the etrace decorator.
 
     """
+    print(f"entered etrace")
     if wrapped is None:
         return functools.partial(
             etrace,
@@ -116,6 +117,7 @@ def etrace(
         target_file = inspect.getsourcefile(wrapped).split("\\")[-1]
 
     qual_name_list = wrapped.__qualname__.split(".")
+
     if len(qual_name_list) == 1 or qual_name_list[-2] == "<locals>":
         # set target_name to function name
         target_name = qual_name_list[-1]
@@ -123,7 +125,10 @@ def etrace(
         # set target_name to class name and method name
         target_name = f":{qual_name_list[-2]}.{qual_name_list[-1]}"
 
-    target_line_num = inspect.getsourcelines(wrapped)[1]
+    try:
+        target_line_num = inspect.getsourcelines(wrapped)[1]
+    except OSError:
+        target_line_num = "444"
 
     target = f"{target_file}:{target_name}:{target_line_num}"
 
