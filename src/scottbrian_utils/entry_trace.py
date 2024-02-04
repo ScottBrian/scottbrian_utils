@@ -14,23 +14,13 @@ it is defined. The exit trace will include the return value.
 The decorator can be statically enabled or disabled via a set of
 parameters as follows:
 
-    1) enable_trace: boolean value that when True will enable the trace
-       unless the function or method name is specified in the
-       exclude_list (see below). If False, the trace will be
-       disabled unless the function or method name is specified in the
-       include_list (see below). The default is True.
-    2) exclude_list: list of string values that name functions or
-       methods that should not be traced when enable_trace is True. The
-       default is None.
-    3) include_list: list of string values that name functions or
-       methods that should be traced when enable_trace is False or when
-       the name is also specified in the exclude_list. The default is
-       None.
-    4) omit_args: boolean value that when True will cause the function
-       or method input args to be traced. When False, no args will be
-       traced. The default is True.
-    5) omit_kwargs: list of string values that are names of kwargs that
-       should not be traced. The default is None.
+    1) enable_trace: boolean value that when True will enable the trace.
+       The default is True.
+    2) omit_parms: list of parameter names whose argument values should
+       appear in the trace as ellipses. This can help reduce the size
+       of the trace entry for large arguments. The default is None.
+    4) omit_return_value: if True, do not trace the return value in the
+       exit trace entry. The default is False.
 
 
 :Example 1: Decorate a function that has no args and no kwargs.
@@ -64,7 +54,7 @@ import logging
 from os import fspath
 from pathlib import Path
 import sys
-from typing import Optional
+from typing import Any, Callable, cast, Optional, TypeVar, Union
 
 ########################################################################
 # Third Party
@@ -78,64 +68,47 @@ logger = logging.getLogger(__name__)
 ####################################################################
 # etrace decorator
 ####################################################################
+F = TypeVar("F", bound=Callable[..., Any])
+
+
 def etrace(
-    wrapped=None,
+    wrapped: Optional[F] = None,
     *,
-    enable_trace: bool = True,
-    exclude_list: Optional[list[str]] = None,
-    include_list: Optional[list[str]] = None,
-    omit_args: bool = False,
-    omit_kwargs: Optional[Iterable[str]] = None,
+    enable_trace: Union[bool, Callable[..., bool]] = True,
+    omit_parms: Optional[Iterable[str]] = None,
     omit_return_value: bool = False,
-):
+) -> F:
     """Decorator to produce entry/exit log.
 
     Args:
         wrapped: function to be decorated
-        enable_trace: when True, enable the trace unless the function or
-            method name is specified in the exclude_list (see below).
-            If False, the trace will be disabled unless the function or
-            method name is specified in the include_list (see below).
-        exclude_list: list of string values that name functions or
-            methods that should not be traced when enable_trace is True.
-        include_list: list of string values that name functions or
-            methods that should be traced when enable_trace is False or
-            when the name is also specified in the exclude_list.
-        omit_args: when False, cause the function or method input args
-            to be included in the trace. When True, no args will be
-            traced.
-        omit_kwargs: list of string values that are names of kwargs that
-            should not be traced.
-        omit_return_value: if True, do not trace the return value in the
-            exit trace entry.
+        enable_trace: if True, trace the entry and exit for the
+            decorated function or method.
+        omit_parms: list of parameter names whose argument values should
+            appear in the trace as ellipses. This can help reduce the
+            size of the trace entry for large arguments.
+        omit_return_value: if True, do not place the return value into
+            the exit trace entry.
 
     Returns:
         decorated function
+
+    Notes:
+
+        1) In both the entry and exit trace, the line number following
+           the decorated function or method will be the line number of
+           the etrace decorator.
 
     """
     if wrapped is None:
         return functools.partial(
             etrace,
             enable_trace=enable_trace,
-            exclude_list=exclude_list,
-            include_list=include_list,
-            omit_args=omit_args,
-            omit_kwargs=omit_kwargs,
+            omit_parms=omit_parms,
             omit_return_value=omit_return_value,
         )
 
-    omit_kwargs = set(
-        {omit_kwargs} if isinstance(omit_kwargs, str) else omit_kwargs or ""
-    )
-
-    if enable_trace and exclude_list is not None and wrapped.__name__ in exclude_list:
-        enable_trace = False
-    if (
-        not enable_trace
-        and include_list is not None
-        and wrapped.__name__ in include_list
-    ):
-        enable_trace = True
+    omit_parms = set({omit_parms} if isinstance(omit_parms, str) else omit_parms or "")
 
     if type(wrapped).__name__ in ("staticmethod", "classmethod"):
         target_file = inspect.getsourcefile(wrapped.__wrapped__).split("\\")[-1]
@@ -143,36 +116,57 @@ def etrace(
         target_file = inspect.getsourcefile(wrapped).split("\\")[-1]
 
     qual_name_list = wrapped.__qualname__.split(".")
-    if qual_name_list[-2] == "<locals>":
+    if len(qual_name_list) == 1 or qual_name_list[-2] == "<locals>":
+        # set target_name to function name
         target_name = qual_name_list[-1]
     else:
+        # set target_name to class name and method name
         target_name = f":{qual_name_list[-2]}.{qual_name_list[-1]}"
 
     target_line_num = inspect.getsourcelines(wrapped)[1]
 
     target = f"{target_file}:{target_name}:{target_line_num}"
 
+    if type(wrapped).__name__ == "classmethod":
+        target_sig = inspect.signature(wrapped.__func__)
+    else:
+        target_sig = inspect.signature(wrapped)
+
+    target_sig_array = {}
+    target_sig_names = []
+    for parm in target_sig.parameters:
+        parm_name = target_sig.parameters[parm].name
+        def_val = target_sig.parameters[parm].default
+        # if def_val is inspect._empty:
+        if def_val is inspect.Parameter.empty:
+            target_sig_array[parm_name] = "?"
+        else:
+            target_sig_array[parm_name] = def_val
+        target_sig_names.append(parm_name)
+
     @wrapt.decorator(enabled=enable_trace)
     def trace_wrapper(wrapped, instance, args, kwargs):
         """Setup the trace."""
-        if omit_args:
-            log_args = f"{omit_args=}, "
-        else:
-            log_args: str = f"{args=}, "
+        log_sig_array = ""
+        target_sig_array_copy = target_sig_array.copy()
 
-        if omit_kwargs:
-            kwargs_copy = kwargs.copy()
-            for key in omit_kwargs:
-                if key in kwargs_copy:
-                    del kwargs_copy[key]
-            log_kwargs = f"kwargs={kwargs_copy}, "
-            log_omit_kwargs = f"{omit_kwargs=}, "
-        else:
-            log_kwargs = f"{kwargs=}, "
-            log_omit_kwargs = ""
+        for idx, arg in enumerate(args):
+            target_sig_array_copy[target_sig_names[idx]] = arg
+
+        for key, item in kwargs.items():
+            target_sig_array_copy[key] = item
+
+        for key in omit_parms:
+            target_sig_array_copy[key] = "..."
+
+        for key, item in target_sig_array_copy.items():
+            if isinstance(item, str) and item != "?":
+                log_sig_array = f"{log_sig_array}{key}='{item}', "
+            else:
+                log_sig_array = f"{log_sig_array}{key}={item}, "
 
         logger.debug(
-            f"{target} entry: {log_args}{log_kwargs}{log_omit_kwargs}caller: "
+            f"{target} entry: {log_sig_array}caller: "
             f"{get_formatted_call_sequence(latest=1, depth=1)}"
         )
 
@@ -184,4 +178,4 @@ def etrace(
             logger.debug(f"{target} exit: {return_value=}")
         return return_value
 
-    return trace_wrapper(wrapped)
+    return cast(F, trace_wrapper(wrapped))

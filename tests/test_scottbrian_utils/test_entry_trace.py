@@ -1404,3 +1404,286 @@ class TestEntryTraceCombos:
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
         log_ver.verify_log_results(match_results)
+
+    ####################################################################
+    # test_etrace_combo_omits
+    ####################################################################
+    @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
+    @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
+    @pytest.mark.parametrize("omit_args_arg", (True, False))
+    @pytest.mark.parametrize("num_kwargs_arg", (0, 1, 2, 3))
+    @pytest.mark.parametrize("omit_kwargs_arg", (0, 1, 2, 3, 4, 5, 6, 7))
+    @pytest.mark.parametrize("omit_ret_val_arg", (True, False))
+    def test_etrace_combo_omits_2(
+        self,
+        caller_type_arg: FunctionType,
+        target_type_arg: FunctionType,
+        omit_args_arg: bool,
+        num_kwargs_arg: int,
+        omit_kwargs_arg: int,
+        omit_ret_val_arg: bool,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            caller_type_arg: type of function that makes the call
+            target_type_arg: type of function to be called
+            omit_args_arg: if true bool, don't trace args
+            num_kwargs_arg: number of keywords args to build
+            omit_kwargs_arg: int for binary mask
+            omit_ret_val_arg: if True, omit ret value fro exit trace
+            caplog: pytest fixture to capture log output
+
+        """
+        if target_type_arg == FunctionType.InitMethod:
+            trace_enabled = True
+        else:
+            trace_enabled = False
+
+        kwargs_to_omit: list[str] = []
+        if omit_kwargs_arg in [1, 3, 5, 7]:
+            kwargs_to_omit.append("kw3")
+        if omit_kwargs_arg in [4, 5, 6, 7]:
+            kwargs_to_omit.append("kw1")
+        if omit_kwargs_arg in [2, 3, 6, 7]:
+            kwargs_to_omit.append("kw2")
+
+        @etrace(
+            omit_args=omit_args_arg,
+            omit_kwargs=kwargs_to_omit,
+            omit_return_value=omit_ret_val_arg,
+        )
+        def f1(
+            a1: int,
+            a2: float,/,
+            a3: str,
+            *,
+            kw1: int,
+            kw2: float = 2.2,
+            kw3: str = "three",
+        ) -> list[int, float, str, int, float, str]:
+            return [a1, a2, a3, kw1, kw2, kw3]
+
+        class Caller:
+            def __init__(self):
+                if caller_type_arg == FunctionType.InitMethod:
+                    target_rtn(*target_args, **target_kwargs)
+
+            def caller(self):
+                target_rtn(*target_args, **target_kwargs)
+
+            @staticmethod
+            def static_caller():
+                target_rtn(*target_args, **target_kwargs)
+
+            @classmethod
+            def class_caller(cls):
+                target_rtn(*target_args, **target_kwargs)
+
+        class Target:
+            @etrace(
+                enable_trace=trace_enabled,
+                omit_args=omit_args_arg,
+                omit_kwargs=kwargs_to_omit,
+                omit_return_value=omit_ret_val_arg,
+            )
+            def __init__(
+                self,
+                a1: int,
+                a2: float,
+                a3: str,
+                *,
+                kw1: int = 1,
+                kw2: float = 2.2,
+                kw3: str = "three",
+            ) -> None:
+                self.a1 = a1
+                self.a2 = a2
+                self.a3 = a3
+                self.kw1 = kw1
+                self.kw2 = kw2
+                self.kw3 = kw3
+
+            @etrace(
+                omit_args=omit_args_arg,
+                omit_kwargs=kwargs_to_omit,
+                omit_return_value=omit_ret_val_arg,
+            )
+            def target(
+                self,
+                a1: int,
+                a2: float,
+                a3: str,
+                *,
+                kw1: int = 1,
+                kw2: float = 2.2,
+                kw3: str = "three",
+            ) -> list[int, float, str, int, float, str]:
+                return [a1, a2, a3, kw1, kw2, kw3]
+
+            @etrace(
+                omit_args=omit_args_arg,
+                omit_kwargs=kwargs_to_omit,
+                omit_return_value=omit_ret_val_arg,
+            )
+            @staticmethod
+            def static_target(
+                a1: int,
+                a2: float,
+                a3: str,
+                *,
+                kw1: int = 1,
+                kw2: float = 2.2,
+                kw3: str = "three",
+            ) -> list[int, float, str, int, float, str]:
+                return [a1, a2, a3, kw1, kw2, kw3]
+
+            @etrace(
+                omit_args=omit_args_arg,
+                omit_kwargs=kwargs_to_omit,
+                omit_return_value=omit_ret_val_arg,
+            )
+            @classmethod
+            def class_target(
+                cls,
+                a1: int,
+                a2: float,
+                a3: str,
+                *,
+                kw1: int = 1,
+                kw2: float = 2.2,
+                kw3: str = "three",
+            ) -> list[int, float, str, int, float, str]:
+                return [a1, a2, a3, kw1, kw2, kw3]
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer()
+
+        file_name = "test_entry_trace.py"
+
+        ################################################################
+        # choose the target function or method
+        ################################################################
+        if target_type_arg == FunctionType.Function:
+            target_rtn = f1
+            target_line_num = inspect.getsourcelines(f1)[1]
+            target_qual_name = ":f1"
+
+        elif target_type_arg == FunctionType.Method:
+            target_rtn = Target().target
+            target_line_num = inspect.getsourcelines(Target.target)[1]
+            target_qual_name = "::Target.target"
+
+        elif target_type_arg == FunctionType.StaticMethod:
+            target_rtn = Target().static_target
+            target_line_num = inspect.getsourcelines(Target.static_target)[1]
+            target_qual_name = "::Target.static_target"
+
+        elif target_type_arg == FunctionType.ClassMethod:
+            target_rtn = Target().class_target
+            target_line_num = inspect.getsourcelines(Target.class_target)[1]
+            target_qual_name = "::Target.class_target"
+
+        elif target_type_arg == FunctionType.InitMethod:
+            target_rtn = Target
+            target_line_num = inspect.getsourcelines(Target.__init__)[1]
+            target_qual_name = "::Target.__init__"
+
+        ################################################################
+        # setup the args
+        ################################################################
+        target_args = (1, 2.2, "three")
+
+        if omit_args_arg:
+            log_target_args = "omit_args=True"
+        else:
+            log_target_args = f"args={re.escape(str(target_args))}"
+        ################################################################
+        # setup the kwargs
+        ################################################################
+        target_kwargs = (
+            ("kw1", 11),
+            ("kw2", 22.22),
+            ("kw3", "thrace"),
+        )
+        target_kwargs = dict(target_kwargs[0:num_kwargs_arg])
+
+        log_target_kwargs = {"kw1": 1, "kw2": 2.2, "kw3": "three"}
+        if num_kwargs_arg in [1, 2, 3] and omit_kwargs_arg in [0, 1, 2, 3]:
+            log_target_kwargs["kw1"] = target_kwargs["kw1"]
+        if num_kwargs_arg in [2, 3] and omit_kwargs_arg in [0, 1, 4, 5]:
+            log_target_kwargs["kw2"] = target_kwargs["kw2"]
+        if num_kwargs_arg == 3 and omit_kwargs_arg in [0, 2, 4, 6]:
+            log_target_kwargs["kw3"] = target_kwargs["kw3"]
+
+        if kwargs_to_omit:
+            log_omit_kwargs = f" omit_kwargs={set(kwargs_to_omit)},"
+        else:
+            log_omit_kwargs = ""
+
+        ################################################################
+        # call the function or method
+        ################################################################
+        if caller_type_arg == FunctionType.Function:
+            target_rtn(*target_args, **target_kwargs)
+            caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_omits_2"
+
+        elif caller_type_arg == FunctionType.Method:
+            Caller().caller()
+            caller_qual_name = "Caller.caller"
+
+        elif caller_type_arg == FunctionType.StaticMethod:
+            Caller().static_caller()
+            caller_qual_name = "Caller.static_caller"
+
+        elif caller_type_arg == FunctionType.ClassMethod:
+            Caller().class_caller()
+            caller_qual_name = "Caller.class_caller"
+
+        elif caller_type_arg == FunctionType.InitMethod:
+            Caller()
+            caller_qual_name = "Caller.__init__"
+
+        exp_entry_log_msg = (
+            rf"{file_name}{target_qual_name}:{target_line_num} entry: "
+            rf"{log_target_args}, "
+            f"kwargs={re.escape(str(log_target_kwargs))},{log_omit_kwargs} "
+            f"caller: {file_name}::{caller_qual_name}:[0-9]+"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+
+        if omit_ret_val_arg:
+            ret_value = "return value omitted"
+        elif target_type_arg == FunctionType.InitMethod:
+            ret_value = "return_value=None"
+        else:
+            ret_value = (f"return_value=[1, 2.2, 'three', "
+                         f"{log_target_kwargs["kw1"]}, "
+                         f"{log_target_kwargs["kw2"]}, "
+                         f"{log_target_kwargs["kw3"]}]")
+
+        exp_exit_log_msg = (
+            f"{file_name}{target_qual_name}:{target_line_num} exit: {ret_value}"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_log_results(match_results)
