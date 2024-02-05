@@ -11,6 +11,11 @@ import re
 import threading
 from typing import Any, cast, Optional, Union
 
+# from ast import *
+# from types import *
+import ast
+import types
+
 ########################################################################
 # Third Party
 ########################################################################
@@ -928,14 +933,94 @@ class TestEntryTraceCombos:
         #     return f44
         #
         # f43 = make_code()
-        sig = "a"
-        return_str = "return a"
-        exec(f"def f42({sig}): {return_str}\nf43 = etrace(f42)")
-        # exec("def f47(a): return a")
-        f42 = locals()["f43"]
-        # f43 = etrace(f43)
-        print(f"1 {f42(5)=}")
+        # sig = "a"
+        # return_str = "return a"
+        # exec(f"def f42({sig}): {return_str}\nf43 = etrace(f42)")
+        # # exec("def f47(a): return a")
+        # f42 = locals()["f43"]
+        # f42 = etrace(f42)
+        # # f43 = etrace(f43)
+        # print(f"1 {f42(5)=}")
+        #
+        # f56 = eval("lambda x: x")
+        #
+        # f56 = etrace(eval("lambda x: x"))
+        #
+        # print(f"{f56(9)=}")
 
+        ################################################################
+        # function_ast = ast.FunctionDef(
+        #     name="f17",
+        #     args=ast.arguments(
+        #         args=[],
+        #         vararg=None,
+        #         kwarg=None,
+        #         defaults=[],
+        #         kwonlyargs=[],
+        #         kw_defaults=[],
+        #         posonlyargs=[],
+        #     ),
+        #     body=[
+        #         ast.Return(
+        #             value=ast.Constant(
+        #                 value=42,
+        #                 lineno=1,
+        #                 col_offset=17,
+        #                 end_lineno=1,
+        #                 end_col_offset=19,
+        #             ),
+        #             lineno=1,
+        #             col_offset=10,
+        #             end_lineno=1,
+        #             end_col_offset=19,
+        #         )
+        #     ],
+        #     decorator_list=[],
+        #     type_params=[],
+        #     lineno=1,
+        #     col_offset=0,
+        #     end_lineno=1,
+        #     end_col_offset=19,
+        # )
+        # module_ast = ast.Module(body=[function_ast], type_ignores=[])
+        #
+        # module_code = compile(module_ast, "<not_a_file>", "exec")
+        # function_code = [
+        #     c for c in module_code.co_consts if isinstance(c, types.CodeType)
+        # ][0]
+        # for c in module_code.co_consts:
+        #     print("\n c:", c)
+
+        # print("\n function_code\n", function_code)
+
+        # f17()
+
+        # f17 = ast.FunctionType(function_code, {})
+
+        # f17 = etrace(f17)
+        #
+        # print("\n f17:", f17)
+        #
+        # print(exec(module_code))
+
+        # f17()
+        # code = """def f1(): print('42')"""
+        ################################################################
+        # tree = ast.parse(code)
+        # module_code = compile(tree, "<not_a_file>", "exec")
+        # print("\nexec tree:\n")
+        # exec(module_code, globals(), locals())
+        # exec(code, globals(), locals())
+        # exec(code)
+        # print(f"\nlocals():\n", locals())
+        # print(f"\nlocals()['f1']:\n", locals()["f1"])
+        # f2 = locals()["f1"]
+        # f2 = etrace(f2)
+        # f2()
+        # print("\n", ast.dump(tree, True, True))
+        from .entry_trace_combos import f1
+
+        f1()
         ################################################################
         # mainline
         ################################################################

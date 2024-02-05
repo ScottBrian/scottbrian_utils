@@ -128,7 +128,7 @@ def etrace(
     try:
         target_line_num = inspect.getsourcelines(wrapped)[1]
     except OSError:
-        target_line_num = "444"
+        target_line_num = "?"
 
     target = f"{target_file}:{target_name}:{target_line_num}"
 
