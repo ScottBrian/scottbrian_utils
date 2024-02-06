@@ -4,6 +4,7 @@
 # Standard Library
 ########################################################################
 from enum import Enum, auto
+import functools
 import logging
 import datetime
 import inspect
@@ -38,6 +39,8 @@ logger = logging.getLogger(__name__)
 ########################################################################
 IntFloat = Union[int, float]
 OptIntFloat = Optional[IntFloat]
+
+f999 = None
 
 
 ########################################################################
@@ -849,9 +852,10 @@ class TestEntryTraceCombos:
     ####################################################################
     # test_etrace_combo_signature
     ####################################################################
-    # @pytest.mark.parametrize("num_po_arg", [0, 1, 2])
+    @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
     def test_etrace_combo_signature(
         self,
+        num_po_arg: int,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test etrace on a function.
@@ -860,256 +864,73 @@ class TestEntryTraceCombos:
             caplog: pytest fixture to capture log output
 
         """
-        # exec("def f1(a): return a")
-        # def f1(a): return 5
-        # f2 = locals()["f1"]
-        # exec("def f1(a): return 4")
-        # def eval("f2(a)"): return a
-        # f2 = locals()["f1"]
-        # print("\n", locals())
-        # f2 = f1
-        # f2 = etrace(f2)
-
-        # print(f2)
-
-        # l1 = f"def f1(a): return a"
-        # l2 = f"f1 = etrace(f1)"
-
-        # code = f"{l1};{l2}"
-
-        # code = f"z + x + y;print(z)"
-
-        # exec("def f1(a): return a;f1 = etrace(f1)")
-
-        # f2 = locals()["f1"]
-
-        # f2 = etrace(f2)
-
-        # code = f"def deco():\n    def f1(a): \n        return a\n    return f1"
-
-        # exec(code)
-        # print("\n", dir())
-        # print("\n", locals())
-        # deco = locals()["deco"]
-        # f2 = deco()
-        # exec("def f1(a): return a")
-        # print("\n", dir())
-        # print("\n", locals())
-        # f1(42)
-        # f2 = etrace(f1)
-        #
-        # f2(42)
-
-        # print(z)
-
-        # exec("global a;a = 42")
-
-        # print(f"\n{f42(5)=}")
-
-        # def make_code():
-        #     def f41(a):
-        #         return 15 + a
-        #
-        #     def f44(a):
-        #         return 16 + a
-        #
-        #     # exec("def f41(a): return a\nf41 = etrace(f41)")
-        #     exec(
-        #         "global f42\ndef f47(a): return a\nf47 = etrace(f47)\nf42=f47",
-        #         globals(),
-        #         {"f41": f41, "f44": f44},
-        #     )
-        #     # f44 = etrace(f44)
-        #     return f42
-        #
-        # f43 = make_code()
-        # print(f"1 {f43(5)=}")
-        # f42 = etrace(wrapped=f42)
-        # f2(77)
-        # def make_code():
-        #     # exec("def f41(a): return a\nf41 = etrace(f41)")
-        #     exec("def f47(a): return a\nf47 = etrace(f47)")
-        #     f44 = locals()["f47"]
-        #     return f44
-        #
-        # f43 = make_code()
-        # sig = "a"
-        # return_str = "return a"
-        # exec(f"def f42({sig}): {return_str}\nf43 = etrace(f42)")
-        # # exec("def f47(a): return a")
-        # f42 = locals()["f43"]
-        # f42 = etrace(f42)
-        # # f43 = etrace(f43)
-        # print(f"1 {f42(5)=}")
-        #
-        # f56 = eval("lambda x: x")
-        #
-        # f56 = etrace(eval("lambda x: x"))
-        #
-        # print(f"{f56(9)=}")
-
-        ################################################################
-        # function_ast = ast.FunctionDef(
-        #     name="f17",
-        #     args=ast.arguments(
-        #         args=[],
-        #         vararg=None,
-        #         kwarg=None,
-        #         defaults=[],
-        #         kwonlyargs=[],
-        #         kw_defaults=[],
-        #         posonlyargs=[],
-        #     ),
-        #     body=[
-        #         ast.Return(
-        #             value=ast.Constant(
-        #                 value=42,
-        #                 lineno=1,
-        #                 col_offset=17,
-        #                 end_lineno=1,
-        #                 end_col_offset=19,
-        #             ),
-        #             lineno=1,
-        #             col_offset=10,
-        #             end_lineno=1,
-        #             end_col_offset=19,
-        #         )
-        #     ],
-        #     decorator_list=[],
-        #     type_params=[],
-        #     lineno=1,
-        #     col_offset=0,
-        #     end_lineno=1,
-        #     end_col_offset=19,
-        # )
-        # module_ast = ast.Module(body=[function_ast], type_ignores=[])
-        #
-        # module_code = compile(module_ast, "<not_a_file>", "exec")
-        # function_code = [
-        #     c for c in module_code.co_consts if isinstance(c, types.CodeType)
-        # ][0]
-        # for c in module_code.co_consts:
-        #     print("\n c:", c)
-
-        # print("\n function_code\n", function_code)
-
-        # f17()
-
-        # f17 = ast.FunctionType(function_code, {})
-
-        # f17 = etrace(f17)
-        #
-        # print("\n f17:", f17)
-        #
-        # print(exec(module_code))
-
-        # f17()
-        # code = """def f1(): print('42')"""
-        ################################################################
-        # tree = ast.parse(code)
-        # module_code = compile(tree, "<not_a_file>", "exec")
-        # print("\nexec tree:\n")
-        # exec(module_code, globals(), locals())
-        # exec(code, globals(), locals())
-        # exec(code)
-        # print(f"\nlocals():\n", locals())
-        # print(f"\nlocals()['f1']:\n", locals()["f1"])
-        # f2 = locals()["f1"]
-        # f2 = etrace(f2)
-        # f2()
-        # print("\n", ast.dump(tree, True, True))
-        from .entry_trace_combos import f1
-
-        f1()
         ################################################################
         # mainline
         ################################################################
         log_ver = LogVer()
 
-        file_name = "test_entry_trace.py"
+        po_parms_values = ["", "a,", "b,", "c,"]
+        po_args_values = ["", "1,", "2,", "3,"]
+        exp_trace_arg_values = [" ", "a=1, ", "b=2, ", "c=3, "]
+        return_values = ["[]", "[a]", "[a, b]", "[a, b, c]"]
+        exp_return_values = ["", "1", "1, 2", "1, 2, 3"]
+        po_parms = ""
+        po_args = ""
+        exp_trace_args = ""
+        return_statement = ""
+        exp_return = ""
+        for idx in range(num_po_arg + 1):
+            po_parms += po_parms_values[idx]
+            po_args += po_args_values[idx]
+            exp_trace_args += exp_trace_arg_values[idx]
+            return_statement = return_values[idx]
+            exp_return = exp_return_values[idx]
 
-        # f2(3)
+        if po_parms:
+            po_parms += "/"
+            po_args = "," + po_args
 
-        # ################################################################
-        # # choose the target function or method
-        # ################################################################
-        # if target_type_arg == FunctionType.Function:
-        #     target_rtn = f1
-        #     target_line_num = inspect.getsourcelines(f1)[1]
-        #     target_qual_name = ":f1"
-        #
-        # elif target_type_arg == FunctionType.Method:
-        #     target_rtn = Target().target
-        #     target_line_num = inspect.getsourcelines(Target.target)[1]
-        #     target_qual_name = "::Target.target"
-        #
-        # elif target_type_arg == FunctionType.StaticMethod:
-        #     target_rtn = Target().static_target
-        #     target_line_num = inspect.getsourcelines(Target.static_target)[1]
-        #     target_qual_name = "::Target.static_target"
-        #
-        # elif target_type_arg == FunctionType.ClassMethod:
-        #     target_rtn = Target().class_target
-        #     target_line_num = inspect.getsourcelines(Target.class_target)[1]
-        #     target_qual_name = "::Target.class_target"
-        #
-        # elif target_type_arg == FunctionType.InitMethod:
-        #     target_rtn = Target
-        #     target_line_num = inspect.getsourcelines(Target.__init__)[1]
-        #     target_qual_name = "::Target.__init__"
-        #
-        # ################################################################
-        # # call the function or method
-        # ################################################################
-        # if caller_type_arg == FunctionType.Function:
-        #     target_rtn()
-        #     caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_env"
-        #
-        # elif caller_type_arg == FunctionType.Method:
-        #     Caller().caller()
-        #     caller_qual_name = "Caller.caller"
-        #
-        # elif caller_type_arg == FunctionType.StaticMethod:
-        #     Caller().static_caller()
-        #     caller_qual_name = "Caller.static_caller"
-        #
-        # elif caller_type_arg == FunctionType.ClassMethod:
-        #     Caller().class_caller()
-        #     caller_qual_name = "Caller.class_caller"
-        #
-        # elif caller_type_arg == FunctionType.InitMethod:
-        #     Caller()
-        #     caller_qual_name = "Caller.__init__"
-        #
-        # exp_entry_log_msg = (
-        #     rf"{file_name}{target_qual_name}:{target_line_num} entry: args=\(\), "
-        #     "kwargs={}, "
-        #     f"caller: {file_name}::{caller_qual_name}:[0-9]+"
-        # )
-        #
-        # log_ver.add_msg(
-        #     log_level=logging.DEBUG,
-        #     log_msg=exp_entry_log_msg,
-        #     log_name="scottbrian_utils.entry_trace",
-        #     fullmatch=True,
-        # )
-        #
-        # exp_exit_log_msg = (
-        #     f"{file_name}{target_qual_name}:{target_line_num} exit: ret_value=None"
-        # )
-        #
-        # log_ver.add_msg(
-        #     log_level=logging.DEBUG,
-        #     log_msg=exp_exit_log_msg,
-        #     log_name="scottbrian_utils.entry_trace",
-        #     fullmatch=True,
-        # )
+        code = (
+            f"global f999"
+            f"\ndef f1({po_parms}): return {return_statement}"
+            f"\nf1=etrace(f1)"
+            f"\nf1=functools.partial(f1{po_args})"
+            f"\nf999=f1"
+        )
+
+        print(f"\n{code=}")
+
+        exec(code)
+
+        f999()
+
+        exp_entry_log_msg = (
+            rf"<string>:f1:\? entry:{exp_trace_args}"
+            "caller: test_entry_trace.py"
+            "::TestEntryTraceCombos.test_etrace_combo_signature:[0-9]+"
+        )
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+
+        exp_exit_log_msg = f"<string>:f1:\? exit: return_value=\[{exp_return}\]"
+
+        log_ver.add_msg(
+            log_level=logging.DEBUG,
+            log_msg=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
         # ################################################################
         # # check log results
         # ################################################################
-        # match_results = log_ver.get_match_results(caplog=caplog)
-        # log_ver.print_match_results(match_results, print_matched=True)
-        # log_ver.verify_log_results(match_results)
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_log_results(match_results)
 
     ####################################################################
     # test_etrace_combo_env
