@@ -5,9 +5,11 @@
 ########################################################################
 from enum import Enum, auto
 import functools
-import logging
 import datetime
 import inspect
+import itertools as it
+import logging
+import more_itertools as mi
 import re
 import threading
 from typing import Any, cast, Optional, Union
@@ -853,27 +855,241 @@ class TestEntryTraceCombos:
     # test_etrace_combo_signature
     ####################################################################
     @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
+    @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
+    @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
     def test_etrace_combo_signature(
         self,
         num_po_arg: int,
+        num_pk_arg: int,
+        num_ko_arg: int,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test etrace on a function.
 
         Args:
+            num_po_arg: number of position only parms
+            num_pk_arg: number of position or keyword parms
+            num_ko_arg: number of keyword only parms
             caplog: pytest fixture to capture log output
 
         """
         ################################################################
         # mainline
         ################################################################
+        # definitions:
+        # for combined pos_only and pos_or_kw groups, all defaults must
+        # appear after non-defaults
+
+        # no such rule for kw_only - any mix is ok and without regard
+        # to how the pos_only and pos_or_kw groups are defined
+
+        # invocations:
+        # positionals must appear before kws
+
+        # combinations of po_only with defaults
+        # 0: none
+        # 1: (a), (a=1)
+        # 2: (a, b), (a, b=2), (a=1, b=2)
+        # 3: (a, b, c), (a, b, c=3), (a, b=2, c=3), (a=1, b=2, c=3)
+
+        # ways to call each group:
+        # 0: f()
+        # 1: (a): f(1)
+        #    (a=1): f(), f(1)
+        # 2: (a, b): f(1,2)
+        #    (a, b=2): f(1,2), f(1)
+        #    (a=1, b=2): f(1,2), f(1), f()
+        # 3: (a, b, c): f(1, 2, 3)
+        #    (a, b, c=3): f(1, 2, 3), f(1, 2)
+        #    (a, b=2, c=3): f(1, 2, 3), f(1, 2), f(1)
+        #    (a=1, b=2, c=3): f(1, 2, 3), f(1, 2), f(1), f()
+
         log_ver = LogVer()
+
+        class PlistType(Enum):
+            """Request for SmartThread."""
+
+            Po = auto()
+            Pk = auto()
+            Ko = auto()
+
+        class PlistSection:
+            raw_parms = {
+                PlistType.Po: ("po_1", "po_2", "po_3"),
+                PlistType.Pk: ("pk_4", "pk_5", "pk_6"),
+                PlistType.Ko: ("ko_7", "ko_8", "ko_9"),
+            }
+
+            plist_prefix = {
+                PlistType.Po: "",
+                PlistType.Pk: "",
+                PlistType.Ko: "*, ",
+            }
+
+            plist_suffix = {
+                PlistType.Po: "/, ",
+                PlistType.Pk: "",
+                PlistType.Ko: "",
+            }
+
+            def __init__(
+                self,
+                has_defaults: bool = False,
+                plist: str = "",
+                arg_spec: str = "",
+                ret_result: str = "",
+                ret_stmt: str = f"",
+            ):
+                self.has_defaults: bool = has_defaults
+                self.plist: str = plist
+                self.arg_spec: str = arg_spec
+                self.ret_result: str = ret_result
+                self.ret_stmt: str = ret_stmt
+
+                self.plist_type = PlistType.Po
+
+                self.start_parms = tuple()
+                self.prefix_char = ""
+                self.suffix_char = ""
+
+            def create_combos(
+                self,
+                plist_type: PlistType,
+                num_parms: int,
+            ):
+                self.start_parms = PlistSection.raw_parms[plist_type][0:num_parms]
+                def_array = [0] * num_parms + [1] * num_parms
+                self.prefix_char = PlistSection.plist_prefix[plist_type]
+                self.suffix_char = PlistSection.plist_suffix[plist_type]
+                self.plist_type = plist_type
+
+                if num_parms == 0:
+                    return [
+                        PlistSection(
+                            plist=self.plist,
+                            arg_spec=self.arg_spec,
+                            ret_result=self.ret_result,
+                            ret_stmt=self.ret_stmt,
+                        )
+                    ]
+
+                if plist_type == PlistType.Pk and self.has_defaults:
+                    return [
+                        PlistSection(
+                            has_defaults=True,
+                            plist=(
+                                self.plist
+                                + "".join(
+                                    ["pk_4=4, ", "pk_5=5, ", "pk_6=6, "][:num_parms]
+                                )
+                            ),
+                            arg_spec=(
+                                self.arg_spec
+                                + "".join(
+                                    ["pk_4=4, ", "pk_5=5, ", "pk_6=6, "][:num_parms]
+                                )
+                            ),
+                            ret_result=(
+                                self.ret_result
+                                + "".join(
+                                    ["pk_4=4, ", "pk_5=5, ", "pk_6=6, "][:num_parms]
+                                )
+                            ),
+                            ret_stmt=(
+                                self.ret_stmt
+                                + "".join(
+                                    ["{pk_4=}, ", "{pk_5=}, ", "{pk_6=}, "][:num_parms]
+                                )
+                            ),
+                        )
+                    ]
+
+                return map(self.do_star, mi.sliding_window(def_array, num_parms))
+
+            def do_star(self, def_list):
+                plist_list = list(
+                    it.starmap(self.set_defaults, zip(self.start_parms, def_list))
+                )
+                if self.plist_type == PlistType.Po:
+                    arg_list = list(
+                        it.starmap(self.set_po_args, zip(self.start_parms, def_list))
+                    )
+                else:
+                    arg_list = list(
+                        it.starmap(self.set_kw_args, zip(self.start_parms, def_list))
+                    )
+
+                ret_result = list(
+                    it.starmap(self.set_ret_result, zip(self.start_parms, def_list))
+                )
+                ret_stmt = list(
+                    it.starmap(self.set_ret_stmt, zip(self.start_parms, def_list))
+                )
+
+                return PlistSection(
+                    has_defaults=bool(def_list[-1]),
+                    plist=self.plist
+                    + "".join([self.prefix_char] + plist_list + [self.suffix_char]),
+                    arg_spec=self.arg_spec + "".join(arg_list),
+                    ret_result=self.ret_result + "".join(ret_result),
+                    ret_stmt=self.ret_stmt + "".join(ret_stmt),
+                )
+
+            @staticmethod
+            def set_defaults(parm, selector):
+                return parm + (", ", f"={parm[-1]}, ")[selector]
+
+            @staticmethod
+            def set_po_args(parm, selector):
+                return (f"{parm[-1]}0, ", " ")[selector]
+
+            @staticmethod
+            def set_kw_args(parm, selector):
+                return (f"{parm}={parm[-1]}0, ", "")[selector]
+
+            @staticmethod
+            def set_ret_result(parm, selector):
+                return (f"{parm}={parm[-1]}0, ", f"{parm}={parm[-1]}, ")[selector]
+
+            @staticmethod
+            def set_ret_stmt(parm, selector):
+                p_str = f"{parm}="
+                return "{" + p_str + "}, "
+
+        final_sections: list[PlistSection] = []
+        po_section = PlistSection()
+
+        po_plist_sections = po_section.create_combos(
+            plist_type=PlistType.Po, num_parms=num_po_arg
+        )
+
+        for po_plist_section in po_plist_sections:
+            po_pk_plist_sections = po_plist_section.create_combos(
+                plist_type=PlistType.Pk, num_parms=num_pk_arg
+            )
+
+            for po_pk_plist_section in po_pk_plist_sections:
+                # print(f"{po_pk_plist_section.plist=}")
+                po_pk_ko_plist_sections = po_pk_plist_section.create_combos(
+                    plist_type=PlistType.Ko, num_parms=num_ko_arg
+                )
+
+                for po_pk_ko_plist_section in po_pk_ko_plist_sections:
+                    final_sections.append(po_pk_ko_plist_section)
+                    # print(f"{po_pk_ko_plist_section.plist=}")
+
+        for plist_section in final_sections:
+            print(f"{plist_section.plist=}")
+            print(f"{plist_section.arg_spec=}")
+            print(f"{plist_section.ret_result=}")
+            print(f"{plist_section.ret_stmt=}")
+            print()
 
         po_parms_values = ["", "a,", "b,", "c,"]
         po_args_values = ["", "1,", "2,", "3,"]
         exp_trace_arg_values = [" ", "a=1, ", "b=2, ", "c=3, "]
-        return_values = ["[]", "[a]", "[a, b]", "[a, b, c]"]
-        exp_return_values = ["", "1", "1, 2", "1, 2, 3"]
+        return_values = ["None", "f'{a=}'", "f'{a=}, {b=}'", "f'{a=}, {b=}, {c=}'"]
+        exp_return_values = ["None", "'a=1'", "'a=1, b=2'", "'a=1, b=2, c=3'"]
         po_parms = ""
         po_args = ""
         exp_trace_args = ""
@@ -917,7 +1133,7 @@ class TestEntryTraceCombos:
             fullmatch=True,
         )
 
-        exp_exit_log_msg = f"<string>:f1:\? exit: return_value=\[{exp_return}\]"
+        exp_exit_log_msg = f"<string>:f1:\? exit: return_value={exp_return}"
 
         log_ver.add_msg(
             log_level=logging.DEBUG,
