@@ -913,6 +913,127 @@ class TestEntryTraceCombos:
             Pk = auto()
             Ko = auto()
 
+        # class PlistSection:
+        #     raw_parms = {
+        #         PlistType.Po: ("po_1", "po_2", "po_3"),
+        #         PlistType.Pk: ("pk_4", "pk_5", "pk_6"),
+        #         PlistType.Ko: ("ko_7", "ko_8", "ko_9"),
+        #     }
+        #
+        #     plist_prefix = {
+        #         PlistType.Po: "",
+        #         PlistType.Pk: "",
+        #         PlistType.Ko: "*, ",
+        #     }
+        #
+        #     plist_suffix = {
+        #         PlistType.Po: "/, ",
+        #         PlistType.Pk: "",
+        #         PlistType.Ko: "",
+        #     }
+        #
+        #     def __init__(
+        #         self,
+        #         has_defaults: bool = False,
+        #         plist: str = "",
+        #         arg_spec: str = "",
+        #         ret_result: str = "",
+        #         ret_stmt: str = f"",
+        #     ):
+        #         self.has_defaults: bool = has_defaults
+        #         self.plist: str = plist
+        #         self.arg_spec: str = arg_spec
+        #         self.ret_result: str = ret_result
+        #         self.ret_stmt: str = ret_stmt
+        #
+        #         self.plist_type = PlistType.Po
+        #
+        #         self.start_parms = tuple()
+        #         self.prefix_char = ""
+        #         self.suffix_char = ""
+        #
+        #     def create_combos(
+        #         self,
+        #         plist_type: PlistType,
+        #         num_parms: int,
+        #     ):
+        #         self.start_parms = PlistSection.raw_parms[plist_type][0:num_parms]
+        #         def_array = [0] * num_parms + [1] * num_parms
+        #         self.prefix_char = PlistSection.plist_prefix[plist_type]
+        #         self.suffix_char = PlistSection.plist_suffix[plist_type]
+        #         self.plist_type = plist_type
+        #
+        #         if num_parms == 0:
+        #             return [
+        #                 PlistSection(
+        #                     plist=self.plist,
+        #                     arg_spec=self.arg_spec,
+        #                     ret_result=self.ret_result,
+        #                     ret_stmt=self.ret_stmt,
+        #                 )
+        #             ]
+        #
+        #         if plist_type == PlistType.Pk and self.has_defaults:
+        #             return [
+        #                 PlistSection(
+        #                     has_defaults=True,
+        #                     plist=(
+        #                         self.plist
+        #                         + "".join(
+        #                             ["pk_4=4, ", "pk_5=5, ", "pk_6=6, "][:num_parms]
+        #                         )
+        #                     ),
+        #                     arg_spec=(
+        #                         self.arg_spec
+        #                         + "".join(
+        #                             ["pk_4=4, ", "pk_5=5, ", "pk_6=6, "][:num_parms]
+        #                         )
+        #                     ),
+        #                     ret_result=(
+        #                         self.ret_result
+        #                         + "".join(
+        #                             ["pk_4=4, ", "pk_5=5, ", "pk_6=6, "][:num_parms]
+        #                         )
+        #                     ),
+        #                     ret_stmt=(
+        #                         self.ret_stmt
+        #                         + "".join(
+        #                             ["{pk_4=}, ", "{pk_5=}, ", "{pk_6=}, "][:num_parms]
+        #                         )
+        #                     ),
+        #                 )
+        #             ]
+        #
+        #         return map(self.do_star, mi.sliding_window(def_array, num_parms))
+        #
+        #     def do_star(self, def_list):
+        #         plist_list = list(
+        #             it.starmap(self.set_defaults, zip(self.start_parms, def_list))
+        #         )
+        #         if self.plist_type == PlistType.Po:
+        #             arg_list = list(
+        #                 it.starmap(self.set_po_args, zip(self.start_parms, def_list))
+        #             )
+        #         else:
+        #             arg_list = list(
+        #                 it.starmap(self.set_kw_args, zip(self.start_parms, def_list))
+        #             )
+        #
+        #         ret_result = list(
+        #             it.starmap(self.set_ret_result, zip(self.start_parms, def_list))
+        #         )
+        #         ret_stmt = list(
+        #             it.starmap(self.set_ret_stmt, zip(self.start_parms, def_list))
+        #         )
+        #
+        #         return PlistSection(
+        #             has_defaults=bool(def_list[-1]),
+        #             plist=self.plist
+        #             + "".join([self.prefix_char] + plist_list + [self.suffix_char]),
+        #             arg_spec=self.arg_spec + "".join(arg_list),
+        #             ret_result=self.ret_result + "".join(ret_result),
+        #             ret_stmt=self.ret_stmt + "".join(ret_stmt),
+        #         )
         class PlistSection:
             raw_parms = {
                 PlistType.Po: ("po_1", "po_2", "po_3"),
@@ -936,15 +1057,24 @@ class TestEntryTraceCombos:
                 self,
                 has_defaults: bool = False,
                 plist: str = "",
-                arg_spec: str = "",
-                ret_result: str = "",
-                ret_stmt: str = f"",
+                arg_spec: list[str] = None,
+                ret_result: list[str] = None,
+                ret_stmt: list[str] = None,
             ):
                 self.has_defaults: bool = has_defaults
                 self.plist: str = plist
-                self.arg_spec: str = arg_spec
-                self.ret_result: str = ret_result
-                self.ret_stmt: str = ret_stmt
+                if arg_spec is None:
+                    arg_spec = [""]
+                self.arg_spec: list[str] = arg_spec
+
+                if ret_result is None:
+                    ret_result = [""]
+                self.ret_result: list[str] = ret_result
+
+                if ret_stmt is None:
+                    ret_stmt = [f""]
+
+                self.ret_stmt: list[str] = ret_stmt
 
                 self.plist_type = PlistType.Po
 
@@ -983,56 +1113,74 @@ class TestEntryTraceCombos:
                                     ["pk_4=4, ", "pk_5=5, ", "pk_6=6, "][:num_parms]
                                 )
                             ),
-                            arg_spec=(
-                                self.arg_spec
+                            arg_spec=[
+                                self.arg_spec[0]
                                 + "".join(
                                     ["pk_4=4, ", "pk_5=5, ", "pk_6=6, "][:num_parms]
                                 )
-                            ),
-                            ret_result=(
-                                self.ret_result
+                            ],
+                            ret_result=[
+                                self.ret_result[0]
                                 + "".join(
                                     ["pk_4=4, ", "pk_5=5, ", "pk_6=6, "][:num_parms]
                                 )
-                            ),
-                            ret_stmt=(
-                                self.ret_stmt
+                            ],
+                            ret_stmt=[
+                                self.ret_stmt[0]
                                 + "".join(
                                     ["{pk_4=}, ", "{pk_5=}, ", "{pk_6=}, "][:num_parms]
                                 )
-                            ),
+                            ],
                         )
                     ]
 
                 return map(self.do_star, mi.sliding_window(def_array, num_parms))
 
             def do_star(self, def_list):
+                # plist_list = (
+                #     list(it.starmap(self.set_defaults, zip(self.start_parms, def_list)))
+                # ) + [def_list[-1]]
+                # print(f"{plist_list=}")
                 plist_list = list(
                     it.starmap(self.set_defaults, zip(self.start_parms, def_list))
                 )
+                arg_spec_bits = [0] * len(def_list) + [1] * len(def_list)
+
+                num_defs = sum(def_list)
+                print(f"{def_list=}, {arg_spec_bits=}, {num_defs=}")
+                arg_spec_array = []
                 if self.plist_type == PlistType.Po:
                     arg_list = list(
                         it.starmap(self.set_po_args, zip(self.start_parms, def_list))
                     )
+                    arg_spec_array.append(self.arg_spec[0] + "".join(arg_list))
                 else:
                     arg_list = list(
                         it.starmap(self.set_kw_args, zip(self.start_parms, def_list))
                     )
+                    arg_spec_array.append(self.arg_spec[0] + "".join(arg_list))
 
+                ret_result_array = []
                 ret_result = list(
                     it.starmap(self.set_ret_result, zip(self.start_parms, def_list))
                 )
+                ret_result_array.append(self.ret_result[0] + "".join(ret_result))
+
+                ret_stmt_array = []
                 ret_stmt = list(
                     it.starmap(self.set_ret_stmt, zip(self.start_parms, def_list))
                 )
-
+                ret_stmt_array.append(self.ret_stmt[0] + "".join(ret_stmt))
                 return PlistSection(
                     has_defaults=bool(def_list[-1]),
                     plist=self.plist
                     + "".join([self.prefix_char] + plist_list + [self.suffix_char]),
-                    arg_spec=self.arg_spec + "".join(arg_list),
-                    ret_result=self.ret_result + "".join(ret_result),
-                    ret_stmt=self.ret_stmt + "".join(ret_stmt),
+                    arg_spec=arg_spec_array,
+                    ret_result=ret_result_array,
+                    ret_stmt=ret_stmt_array,
+                    # arg_spec=self.arg_spec + "".join(arg_list),
+                    # ret_result=self.ret_result + "".join(ret_result),
+                    # ret_stmt=self.ret_stmt + "".join(ret_stmt),
                 )
 
             @staticmethod
@@ -1085,68 +1233,92 @@ class TestEntryTraceCombos:
             print(f"{plist_section.ret_stmt=}")
             print()
 
-        po_parms_values = ["", "a,", "b,", "c,"]
-        po_args_values = ["", "1,", "2,", "3,"]
-        exp_trace_arg_values = [" ", "a=1, ", "b=2, ", "c=3, "]
-        return_values = ["None", "f'{a=}'", "f'{a=}, {b=}'", "f'{a=}, {b=}, {c=}'"]
-        exp_return_values = ["None", "'a=1'", "'a=1, b=2'", "'a=1, b=2, c=3'"]
-        po_parms = ""
-        po_args = ""
-        exp_trace_args = ""
-        return_statement = ""
-        exp_return = ""
-        for idx in range(num_po_arg + 1):
-            po_parms += po_parms_values[idx]
-            po_args += po_args_values[idx]
-            exp_trace_args += exp_trace_arg_values[idx]
-            return_statement = return_values[idx]
-            exp_return = exp_return_values[idx]
+            # code = (
+            #     f"global f999"
+            #     f"\ndef f1({plist_section.plist}): return f'{plist_section.ret_stmt}'"
+            #     f"\nf1=etrace(f1)"
+            #     f"\nf1=functools.partial(f1,{plist_section.arg_spec})"
+            #     f"\nf999=f1"
+            # )
 
-        if po_parms:
-            po_parms += "/"
-            po_args = "," + po_args
+            # code = (
+            #     f"global f999"
+            #     f"\ndef f1({plist_section.plist}): return f'{plist_section.ret_stmt}'"
+            #     f"\nf1=etrace(f1)"
+            #     f"\nf999=f1"
+            # )
+            for idx in range(len(plist_section.arg_spec)):
+                code = (
+                    f"global f999"
+                    f"\ndef f1({plist_section.plist}): "
+                    f"return f'{plist_section.ret_stmt[idx]}'"
+                    f"\nf1=etrace(f1)"
+                    f"\nf999=f1"
+                )
+                print(f"\n{code=}")
 
-        code = (
-            f"global f999"
-            f"\ndef f1({po_parms}): return {return_statement}"
-            f"\nf1=etrace(f1)"
-            f"\nf1=functools.partial(f1{po_args})"
-            f"\nf999=f1"
-        )
+                exec(code)
 
-        print(f"\n{code=}")
+                # f999()
 
-        exec(code)
+                exec(f"f999({plist_section.arg_spec[idx]})")
 
-        f999()
+                # exp_entry_log_msg = (
+                #     rf"<string>:f1:\? entry: {plist_section.ret_result}"
+                #     "caller: test_entry_trace.py"
+                #     "::TestEntryTraceCombos.test_etrace_combo_signature:[0-9]+"
+                # )
 
-        exp_entry_log_msg = (
-            rf"<string>:f1:\? entry:{exp_trace_args}"
-            "caller: test_entry_trace.py"
-            "::TestEntryTraceCombos.test_etrace_combo_signature:[0-9]+"
-        )
+                exp_entry_log_msg = (
+                    rf"<string>:f1:\? entry: {plist_section.ret_result[idx]}"
+                    "caller: <string>:1"
+                )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+                log_ver.add_msg(
+                    log_level=logging.DEBUG,
+                    log_msg=exp_entry_log_msg,
+                    log_name="scottbrian_utils.entry_trace",
+                    fullmatch=True,
+                )
 
-        exp_exit_log_msg = f"<string>:f1:\? exit: return_value={exp_return}"
+                exp_exit_log_msg = (
+                    rf"<string>:f1:\? exit: return_value='"
+                    rf"{plist_section.ret_result[idx]}'"
+                )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+                log_ver.add_msg(
+                    log_level=logging.DEBUG,
+                    log_msg=exp_exit_log_msg,
+                    log_name="scottbrian_utils.entry_trace",
+                    fullmatch=True,
+                )
         # ################################################################
         # # check log results
         # ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
         log_ver.verify_log_results(match_results)
+
+        # po_parms_values = ["", "a,", "b,", "c,"]
+        # po_args_values = ["", "1,", "2,", "3,"]
+        # exp_trace_arg_values = [" ", "a=1, ", "b=2, ", "c=3, "]
+        # return_values = ["None", "f'{a=}'", "f'{a=}, {b=}'", "f'{a=}, {b=}, {c=}'"]
+        # exp_return_values = ["None", "'a=1'", "'a=1, b=2'", "'a=1, b=2, c=3'"]
+        # po_parms = ""
+        # po_args = ""
+        # exp_trace_args = ""
+        # return_statement = ""
+        # exp_return = ""
+        # for idx in range(num_po_arg + 1):
+        #     po_parms += po_parms_values[idx]
+        #     po_args += po_args_values[idx]
+        #     exp_trace_args += exp_trace_arg_values[idx]
+        #     return_statement = return_values[idx]
+        #     exp_return = exp_return_values[idx]
+        #
+        # if po_parms:
+        #     po_parms += "/"
+        #     po_args = "," + po_args
 
     ####################################################################
     # test_etrace_combo_env
