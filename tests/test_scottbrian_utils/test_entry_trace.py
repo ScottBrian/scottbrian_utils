@@ -1324,28 +1324,28 @@ class TestEntryTraceCombos:
         #         p_str = f"{parm}="
         #         return "{" + p_str + "}, "
 
-        @dataclass
-        class ArgSpecRetRes:
-            arg_spec: str = ""
-            ret_result: str = ""
-
-        class PlistType(Enum):
-            """Request for SmartThread."""
-
-            Po = auto()
-            Pk = auto()
-            Ko = auto()
-
-        @dataclass
-        class PlistSection:
-            plist_parts: list[str]
-            plist: str = ""
-
-            def __add__(self, other: "PlistSection"):
-                new_plist_parts = self.plist_parts + other.plist_parts
-                new_plist = self.plist + other.plist
-                # new_arg_spec = self.arg_spec + other.arg_spec
-                return PlistSection(new_plist_parts, new_plist)
+        # @dataclass
+        # class ArgSpecRetRes:
+        #     arg_spec: str = ""
+        #     ret_result: str = ""
+        #
+        # class PlistType(Enum):
+        #     """Request for SmartThread."""
+        #
+        #     Po = auto()
+        #     Pk = auto()
+        #     Ko = auto()
+        #
+        # @dataclass
+        # class PlistSection:
+        #     plist_parts: list[str]
+        #     plist: str = ""
+        #
+        #     def __add__(self, other: "PlistSection"):
+        #         new_plist_parts = self.plist_parts + other.plist_parts
+        #         new_plist = self.plist + other.plist
+        #         # new_arg_spec = self.arg_spec + other.arg_spec
+        #         return PlistSection(new_plist_parts, new_plist)
 
         # class PlistSpec:
         #     raw_parms = {
@@ -1467,6 +1467,218 @@ class TestEntryTraceCombos:
         #         p_str = f"{parm}="
         #         return "{" + p_str + "}, "
 
+        # class PlistSpec:
+        #     raw_parms = {
+        #         PlistType.Po: ("po_1", "po_2", "po_3"),
+        #         PlistType.Pk: ("pk_4", "pk_5", "pk_6"),
+        #         PlistType.Ko: ("ko_7", "ko_8", "ko_9"),
+        #     }
+        #
+        #     plist_prefix = {
+        #         PlistType.Po: "",
+        #         PlistType.Pk: "",
+        #         PlistType.Ko: "*, ",
+        #     }
+        #
+        #     plist_suffix = {
+        #         PlistType.Po: "/, ",
+        #         PlistType.Pk: "",
+        #         PlistType.Ko: "",
+        #     }
+        #
+        #     def __init__(
+        #         self,
+        #         num_po: int = 0,
+        #         num_pk: int = 0,
+        #         num_ko: int = 0,
+        #     ):
+        #         self.num_po = num_po
+        #         self.num_pk = num_pk
+        #         self.num_ko = num_ko
+        #
+        #         self.raw_po_parms = list(self.raw_parms[PlistType.Po][0:num_po])
+        #         self.raw_pk_parms = list(self.raw_parms[PlistType.Pk][0:num_pk])
+        #         self.raw_ko_parms = list(self.raw_parms[PlistType.Ko][0:num_ko])
+        #
+        #         self.ret_stmt = "".join(
+        #             list(
+        #                 map(
+        #                     self.set_ret_stmt,
+        #                     self.raw_po_parms + self.raw_pk_parms + self.raw_ko_parms,
+        #                 )
+        #             )
+        #         )
+        #
+        #         self.raw_arg_specs = self.build_arg_specs(
+        #             num_po=num_po, num_pk=num_pk, num_ko=num_ko
+        #         )
+        #
+        #         self.num_po_pk = num_po + num_pk
+        #         self.po_pk_def_array: list[int] = [0]
+        #         self.po_pk_sections: list[PlistSection] = []
+        #
+        #         plist_parms = self.raw_po_parms + self.raw_pk_parms
+        #         self.po_pk_sections = self.build_plist_section(
+        #             plist_parms=plist_parms, prefix_idx=0, suffix_idx=num_po
+        #         )
+        #
+        #         plist_parms = self.raw_ko_parms
+        #         self.ko_sections = self.build_plist_section(
+        #             plist_parms=plist_parms, prefix_idx=self.num_ko, suffix_idx=0
+        #         )
+        #
+        #         self.plist_combos = it.product(self.po_pk_sections, self.ko_sections)
+        #
+        #     def build_arg_specs(self, num_po: int, num_pk: int, num_ko: int):
+        #         po_raw_arg_spec = [list(map(self.set_po_args, self.raw_po_parms))]
+        #
+        #         pk_raw_arg_specs = self.build_pk_arg_specs(num_pk=num_pk)
+        #
+        #         ko_raw_arg_spec = [list(map(self.set_ko_args, self.raw_ko_parms))]
+        #
+        #         pre_raw_arg_specs = list(
+        #             it.product(po_raw_arg_spec, pk_raw_arg_specs, ko_raw_arg_spec)
+        #         )
+        #
+        #         specs = [
+        #             spec_item[0] + spec_item[1] + spec_item[2]
+        #             for spec_item in pre_raw_arg_specs
+        #         ]
+        #
+        #         return specs
+        #
+        #     def build_pk_arg_specs(self, num_pk: int):
+        #         arg_spec = [[]]
+        #         if num_pk:
+        #             p_or_k_array = [0] * num_pk + [1] * num_pk
+        #
+        #             arg_spec = map(
+        #                 self.do_pk_args, mi.sliding_window(p_or_k_array, num_pk)
+        #             )
+        #         return arg_spec
+        #
+        #     def build_plist_section(self, plist_parms, prefix_idx, suffix_idx):
+        #         if plist_parms:
+        #             def_array = [1] * len(plist_parms) + [2] * len(plist_parms)
+        #         else:
+        #             plist_parms = [" "]
+        #             def_array = [0]
+        #
+        #         do_star2 = ft.partial(
+        #             self.do_star,
+        #             plist_parms=plist_parms,
+        #             prefix_idx=prefix_idx,
+        #             suffix_idx=suffix_idx,
+        #         )
+        #         return map(do_star2, mi.sliding_window(def_array, len(plist_parms)))
+        #
+        #     def do_pk_args(self, p_or_k_array):
+        #         return list(
+        #             it.starmap(self.set_pk_args, zip(self.raw_pk_parms, p_or_k_array))
+        #         )
+        #
+        #     def do_star(
+        #         self,
+        #         def_list: list[int],
+        #         *,
+        #         plist_parms: list[str],
+        #         prefix_idx: int,
+        #         suffix_idx: int,
+        #     ) -> PlistSection:
+        #         plist_parts = list(
+        #             it.starmap(self.set_defaults, zip(plist_parms, def_list))
+        #         )
+        #
+        #         if prefix_idx:
+        #             plist = "".join(["*, "] + plist_parts)
+        #         elif suffix_idx:
+        #             plist = "".join(
+        #                 plist_parts[0:suffix_idx] + ["/, "] + plist_parts[suffix_idx:]
+        #             )
+        #         else:
+        #             plist = "".join(plist_parts)
+        #
+        #         # arg_spec_bits = [0] * len(def_list) + [1] * len(def_list)
+        #         #
+        #         # num_defs = sum(def_list)
+        #         # print(f"{def_list=}, {arg_spec_bits=}, {num_defs=}")
+        #         # arg_spec_array = []
+        #         # if self.plist_type == PlistType.Po:
+        #         #     arg_list = list(
+        #         #         it.starmap(self.set_po_args, zip(self.start_parms, def_list))
+        #         #     )
+        #         #     arg_spec_array.append(self.arg_spec[0] + "".join(arg_list))
+        #         # else:
+        #         #     arg_list = list(
+        #         #         it.starmap(self.set_kw_args, zip(self.start_parms, def_list))
+        #         #     )
+        #         #     arg_spec_ar
+        #
+        #         return PlistSection(
+        #             plist_parts=plist_parts,
+        #             plist=plist,
+        #         )
+        #
+        #     @staticmethod
+        #     def set_defaults(parm, selector):
+        #         return parm + ("", ", ", f"={parm[-1]}, ")[selector]
+        #
+        #     @staticmethod
+        #     def set_po_args2(parm, selector):
+        #         return (f"{parm[-1]}0, ", " ")[selector]
+        #
+        #     @staticmethod
+        #     def set_po_args(parm):
+        #         return f"{parm[-1]}0, "
+        #
+        #     @staticmethod
+        #     def set_pk_args(parm, selector):
+        #         return (f"{parm[-1]}0, ", f"{parm}={parm[-1]}0, ")[selector]
+        #
+        #     @staticmethod
+        #     def set_kw_args(parm, selector):
+        #         return (f"{parm}={parm[-1]}0, ", "")[selector]
+        #
+        #     @staticmethod
+        #     def set_ko_args(parm):
+        #         return f"{parm}={parm[-1]}0, "
+        #
+        #     @staticmethod
+        #     def set_ret_result(parm, selector):
+        #         return (f"{parm}={parm[-1]}0, ", f"{parm}={parm[-1]}, ")[selector]
+        #
+        #     @staticmethod
+        #     def set_ret_stmt(parm):
+        #         p_str = f"{parm}="
+        #         return "{" + p_str + "}, "
+
+        @dataclass
+        class ArgSpecRetRes:
+            arg_specs_parts: list[list[str]]
+            ret_reses_parts: list[list[str]]
+            arg_spec: str = ""
+            ret_result: str = ""
+
+        class PlistType(Enum):
+            """Request for SmartThread."""
+
+            Po = auto()
+            Pk = auto()
+            Ko = auto()
+
+        @dataclass
+        class PlistSection:
+            plist_parts: list[str]
+            arg_specs_ret_reses: ArgSpecRetRes
+            plist: str = ""
+
+            def __add__(self, other: "PlistSection"):
+                new_plist_parts = self.plist_parts + other.plist_parts
+                new_arg_specs_ret_reses = self.arg_specs_ret_reses
+                new_plist = self.plist + other.plist
+                # new_arg_spec = self.arg_spec + other.arg_spec
+                return PlistSection(new_plist_parts, new_arg_specs_ret_reses, new_plist)
+
         class PlistSpec:
             raw_parms = {
                 PlistType.Po: ("po_1", "po_2", "po_3"),
@@ -1509,6 +1721,10 @@ class TestEntryTraceCombos:
                     )
                 )
 
+                self.po_pk_raw_arg_specs = self.build_po_pk_arg_specs(num_pk=num_pk)
+
+                self.ko_raw_arg_specs = [list(map(self.set_ko_args, self.raw_ko_parms))]
+
                 self.raw_arg_specs = self.build_arg_specs(
                     num_po=num_po, num_pk=num_pk, num_ko=num_ko
                 )
@@ -1519,15 +1735,32 @@ class TestEntryTraceCombos:
 
                 plist_parms = self.raw_po_parms + self.raw_pk_parms
                 self.po_pk_sections = self.build_plist_section(
-                    plist_parms=plist_parms, prefix_idx=0, suffix_idx=num_po
+                    plist_parms=plist_parms,
+                    raw_arg_specs=self.po_pk_raw_arg_specs,
+                    prefix_idx=0,
+                    suffix_idx=num_po,
                 )
 
                 plist_parms = self.raw_ko_parms
                 self.ko_sections = self.build_plist_section(
-                    plist_parms=plist_parms, prefix_idx=self.num_ko, suffix_idx=0
+                    plist_parms=plist_parms,
+                    raw_arg_specs=self.ko_raw_arg_specs,
+                    prefix_idx=self.num_ko,
+                    suffix_idx=0,
                 )
 
                 self.plist_combos = it.product(self.po_pk_sections, self.ko_sections)
+
+            def build_po_pk_arg_specs(self, num_pk: int):
+                po_raw_arg_spec = [list(map(self.set_po_args, self.raw_po_parms))]
+
+                pk_raw_arg_specs = self.build_pk_arg_specs(num_pk=num_pk)
+
+                pre_raw_arg_specs = list(it.product(po_raw_arg_spec, pk_raw_arg_specs))
+
+                specs = [spec_item[0] + spec_item[1] for spec_item in pre_raw_arg_specs]
+
+                return specs
 
             def build_arg_specs(self, num_po: int, num_pk: int, num_ko: int):
                 po_raw_arg_spec = [list(map(self.set_po_args, self.raw_po_parms))]
@@ -1557,16 +1790,22 @@ class TestEntryTraceCombos:
                     )
                 return arg_spec
 
-            def build_plist_section(self, plist_parms, prefix_idx, suffix_idx):
+            def build_plist_section(
+                self, plist_parms, raw_arg_specs, prefix_idx, suffix_idx
+            ):
                 if plist_parms:
                     def_array = [1] * len(plist_parms) + [2] * len(plist_parms)
                 else:
                     plist_parms = [" "]
                     def_array = [0]
 
+                print(
+                    f"build_plist_section: {plist_parms=}, {raw_arg_specs=}, {def_array=}"
+                )
                 do_star2 = ft.partial(
                     self.do_star,
                     plist_parms=plist_parms,
+                    raw_arg_specs=raw_arg_specs,
                     prefix_idx=prefix_idx,
                     suffix_idx=suffix_idx,
                 )
@@ -1582,6 +1821,7 @@ class TestEntryTraceCombos:
                 def_list: list[int],
                 *,
                 plist_parms: list[str],
+                raw_arg_specs: list[list[str]],
                 prefix_idx: int,
                 suffix_idx: int,
             ) -> PlistSection:
@@ -1598,9 +1838,40 @@ class TestEntryTraceCombos:
                 else:
                     plist = "".join(plist_parts)
 
-                # arg_spec_bits = [0] * len(def_list) + [1] * len(def_list)
-                #
-                # num_defs = sum(def_list)
+                print(f" 0 {plist_parts=}, {def_list=}")
+                if len(def_list) == 1 and def_list[0] == 0:
+                    print(f" 1 {plist_parms=}, {len(def_list)=}, {def_list=}")
+                    arg_specs_ret_reses = [
+                        [
+                            ArgSpecRetRes(
+                                arg_specs_parts=[[]],
+                                ret_reses_parts=[[]],
+                                arg_spec=" ",
+                                ret_result="",
+                            )
+                        ]
+                    ]
+                else:
+                    num_defs = sum(def_list) - len(def_list)
+                    arg_spec_array = [1] * len(def_list) + [0] * num_defs
+                    print(
+                        f"  2 {plist_parms=}, {plist_parts=}, {len(def_list)=}, {def_list=},"
+                        f" {arg_spec_array=}"
+                    )
+
+                    do_star_arg_spec2 = ft.partial(
+                        self.do_star_arg_spec,
+                        plist_parms=plist_parms,
+                        raw_arg_specs=raw_arg_specs,
+                    )
+
+                    arg_specs_ret_reses = list(
+                        map(
+                            do_star_arg_spec2,
+                            mi.sliding_window(arg_spec_array, len(def_list)),
+                        )
+                    )
+                # print(f"{arg_specs_parts=}")
                 # print(f"{def_list=}, {arg_spec_bits=}, {num_defs=}")
                 # arg_spec_array = []
                 # if self.plist_type == PlistType.Po:
@@ -1616,8 +1887,49 @@ class TestEntryTraceCombos:
 
                 return PlistSection(
                     plist_parts=plist_parts,
+                    arg_specs_ret_reses=arg_specs_ret_reses,
                     plist=plist,
                 )
+
+            def do_star_arg_spec(
+                self,
+                arg_spec_array: list[int],
+                *,
+                plist_parms: list[str],
+                raw_arg_specs: list[list[str]],
+            ) -> list[ArgSpecRetRes]:
+                print(f"   3 {plist_parms=}, {raw_arg_specs=}, {arg_spec_array=}")
+                arg_specs_ret_reses = []
+                for raw_arg_spec in raw_arg_specs:
+                    arg_spec_parts = list(
+                        it.starmap(self.set_arg_spec, zip(raw_arg_spec, arg_spec_array))
+                    )
+                    # arg_specs_parts.append(arg_spec_parts)
+                    arg_spec = "".join(arg_spec_parts)
+
+                    ret_res_parts = list(
+                        it.starmap(
+                            self.set_ret_result, zip(plist_parms, arg_spec_array)
+                        )
+                    )
+                    # ret_reses_parts.append(ret_res_parts)
+                    ret_res = "".join(ret_res_parts)
+                    print(f"     4 {raw_arg_spec=}, {arg_spec=}, {ret_res=}")
+                    arg_spec_ret_res = ArgSpecRetRes(
+                        arg_specs_parts=arg_spec_parts,
+                        ret_reses_parts=ret_res_parts,
+                        arg_spec=arg_spec,
+                        ret_result=ret_res,
+                    )
+                    arg_specs_ret_reses.append(arg_spec_ret_res)
+                    if not arg_spec:
+                        break
+
+                return arg_specs_ret_reses
+
+            @staticmethod
+            def set_arg_spec(parm, selector):
+                return ("", parm)[selector]
 
             @staticmethod
             def set_defaults(parm, selector):
@@ -1645,7 +1957,7 @@ class TestEntryTraceCombos:
 
             @staticmethod
             def set_ret_result(parm, selector):
-                return (f"{parm}={parm[-1]}0, ", f"{parm}={parm[-1]}, ")[selector]
+                return (f"{parm}={parm[-1]}, ", f"{parm}={parm[-1]}0, ")[selector]
 
             @staticmethod
             def set_ret_stmt(parm):
