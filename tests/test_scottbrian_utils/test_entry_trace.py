@@ -914,7 +914,7 @@ class TestEntryTraceCombos:
             ret_result: str = ""
 
             def __add__(self, other: "ArgSpecRetRes"):
-                new_arg_spec = self.arg_spec + other.arg_spec
+                new_arg_spec = (self.arg_spec + other.arg_spec)[0:-2]
                 new_ret_result = self.ret_result + other.ret_result
                 return ArgSpecRetRes(new_arg_spec, new_ret_result)
 
@@ -933,7 +933,7 @@ class TestEntryTraceCombos:
 
             def __add__(self, other: "PlistSection"):
                 new_plist_parts = self.plist_parts + other.plist_parts
-                new_plist = self.plist + other.plist
+                new_plist = (self.plist + other.plist)[0:-2]
 
                 combo_ret_reses = list(
                     it.product(self.arg_specs_ret_reses, other.arg_specs_ret_reses)
@@ -1112,8 +1112,6 @@ class TestEntryTraceCombos:
                     arg_specs_ret_reses = [
                         [
                             ArgSpecRetRes(
-                                # arg_specs_parts=[[]],
-                                # ret_reses_parts=[[]],
                                 arg_spec=" ",
                                 ret_result="",
                             )
@@ -1145,6 +1143,18 @@ class TestEntryTraceCombos:
                     plist=plist,
                 )
 
+            def do_perms(
+                self,
+                perm: list[str],
+                *,
+                arg_spec_parts: list[str],
+                start_idx: int,
+                end_idx: int,
+            ) -> list[str]:
+                arg_spec_parts2 = arg_spec_parts.copy()
+                arg_spec_parts2[start_idx : end_idx + 1] = list(perm)
+                return arg_spec_parts2
+
             def do_star_arg_spec(
                 self,
                 arg_spec_array: list[int],
@@ -1152,30 +1162,66 @@ class TestEntryTraceCombos:
                 plist_parms: list[str],
                 raw_arg_specs: list[list[str]],
             ) -> list[ArgSpecRetRes]:
+                # def do_perms(
+                #     perm: list[str],
+                #     *,
+                #     arg_spec_parts: list[str],
+                #     start_idx: int,
+                #     end_idx: int,
+                # ) -> list[str]:
+                #     arg_spec_parts2 = arg_spec_parts.copy()
+                #     arg_spec_parts2[start_idx : end_idx + 1] = list(perm)
+                #     return arg_spec_parts2
+
                 arg_specs_ret_reses = []
                 arg_spec_set: set[str] = set()
-                for raw_arg_spec in raw_arg_specs:
-                    arg_spec_parts = list(
-                        it.starmap(self.set_arg_spec, zip(raw_arg_spec, arg_spec_array))
-                    )
-                    arg_spec = "".join(arg_spec_parts)
-                    if arg_spec in arg_spec_set:
-                        continue
-                    else:
-                        arg_spec_set |= {arg_spec}
 
-                    ret_res_parts = list(
+                ret_res = "".join(
+                    list(
                         it.starmap(
                             self.set_ret_result, zip(plist_parms, arg_spec_array)
                         )
                     )
-                    # ret_reses_parts.append(ret_res_parts)
-                    ret_res = "".join(ret_res_parts)
-                    arg_spec_ret_res = ArgSpecRetRes(
-                        arg_spec=arg_spec,
-                        ret_result=ret_res,
+                )
+
+                for raw_arg_spec in raw_arg_specs:
+                    arg_spec_parts = list(
+                        it.starmap(self.set_arg_spec, zip(raw_arg_spec, arg_spec_array))
                     )
-                    arg_specs_ret_reses.append(arg_spec_ret_res)
+
+                    start_idx = -1
+                    end_idx = -1
+                    for idx, item in enumerate(arg_spec_parts):
+                        if "=" in item:
+                            if start_idx == -1:
+                                start_idx = idx
+                            end_idx = idx
+
+                    arg_spec_parts_list = [arg_spec_parts]
+                    if 0 <= start_idx <= (end_idx - 1):
+                        do_perms2 = ft.partial(
+                            self.do_perms,
+                            arg_spec_parts=arg_spec_parts,
+                            start_idx=start_idx,
+                            end_idx=end_idx,
+                        )
+                        arg_spec_parts_list = map(
+                            do_perms2,
+                            it.permutations(arg_spec_parts[start_idx : end_idx + 1]),
+                        )
+
+                    for arg_spec_parts3 in arg_spec_parts_list:
+                        arg_spec = "".join(arg_spec_parts3)
+                        if arg_spec in arg_spec_set:
+                            continue
+                        else:
+                            arg_spec_set |= {arg_spec}
+
+                        arg_spec_ret_res = ArgSpecRetRes(
+                            arg_spec=arg_spec,
+                            ret_result=ret_res,
+                        )
+                        arg_specs_ret_reses.append(arg_spec_ret_res)
 
                 return arg_specs_ret_reses
 
@@ -1227,9 +1273,27 @@ class TestEntryTraceCombos:
                 f"\nf999=f1"
             )
 
+            plist_spec_log_msg = f"##################### {final_plist_combo.plist=}"
+            logger.debug(plist_spec_log_msg)
+            log_ver.add_msg(
+                log_level=logging.DEBUG,
+                log_msg=re.escape(plist_spec_log_msg),
+                log_name="test_scottbrian_utils.test_entry_trace",
+                fullmatch=True,
+            )
             exec(code)
 
-            for arg_spec_ret_res in final_plist_combo.arg_specs_ret_reses:
+            for idx, arg_spec_ret_res in enumerate(
+                final_plist_combo.arg_specs_ret_reses
+            ):
+                arg_spec_log_msg = f"##################### {arg_spec_ret_res.arg_spec=}"
+                logger.debug(arg_spec_log_msg)
+                log_ver.add_msg(
+                    log_level=logging.DEBUG,
+                    log_msg=arg_spec_log_msg,
+                    log_name="test_scottbrian_utils.test_entry_trace",
+                    fullmatch=True,
+                )
                 exec(f"f999({arg_spec_ret_res.arg_spec})")
 
                 exp_entry_log_msg = (
@@ -1255,11 +1319,12 @@ class TestEntryTraceCombos:
                     log_name="scottbrian_utils.entry_trace",
                     fullmatch=True,
                 )
-        # ################################################################
-        # # check log results
-        # ################################################################
+
+        ################################################################
+        # check log results
+        ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
-        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.print_match_results(match_results, print_matched=False)
         log_ver.verify_log_results(match_results)
 
     ####################################################################
