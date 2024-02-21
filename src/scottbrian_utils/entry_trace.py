@@ -100,7 +100,6 @@ def etrace(
            the etrace decorator.
 
     """
-    print(f"entered etrace")
     if wrapped is None:
         return functools.partial(
             etrace,
@@ -139,8 +138,7 @@ def etrace(
 
     target_sig_array = {}
     target_sig_names = []
-    print(f"{target_sig=}")
-    print(f"{target_sig.parameters=}")
+
     for parm in target_sig.parameters:
         parm_name = target_sig.parameters[parm].name
         def_val = target_sig.parameters[parm].default
@@ -156,10 +154,8 @@ def etrace(
         """Setup the trace."""
         log_sig_array = ""
         target_sig_array_copy = target_sig_array.copy()
-        print(f"{target_sig_array_copy=}")
 
         for idx, arg in enumerate(args):
-            print(f"{idx=}, {arg=}")
             target_sig_array_copy[target_sig_names[idx]] = arg
 
         for key, item in kwargs.items():

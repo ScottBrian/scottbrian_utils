@@ -3,9 +3,10 @@
 ########################################################################
 # Standard Library
 ########################################################################
+
 from dataclasses import dataclass
 from enum import Enum, auto
-import functools
+import functools as ft
 import datetime
 import inspect
 import itertools as it
@@ -940,7 +941,6 @@ class TestEntryTraceCombos:
 
                 final_arg_specs: list[ArgSpecRetRes] = []
                 for arg_spec in combo_ret_reses:
-                    # print(f"        {arg_spec=}")
                     new_arg_spec = arg_spec[0] + arg_spec[1]
                     final_arg_specs.append(new_arg_spec)
                 new_arg_specs_ret_reses = final_arg_specs
@@ -1019,15 +1019,10 @@ class TestEntryTraceCombos:
                 )
 
                 self.plist_combos = it.product(self.po_pk_sections, self.ko_sections)
-                final_plist_combos: list[PlistSection] = []
+                self.final_plist_combos: list[PlistSection] = []
                 for plist_combo in self.plist_combos:
                     new_plist_section = plist_combo[0] + plist_combo[1]
-                    final_plist_combos.append(new_plist_section)
-
-                for final_plist_combo in final_plist_combos:
-                    print(f"{final_plist_combo.plist=}")
-                    for arg_spec in final_plist_combo.arg_specs_ret_reses:
-                        print(f"    {arg_spec=}")
+                    self.final_plist_combos.append(new_plist_section)
 
             def build_po_pk_arg_specs(self, num_pk: int):
                 po_raw_arg_spec = [list(map(self.set_po_args, self.raw_po_parms))]
@@ -1077,7 +1072,6 @@ class TestEntryTraceCombos:
                     plist_parms = [" "]
                     def_array = [0]
 
-                # print(f"build_plist_section: {plist_parms=}, {raw_arg_specs=}, {def_array=}")
                 do_star2 = ft.partial(
                     self.do_star,
                     plist_parms=plist_parms,
@@ -1114,24 +1108,20 @@ class TestEntryTraceCombos:
                 else:
                     plist = "".join(plist_parts)
 
-                # print(f" 0 {plist_parts=}, {def_list=}")
                 if len(def_list) == 1 and def_list[0] == 0:
-                    # print(f" 1 {plist_parms=}, {len(def_list)=}, {def_list=}")
                     arg_specs_ret_reses = [
-                        ArgSpecRetRes(
-                            # arg_specs_parts=[[]],
-                            # ret_reses_parts=[[]],
-                            arg_spec=" ",
-                            ret_result="",
-                        )
+                        [
+                            ArgSpecRetRes(
+                                # arg_specs_parts=[[]],
+                                # ret_reses_parts=[[]],
+                                arg_spec=" ",
+                                ret_result="",
+                            )
+                        ]
                     ]
                 else:
                     num_defs = sum(def_list) - len(def_list)
                     arg_spec_array = [1] * len(def_list) + [0] * num_defs
-                    # print(
-                    #     f"  2 {plist_parms=}, {plist_parts=}, {len(def_list)=}, {def_list=},"
-                    #     f" {arg_spec_array=}"
-                    # )
 
                     do_star_arg_spec2 = ft.partial(
                         self.do_star_arg_spec,
@@ -1145,19 +1135,7 @@ class TestEntryTraceCombos:
                             mi.sliding_window(arg_spec_array, len(def_list)),
                         )
                     )
-                # print(f"{arg_specs_parts=}")
-                # print(f"{def_list=}, {arg_spec_bits=}, {num_defs=}")
-                # arg_spec_array = []
-                # if self.plist_type == PlistType.Po:
-                #     arg_list = list(
-                #         it.starmap(self.set_po_args, zip(self.start_parms, def_list))
-                #     )
-                #     arg_spec_array.append(self.arg_spec[0] + "".join(arg_list))
-                # else:
-                #     arg_list = list(
-                #         it.starmap(self.set_kw_args, zip(self.start_parms, def_list))
-                #     )
-                #     arg_spec_ar
+
                 final_arg_specs = []
                 for item in arg_specs_ret_reses:
                     final_arg_specs += item
@@ -1174,14 +1152,12 @@ class TestEntryTraceCombos:
                 plist_parms: list[str],
                 raw_arg_specs: list[list[str]],
             ) -> list[ArgSpecRetRes]:
-                # print(f"   3 {plist_parms=}, {raw_arg_specs=}, {arg_spec_array=}")
                 arg_specs_ret_reses = []
                 arg_spec_set: set[str] = set()
                 for raw_arg_spec in raw_arg_specs:
                     arg_spec_parts = list(
                         it.starmap(self.set_arg_spec, zip(raw_arg_spec, arg_spec_array))
                     )
-                    # arg_specs_parts.append(arg_spec_parts)
                     arg_spec = "".join(arg_spec_parts)
                     if arg_spec in arg_spec_set:
                         continue
@@ -1195,10 +1171,7 @@ class TestEntryTraceCombos:
                     )
                     # ret_reses_parts.append(ret_res_parts)
                     ret_res = "".join(ret_res_parts)
-                    # print(f"     4 {raw_arg_spec=}, {arg_spec=}, {ret_res=}")
                     arg_spec_ret_res = ArgSpecRetRes(
-                        # arg_specs_parts=arg_spec_parts,
-                        # ret_reses_parts=ret_res_parts,
                         arg_spec=arg_spec,
                         ret_result=ret_res,
                     )
@@ -1243,72 +1216,24 @@ class TestEntryTraceCombos:
                 p_str = f"{parm}="
                 return "{" + p_str + "}, "
 
-        final_sections: list[PlistSection] = []
-        po_section = PlistSection()
+        plist_spec = PlistSpec(num_po=num_po_arg, num_pk=num_pk_arg, num_ko=num_ko_arg)
 
-        po_plist_sections = po_section.create_combos(
-            plist_type=PlistType.Po, num_parms=num_po_arg
-        )
-
-        for po_plist_section in po_plist_sections:
-            po_pk_plist_sections = po_plist_section.create_combos(
-                plist_type=PlistType.Pk, num_parms=num_pk_arg
-            )
-
-            for po_pk_plist_section in po_pk_plist_sections:
-                # print(f"{po_pk_plist_section.plist=}")
-                po_pk_ko_plist_sections = po_pk_plist_section.create_combos(
-                    plist_type=PlistType.Ko, num_parms=num_ko_arg
-                )
-
-                for po_pk_ko_plist_section in po_pk_ko_plist_sections:
-                    final_sections.append(po_pk_ko_plist_section)
-                    # print(f"{po_pk_ko_plist_section.plist=}")
-
-        for plist_section in final_sections:
-            print(f"{plist_section.plist=}")
-            print(f"{plist_section.arg_spec=}")
-            print(f"{plist_section.ret_result=}")
-            print(f"{plist_section.ret_stmt=}")
-            print()
-
-            # code = (
-            #     f"global f999"
-            #     f"\ndef f1({plist_section.plist}): return f'{plist_section.ret_stmt}'"
-            #     f"\nf1=etrace(f1)"
-            #     f"\nf1=functools.partial(f1,{plist_section.arg_spec})"
-            #     f"\nf999=f1"
-            # )
-
-            # code = (
-            #     f"global f999"
-            #     f"\ndef f1({plist_section.plist}): return f'{plist_section.ret_stmt}'"
-            #     f"\nf1=etrace(f1)"
-            #     f"\nf999=f1"
-            # )
-
+        for final_plist_combo in plist_spec.final_plist_combos:
             code = (
                 f"global f999"
-                f"\ndef f1({plist_section.plist}): "
-                f"return f'{plist_section.ret_stmt}'"
+                f"\ndef f1({final_plist_combo.plist}): "
+                f"return f'{plist_spec.ret_stmt}'"
                 f"\nf1=etrace(f1)"
                 f"\nf999=f1"
             )
-            print(f"\n{code=}")
 
             exec(code)
 
-            for idx in range(len(plist_section.arg_spec)):
-                exec(f"f999({plist_section.arg_spec[idx]})")
-
-                # exp_entry_log_msg = (
-                #     rf"<string>:f1:\? entry: {plist_section.ret_result}"
-                #     "caller: test_entry_trace.py"
-                #     "::TestEntryTraceCombos.test_etrace_combo_signature:[0-9]+"
-                # )
+            for arg_spec_ret_res in final_plist_combo.arg_specs_ret_reses:
+                exec(f"f999({arg_spec_ret_res.arg_spec})")
 
                 exp_entry_log_msg = (
-                    rf"<string>:f1:\? entry: {plist_section.ret_result[idx]}"
+                    rf"<string>:f1:\? entry: {arg_spec_ret_res.ret_result}"
                     "caller: <string>:1"
                 )
 
@@ -1321,7 +1246,7 @@ class TestEntryTraceCombos:
 
                 exp_exit_log_msg = (
                     rf"<string>:f1:\? exit: return_value='"
-                    rf"{plist_section.ret_result[idx]}'"
+                    rf"{arg_spec_ret_res.ret_result}'"
                 )
 
                 log_ver.add_msg(
@@ -1336,27 +1261,6 @@ class TestEntryTraceCombos:
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
         log_ver.verify_log_results(match_results)
-
-        # po_parms_values = ["", "a,", "b,", "c,"]
-        # po_args_values = ["", "1,", "2,", "3,"]
-        # exp_trace_arg_values = [" ", "a=1, ", "b=2, ", "c=3, "]
-        # return_values = ["None", "f'{a=}'", "f'{a=}, {b=}'", "f'{a=}, {b=}, {c=}'"]
-        # exp_return_values = ["None", "'a=1'", "'a=1, b=2'", "'a=1, b=2, c=3'"]
-        # po_parms = ""
-        # po_args = ""
-        # exp_trace_args = ""
-        # return_statement = ""
-        # exp_return = ""
-        # for idx in range(num_po_arg + 1):
-        #     po_parms += po_parms_values[idx]
-        #     po_args += po_args_values[idx]
-        #     exp_trace_args += exp_trace_arg_values[idx]
-        #     return_statement = return_values[idx]
-        #     exp_return = exp_return_values[idx]
-        #
-        # if po_parms:
-        #     po_parms += "/"
-        #     po_args = "," + po_args
 
     ####################################################################
     # test_etrace_combo_env
