@@ -859,6 +859,9 @@ class TestEntryTraceCombos:
     @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
     @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
     @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
+    # @pytest.mark.parametrize("num_po_arg", [2])
+    # @pytest.mark.parametrize("num_pk_arg", [2])
+    # @pytest.mark.parametrize("num_ko_arg", [2])
     def test_etrace_combo_signature(
         self,
         num_po_arg: int,
@@ -1149,10 +1152,7 @@ class TestEntryTraceCombos:
                 *,
                 plist_parms: list[str],
                 raw_arg_specs: list[list[str]],
-            ) -> list[ArgSpecRetRes]:
-                arg_specs_ret_reses = []
-                arg_spec_set: set[str] = set()
-
+            ) -> Iterable[ArgSpecRetRes]:
                 ret_res = "".join(
                     list(
                         it.starmap(
@@ -1161,7 +1161,7 @@ class TestEntryTraceCombos:
                     )
                 )
 
-                for raw_arg_spec in raw_arg_specs:
+                def get_perms(raw_arg_spec: list[str]):
                     arg_spec_parts = list(
                         it.starmap(self.set_arg_spec, zip(raw_arg_spec, arg_spec_array))
                     )
@@ -1175,7 +1175,7 @@ class TestEntryTraceCombos:
                     mid_args = list(mid_args)
 
                     if len(mid_args) > 1:
-                        arg_spec_set |= set(
+                        return list(
                             map(
                                 lambda x: "".join(
                                     list(left_args2) + list(x) + list(right_args2)
@@ -1184,16 +1184,12 @@ class TestEntryTraceCombos:
                             )
                         )
                     else:
-                        arg_spec_set |= {"".join(arg_spec_parts)}
+                        return ["".join(arg_spec_parts)]
 
-                for arg_spec in arg_spec_set:
-                    arg_spec_ret_res = ArgSpecRetRes(
-                        arg_spec=arg_spec,
-                        ret_result=ret_res,
-                    )
-                    arg_specs_ret_reses.append(arg_spec_ret_res)
-
-                return arg_specs_ret_reses
+                return map(
+                    lambda x: ArgSpecRetRes(arg_spec=x, ret_result=ret_res),
+                    set(mi.collapse(map(get_perms, raw_arg_specs))),
+                )
 
             @staticmethod
             def set_arg_spec(parm, selector):
