@@ -3,7 +3,7 @@
 ########################################################################
 # Standard Library
 ########################################################################
-
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum, auto
 import functools as ft
@@ -1143,17 +1143,17 @@ class TestEntryTraceCombos:
                     plist=plist,
                 )
 
-            def do_perms(
-                self,
-                perm: list[str],
-                *,
-                arg_spec_parts: list[str],
-                start_idx: int,
-                end_idx: int,
-            ) -> list[str]:
-                arg_spec_parts2 = arg_spec_parts.copy()
-                arg_spec_parts2[start_idx : end_idx + 1] = list(perm)
-                return arg_spec_parts2
+            # def do_perms(
+            #     self,
+            #     perm: list[str],
+            #     *,
+            #     arg_spec_parts: list[str],
+            #     start_idx: int,
+            #     end_idx: int,
+            # ) -> list[str]:
+            #     arg_spec_parts2 = arg_spec_parts.copy()
+            #     arg_spec_parts2[start_idx : end_idx + 1] = list(perm)
+            #     return arg_spec_parts2
 
             def do_star_arg_spec(
                 self,
@@ -1162,17 +1162,6 @@ class TestEntryTraceCombos:
                 plist_parms: list[str],
                 raw_arg_specs: list[list[str]],
             ) -> list[ArgSpecRetRes]:
-                # def do_perms(
-                #     perm: list[str],
-                #     *,
-                #     arg_spec_parts: list[str],
-                #     start_idx: int,
-                #     end_idx: int,
-                # ) -> list[str]:
-                #     arg_spec_parts2 = arg_spec_parts.copy()
-                #     arg_spec_parts2[start_idx : end_idx + 1] = list(perm)
-                #     return arg_spec_parts2
-
                 arg_specs_ret_reses = []
                 arg_spec_set: set[str] = set()
 
@@ -1188,26 +1177,19 @@ class TestEntryTraceCombos:
                     arg_spec_parts = list(
                         it.starmap(self.set_arg_spec, zip(raw_arg_spec, arg_spec_array))
                     )
-
-                    start_idx = -1
-                    end_idx = -1
-                    for idx, item in enumerate(arg_spec_parts):
-                        if "=" in item:
-                            if start_idx == -1:
-                                start_idx = idx
-                            end_idx = idx
-
                     arg_spec_parts_list = [arg_spec_parts]
-                    if 0 <= start_idx <= (end_idx - 1):
-                        do_perms2 = ft.partial(
-                            self.do_perms,
-                            arg_spec_parts=arg_spec_parts,
-                            start_idx=start_idx,
-                            end_idx=end_idx,
-                        )
+
+                    left_args2, after_args = mi.before_and_after(
+                        lambda x: "=" not in x, arg_spec_parts
+                    )
+                    mid_args, right_args2 = mi.before_and_after(
+                        lambda x: "=" in x, after_args
+                    )
+                    mid_args = list(mid_args)
+                    if len(mid_args) > 1:
                         arg_spec_parts_list = map(
-                            do_perms2,
-                            it.permutations(arg_spec_parts[start_idx : end_idx + 1]),
+                            lambda x: list(left_args2) + list(x) + list(right_args2),
+                            it.permutations(mid_args),
                         )
 
                     for arg_spec_parts3 in arg_spec_parts_list:
