@@ -1165,7 +1165,6 @@ class TestEntryTraceCombos:
                     arg_spec_parts = list(
                         it.starmap(self.set_arg_spec, zip(raw_arg_spec, arg_spec_array))
                     )
-                    arg_spec_list = ["".join(arg_spec_parts)]
 
                     left_args2, after_args = mi.before_and_after(
                         lambda x: "=" not in x, arg_spec_parts
@@ -1174,25 +1173,25 @@ class TestEntryTraceCombos:
                         lambda x: "=" in x, after_args
                     )
                     mid_args = list(mid_args)
+
                     if len(mid_args) > 1:
-                        arg_spec_list = map(
-                            lambda x: "".join(
-                                list(left_args2) + list(x) + list(right_args2)
-                            ),
-                            it.permutations(mid_args),
+                        arg_spec_set |= set(
+                            map(
+                                lambda x: "".join(
+                                    list(left_args2) + list(x) + list(right_args2)
+                                ),
+                                it.permutations(mid_args),
+                            )
                         )
+                    else:
+                        arg_spec_set |= {"".join(arg_spec_parts)}
 
-                    for arg_spec in arg_spec_list:
-                        if arg_spec in arg_spec_set:
-                            continue
-                        else:
-                            arg_spec_set |= {arg_spec}
-
-                        arg_spec_ret_res = ArgSpecRetRes(
-                            arg_spec=arg_spec,
-                            ret_result=ret_res,
-                        )
-                        arg_specs_ret_reses.append(arg_spec_ret_res)
+                for arg_spec in arg_spec_set:
+                    arg_spec_ret_res = ArgSpecRetRes(
+                        arg_spec=arg_spec,
+                        ret_result=ret_res,
+                    )
+                    arg_specs_ret_reses.append(arg_spec_ret_res)
 
                 return arg_specs_ret_reses
 
@@ -1235,7 +1234,7 @@ class TestEntryTraceCombos:
 
         plist_spec = PlistSpec(num_po=num_po_arg, num_pk=num_pk_arg, num_ko=num_ko_arg)
 
-        for final_plist_combo in plist_spec.final_plist_combos:
+        for idx1, final_plist_combo in enumerate(plist_spec.final_plist_combos):
             code = (
                 f"global f999"
                 f"\ndef f1({final_plist_combo.plist}): "
@@ -1254,7 +1253,7 @@ class TestEntryTraceCombos:
             )
             exec(code)
 
-            for idx, arg_spec_ret_res in enumerate(
+            for idx2, arg_spec_ret_res in enumerate(
                 final_plist_combo.arg_specs_ret_reses
             ):
                 arg_spec_log_msg = f"##################### {arg_spec_ret_res.arg_spec=}"
@@ -1291,6 +1290,9 @@ class TestEntryTraceCombos:
                     fullmatch=True,
                 )
 
+            print(f"\n{idx2=}")
+        print(f"{idx1=}")
+        print(f"{(idx1*idx2)=}")
         ################################################################
         # check log results
         ################################################################
