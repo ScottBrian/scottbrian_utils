@@ -1143,18 +1143,6 @@ class TestEntryTraceCombos:
                     plist=plist,
                 )
 
-            # def do_perms(
-            #     self,
-            #     perm: list[str],
-            #     *,
-            #     arg_spec_parts: list[str],
-            #     start_idx: int,
-            #     end_idx: int,
-            # ) -> list[str]:
-            #     arg_spec_parts2 = arg_spec_parts.copy()
-            #     arg_spec_parts2[start_idx : end_idx + 1] = list(perm)
-            #     return arg_spec_parts2
-
             def do_star_arg_spec(
                 self,
                 arg_spec_array: list[int],
@@ -1177,7 +1165,7 @@ class TestEntryTraceCombos:
                     arg_spec_parts = list(
                         it.starmap(self.set_arg_spec, zip(raw_arg_spec, arg_spec_array))
                     )
-                    arg_spec_parts_list = [arg_spec_parts]
+                    arg_spec_list = ["".join(arg_spec_parts)]
 
                     left_args2, after_args = mi.before_and_after(
                         lambda x: "=" not in x, arg_spec_parts
@@ -1187,13 +1175,14 @@ class TestEntryTraceCombos:
                     )
                     mid_args = list(mid_args)
                     if len(mid_args) > 1:
-                        arg_spec_parts_list = map(
-                            lambda x: list(left_args2) + list(x) + list(right_args2),
+                        arg_spec_list = map(
+                            lambda x: "".join(
+                                list(left_args2) + list(x) + list(right_args2)
+                            ),
                             it.permutations(mid_args),
                         )
 
-                    for arg_spec_parts3 in arg_spec_parts_list:
-                        arg_spec = "".join(arg_spec_parts3)
+                    for arg_spec in arg_spec_list:
                         if arg_spec in arg_spec_set:
                             continue
                         else:
