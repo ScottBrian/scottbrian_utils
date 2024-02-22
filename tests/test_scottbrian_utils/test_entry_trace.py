@@ -948,7 +948,6 @@ class TestEntryTraceCombos:
                     final_arg_specs.append(new_arg_spec)
                 new_arg_specs_ret_reses = final_arg_specs
 
-                # new_arg_spec = self.arg_spec + other.arg_spec
                 return PlistSection(new_plist_parts, new_arg_specs_ret_reses, new_plist)
 
         class PlistSpec:
@@ -997,35 +996,30 @@ class TestEntryTraceCombos:
 
                 self.ko_raw_arg_specs = [list(map(self.set_ko_args, self.raw_ko_parms))]
 
-                self.raw_arg_specs = self.build_arg_specs(
-                    num_po=num_po, num_pk=num_pk, num_ko=num_ko
-                )
+                self.raw_arg_specs = self.build_arg_specs()
 
                 self.num_po_pk = num_po + num_pk
                 self.po_pk_def_array: list[int] = [0]
                 self.po_pk_sections: list[PlistSection] = []
 
-                plist_parms = self.raw_po_parms + self.raw_pk_parms
                 self.po_pk_sections = self.build_plist_section(
-                    plist_parms=plist_parms,
+                    plist_parms=self.raw_po_parms + self.raw_pk_parms,
                     raw_arg_specs=self.po_pk_raw_arg_specs,
                     prefix_idx=0,
                     suffix_idx=num_po,
                 )
 
-                plist_parms = self.raw_ko_parms
                 self.ko_sections = self.build_plist_section(
-                    plist_parms=plist_parms,
+                    plist_parms=self.raw_ko_parms,
                     raw_arg_specs=self.ko_raw_arg_specs,
                     prefix_idx=self.num_ko,
                     suffix_idx=0,
                 )
 
-                self.plist_combos = it.product(self.po_pk_sections, self.ko_sections)
-                self.final_plist_combos: list[PlistSection] = []
-                for plist_combo in self.plist_combos:
-                    new_plist_section = plist_combo[0] + plist_combo[1]
-                    self.final_plist_combos.append(new_plist_section)
+                self.final_plist_combos = map(
+                    lambda x: x[0] + x[1],
+                    it.product(self.po_pk_sections, self.ko_sections),
+                )
 
             def build_po_pk_arg_specs(self, num_pk: int):
                 po_raw_arg_spec = [list(map(self.set_po_args, self.raw_po_parms))]
@@ -1038,10 +1032,10 @@ class TestEntryTraceCombos:
 
                 return specs
 
-            def build_arg_specs(self, num_po: int, num_pk: int, num_ko: int):
+            def build_arg_specs(self):
                 po_raw_arg_spec = [list(map(self.set_po_args, self.raw_po_parms))]
 
-                pk_raw_arg_specs = self.build_pk_arg_specs(num_pk=num_pk)
+                pk_raw_arg_specs = self.build_pk_arg_specs(num_pk=self.num_pk)
 
                 ko_raw_arg_spec = [list(map(self.set_ko_args, self.raw_ko_parms))]
 
@@ -1172,9 +1166,8 @@ class TestEntryTraceCombos:
                     mid_args, right_args2 = mi.before_and_after(
                         lambda x: "=" in x, after_args
                     )
-                    mid_args = list(mid_args)
 
-                    if len(mid_args) > 1:
+                    if len(mid_args := list(mid_args)) > 1:
                         return list(
                             map(
                                 lambda x: "".join(
@@ -1200,20 +1193,12 @@ class TestEntryTraceCombos:
                 return parm + ("", ", ", f"={parm[-1]}, ")[selector]
 
             @staticmethod
-            def set_po_args2(parm, selector):
-                return (f"{parm[-1]}0, ", " ")[selector]
-
-            @staticmethod
             def set_po_args(parm):
                 return f"{parm[-1]}0, "
 
             @staticmethod
             def set_pk_args(parm, selector):
                 return (f"{parm[-1]}0, ", f"{parm}={parm[-1]}0, ")[selector]
-
-            @staticmethod
-            def set_kw_args(parm, selector):
-                return (f"{parm}={parm[-1]}0, ", "")[selector]
 
             @staticmethod
             def set_ko_args(parm):
