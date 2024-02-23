@@ -914,12 +914,21 @@ class TestEntryTraceCombos:
         @dataclass
         class ArgSpecRetRes:
             arg_spec: str = ""
+            omit_parms: str = ""
+            log_result: str = ""
             ret_result: str = ""
 
             def __add__(self, other: "ArgSpecRetRes"):
                 new_arg_spec = (self.arg_spec + other.arg_spec)[0:-2]
+                new_omit_parms = self.omit_parms + other.omit_parms
+                new_log_result = self.log_result + other.log_result
                 new_ret_result = self.ret_result + other.ret_result
-                return ArgSpecRetRes(new_arg_spec, new_ret_result)
+                return ArgSpecRetRes(
+                    new_arg_spec,
+                    new_omit_parms,
+                    new_log_result,
+                    new_ret_result,
+                )
 
         class PlistType(Enum):
             """Request for SmartThread."""
@@ -933,10 +942,12 @@ class TestEntryTraceCombos:
             plist_parts: list[str]
             arg_specs_ret_reses: list[ArgSpecRetRes]
             plist: str = ""
+            omit_parms: str = ""
 
             def __add__(self, other: "PlistSection"):
                 new_plist_parts = self.plist_parts + other.plist_parts
                 new_plist = (self.plist + other.plist)[0:-2]
+                new_omit_parms = self.omit_parms + other.omit_parms
 
                 combo_ret_reses = list(
                     it.product(self.arg_specs_ret_reses, other.arg_specs_ret_reses)
@@ -948,7 +959,12 @@ class TestEntryTraceCombos:
                     final_arg_specs.append(new_arg_spec)
                 new_arg_specs_ret_reses = final_arg_specs
 
-                return PlistSection(new_plist_parts, new_arg_specs_ret_reses, new_plist)
+                return PlistSection(
+                    new_plist_parts,
+                    new_arg_specs_ret_reses,
+                    new_plist,
+                    new_omit_parms,
+                )
 
         class PlistSpec:
             raw_parms = {
@@ -1062,21 +1078,25 @@ class TestEntryTraceCombos:
 
             def build_plist_section(
                 self, plist_parms, raw_arg_specs, prefix_idx, suffix_idx
-            ):
+            ) -> Iterable[PlistSection]:
                 if plist_parms:
                     def_array = [1] * len(plist_parms) + [2] * len(plist_parms)
+                    omit_parms_powers_set = {plist_parms[0]}
                 else:
                     plist_parms = [" "]
+                    omit_parms_powers_set = {""}
                     def_array = [0]
 
-                do_star2 = ft.partial(
-                    self.do_star,
-                    plist_parms=plist_parms,
-                    raw_arg_specs=raw_arg_specs,
-                    prefix_idx=prefix_idx,
-                    suffix_idx=suffix_idx,
-                )
-                return map(do_star2, mi.sliding_window(def_array, len(plist_parms)))
+                for omit_parms in omit_parms_powers_set:
+                    do_star2 = ft.partial(
+                        self.do_star,
+                        plist_parms=plist_parms,
+                        omit_parms=omit_parms,
+                        raw_arg_specs=raw_arg_specs,
+                        prefix_idx=prefix_idx,
+                        suffix_idx=suffix_idx,
+                    )
+                    return map(do_star2, mi.sliding_window(def_array, len(plist_parms)))
 
             def do_pk_args(self, p_or_k_array):
                 return list(
@@ -1088,6 +1108,7 @@ class TestEntryTraceCombos:
                 def_list: list[int],
                 *,
                 plist_parms: list[str],
+                omit_parms: set[str],
                 raw_arg_specs: list[list[str]],
                 prefix_idx: int,
                 suffix_idx: int,
@@ -1110,6 +1131,8 @@ class TestEntryTraceCombos:
                         [
                             ArgSpecRetRes(
                                 arg_spec=" ",
+                                omit_parms="",
+                                log_result="",
                                 ret_result="",
                             )
                         ]
@@ -1121,6 +1144,7 @@ class TestEntryTraceCombos:
                     do_star_arg_spec2 = ft.partial(
                         self.do_star_arg_spec,
                         plist_parms=plist_parms,
+                        omit_parms=omit_parms,
                         raw_arg_specs=raw_arg_specs,
                     )
 
@@ -1134,10 +1158,13 @@ class TestEntryTraceCombos:
                 final_arg_specs = []
                 for item in arg_specs_ret_reses:
                     final_arg_specs += item
+                omit_parms_str = "".join(omit_parms)
+                print(f"{omit_parms_str=}")
                 return PlistSection(
                     plist_parts=plist_parts,
                     arg_specs_ret_reses=final_arg_specs,
                     plist=plist,
+                    omit_parms=omit_parms_str,
                 )
 
             def do_star_arg_spec(
@@ -1145,6 +1172,7 @@ class TestEntryTraceCombos:
                 arg_spec_array: list[int],
                 *,
                 plist_parms: list[str],
+                omit_parms: set[str],
                 raw_arg_specs: list[list[str]],
             ) -> Iterable[ArgSpecRetRes]:
                 ret_res = "".join(
@@ -1154,6 +1182,13 @@ class TestEntryTraceCombos:
                         )
                     )
                 )
+
+                omit_parms = []
+                for plist_parm in plist_parms:
+                    if plist_parm not in ret_res:
+                        omit_parms.append(plist_parm)
+
+                omit_parms = "".join(omit_parms)
 
                 def get_perms(raw_arg_spec: list[str]):
                     arg_spec_parts = list(
@@ -1180,7 +1215,12 @@ class TestEntryTraceCombos:
                         return ["".join(arg_spec_parts)]
 
                 return map(
-                    lambda x: ArgSpecRetRes(arg_spec=x, ret_result=ret_res),
+                    lambda x: ArgSpecRetRes(
+                        arg_spec=x,
+                        omit_parms=omit_parms,
+                        log_result=ret_res,
+                        ret_result=ret_res,
+                    ),
                     set(mi.collapse(map(get_perms, raw_arg_specs))),
                 )
 
@@ -1216,11 +1256,16 @@ class TestEntryTraceCombos:
         plist_spec = PlistSpec(num_po=num_po_arg, num_pk=num_pk_arg, num_ko=num_ko_arg)
 
         for idx1, final_plist_combo in enumerate(plist_spec.final_plist_combos):
+            if final_plist_combo.omit_parms:
+                omit_parms_str = f",omit_parms='{final_plist_combo.omit_parms}'"
+            else:
+                omit_parms_str = ""
+            print(f"2 {omit_parms_str=}")
             code = (
                 f"global f999"
                 f"\ndef f1({final_plist_combo.plist}): "
                 f"return f'{plist_spec.ret_stmt}'"
-                f"\nf1=etrace(f1)"
+                f"\nf1=etrace(f1{omit_parms_str})"
                 f"\nf999=f1"
             )
 
