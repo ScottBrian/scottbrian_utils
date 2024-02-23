@@ -914,40 +914,28 @@ class TestEntryTraceCombos:
         @dataclass
         class ArgSpecRetRes:
             arg_spec: str = ""
-            omit_parms: str = ""
             log_result: str = ""
             ret_result: str = ""
 
             def __add__(self, other: "ArgSpecRetRes"):
                 new_arg_spec = (self.arg_spec + other.arg_spec)[0:-2]
-                new_omit_parms = self.omit_parms + other.omit_parms
                 new_log_result = self.log_result + other.log_result
                 new_ret_result = self.ret_result + other.ret_result
+
                 return ArgSpecRetRes(
                     new_arg_spec,
-                    new_omit_parms,
                     new_log_result,
                     new_ret_result,
                 )
 
-        class PlistType(Enum):
-            """Request for SmartThread."""
-
-            Po = auto()
-            Pk = auto()
-            Ko = auto()
-
         @dataclass
-        class PlistSection:
-            plist_parts: list[str]
+        class OmitVariation:
+            omit_parts: list[str]
             arg_specs_ret_reses: list[ArgSpecRetRes]
-            plist: str = ""
             omit_parms: str = ""
 
-            def __add__(self, other: "PlistSection"):
-                new_plist_parts = self.plist_parts + other.plist_parts
-                new_plist = (self.plist + other.plist)[0:-2]
-                new_omit_parms = self.omit_parms + other.omit_parms
+            def __add__(self, other: "OmitVariations"):
+                new_omit_parts = self.omit_parts + other.omit_parts
 
                 combo_ret_reses = list(
                     it.product(self.arg_specs_ret_reses, other.arg_specs_ret_reses)
@@ -959,11 +947,33 @@ class TestEntryTraceCombos:
                     final_arg_specs.append(new_arg_spec)
                 new_arg_specs_ret_reses = final_arg_specs
 
+                new_omit_parms = self.omit_parms + other.omit_parms
+
+                return OmitVariation(
+                    omit_parts=new_omit_parts,
+                    arg_specs_ret_reses=new_arg_specs_ret_reses,
+                    omit_parms=new_omit_parms,
+                )
+
+        class PlistType(Enum):
+            """Request for SmartThread."""
+
+            Po = auto()
+            Pk = auto()
+            Ko = auto()
+
+        @dataclass
+        class PlistSection:
+            omit_variations: list[OmitVariation]
+            plist: str = ""
+
+            def __add__(self, other: "PlistSection"):
+                new_omit_variations = self.omit_variations + other.omit_variations
+                new_plist = (self.plist + other.plist)[0:-2]
+
                 return PlistSection(
-                    new_plist_parts,
-                    new_arg_specs_ret_reses,
-                    new_plist,
-                    new_omit_parms,
+                    omit_variations=new_omit_variations,
+                    plist=new_plist,
                 )
 
         class PlistSpec:
@@ -1081,22 +1091,22 @@ class TestEntryTraceCombos:
             ) -> Iterable[PlistSection]:
                 if plist_parms:
                     def_array = [1] * len(plist_parms) + [2] * len(plist_parms)
-                    omit_parms_powers_set = {plist_parms[0]}
                 else:
-                    plist_parms = [" "]
-                    omit_parms_powers_set = {""}
-                    def_array = [0]
+                    return [PlistSection(omit_variations=[
+                        OmitVariation(omit_parts=[""],
+                                      arg_specs_ret_reses=[
+                                          ArgSpecRetRes()],
+                                      omit_parms="", plist="")]
 
-                for omit_parms in omit_parms_powers_set:
-                    do_star2 = ft.partial(
-                        self.do_star,
-                        plist_parms=plist_parms,
-                        omit_parms=omit_parms,
-                        raw_arg_specs=raw_arg_specs,
-                        prefix_idx=prefix_idx,
-                        suffix_idx=suffix_idx,
-                    )
-                    return map(do_star2, mi.sliding_window(def_array, len(plist_parms)))
+
+                do_star2 = ft.partial(
+                    self.do_star,
+                    plist_parms=plist_parms,
+                    raw_arg_specs=raw_arg_specs,
+                    prefix_idx=prefix_idx,
+                    suffix_idx=suffix_idx,
+                )
+                return map(do_star2, mi.sliding_window(def_array, len(plist_parms)))
 
             def do_pk_args(self, p_or_k_array):
                 return list(
@@ -1108,7 +1118,6 @@ class TestEntryTraceCombos:
                 def_list: list[int],
                 *,
                 plist_parms: list[str],
-                omit_parms: set[str],
                 raw_arg_specs: list[list[str]],
                 prefix_idx: int,
                 suffix_idx: int,
@@ -1126,6 +1135,9 @@ class TestEntryTraceCombos:
                 else:
                     plist = "".join(plist_parts)
 
+                omit_parms_powers_set = {"", plist_parms[0]}
+
+                for omit_parms in omit_parms_powers_set:
                 if len(def_list) == 1 and def_list[0] == 0:
                     arg_specs_ret_reses = [
                         [
@@ -1160,12 +1172,8 @@ class TestEntryTraceCombos:
                     final_arg_specs += item
                 omit_parms_str = "".join(omit_parms)
                 print(f"{omit_parms_str=}")
-                return PlistSection(
-                    plist_parts=plist_parts,
-                    arg_specs_ret_reses=final_arg_specs,
-                    plist=plist,
-                    omit_parms=omit_parms_str,
-                )
+                return PlistSection(omit_variations=?,
+                                    plist=plist)
 
             def do_star_arg_spec(
                 self,
