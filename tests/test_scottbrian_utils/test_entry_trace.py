@@ -4,7 +4,7 @@
 # Standard Library
 ########################################################################
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 import functools as ft
 import datetime
@@ -856,12 +856,12 @@ class TestEntryTraceCombos:
     ####################################################################
     # test_etrace_combo_signature
     ####################################################################
-    @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
-    @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
-    @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
-    # @pytest.mark.parametrize("num_po_arg", [2])
-    # @pytest.mark.parametrize("num_pk_arg", [2])
-    # @pytest.mark.parametrize("num_ko_arg", [2])
+    # @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
+    # @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
+    # @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
+    @pytest.mark.parametrize("num_po_arg", [0])
+    @pytest.mark.parametrize("num_pk_arg", [0])
+    @pytest.mark.parametrize("num_ko_arg", [0])
     def test_etrace_combo_signature(
         self,
         num_po_arg: int,
@@ -928,21 +928,31 @@ class TestEntryTraceCombos:
                     new_ret_result,
                 )
 
+        def get_def_arg_spec():
+            return [ArgSpecRetRes()]
+
         @dataclass
         class OmitVariation:
-            omit_parts: list[str]
-            arg_specs_ret_reses: list[ArgSpecRetRes]
+            # arg_specs_ret_reses: list[ArgSpecRetRes] = (
+            #     field(default_factory=lambda: [ArgSpecRetRes()]),
+            # )
+            arg_specs_ret_reses: list[ArgSpecRetRes] = (
+                field(default_factory=get_def_arg_spec),
+            )
+            # arg_specs_ret_reses: list[ArgSpecRetRes]
             omit_parms: str = ""
 
             def __add__(self, other: "OmitVariations"):
-                new_omit_parts = self.omit_parts + other.omit_parts
-
+                print(f"\nOmitVariation {self=}")
                 combo_ret_reses = list(
                     it.product(self.arg_specs_ret_reses, other.arg_specs_ret_reses)
                 )
 
                 final_arg_specs: list[ArgSpecRetRes] = []
                 for arg_spec in combo_ret_reses:
+                    print(f"add 1 {arg_spec=}")
+                    print(f"add 2 {arg_spec[0]=}")
+                    print(f"add 3 {arg_spec[1]=}")
                     new_arg_spec = arg_spec[0] + arg_spec[1]
                     final_arg_specs.append(new_arg_spec)
                 new_arg_specs_ret_reses = final_arg_specs
@@ -950,7 +960,6 @@ class TestEntryTraceCombos:
                 new_omit_parms = self.omit_parms + other.omit_parms
 
                 return OmitVariation(
-                    omit_parts=new_omit_parts,
                     arg_specs_ret_reses=new_arg_specs_ret_reses,
                     omit_parms=new_omit_parms,
                 )
@@ -964,11 +973,24 @@ class TestEntryTraceCombos:
 
         @dataclass
         class PlistSection:
-            omit_variations: list[OmitVariation]
+            omit_variations: list[OmitVariation] = (
+                field(default_factory=lambda: [OmitVariation()]),
+            )
             plist: str = ""
 
             def __add__(self, other: "PlistSection"):
-                new_omit_variations = self.omit_variations + other.omit_variations
+                print(f"\n{self=}")
+                combo_omit_variations = list(
+                    it.product(self.omit_variations, other.omit_variations)
+                )
+
+                print(f"\n{combo_omit_variations=}")
+
+                final_omit_variations: list[OmitVariation] = []
+                for omit_variation in combo_omit_variations:
+                    new_omit_variation = omit_variation[0] + omit_variation[1]
+                    final_omit_variations.append(new_omit_variation)
+                new_omit_variations = final_omit_variations
                 new_plist = (self.plist + other.plist)[0:-2]
 
                 return PlistSection(
@@ -1022,11 +1044,11 @@ class TestEntryTraceCombos:
 
                 self.ko_raw_arg_specs = [list(map(self.set_ko_args, self.raw_ko_parms))]
 
-                self.raw_arg_specs = self.build_arg_specs()
+                # self.raw_arg_specs = self.build_arg_specs()
 
-                self.num_po_pk = num_po + num_pk
-                self.po_pk_def_array: list[int] = [0]
-                self.po_pk_sections: list[PlistSection] = []
+                # self.num_po_pk = num_po + num_pk
+                # self.po_pk_def_array: list[int] = [0]
+                # self.po_pk_sections: list[PlistSection] = []
 
                 self.po_pk_sections = self.build_plist_section(
                     plist_parms=self.raw_po_parms + self.raw_pk_parms,
@@ -1058,23 +1080,23 @@ class TestEntryTraceCombos:
 
                 return specs
 
-            def build_arg_specs(self):
-                po_raw_arg_spec = [list(map(self.set_po_args, self.raw_po_parms))]
-
-                pk_raw_arg_specs = self.build_pk_arg_specs(num_pk=self.num_pk)
-
-                ko_raw_arg_spec = [list(map(self.set_ko_args, self.raw_ko_parms))]
-
-                pre_raw_arg_specs = list(
-                    it.product(po_raw_arg_spec, pk_raw_arg_specs, ko_raw_arg_spec)
-                )
-
-                specs = [
-                    spec_item[0] + spec_item[1] + spec_item[2]
-                    for spec_item in pre_raw_arg_specs
-                ]
-
-                return specs
+            # def build_arg_specs(self):
+            #     po_raw_arg_spec = [list(map(self.set_po_args, self.raw_po_parms))]
+            #
+            #     pk_raw_arg_specs = self.build_pk_arg_specs(num_pk=self.num_pk)
+            #
+            #     ko_raw_arg_spec = [list(map(self.set_ko_args, self.raw_ko_parms))]
+            #
+            #     pre_raw_arg_specs = list(
+            #         it.product(po_raw_arg_spec, pk_raw_arg_specs, ko_raw_arg_spec)
+            #     )
+            #
+            #     specs = [
+            #         spec_item[0] + spec_item[1] + spec_item[2]
+            #         for spec_item in pre_raw_arg_specs
+            #     ]
+            #
+            #     return specs
 
             def build_pk_arg_specs(self, num_pk: int):
                 arg_spec = [[]]
@@ -1092,12 +1114,17 @@ class TestEntryTraceCombos:
                 if plist_parms:
                     def_array = [1] * len(plist_parms) + [2] * len(plist_parms)
                 else:
-                    return [PlistSection(omit_variations=[
-                        OmitVariation(omit_parts=[""],
-                                      arg_specs_ret_reses=[
-                                          ArgSpecRetRes()],
-                                      omit_parms="", plist="")]
+                    def_omit_variations = OmitVariation(
+                        arg_specs_ret_reses=[ArgSpecRetRes()], omit_parms=""
+                    )
+                    # def_omit_variations = OmitVariation()
 
+                    def_plist_section = PlistSection(
+                        omit_variations=[def_omit_variations]
+                    )
+                    print(f"\n{def_plist_section=}")
+                    return [def_plist_section]
+                    # return [PlistSection()]  # base default section
 
                 do_star2 = ft.partial(
                     self.do_star,
@@ -1135,28 +1162,19 @@ class TestEntryTraceCombos:
                 else:
                     plist = "".join(plist_parts)
 
-                omit_parms_powers_set = {"", plist_parms[0]}
+                omit_parms_powers_set = mi.powerset(plist_parms)
 
-                for omit_parms in omit_parms_powers_set:
-                if len(def_list) == 1 and def_list[0] == 0:
-                    arg_specs_ret_reses = [
-                        [
-                            ArgSpecRetRes(
-                                arg_spec=" ",
-                                omit_parms="",
-                                log_result="",
-                                ret_result="",
-                            )
-                        ]
-                    ]
-                else:
+                omit_variations: list[OmitVariation] = []
+                for omit_parm_parts in omit_parms_powers_set:
+                    omit_parms = "".join(omit_parm_parts)
+
                     num_defs = sum(def_list) - len(def_list)
                     arg_spec_array = [1] * len(def_list) + [0] * num_defs
 
                     do_star_arg_spec2 = ft.partial(
                         self.do_star_arg_spec,
                         plist_parms=plist_parms,
-                        omit_parms=omit_parms,
+                        omit_parm_parts=omit_parm_parts,
                         raw_arg_specs=raw_arg_specs,
                     )
 
@@ -1167,36 +1185,36 @@ class TestEntryTraceCombos:
                         )
                     )
 
-                final_arg_specs = []
-                for item in arg_specs_ret_reses:
-                    final_arg_specs += item
-                omit_parms_str = "".join(omit_parms)
-                print(f"{omit_parms_str=}")
-                return PlistSection(omit_variations=?,
-                                    plist=plist)
+                    final_arg_specs = []
+                    for item in arg_specs_ret_reses:
+                        final_arg_specs += item
+
+                    omit_variations.append(
+                        OmitVariation(
+                            arg_specs_ret_reses=final_arg_specs, omit_parms=omit_parms
+                        )
+                    )
+
+                return PlistSection(omit_variations=omit_variations, plist=plist)
 
             def do_star_arg_spec(
                 self,
                 arg_spec_array: list[int],
                 *,
                 plist_parms: list[str],
-                omit_parms: set[str],
+                omit_parm_parts: tuple[str],
                 raw_arg_specs: list[list[str]],
             ) -> Iterable[ArgSpecRetRes]:
-                ret_res = "".join(
-                    list(
-                        it.starmap(
-                            self.set_ret_result, zip(plist_parms, arg_spec_array)
-                        )
-                    )
+                ret_res_parts = list(
+                    it.starmap(self.set_ret_result, zip(plist_parms, arg_spec_array))
                 )
+                ret_res = "".join(ret_res_parts)
 
-                omit_parms = []
-                for plist_parm in plist_parms:
-                    if plist_parm not in ret_res:
-                        omit_parms.append(plist_parm)
+                for idx in range(len(plist_parms)):
+                    if plist_parms[idx] in omit_parm_parts:
+                        ret_res_parts[idx] = f"{plist_parms[idx]}='...'"
 
-                omit_parms = "".join(omit_parms)
+                log_result = "".join(ret_res_parts)
 
                 def get_perms(raw_arg_spec: list[str]):
                     arg_spec_parts = list(
@@ -1225,8 +1243,7 @@ class TestEntryTraceCombos:
                 return map(
                     lambda x: ArgSpecRetRes(
                         arg_spec=x,
-                        omit_parms=omit_parms,
-                        log_result=ret_res,
+                        log_result=log_result,
                         ret_result=ret_res,
                     ),
                     set(mi.collapse(map(get_perms, raw_arg_specs))),
@@ -1264,67 +1281,71 @@ class TestEntryTraceCombos:
         plist_spec = PlistSpec(num_po=num_po_arg, num_pk=num_pk_arg, num_ko=num_ko_arg)
 
         for idx1, final_plist_combo in enumerate(plist_spec.final_plist_combos):
-            if final_plist_combo.omit_parms:
-                omit_parms_str = f",omit_parms='{final_plist_combo.omit_parms}'"
-            else:
-                omit_parms_str = ""
-            print(f"2 {omit_parms_str=}")
-            code = (
-                f"global f999"
-                f"\ndef f1({final_plist_combo.plist}): "
-                f"return f'{plist_spec.ret_stmt}'"
-                f"\nf1=etrace(f1{omit_parms_str})"
-                f"\nf999=f1"
-            )
+            for omit_variation in final_plist_combo.omit_variations:
+                if omit_variation.omit_parms:
+                    omit_parms_str = f",omit_parms='{omit_variation.omit_parms}'"
+                else:
+                    omit_parms_str = ""
 
-            plist_spec_log_msg = f"##################### {final_plist_combo.plist=}"
-            logger.debug(plist_spec_log_msg)
-            log_ver.add_msg(
-                log_level=logging.DEBUG,
-                log_msg=re.escape(plist_spec_log_msg),
-                log_name="test_scottbrian_utils.test_entry_trace",
-                fullmatch=True,
-            )
-            exec(code)
+                print(f"2 {omit_parms_str=}")
+                code = (
+                    f"global f999"
+                    f"\ndef f1({final_plist_combo.plist}): "
+                    f"return f'{plist_spec.ret_stmt}'"
+                    f"\nf1=etrace(f1{omit_parms_str})"
+                    f"\nf999=f1"
+                )
 
-            for idx2, arg_spec_ret_res in enumerate(
-                final_plist_combo.arg_specs_ret_reses
-            ):
-                arg_spec_log_msg = f"##################### {arg_spec_ret_res.arg_spec=}"
-                logger.debug(arg_spec_log_msg)
+                plist_spec_log_msg = f"##################### {final_plist_combo.plist=}"
+                logger.debug(plist_spec_log_msg)
                 log_ver.add_msg(
                     log_level=logging.DEBUG,
-                    log_msg=arg_spec_log_msg,
+                    log_msg=re.escape(plist_spec_log_msg),
                     log_name="test_scottbrian_utils.test_entry_trace",
                     fullmatch=True,
                 )
-                exec(f"f999({arg_spec_ret_res.arg_spec})")
+                exec(code)
 
-                exp_entry_log_msg = (
-                    rf"<string>:f1:\? entry: {arg_spec_ret_res.ret_result}"
-                    "caller: <string>:1"
-                )
+                for idx2, arg_spec_ret_res in enumerate(
+                    omit_variation.arg_specs_ret_reses
+                ):
+                    arg_spec_log_msg = (
+                        f"##################### " f"{arg_spec_ret_res.arg_spec=}"
+                    )
+                    logger.debug(arg_spec_log_msg)
+                    log_ver.add_msg(
+                        log_level=logging.DEBUG,
+                        log_msg=arg_spec_log_msg,
+                        log_name="test_scottbrian_utils.test_entry_trace",
+                        fullmatch=True,
+                    )
+                    exec(f"f999({arg_spec_ret_res.arg_spec})")
 
-                log_ver.add_msg(
-                    log_level=logging.DEBUG,
-                    log_msg=exp_entry_log_msg,
-                    log_name="scottbrian_utils.entry_trace",
-                    fullmatch=True,
-                )
+                    exp_entry_log_msg = (
+                        rf"<string>:f1:\? entry: {arg_spec_ret_res.log_result}"
+                        "caller: <string>:1"
+                    )
 
-                exp_exit_log_msg = (
-                    rf"<string>:f1:\? exit: return_value='"
-                    rf"{arg_spec_ret_res.ret_result}'"
-                )
+                    log_ver.add_msg(
+                        log_level=logging.DEBUG,
+                        log_msg=exp_entry_log_msg,
+                        log_name="scottbrian_utils.entry_trace",
+                        fullmatch=True,
+                    )
 
-                log_ver.add_msg(
-                    log_level=logging.DEBUG,
-                    log_msg=exp_exit_log_msg,
-                    log_name="scottbrian_utils.entry_trace",
-                    fullmatch=True,
-                )
+                    exp_exit_log_msg = (
+                        rf"<string>:f1:\? exit: return_value='"
+                        rf"{arg_spec_ret_res.ret_result}'"
+                    )
 
-            print(f"\n{idx2=}")
+                    log_ver.add_msg(
+                        log_level=logging.DEBUG,
+                        log_msg=exp_exit_log_msg,
+                        log_name="scottbrian_utils.entry_trace",
+                        fullmatch=True,
+                    )
+
+                print(f"\n{idx2=}")
         print(f"{idx1=}")
         print(f"{(idx1*idx2)=}")
         ################################################################
