@@ -162,7 +162,12 @@ def etrace(
             target_sig_array_copy[key] = item
 
         for key in omit_parms:
-            target_sig_array_copy[key] = "..."
+            if key in target_sig_array_copy:
+                target_sig_array_copy[key] = "..."
+            else:
+                raise ValueError(
+                    f"{key} specified in omit_parms " f"is not the name of a parameter"
+                )
 
         for key, item in target_sig_array_copy.items():
             if isinstance(item, str) and item != "?":

@@ -10,16 +10,16 @@ import logging
 ########################################################################
 # logging
 ########################################################################
-logging.basicConfig(filename='MyLogFile.log',
-                    filemode='w',
-                    level=logging.DEBUG,
-                    format='%(asctime)s '
-                           '%(msecs)03d '
-                           '[%(levelname)8s] '
-                           '%(filename)s:'
-                           '%(funcName)s:'
-                           '%(lineno)d '
-                           '%(message)s')
+# logging.basicConfig(filename='MyLogFile.log',
+#                     filemode='w',
+#                     level=logging.DEBUG,
+#                     format='%(asctime)s '
+#                            '%(msecs)03d '
+#                            '[%(levelname)8s] '
+#                            '%(filename)s:'
+#                            '%(funcName)s:'
+#                            '%(lineno)d '
+#                            '%(message)s')
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # Thread exceptions
 # The following fixture depends on the following pytest specification:
 # -p no:threadexception
+
 
 # For PyCharm, the above specification goes into field Additional
 # Arguments found at Run -> edit configurations
@@ -64,7 +65,7 @@ class ExcHook:
 
     def __init__(self) -> None:
         """Initialize the ExcHook class instance."""
-        self.exc_err_msg1 = ''
+        self.exc_err_msg1 = ""
 
     def raise_exc_if_one(self) -> None:
         """Raise an error is we have one.
@@ -75,8 +76,8 @@ class ExcHook:
         """
         if self.exc_err_msg1:
             exc_msg = self.exc_err_msg1
-            self.exc_err_msg1 = ''
-            raise Exception(f'{exc_msg}')
+            self.exc_err_msg1 = ""
+            raise Exception(f"{exc_msg}")
 
 
 @pytest.fixture(autouse=True)
@@ -90,7 +91,7 @@ def thread_exc(monkeypatch: Any) -> Generator[ExcHook, None, None]:
         a thread exception handler
 
     """
-    logger.debug(f'hook before: {threading.excepthook}')
+    logger.debug(f"hook before: {threading.excepthook}")
     exc_hook = ExcHook()
 
     def mock_threading_excepthook(args: Any) -> None:
@@ -106,19 +107,21 @@ def thread_exc(monkeypatch: Any) -> Generator[ExcHook, None, None]:
             Exception: Test case thread test error
 
         """
-        exc_err_msg = (f'Test case excepthook: {args.exc_type}, '
-                       f'{args.exc_value}, {args.exc_traceback},'
-                       f' {args.thread}')
+        exc_err_msg = (
+            f"Test case excepthook: {args.exc_type}, "
+            f"{args.exc_value}, {args.exc_traceback},"
+            f" {args.thread}"
+        )
         traceback.print_tb(args.exc_traceback)
         logger.debug(exc_err_msg)
         current_thread = threading.current_thread()
-        logger.debug(f'excepthook current thread is {current_thread}')
+        logger.debug(f"excepthook current thread is {current_thread}")
         # ExcHook.exc_err_msg1 = exc_err_msg
         exc_hook.exc_err_msg1 = exc_err_msg
-        raise Exception(f'Test case thread test error: {exc_err_msg}')
+        raise Exception(f"Test case thread test error: {exc_err_msg}")
 
     monkeypatch.setattr(threading, "excepthook", mock_threading_excepthook)
-    logger.debug(f'hook after: {threading.excepthook}')
+    logger.debug(f"hook after: {threading.excepthook}")
     new_hook = threading.excepthook
 
     yield exc_hook
@@ -131,19 +134,20 @@ def thread_exc(monkeypatch: Any) -> Generator[ExcHook, None, None]:
 ########################################################################
 # dt_format_arg_list
 ########################################################################
-dt_format_arg_list = [None,
-                      '%H:%M',
-                      '%H:%M:%S',
-                      '%m/%d %H:%M:%S',
-                      '%b %d %H:%M:%S',
-                      '%m/%d/%y %H:%M:%S',
-                      '%m/%d/%Y %H:%M:%S',
-                      '%b %d %Y %H:%M:%S',
-                      '%a %b %d %Y %H:%M:%S',
-                      '%a %b %d %H:%M:%S.%f',
-                      '%A %b %d %H:%M:%S.%f',
-                      '%A %B %d %H:%M:%S.%f'
-                      ]
+dt_format_arg_list = [
+    None,
+    "%H:%M",
+    "%H:%M:%S",
+    "%m/%d %H:%M:%S",
+    "%b %d %H:%M:%S",
+    "%m/%d/%y %H:%M:%S",
+    "%m/%d/%Y %H:%M:%S",
+    "%b %d %Y %H:%M:%S",
+    "%a %b %d %Y %H:%M:%S",
+    "%a %b %d %H:%M:%S.%f",
+    "%A %b %d %H:%M:%S.%f",
+    "%A %B %d %H:%M:%S.%f",
+]
 
 
 @pytest.fixture(params=dt_format_arg_list)
