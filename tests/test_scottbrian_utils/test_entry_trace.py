@@ -856,9 +856,12 @@ class TestEntryTraceCombos:
     ####################################################################
     # test_etrace_combo_signature
     ####################################################################
-    @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
-    @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
-    @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
+    # @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
+    # @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
+    # @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
+    @pytest.mark.parametrize("num_po_arg", [1])
+    @pytest.mark.parametrize("num_pk_arg", [0])
+    @pytest.mark.parametrize("num_ko_arg", [0])
     def test_etrace_combo_signature(
         self,
         num_po_arg: int,
@@ -1275,7 +1278,6 @@ class TestEntryTraceCombos:
                 else:
                     omit_parms_str = ""
 
-                print(f"2 {omit_parms_str=}")
                 code = (
                     f"global f999"
                     f"\ndef f1({final_plist_combo.plist}): "

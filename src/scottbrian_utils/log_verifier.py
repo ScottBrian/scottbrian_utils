@@ -204,6 +204,7 @@ The log_verifier module contains:
 ########################################################################
 from dataclasses import dataclass
 import logging
+import pandas as pd
 import pytest
 import re
 from typing import Any, Optional, Type, TYPE_CHECKING, Union
@@ -216,6 +217,14 @@ from typing import Any, Optional, Type, TYPE_CHECKING, Union
 # Local
 ########################################################################
 from scottbrian_utils.flower_box import print_flower_box_msg
+
+
+########################################################################
+# pandas options
+########################################################################
+pd.set_option("mode.chained_assignment", "raise")
+pd.set_option("display.max_columns", 30)
+pd.set_option("max_colwidth", 120)
 
 ########################################################################
 # type aliases
@@ -417,14 +426,20 @@ class LogVer:
         else:
             log_name_to_use = self.log_name
 
+        # if fullmatch:
+        #     self.expected_messages_fullmatch.append(
+        #         (log_name_to_use, log_level, re.compile(log_msg))
+        #     )
+        # else:
+        #     self.expected_messages.append(
+        #         (log_name_to_use, log_level, re.compile(log_msg))
+        #     )
         if fullmatch:
             self.expected_messages_fullmatch.append(
-                (log_name_to_use, log_level, re.compile(log_msg))
+                (log_name_to_use, log_level, log_msg)
             )
         else:
-            self.expected_messages.append(
-                (log_name_to_use, log_level, re.compile(log_msg))
-            )
+            self.expected_messages.append((log_name_to_use, log_level, log_msg))
 
     # ####################################################################
     # # get_match_results
@@ -540,15 +555,59 @@ class LogVer:
             tuple[str, int, Any]
         ] = self.expected_messages_fullmatch.copy()
 
+        df1 = pd.DataFrame(
+            unmatched_exp_records_fullmatch,
+            columns=["log_name", "level", "expected_log_msg"],
+        )
+        print("\ndf1=\n", df1)
+
+        df1_grp = df1.groupby(df1.columns.tolist(), as_index=False).size()
+        print(f"\n{df1_grp=}")
+        print(f"\n{df1_grp.expected_log_msg=}")
+        print(f"\n{df1_grp["size"]=}")
+
         # make a work copy of expected records
         unmatched_exp_records: list[
             tuple[str, int, Any]
         ] = self.expected_messages.copy()
 
+        df2 = pd.DataFrame(
+            unmatched_exp_records, columns=["log_name", "level", "expected_log_msg"]
+        )
+        print("\ndf2=\n", df2)
+
+        df2_grp = df2.groupby(df2.columns.tolist(), as_index=False).size()
+        print(f"\n{df2_grp=}")
+
         # make a work copy of actual records
         unmatched_actual_records: list[
             tuple[str, int, Any]
         ] = caplog.record_tuples.copy()
+
+        df3 = pd.DataFrame(
+            unmatched_actual_records, columns=["log_name", "level", "actual_log_msg"]
+        )
+        print("\ndf3=\n", df3)
+
+        df3_grp = df3.groupby(df3.columns.tolist(), as_index=False).size()
+        print(f"\n{df3_grp=}")
+
+        to_repl = df1_grp.expected_log_msg.values.tolist()
+        vals = df1_grp["size"].to_list()
+
+        print(f"{to_repl=}")
+        print(f"{vals=}")
+
+        df3_grp["found_size"] = df3_grp["actual_log_msg"].replace(to_repl, vals,
+                                                                  regex=True)
+
+        print(f"\n #### {df3_grp=}")
+
+        count_result = df3_grp["size"] == df3_grp["found_size"]
+
+        print(f"{count_result=}")
+
+
 
         matched_records: list[tuple[str, int, Any]] = []
 
@@ -566,7 +625,7 @@ class LogVer:
                 if (
                     exp_record[0] == actual_record[0]
                     and exp_record[1] == actual_record[1]
-                    and exp_record[2].fullmatch(actual_record[2])
+                    and re.compile(exp_record[2]).fullmatch(actual_record[2])
                 ):
                     unmatched_exp_records_fullmatch.pop(idx)
                     unmatched_actual_records.remove(actual_record)
@@ -601,7 +660,7 @@ class LogVer:
                 if (
                     exp_record[0] == actual_record[0]
                     and exp_record[1] == actual_record[1]
-                    and exp_record[2].match(actual_record[2])
+                    and re.compile(exp_record[2]).match(actual_record[2])
                 ):
                     unmatched_exp_records.pop(idx)
                     unmatched_actual_records.remove(actual_record)
