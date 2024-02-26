@@ -1287,7 +1287,7 @@ class TestEntryTraceCombos:
                 )
 
                 plist_spec_log_msg = f"##################### {final_plist_combo.plist=}"
-                logger.debug(plist_spec_log_msg)
+                # logger.debug(plist_spec_log_msg)
                 log_ver.add_msg(
                     log_level=logging.DEBUG,
                     log_msg=re.escape(plist_spec_log_msg),
@@ -1342,7 +1342,7 @@ class TestEntryTraceCombos:
         # check log results
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
-        log_ver.print_match_results(match_results, print_matched=False)
+        log_ver.print_match_results(match_results, print_matched=True)
         log_ver.verify_log_results(match_results)
 
     ####################################################################

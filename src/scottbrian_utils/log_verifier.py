@@ -594,19 +594,57 @@ class LogVer:
 
         to_repl = df1_grp.expected_log_msg.values.tolist()
         vals = df1_grp["size"].to_list()
+        vals2 = df1_grp.expected_log_msg.values.tolist()
 
         print(f"{to_repl=}")
         print(f"{vals=}")
 
         df3_grp["found_size"] = df3_grp["actual_log_msg"].replace(to_repl, vals,
                                                                   regex=True)
+        df3_grp["exp_used_to_find"] = df3_grp["actual_log_msg"].replace(to_repl,
+                                                                           vals2,
+                                                                  regex=True)
 
         print(f"\n #### {df3_grp=}")
+        print(f"\n #### {df3_grp.info()=}")
 
         count_result = df3_grp["size"] == df3_grp["found_size"]
 
         print(f"{count_result=}")
 
+        not_found = df3_grp["actual_log_msg"] == df3_grp["found_size"]
+
+        print(f"{not_found=}")
+
+        df3_grp["found_size"] = df3_grp["found_size"].mask(not_found, 0)
+
+        print(f"\n #### 2 {df3_grp=}")
+        print(f"\n #### 2 {df3_grp.info()=}")
+
+        df3_grp["diff_nums"] = df3_grp["size"] - df3_grp["found_size"]
+
+        print(f"\n #### 3 {df3_grp=}")
+        print(f"\n #### 3 {df3_grp.info()=}")
+
+        to_repl = df3_grp.exp_used_to_find.values.tolist()
+        vals = df3_grp["size"].to_list()
+        # vals2 = df1_grp.expected_log_msg.values.tolist()
+
+        df1_grp["found_size2"] = df1_grp["expected_log_msg"].replace(to_repl, vals,
+                                                                  regex=False)
+
+
+
+
+        not_found = df1_grp["expected_log_msg"] == df1_grp["found_size2"]
+
+        print(f"{not_found=}")
+
+        df1_grp["found_size2"] = df1_grp["found_size2"].mask(not_found, 0)
+
+        df1_grp["diff_nums"] = df1_grp["size"] - df1_grp["found_size2"]
+        print(f"\n #### 4 {df1_grp=}")
+        print(f"\n #### 4 {df1_grp.info()=}")
 
 
         matched_records: list[tuple[str, int, Any]] = []
@@ -690,11 +728,17 @@ class LogVer:
 
         # convert unmatched expected records to string form
         unmatched_exp_records_2 = []
+        # for item in unmatched_exp_records_fullmatch:
+        #     unmatched_exp_records_2.append((item[0], item[1], item[2].pattern))
+        #
+        # for item in unmatched_exp_records:
+        #     unmatched_exp_records_2.append((item[0], item[1], item[2].pattern))
+
         for item in unmatched_exp_records_fullmatch:
-            unmatched_exp_records_2.append((item[0], item[1], item[2].pattern))
+            unmatched_exp_records_2.append((item[0], item[1], item[2]))
 
         for item in unmatched_exp_records:
-            unmatched_exp_records_2.append((item[0], item[1], item[2].pattern))
+            unmatched_exp_records_2.append((item[0], item[1], item[2]))
 
         return MatchResults(
             num_exp_records=(
@@ -803,3 +847,51 @@ class LogVer:
                 "actual log messages that failed to match expected log "
                 "messages."
             )
+
+########################################################################
+"""
+***********************************
+* number expected log records: 18 *
+* number expected unmatched  :  0 *
+* number actual log records  : 22 *
+* number actual unmatched    :  4 *
+* number matched records     : 18 *
+***********************************
+
+*********************************
+* unmatched expected records    *
+* (logger name, level, message) *
+*********************************
+
+*********************************
+* unmatched actual records      *
+* (logger name, level, message) *
+*********************************
+('test_scottbrian_utils.test_entry_trace', 10, "##################### final_plist_combo.plist='po_1, /'")
+('test_scottbrian_utils.test_entry_trace', 10, "##################### final_plist_combo.plist='po_1, /'")
+('test_scottbrian_utils.test_entry_trace', 10, "##################### final_plist_combo.plist='po_1=1, /'")
+('test_scottbrian_utils.test_entry_trace', 10, "##################### final_plist_combo.plist='po_1=1, /'")
+
+*********************************
+* matched records               *
+* (logger name, level, message) *
+*********************************
+('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec='10'")
+('scottbrian_utils.entry_trace', 10, '<string>:f1:? entry: po_1=10, caller: <string>:1')
+('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=10, '")
+('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec='10'")
+('scottbrian_utils.entry_trace', 10, "<string>:f1:? entry: po_1='...', caller: <string>:1")
+('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=10, '")
+('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec='10'")
+('scottbrian_utils.entry_trace', 10, '<string>:f1:? entry: po_1=10, caller: <string>:1')
+('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=10, '")
+('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec=''")
+('scottbrian_utils.entry_trace', 10, '<string>:f1:? entry: po_1=1, caller: <string>:1')
+('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=1, '")
+('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec='10'")
+('scottbrian_utils.entry_trace', 10, "<string>:f1:? entry: po_1='...', caller: <string>:1")
+('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=10, '")
+('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec=''")
+('scottbrian_utils.entry_trace', 10, "<string>:f1:? entry: po_1='...', caller: <string>:1")
+('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=1, '")
+"""
