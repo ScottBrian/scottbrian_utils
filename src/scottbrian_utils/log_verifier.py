@@ -559,14 +559,16 @@ class LogVer:
             unmatched_exp_records_fullmatch,
             columns=["log_name", "level", "regex_pattern"],
         )
-        print(f"\ndf_regex_fullmatch=\n{df_regex_fullmatch}")
+        # print(f"\n*************************************************")
+        # print(f"\ndf_regex_fullmatch=\n{df_regex_fullmatch}")
 
         df_regex_fullmatch_grp = df_regex_fullmatch.groupby(
             df_regex_fullmatch.columns.tolist(), as_index=False
         ).size()
-        # print(f"\n{df_regex_fullmatch_grp=}")
-        # print(f"\n{df_regex_fullmatch_grp.regex_pattern=}")
-        # print(f"\n{df_regex_fullmatch_grp["size"]=}")
+        # print(f"\ndf_regex_fullmatch_grp=\n{df_regex_fullmatch_grp}")
+        # print(f"\ndf_regex_fullmatch_grp.regex_pattern="
+        #       f"\n{df_regex_fullmatch_grp.regex_pattern}")
+        # print(f"\ndf_regex_fullmatch_grp['size']=\n{df_regex_fullmatch_grp["size"]}")
 
         # make a work copy of expected records
         unmatched_exp_records: list[
@@ -576,12 +578,16 @@ class LogVer:
         df_regex_match = pd.DataFrame(
             unmatched_exp_records, columns=["log_name", "level", "regex_pattern"]
         )
-        print(f"\ndf_regex_match=\n{df_regex_match}")
+        # print(f"\n*************************************************")
+        # print(f"\ndf_regex_match=\n{df_regex_match}")
 
         df_regex_match_grp = df_regex_match.groupby(
             df_regex_match.columns.tolist(), as_index=False
         ).size()
-        # print(f"\n{df_regex_match_grp=}")
+        # print(f"\ndf_regex_match_grp=\n{df_regex_match_grp}")
+        # print(f"\ndf_regex_match_grp.regex_pattern="
+        #       f"\n{df_regex_match_grp.regex_pattern}")
+        # print(f"\ndf_regex_match_grp['size']=\n{df_regex_match_grp["size"]}")
 
         # make a work copy of actual records
         unmatched_actual_records: list[
@@ -589,74 +595,78 @@ class LogVer:
         ] = caplog.record_tuples.copy()
 
         df_log_msgs = pd.DataFrame(
-            unmatched_actual_records, columns=["log_name", "level", "actual_log_msg"]
+            unmatched_actual_records, columns=["log_name", "level", "log_msg"]
         )
+        # print(f"\n*************************************************")
         # print("\ndf_log_msgs=\n", df_log_msgs)
 
         df_log_msgs_grp = df_log_msgs.groupby(
             df_log_msgs.columns.tolist(), as_index=False
         ).size()
-        # print(f"\n{df_log_msgs_grp=}")
+        # print(f"\ndf_log_msgs_grp=\n{df_log_msgs_grp}")
 
         to_repl = df_regex_fullmatch_grp.regex_pattern.values.tolist()
-        vals = df_regex_fullmatch_grp["size"].to_list()
-        vals2 = df_regex_fullmatch_grp.regex_pattern.values.tolist()
+        # vals = df_regex_fullmatch_grp["size"].to_list()
+        vals = df_regex_fullmatch_grp.index.to_list()
+        # vals2 = df_regex_fullmatch_grp.regex_pattern.values.tolist()
 
         # print(f"{to_repl=}")
         # print(f"{vals=}")
 
-        df_log_msgs_grp["found_size"] = df_log_msgs_grp["actual_log_msg"].replace(
+        df_log_msgs_grp["fullmatch_idx"] = df_log_msgs_grp["log_msg"].replace(
             to_repl, vals, regex=True
         )
-        df_log_msgs_grp["exp_used_to_find"] = df_log_msgs_grp["actual_log_msg"].replace(
-            to_repl, vals2, regex=True
+        # df_log_msgs_grp["exp_used_to_find"] = df_log_msgs_grp["log_msg"].replace(
+        #     to_repl, vals2, regex=True
+        # )
+
+        # print(f"\n #### df_log_msgs_grp=\n{df_log_msgs_grp}")
+        # print(f"\n #### df_log_msgs_grp.info()=\n{df_log_msgs_grp.info()}")
+
+        # count_result = df_log_msgs_grp["size"] == df_log_msgs_grp["found_size"]
+
+        # print(f"count_result=\n{count_result}")
+
+        not_found = df_log_msgs_grp["log_msg"] == df_log_msgs_grp["fullmatch_idx"]
+
+        # print(f"\nnot_found=\n{not_found}")
+
+        df_log_msgs_grp["fullmatch_idx"] = df_log_msgs_grp["fullmatch_idx"].mask(
+            not_found, -1
         )
-
-        # print(f"\n #### {df_log_msgs_grp=}")
-        # print(f"\n #### {df_log_msgs_grp.info()=}")
-
-        count_result = df_log_msgs_grp["size"] == df_log_msgs_grp["found_size"]
-
-        # print(f"{count_result=}")
-
-        not_found = df_log_msgs_grp["actual_log_msg"] == df_log_msgs_grp["found_size"]
-
-        # print(f"{not_found=}")
-
-        df_log_msgs_grp["found_size"] = df_log_msgs_grp["found_size"].mask(not_found, 0)
 
         # print(f"\n #### 2 {df_log_msgs_grp=}")
         # print(f"\n #### 2 {df_log_msgs_grp.info()=}")
 
-        df_log_msgs_grp["diff_nums"] = (
-            df_log_msgs_grp["size"] - df_log_msgs_grp["found_size"]
-        )
+        # df_log_msgs_grp["diff_nums"] = (
+        #     df_log_msgs_grp["size"] - df_log_msgs_grp["found_size"]
+        # )
 
         # print(f"\n #### 3 {df_log_msgs_grp=}")
         # print(f"\n #### 3 {df_log_msgs_grp.info()=}")
 
-        to_repl = df_log_msgs_grp.exp_used_to_find.values.tolist()
-        vals = df_log_msgs_grp["size"].to_list()
-        # vals2 = df_regex_fullmatch_grp.regex_pattern.values.tolist()
+        # to_repl = df_log_msgs_grp.exp_used_to_find.values.tolist()
+        # vals = df_log_msgs_grp["size"].to_list()
+        # # vals2 = df_regex_fullmatch_grp.regex_pattern.values.tolist()
+        #
+        # df_regex_fullmatch_grp["found_size2"] = df_regex_fullmatch_grp[
+        #     "regex_pattern"
+        # ].replace(to_repl, vals, regex=False)
+        #
+        # not_found = (
+        #     df_regex_fullmatch_grp["regex_pattern"]
+        #     == df_regex_fullmatch_grp["found_size2"]
+        # )
+        #
+        # # print(f"{not_found=}")
+        #
+        # df_regex_fullmatch_grp["found_size2"] = df_regex_fullmatch_grp[
+        #     "found_size2"
+        # ].mask(not_found, 0)
 
-        df_regex_fullmatch_grp["found_size2"] = df_regex_fullmatch_grp[
-            "regex_pattern"
-        ].replace(to_repl, vals, regex=False)
-
-        not_found = (
-            df_regex_fullmatch_grp["regex_pattern"]
-            == df_regex_fullmatch_grp["found_size2"]
-        )
-
-        # print(f"{not_found=}")
-
-        df_regex_fullmatch_grp["found_size2"] = df_regex_fullmatch_grp[
-            "found_size2"
-        ].mask(not_found, 0)
-
-        df_regex_fullmatch_grp["diff_nums"] = (
-            df_regex_fullmatch_grp["size"] - df_regex_fullmatch_grp["found_size2"]
-        )
+        # df_regex_fullmatch_grp["diff_nums"] = (
+        #     df_regex_fullmatch_grp["size"] - df_regex_fullmatch_grp["found_size2"]
+        # )
         # print(f"\n #### 4 {df_regex_fullmatch_grp=}")
         # print(f"\n #### 4 {df_regex_fullmatch_grp.info()=}")
 

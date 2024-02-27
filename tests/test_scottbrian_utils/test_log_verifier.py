@@ -6,6 +6,7 @@
 import logging
 import datetime
 import re
+import string
 import threading
 from typing import Any, cast, Optional, Union
 
@@ -864,6 +865,165 @@ class TestLogVerBasic:
         expected_result += "* (logger name, level, message) *\n"
         expected_result += "*********************************\n"
         expected_result += f"('fullmatch_4', 10, '{double_str_arg[0]}')\n"
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_log_verifier_same_len_fullmatch
+    ####################################################################
+    # @pytest.mark.parametrize("msgs_are_same_arg", [True, False])
+    # @pytest.mark.parametrize("add_pattern1_first_arg", [True, False])
+    # @pytest.mark.parametrize("issue_msg1_first_arg", [True, False])
+    # @pytest.mark.parametrize("pattern1_fullmatch_tf_arg", [True, False])
+    # @pytest.mark.parametrize("pattern2_fullmatch_tf_arg", [True, False])
+    @pytest.mark.parametrize("msgs_are_same_arg", [True, False])
+    @pytest.mark.parametrize("add_pattern1_first_arg", [True, False])
+    @pytest.mark.parametrize("issue_msg1_first_arg", [True, False])
+    @pytest.mark.parametrize("pattern1_fullmatch_tf_arg", [False])
+    @pytest.mark.parametrize("pattern2_fullmatch_tf_arg", [False])
+    def test_log_verifier_same_len_fullmatch(
+        self,
+        msgs_are_same_arg: bool,
+        add_pattern1_first_arg: int,
+        issue_msg1_first_arg: int,
+        pattern1_fullmatch_tf_arg: bool,
+        pattern2_fullmatch_tf_arg: bool,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test log_verifier time match.
+
+        Args:
+            msgs_are_same_arg: if True, msg1 is same as msg2
+            add_pattern1_first_arg: if 0, pattern1 is issued first
+            issue_msg1_first_arg: if 0, msg1 is issued first
+            pattern1_fullmatch_tf_arg: if True, use fullmatch for
+                pattern1
+            pattern2_fullmatch_tf_arg: if True, use fullmatch for
+                pattern2
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+        """
+        ################################################################
+        # scenario 00000: diff msgs, p2 1st/match, msg2 1st, p1 match
+        #     p2 will find msg2, p1 will find msg1
+        # scenario 10000: same msgs, p2 1st/match, msg2 1st, p1 match
+        #     p2 will find msg2, p1 will find msg1
+        # scenario 01000: diff msgs, p1 1st/match, msg2 1st, p1 match
+        #     p1 will find msg1, p2 will find msg2
+        # scenario 11000: same msgs, p1 1st/match, msg2 1st, p1 match
+        #     p1 will find msg2, p2 will find msg1
+        # scenario 00100: diff msgs, p2 1st/match, msg1 1st, p1 match
+        #     p2 will find msg1, p1 will *NOT* find msg1
+        # scenario 10100: same msgs, p2 1st/match, msg1 1st, p1 match
+        #     p2 will find msg1, p1 will find msg2
+        # scenario 01100: diff msgs, p1 1st/match, msg1 1st, p1 match
+        #     p1 will find msg1, p2 will find msg2
+        # scenario 11100: same msgs, p1 1st/match, msg1 1st, p1 match
+        #     p1 will find msg1, p2 will find msg2
+        #
+        #
+        #
+        ################################################################
+        ################################################################
+        # build msgs
+        ################################################################
+        # num_per_section = 4
+        # remaining_first_chars = (
+        #     num_per_section - num_first_chars_same_arg + num_per_section
+        # )
+        # remaining_mid_chars = num_per_section - num_mid_chars_same_arg + num_per_section
+        # remaining_last_chars = (
+        #     num_per_section - num_last_chars_same_arg + num_per_section
+        # )
+        # msg1 = (
+        #     string.printable[0:num_per_section]
+        #     + "_"
+        #     + string.printable[0:num_per_section]
+        #     + "_"
+        #     + string.printable[0:num_per_section]
+        # )
+        # msg2 = (
+        #     string.printable[0:num_first_chars_same_arg]
+        #     + string.printable[num_per_section:remaining_first_chars]
+        #     + "_"
+        #     + string.printable[0:num_mid_chars_same_arg]
+        #     + string.printable[num_per_section:remaining_mid_chars]
+        #     + "_"
+        #     + string.printable[0:num_last_chars_same_arg]
+        #     + string.printable[num_per_section:remaining_last_chars]
+        # )
+
+        msg1 = "abc_123"
+        if msgs_are_same_arg:
+            msg2 = msg1
+        else:
+            msg2 = "abc_321"
+        ################################################################
+        # build patterns
+        ################################################################
+
+        pattern1 = msg1
+
+        pattern2 = "abc_[0-9]{3}"
+
+        ################################################################
+        # add patterns and issue log msgs
+        ################################################################
+        caplog.clear()
+
+        log_name = "fullmatch_0"
+        t_logger = logging.getLogger(log_name)
+        log_ver = LogVer(log_name=log_name)
+
+        if add_pattern1_first_arg:
+            log_ver.add_msg(log_msg=pattern1, fullmatch=pattern1_fullmatch_tf_arg)
+            log_ver.add_msg(log_msg=pattern2, fullmatch=pattern2_fullmatch_tf_arg)
+        else:
+            log_ver.add_msg(log_msg=pattern2, fullmatch=pattern2_fullmatch_tf_arg)
+            log_ver.add_msg(log_msg=pattern1, fullmatch=pattern1_fullmatch_tf_arg)
+
+        if issue_msg1_first_arg:
+            t_logger.debug(msg1)
+            t_logger.debug(msg2)
+        else:
+            t_logger.debug(msg2)
+            t_logger.debug(msg1)
+
+        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
+        log_ver.verify_log_results(log_results)
+
+        expected_result = "\n"
+        expected_result += "**********************************\n"
+        expected_result += "* number expected log records: 2 *\n"
+        expected_result += "* number expected unmatched  : 0 *\n"
+        expected_result += "* number actual log records  : 2 *\n"
+        expected_result += "* number actual unmatched    : 0 *\n"
+        expected_result += "* number matched records     : 2 *\n"
+        expected_result += "**********************************\n"
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* unmatched expected records    *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* unmatched actual records      *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* matched records               *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        if issue_msg1_first_arg:
+            expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+            expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+        else:
+            expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+            expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
 
         captured = capsys.readouterr().out
 
