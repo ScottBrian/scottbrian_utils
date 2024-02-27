@@ -878,11 +878,11 @@ class TestLogVerBasic:
     # @pytest.mark.parametrize("issue_msg1_first_arg", [True, False])
     # @pytest.mark.parametrize("pattern1_fullmatch_tf_arg", [True, False])
     # @pytest.mark.parametrize("pattern2_fullmatch_tf_arg", [True, False])
-    @pytest.mark.parametrize("msgs_are_same_arg", [True, False])
-    @pytest.mark.parametrize("add_pattern1_first_arg", [True, False])
-    @pytest.mark.parametrize("issue_msg1_first_arg", [True, False])
-    @pytest.mark.parametrize("pattern1_fullmatch_tf_arg", [False])
-    @pytest.mark.parametrize("pattern2_fullmatch_tf_arg", [False])
+    @pytest.mark.parametrize("msgs_are_same_arg", [False, True])
+    @pytest.mark.parametrize("add_pattern1_first_arg", [False, True])
+    @pytest.mark.parametrize("issue_msg1_first_arg", [False, True])
+    @pytest.mark.parametrize("pattern1_fullmatch_tf_arg", [False, True])
+    @pytest.mark.parametrize("pattern2_fullmatch_tf_arg", [False, True])
     def test_log_verifier_same_len_fullmatch(
         self,
         msgs_are_same_arg: bool,
@@ -911,17 +911,68 @@ class TestLogVerBasic:
         #     p2 will find msg2, p1 will find msg1
         # scenario 10000: same msgs, p2 1st/match, msg2 1st, p1 match
         #     p2 will find msg2, p1 will find msg1
-        # scenario 01000: diff msgs, p1 1st/match, msg2 1st, p1 match
+        # scenario 01000: diff msgs, p1 1st/match, msg2 1st, p2 match
         #     p1 will find msg1, p2 will find msg2
-        # scenario 11000: same msgs, p1 1st/match, msg2 1st, p1 match
+        # scenario 11000: same msgs, p1 1st/match, msg2 1st, p2 match
         #     p1 will find msg2, p2 will find msg1
         # scenario 00100: diff msgs, p2 1st/match, msg1 1st, p1 match
         #     p2 will find msg1, p1 will *NOT* find msg1
         # scenario 10100: same msgs, p2 1st/match, msg1 1st, p1 match
         #     p2 will find msg1, p1 will find msg2
-        # scenario 01100: diff msgs, p1 1st/match, msg1 1st, p1 match
+        # scenario 01100: diff msgs, p1 1st/match, msg1 1st, p2 match
         #     p1 will find msg1, p2 will find msg2
-        # scenario 11100: same msgs, p1 1st/match, msg1 1st, p1 match
+        # scenario 11100: same msgs, p1 1st/match, msg1 1st, p2 match
+        #     p1 will find msg1, p2 will find msg2
+
+        # scenario 00010: diff msgs, p2 1st/match, msg2 1st, p1 fmatch
+        #     p1 will find msg1, p2 will find msg2
+        # scenario 10010: same msgs, p2 1st/match, msg2 1st, p1 fmatch
+        #     p1 will find msg2, p2 will find msg1
+        # scenario 01010: diff msgs, p1 1st/fmatch, msg2 1st, p2 match
+        #     p1 will find msg1, p2 will find msg2
+        # scenario 11010: same msgs, p1 1st/fmatch, msg2 1st, p2 match
+        #     p1 will find msg2, p2 will find msg1
+        # scenario 00110: diff msgs, p2 1st/match, msg1 1st, p1 fmatch
+        #     p1 will find msg1, p2 will find msg2
+        # scenario 10110: same msgs, p2 1st/match, msg1 1st, p1 fmatch
+        #     p1 will find msg1, p2 will find msg2
+        # scenario 01110: diff msgs, p1 1st/fmatch, msg1 1st, p2 match
+        #     p1 will find msg1, p2 will find msg2
+        # scenario 11110: same msgs, p1 1st/fmatch, msg1 1st, p2 match
+        #     p1 will find msg1, p2 will find msg2
+
+        # scenario 00001: diff msgs, p2 1st/fmatch, msg2 1st, p1 match
+        #     p2 will find msg2, p1 will find msg1
+        # scenario 10001: same msgs, p2 1st/fmatch, msg2 1st, p1 match
+        #     p2 will find msg2, p1 will find msg1
+        # scenario 01001: diff msgs, p1 1st/match, msg2 1st, p2 fmatch
+        #     p2 will find msg2, p1 will find msg1
+        # scenario 11001: same msgs, p1 1st/match, msg2 1st, p2 fmatch
+        #     p2 will find msg2, p1 will find msg1
+        # scenario 00101: diff msgs, p2 1st/fmatch, msg1 1st, p1 match
+        #     p2 will find msg1, p1 will *NOT* find msg1
+        # scenario 10101: same msgs, p2 1st/fmatch, msg1 1st, p1 match
+        #     p2 will find msg1, p1 will find msg2
+        # scenario 01101: diff msgs, p1 1st/match, msg1 1st, p2 fmatch
+        #     p2 will find msg1, p1 will *NOT* find msg2
+        # scenario 11101: same msgs, p1 1st/match, msg1 1st, p2 fmatch
+        #     p2 will find msg1, p1 will find msg2
+
+        # scenario 00011: diff msgs, p2 1st/fmatch, msg2 1st, p1 fmatch
+        #     p2 will find msg2, p1 will find msg1
+        # scenario 10011: same msgs, p2 1st/fmatch, msg2 1st, p1 fmatch
+        #     p2 will find msg2, p1 will find msg1
+        # scenario 01011: diff msgs, p1 1st/fmatch, msg2 1st, p2 fmatch
+        #     p1 will find msg1, p2 will find msg2
+        # scenario 11011: same msgs, p1 1st/fmatch, msg2 1st, p2 fmatch
+        #     p1 will find msg2, p2 will find msg1
+        # scenario 00111: diff msgs, p2 1st/fmatch, msg1 1st, p1 fmatch
+        #     p2 will find msg1, p1 will *NOT* find msg2
+        # scenario 10111: same msgs, p2 1st/fmatch, msg1 1st, p1 fmatch
+        #     p2 will find msg1, p1 will find msg2
+        # scenario 01111: diff msgs, p1 1st/fmatch, msg1 1st, p2 fmatch
+        #     p1 will find msg1, p2 will find msg2
+        # scenario 11111: same msgs, p1 1st/fmatch, msg1 1st, p2 fmatch
         #     p1 will find msg1, p2 will find msg2
         #
         #
@@ -955,6 +1006,11 @@ class TestLogVerBasic:
         #     + string.printable[0:num_last_chars_same_arg]
         #     + string.printable[num_per_section:remaining_last_chars]
         # )
+        print(f"\n{msgs_are_same_arg=}")
+        print(f"\n{add_pattern1_first_arg=}")
+        print(f"\n{issue_msg1_first_arg=}")
+        print(f"\n{pattern1_fullmatch_tf_arg=}")
+        print(f"\n{pattern2_fullmatch_tf_arg=}")
 
         msg1 = "abc_123"
         if msgs_are_same_arg:
@@ -968,6 +1024,103 @@ class TestLogVerBasic:
         pattern1 = msg1
 
         pattern2 = "abc_[0-9]{3}"
+
+        first_found = ""
+        if msgs_are_same_arg:
+            if add_pattern1_first_arg:
+                if issue_msg1_first_arg:
+                    if pattern1_fullmatch_tf_arg:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg1
+                        else:
+                            first_found = msg1
+                    else:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg1
+                        else:
+                            first_found = msg1
+                else:
+                    if pattern1_fullmatch_tf_arg:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg2
+                        else:
+                            first_found = msg2
+                    else:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg2
+                        else:
+                            first_found = msg2
+            else:  # pattern2 first
+                if issue_msg1_first_arg:
+                    if pattern1_fullmatch_tf_arg:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg1
+                        else:
+                            first_found = msg1
+                    else:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg1
+                        else:
+                            first_found = msg1
+                else:
+                    if pattern1_fullmatch_tf_arg:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg2
+                        else:
+                            first_found = msg2
+                    else:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg2
+                        else:
+                            first_found = msg2
+        else:  # msgs differ
+            if add_pattern1_first_arg:
+                if issue_msg1_first_arg:
+                    if pattern1_fullmatch_tf_arg:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg1
+                        else:
+                            first_found = msg1
+                    else:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg1
+                        else:
+                            first_found = msg1
+                else:
+                    if pattern1_fullmatch_tf_arg:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg1
+                        else:
+                            first_found = msg2
+                    else:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg2
+                        else:
+                            first_found = msg2
+            else:
+                if issue_msg1_first_arg:
+                    if pattern1_fullmatch_tf_arg:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg1
+                        else:
+                            first_found = msg1
+                    else:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg1
+                        else:
+                            first_found = msg1
+                else:
+                    if pattern1_fullmatch_tf_arg:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg2
+                        else:
+                            first_found = msg2
+                    else:
+                        if pattern2_fullmatch_tf_arg:
+                            first_found = msg2
+                        else:
+                            first_found = msg2
+
 
         ################################################################
         # add patterns and issue log msgs
@@ -996,6 +1149,13 @@ class TestLogVerBasic:
         log_ver.verify_log_results(log_results)
 
         expected_result = "\n"
+        expected_result += f"{msgs_are_same_arg=}\n\n"
+        expected_result += f"{add_pattern1_first_arg=}\n\n"
+        expected_result += f"{issue_msg1_first_arg=}\n\n"
+        expected_result += f"{pattern1_fullmatch_tf_arg=}\n\n"
+        expected_result += f"{pattern2_fullmatch_tf_arg=}\n"
+
+        expected_result += "\n"
         expected_result += "**********************************\n"
         expected_result += "* number expected log records: 2 *\n"
         expected_result += "* number expected unmatched  : 0 *\n"
@@ -1018,12 +1178,12 @@ class TestLogVerBasic:
         expected_result += "* matched records               *\n"
         expected_result += "* (logger name, level, message) *\n"
         expected_result += "*********************************\n"
-        if issue_msg1_first_arg:
-            expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
-            expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
-        else:
-            expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
-            expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+        # if issue_msg1_first_arg:
+        #     expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+        #     expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+        # else:
+        #     expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+        #     expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
 
         captured = capsys.readouterr().out
 
