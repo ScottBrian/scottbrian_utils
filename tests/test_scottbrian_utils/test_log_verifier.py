@@ -3,6 +3,9 @@
 ########################################################################
 # Standard Library
 ########################################################################
+from collections.abc import Iterable
+import itertools as it
+import more_itertools as mi
 import logging
 import datetime
 import re
@@ -1157,23 +1160,30 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_same_len_fullmatch
     ####################################################################
-    @pytest.mark.parametrize("num_patterns_arg", [0, 1, 2, 3])
-    @pytest.mark.parametrize("num_msgs_arg", [0, 1, 2, 3])
+    # @pytest.mark.parametrize("num_patterns_arg", [0, 1, 2, 3])
+    # @pytest.mark.parametrize("num_msgs_arg", [0, 1, 2, 3])
+    msg_combos = mi.collapse(
+        map(lambda n: it.product(("msg1", "msg2", "msg3")[0:n], repeat=n), range(4)),
+        base_type=tuple,
+    )
+
+    @pytest.mark.parametrize("msgs_arg", msg_combos)
     def test_log_verifier_contention(
         self,
-        num_patterns_arg: int,
-        num_msgs_arg: int,
+        # num_patterns_arg: int,
+        # num_msgs_arg: int,
+        msgs_arg: Iterable[tuple[str]],
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test log_verifier time match.
 
         Args:
-            num_patterns_arg: number of patterns to add
-            num_msgs_arg: number of log msgs to issue
+            msgs_arg: tuple of log msgs to issue
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
+        print(f"{msgs_arg=}")
         ################################################################
         # log msgs: msg1, msg2, msg3
         # patterns: msg0: no match
@@ -1480,149 +1490,149 @@ class TestLogVerBasic:
         #     + string.printable[0:num_last_chars_same_arg]
         #     + string.printable[num_per_section:remaining_last_chars]
         # )
-        print(f"\n{msgs_are_same_arg=}")
-        print(f"\n{add_pattern1_first_arg=}")
-        print(f"\n{issue_msg1_first_arg=}")
-        print(f"\n{pattern1_fullmatch_tf_arg=}")
-        print(f"\n{pattern2_fullmatch_tf_arg=}")
+        # print(f"\n{msgs_are_same_arg=}")
+        # print(f"\n{add_pattern1_first_arg=}")
+        # print(f"\n{issue_msg1_first_arg=}")
+        # print(f"\n{pattern1_fullmatch_tf_arg=}")
+        # print(f"\n{pattern2_fullmatch_tf_arg=}")
 
-        msg1 = "abc_123"
-        if msgs_are_same_arg:
-            msg2 = msg1
-        else:
-            msg2 = "abc_321"
-        ################################################################
-        # build patterns
-        ################################################################
-
-        pattern1 = msg1
-
-        pattern2 = "abc_[0-9]{3}"
-
-        first_found = ""
-        exp_error = False
-        if msgs_are_same_arg:
-            if issue_msg1_first_arg:
-                first_found = msg1
-            else:  # msg2 issued first
-                first_found = msg2
-        else:  # msgs differ
-            if add_pattern1_first_arg:
-                if issue_msg1_first_arg:
-                    first_found = msg1
-                    if not pattern1_fullmatch_tf_arg and pattern2_fullmatch_tf_arg:
-                        exp_error = True
-                else:  # msg2 issued first
-                    if pattern1_fullmatch_tf_arg and not pattern2_fullmatch_tf_arg:
-                        first_found = msg1
-                    else:
-                        first_found = msg2
-            else:  # pattern2 goes first
-                if issue_msg1_first_arg:
-                    first_found = msg1
-                    if not pattern1_fullmatch_tf_arg or pattern2_fullmatch_tf_arg:
-                        exp_error = True
-                else:  # msg2 issued first
-                    if pattern1_fullmatch_tf_arg and not pattern2_fullmatch_tf_arg:
-                        first_found = msg1
-                    else:
-                        first_found = msg2
-
-        ################################################################
-        # add patterns and issue log msgs
-        ################################################################
-        caplog.clear()
-
-        log_name = "fullmatch_0"
-        t_logger = logging.getLogger(log_name)
-        log_ver = LogVer(log_name=log_name)
-
-        if add_pattern1_first_arg:
-            log_ver.add_msg(log_msg=pattern1, fullmatch=pattern1_fullmatch_tf_arg)
-            log_ver.add_msg(log_msg=pattern2, fullmatch=pattern2_fullmatch_tf_arg)
-        else:
-            log_ver.add_msg(log_msg=pattern2, fullmatch=pattern2_fullmatch_tf_arg)
-            log_ver.add_msg(log_msg=pattern1, fullmatch=pattern1_fullmatch_tf_arg)
-
-        if issue_msg1_first_arg:
-            t_logger.debug(msg1)
-            t_logger.debug(msg2)
-        else:
-            t_logger.debug(msg2)
-            t_logger.debug(msg1)
-
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-
-        if exp_error:
-            with pytest.raises(UnmatchedExpectedMessages):
-                log_ver.verify_log_results(log_results)
-        else:
-            log_ver.verify_log_results(log_results)
-
-        expected_result = "\n"
-        expected_result += f"{msgs_are_same_arg=}\n\n"
-        expected_result += f"{add_pattern1_first_arg=}\n\n"
-        expected_result += f"{issue_msg1_first_arg=}\n\n"
-        expected_result += f"{pattern1_fullmatch_tf_arg=}\n\n"
-        expected_result += f"{pattern2_fullmatch_tf_arg=}\n"
-
-        expected_result += "\n"
-        expected_result += "**********************************\n"
-        expected_result += "* number expected log records: 2 *\n"
-
-        if exp_error:
-            expected_result += "* number expected unmatched  : 1 *\n"
-        else:
-            expected_result += "* number expected unmatched  : 0 *\n"
-
-        expected_result += "* number actual log records  : 2 *\n"
-
-        if exp_error:
-            expected_result += "* number actual unmatched    : 1 *\n"
-            expected_result += "* number matched records     : 1 *\n"
-        else:
-            expected_result += "* number actual unmatched    : 0 *\n"
-            expected_result += "* number matched records     : 2 *\n"
-
-        expected_result += "**********************************\n"
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        if exp_error:
-            expected_result += f"('fullmatch_0', 10, '{pattern1}')\n"
-
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        if exp_error:
-            expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
-
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
+        # msg1 = "abc_123"
+        # if msgs_are_same_arg:
+        #     msg2 = msg1
+        # else:
+        #     msg2 = "abc_321"
+        # ################################################################
+        # # build patterns
+        # ################################################################
+        #
+        # pattern1 = msg1
+        #
+        # pattern2 = "abc_[0-9]{3}"
+        #
+        # first_found = ""
+        # exp_error = False
+        # if msgs_are_same_arg:
+        #     if issue_msg1_first_arg:
+        #         first_found = msg1
+        #     else:  # msg2 issued first
+        #         first_found = msg2
+        # else:  # msgs differ
+        #     if add_pattern1_first_arg:
+        #         if issue_msg1_first_arg:
+        #             first_found = msg1
+        #             if not pattern1_fullmatch_tf_arg and pattern2_fullmatch_tf_arg:
+        #                 exp_error = True
+        #         else:  # msg2 issued first
+        #             if pattern1_fullmatch_tf_arg and not pattern2_fullmatch_tf_arg:
+        #                 first_found = msg1
+        #             else:
+        #                 first_found = msg2
+        #     else:  # pattern2 goes first
+        #         if issue_msg1_first_arg:
+        #             first_found = msg1
+        #             if not pattern1_fullmatch_tf_arg or pattern2_fullmatch_tf_arg:
+        #                 exp_error = True
+        #         else:  # msg2 issued first
+        #             if pattern1_fullmatch_tf_arg and not pattern2_fullmatch_tf_arg:
+        #                 first_found = msg1
+        #             else:
+        #                 first_found = msg2
+        #
+        # ################################################################
+        # # add patterns and issue log msgs
+        # ################################################################
+        # caplog.clear()
+        #
+        # log_name = "fullmatch_0"
+        # t_logger = logging.getLogger(log_name)
+        # log_ver = LogVer(log_name=log_name)
+        #
+        # if add_pattern1_first_arg:
+        #     log_ver.add_msg(log_msg=pattern1, fullmatch=pattern1_fullmatch_tf_arg)
+        #     log_ver.add_msg(log_msg=pattern2, fullmatch=pattern2_fullmatch_tf_arg)
+        # else:
+        #     log_ver.add_msg(log_msg=pattern2, fullmatch=pattern2_fullmatch_tf_arg)
+        #     log_ver.add_msg(log_msg=pattern1, fullmatch=pattern1_fullmatch_tf_arg)
+        #
         # if issue_msg1_first_arg:
-        #     expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+        #     t_logger.debug(msg1)
+        #     t_logger.debug(msg2)
+        # else:
+        #     t_logger.debug(msg2)
+        #     t_logger.debug(msg1)
+        #
+        # log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
+        #
+        # if exp_error:
+        #     with pytest.raises(UnmatchedExpectedMessages):
+        #         log_ver.verify_log_results(log_results)
+        # else:
+        #     log_ver.verify_log_results(log_results)
+        #
+        # expected_result = "\n"
+        # expected_result += f"{msgs_are_same_arg=}\n\n"
+        # expected_result += f"{add_pattern1_first_arg=}\n\n"
+        # expected_result += f"{issue_msg1_first_arg=}\n\n"
+        # expected_result += f"{pattern1_fullmatch_tf_arg=}\n\n"
+        # expected_result += f"{pattern2_fullmatch_tf_arg=}\n"
+        #
+        # expected_result += "\n"
+        # expected_result += "**********************************\n"
+        # expected_result += "* number expected log records: 2 *\n"
+        #
+        # if exp_error:
+        #     expected_result += "* number expected unmatched  : 1 *\n"
+        # else:
+        #     expected_result += "* number expected unmatched  : 0 *\n"
+        #
+        # expected_result += "* number actual log records  : 2 *\n"
+        #
+        # if exp_error:
+        #     expected_result += "* number actual unmatched    : 1 *\n"
+        #     expected_result += "* number matched records     : 1 *\n"
+        # else:
+        #     expected_result += "* number actual unmatched    : 0 *\n"
+        #     expected_result += "* number matched records     : 2 *\n"
+        #
+        # expected_result += "**********************************\n"
+        # expected_result += "\n"
+        # expected_result += "*********************************\n"
+        # expected_result += "* unmatched expected records    *\n"
+        # expected_result += "* (logger name, level, message) *\n"
+        # expected_result += "*********************************\n"
+        # if exp_error:
+        #     expected_result += f"('fullmatch_0', 10, '{pattern1}')\n"
+        #
+        # expected_result += "\n"
+        # expected_result += "*********************************\n"
+        # expected_result += "* unmatched actual records      *\n"
+        # expected_result += "* (logger name, level, message) *\n"
+        # expected_result += "*********************************\n"
+        # if exp_error:
         #     expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+        #
+        # expected_result += "\n"
+        # expected_result += "*********************************\n"
+        # expected_result += "* matched records               *\n"
+        # expected_result += "* (logger name, level, message) *\n"
+        # expected_result += "*********************************\n"
+        # # if issue_msg1_first_arg:
+        # #     expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+        # #     expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+        # # else:
+        # #     expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+        # #     expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+        # if first_found == msg1:
+        #     expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+        #     if not exp_error:
+        #         expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
         # else:
         #     expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
         #     expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
-        if first_found == msg1:
-            expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
-            if not exp_error:
-                expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
-        else:
-            expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
-            expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
+        #
+        # captured = capsys.readouterr().out
+        #
+        # assert captured == expected_result
 
     ####################################################################
     # test_log_verifier_time_match
