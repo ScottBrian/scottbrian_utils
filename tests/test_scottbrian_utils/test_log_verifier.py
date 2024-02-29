@@ -1155,6 +1155,476 @@ class TestLogVerBasic:
         assert captured == expected_result
 
     ####################################################################
+    # test_log_verifier_same_len_fullmatch
+    ####################################################################
+    @pytest.mark.parametrize("num_patterns_arg", [0, 1, 2, 3])
+    @pytest.mark.parametrize("num_msgs_arg", [0, 1, 2, 3])
+    def test_log_verifier_contention(
+        self,
+        num_patterns_arg: int,
+        num_msgs_arg: int,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test log_verifier time match.
+
+        Args:
+            num_patterns_arg: number of patterns to add
+            num_msgs_arg: number of log msgs to issue
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+        """
+        ################################################################
+        # log msgs: msg1, msg2, msg3
+        # patterns: msg0: no match
+        #           msg1: matches msg1
+        #           msg2: matches msg2
+        #           msg3: matches msg3
+        #           msg[12]{1}: matches both msg1 and msg2
+        #           msg[23]{1}: matches both msg1 and msg3
+        #           msg[123]{1}: matches msg1, msg2, and msg3
+
+        # scenario 0, 0: 0 patterns, 0 msgs
+        #   msgs: n/a
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       0 unmatched msgs
+        #       0 matched msgs
+
+        # scenario 0, 1: 0 patterns, 1 msgs
+        #   msgs: msg1
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       1 unmatched msg: msg1
+        #       0 matched msgs
+
+        # scenario 0, 2: 0 patterns, 2 msgs
+        #   msgs: msg1, msg1
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg1, msg1
+        #       0 matched msgs
+        #   msgs: msg1, msg2
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg1, msg2
+        #       0 matched msgs
+        #   msgs: msg2, msg1
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg2, msg1
+        #       0 matched msgs
+        #   msgs: msg2, msg2
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg2, msg2
+        #       0 matched msgs
+
+        # scenario 0, 3: 0 patterns, 3 msgs
+        #   msgs: msg1, msg1, msg1
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       3 unmatched msgs: msg1, msg1, msg1
+        #       0 matched msgs
+        #   msgs: msg1, msg1, msg2
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       3 unmatched msgs: msg1, msg1, msg2
+        #       0 matched msgs
+        #   msgs: msg1, msg1, msg3
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       3 unmatched msgs: msg1, msg1, msg3
+        #       0 matched msgs
+        #   msgs: msg1, msg2, msg1
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       3 unmatched msgs: msg1, msg2, msg1
+        #       0 matched msgs
+        #   msgs: msg1, msg2, msg2
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       3 unmatched msgs: msg1, msg2, msg2
+        #       0 matched msgs
+        #   msgs: msg1, msg2, msg3
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       3 unmatched msgs: msg1, msg2, msg3
+        #       0 matched msgs
+        #   msgs: msg1, msg3, msg1
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       3 unmatched msgs: msg1, msg3, msg1
+        #       0 matched msgs
+        #   msgs: msg1, msg3, msg2
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       3 unmatched msgs: msg1, msg3, msg2
+        #       0 matched msgs
+        #   msgs: msg1, msg3, msg3
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       3 unmatched msgs: msg1, msg3, msg3
+        #       0 matched msgs
+        #   msgs: msg2, msg1, msg1
+        #     patterns: n/a
+        #       0 unmatched patterns
+        #       3 unmatched msgs: msg2, msg1, msg1
+        #       0 matched msgs
+        #   etc,
+
+        # scenario 1, 0: 1 patterns, 0 msgs
+        #   msgs: n/a
+        #     patterns: msg0
+        #       1 unmatched pattern msg0
+        #       0 unmatched msgs
+        #       0 matched msgs
+
+        # scenario 1, 1: 1 patterns, 1 msgs
+        #   msgs: msg1
+        #     patterns: msg0
+
+        #       1 unmatched patterns: msg0
+        #       1 unmatched msgs: msg1
+        #       0 matched msgs
+        #     patterns: msg1
+        #       0 unmatched patterns
+        #       0 unmatched msgs
+        #       1 matched msgs: msg1
+
+        # scenario 1, 2: 1 patterns, 2 msgs
+        #   msgs: msg1, msg2
+        #     patterns: msg0
+        #       1 unmatched patterns: msg0
+        #       2 unmatched msgs: msg1, msg2
+        #       0 matched msgs
+        #     patterns: msg1
+        #       0 unmatched patterns
+        #       1 unmatched msgs: msg2
+        #       1 matched msgs: msg1
+        #     patterns: msg2
+        #       0 unmatched patterns
+        #       1 unmatched msgs: msg1
+        #       1 matched msgs: msg2
+        #     patterns: msg[12]{1}
+        #       0 unmatched patterns
+        #       1 unmatched msgs: msg2
+        #       1 matched msg1
+
+        # scenario 1, 3: 1 patterns, 3 msgs
+        #   msgs: msg1, msg2, msg3
+        #     patterns: msg0
+        #       1 unmatched patterns: msg0
+        #       3 unmatched msgs: msg1, msg2, msg3
+        #       0 matched msgs
+        #     patterns: msg1
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg2, msg3
+        #       1 matched msgs: msg1
+        #     patterns: msg2
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg1, msg3
+        #       1 matched msgs: msg2
+        #     patterns: msg3
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg1, msg2
+        #       1 matched msgs: msg3
+        #     patterns: msg[12]{1}
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg2, msg3
+        #       1 matched msg1
+        #     patterns: msg[13]{1}
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg2, msg3
+        #       1 matched msg1
+        #     patterns: msg[23]{1}
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg1, msg3
+        #       1 matched msg2
+        #     patterns: msg[123]{1}
+        #       0 unmatched patterns
+        #       2 unmatched msgs: msg2, msg3
+        #       1 matched msg1
+
+        # scenario 2, 0: 2 patterns, 0 msgs
+        #   msgs: n/a
+        #     patterns: msg0, msg0
+        #       2 unmatched patterns: msg0, msg0
+        #       0 unmatched msgs:
+        #       0 matched msgs
+
+        # scenario 2, 1: 2 patterns, 1 msgs
+        #   msgs: msg1
+        #     patterns: msg0, msg0
+        #       2 unmatched patterns: msg0, msg0
+        #       1 unmatched msgs: msg1
+        #       0 matched msgs
+        #     patterns: msg0, msg1
+        #       1 unmatched patterns: msg0
+        #       0 unmatched msgs:
+        #       1 matched msgs: msg1
+        #     patterns: msg1, msg0
+        #       1 unmatched patterns: msg0
+        #       0 unmatched msgs:
+        #       1 matched msgs: msg1
+        #     patterns: msg1, msg1
+        #       1 unmatched patterns: msg1
+        #       0 unmatched msgs:
+        #       1 matched msgs: msg1
+
+        # scenario 2, 2: 2 patterns, 2 msgs
+        #   msgs: msg1, msg2
+        #     patterns: msg0, msg0
+        #       2 unmatched patterns: msg0, msg0
+        #       2 unmatched msgs: msg1, msg2
+        #       0 matched msgs
+        #     patterns: msg0, msg1
+        #       1 unmatched patterns: msg0
+        #       1 unmatched msgs: msg2
+        #       1 matched msgs: msg1
+        #     patterns: msg0, msg2
+        #       1 unmatched patterns: msg0
+        #       1 unmatched msgs: msg1
+        #       1 matched msgs: msg2
+        #     patterns: msg0, msg[12]{1}
+        #       1 unmatched patterns: msg0
+        #       1 unmatched msgs: msg2
+        #       1 matched msgs: msg1
+        #     patterns: msg1, msg0
+        #       1 unmatched patterns: msg0
+        #       1 unmatched msgs: msg2
+        #       1 matched msgs: msg1
+        #     patterns: msg1, msg1
+        #       1 unmatched patterns: msg1
+        #       1 unmatched msgs: msg2
+        #       1 matched msgs: msg1
+        #     patterns: msg1, msg2
+        #       0 unmatched patterns:
+        #       0 unmatched msgs:
+        #       2 matched msgs: msg1, msg2
+        #     patterns: msg1, msg[12]{1}
+        #       0 unmatched patterns:
+        #       0 unmatched msgs:
+        #       2 matched msgs: msg1, msg2
+        #     patterns: msg2, msg0
+        #       1 unmatched patterns: msg0
+        #       1 unmatched msgs: msg1
+        #       1 matched msgs: msg2
+        #     patterns: msg2, msg1
+        #       0 unmatched patterns:
+        #       0 unmatched msgs:
+        #       2 matched msgs: msg1, msg2
+        #     patterns: msg2, msg2
+        #       1 unmatched patterns: msg2
+        #       1 unmatched msgs: msg1
+        #       1 matched msgs: msg2
+        #     patterns: msg2, msg[12]{1}
+        #       0 unmatched patterns:
+        #       0 unmatched msgs:
+        #       2 matched msgs: msg1, msg2
+        #     patterns: msg[12]{1}, msg0
+        #       1 unmatched patterns: msg0
+        #       1 unmatched msgs: msg2
+        #       1 matched msgs: msg1
+        #     patterns: msg[12]{1}, msg1
+        #       0 unmatched patterns:
+        #       0 unmatched msgs:
+        #       2 matched msgs: msg1, msg2
+        #     patterns: msg[12]{1}, msg2
+        #       0 unmatched patterns:
+        #       0 unmatched msgs:
+        #       2 matched msgs: msg1, msg2
+        #     patterns: msg[12]{1}, msg[12]{1}
+        #       0 unmatched patterns:
+        #       0 unmatched msgs:
+        #       2 matched msgs: msg1, msg2
+
+        # scenario 2, 3: 2 patterns, 3 msgs
+        #     0 unmatched patterns, 1 unmatched msgs, 2 matched msgs
+
+        # scenario 3, 0: 2 patterns, 0 msgs
+        #     3 unmatched patterns, 0 unmatched msgs, 0 matched msgs
+        # scenario 3, 1: 2 patterns, 1 msgs
+        #     2 unmatched patterns, 0 unmatched msgs, 1 matched msgs
+        # scenario 3, 2: 2 patterns, 2 msgs
+        #     1 unmatched patterns, 0 unmatched msgs, 2 matched msgs
+        # scenario 3, 3: 2 patterns, 3 msgs
+        #     0 unmatched patterns, 0 unmatched msgs, 3 matched msgs
+
+        ################################################################
+        ################################################################
+        # build msgs
+        ################################################################
+        # num_per_section = 4
+        # remaining_first_chars = (
+        #     num_per_section - num_first_chars_same_arg + num_per_section
+        # )
+        # remaining_mid_chars = num_per_section - num_mid_chars_same_arg + num_per_section
+        # remaining_last_chars = (
+        #     num_per_section - num_last_chars_same_arg + num_per_section
+        # )
+        # msg1 = (
+        #     string.printable[0:num_per_section]
+        #     + "_"
+        #     + string.printable[0:num_per_section]
+        #     + "_"
+        #     + string.printable[0:num_per_section]
+        # )
+        # msg2 = (
+        #     string.printable[0:num_first_chars_same_arg]
+        #     + string.printable[num_per_section:remaining_first_chars]
+        #     + "_"
+        #     + string.printable[0:num_mid_chars_same_arg]
+        #     + string.printable[num_per_section:remaining_mid_chars]
+        #     + "_"
+        #     + string.printable[0:num_last_chars_same_arg]
+        #     + string.printable[num_per_section:remaining_last_chars]
+        # )
+        print(f"\n{msgs_are_same_arg=}")
+        print(f"\n{add_pattern1_first_arg=}")
+        print(f"\n{issue_msg1_first_arg=}")
+        print(f"\n{pattern1_fullmatch_tf_arg=}")
+        print(f"\n{pattern2_fullmatch_tf_arg=}")
+
+        msg1 = "abc_123"
+        if msgs_are_same_arg:
+            msg2 = msg1
+        else:
+            msg2 = "abc_321"
+        ################################################################
+        # build patterns
+        ################################################################
+
+        pattern1 = msg1
+
+        pattern2 = "abc_[0-9]{3}"
+
+        first_found = ""
+        exp_error = False
+        if msgs_are_same_arg:
+            if issue_msg1_first_arg:
+                first_found = msg1
+            else:  # msg2 issued first
+                first_found = msg2
+        else:  # msgs differ
+            if add_pattern1_first_arg:
+                if issue_msg1_first_arg:
+                    first_found = msg1
+                    if not pattern1_fullmatch_tf_arg and pattern2_fullmatch_tf_arg:
+                        exp_error = True
+                else:  # msg2 issued first
+                    if pattern1_fullmatch_tf_arg and not pattern2_fullmatch_tf_arg:
+                        first_found = msg1
+                    else:
+                        first_found = msg2
+            else:  # pattern2 goes first
+                if issue_msg1_first_arg:
+                    first_found = msg1
+                    if not pattern1_fullmatch_tf_arg or pattern2_fullmatch_tf_arg:
+                        exp_error = True
+                else:  # msg2 issued first
+                    if pattern1_fullmatch_tf_arg and not pattern2_fullmatch_tf_arg:
+                        first_found = msg1
+                    else:
+                        first_found = msg2
+
+        ################################################################
+        # add patterns and issue log msgs
+        ################################################################
+        caplog.clear()
+
+        log_name = "fullmatch_0"
+        t_logger = logging.getLogger(log_name)
+        log_ver = LogVer(log_name=log_name)
+
+        if add_pattern1_first_arg:
+            log_ver.add_msg(log_msg=pattern1, fullmatch=pattern1_fullmatch_tf_arg)
+            log_ver.add_msg(log_msg=pattern2, fullmatch=pattern2_fullmatch_tf_arg)
+        else:
+            log_ver.add_msg(log_msg=pattern2, fullmatch=pattern2_fullmatch_tf_arg)
+            log_ver.add_msg(log_msg=pattern1, fullmatch=pattern1_fullmatch_tf_arg)
+
+        if issue_msg1_first_arg:
+            t_logger.debug(msg1)
+            t_logger.debug(msg2)
+        else:
+            t_logger.debug(msg2)
+            t_logger.debug(msg1)
+
+        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
+
+        if exp_error:
+            with pytest.raises(UnmatchedExpectedMessages):
+                log_ver.verify_log_results(log_results)
+        else:
+            log_ver.verify_log_results(log_results)
+
+        expected_result = "\n"
+        expected_result += f"{msgs_are_same_arg=}\n\n"
+        expected_result += f"{add_pattern1_first_arg=}\n\n"
+        expected_result += f"{issue_msg1_first_arg=}\n\n"
+        expected_result += f"{pattern1_fullmatch_tf_arg=}\n\n"
+        expected_result += f"{pattern2_fullmatch_tf_arg=}\n"
+
+        expected_result += "\n"
+        expected_result += "**********************************\n"
+        expected_result += "* number expected log records: 2 *\n"
+
+        if exp_error:
+            expected_result += "* number expected unmatched  : 1 *\n"
+        else:
+            expected_result += "* number expected unmatched  : 0 *\n"
+
+        expected_result += "* number actual log records  : 2 *\n"
+
+        if exp_error:
+            expected_result += "* number actual unmatched    : 1 *\n"
+            expected_result += "* number matched records     : 1 *\n"
+        else:
+            expected_result += "* number actual unmatched    : 0 *\n"
+            expected_result += "* number matched records     : 2 *\n"
+
+        expected_result += "**********************************\n"
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* unmatched expected records    *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        if exp_error:
+            expected_result += f"('fullmatch_0', 10, '{pattern1}')\n"
+
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* unmatched actual records      *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        if exp_error:
+            expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* matched records               *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        # if issue_msg1_first_arg:
+        #     expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+        #     expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+        # else:
+        #     expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+        #     expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+        if first_found == msg1:
+            expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+            if not exp_error:
+                expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+        else:
+            expected_result += f"('fullmatch_0', 10, '{msg2}')\n"
+            expected_result += f"('fullmatch_0', 10, '{msg1}')\n"
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
     # test_log_verifier_time_match
     ####################################################################
     def test_log_verifier_time_match(
