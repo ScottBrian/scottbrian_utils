@@ -1162,17 +1162,58 @@ class TestLogVerBasic:
     ####################################################################
     # @pytest.mark.parametrize("num_patterns_arg", [0, 1, 2, 3])
     # @pytest.mark.parametrize("num_msgs_arg", [0, 1, 2, 3])
+    # msg_combos = mi.collapse(
+    #     map(lambda n: it.product(("msg1", "msg2", "msg3")[0:n], repeat=n), range(4)),
+    #     base_type=tuple,
+    # )
+    msgs = ["msg1", "msg2", "msg3"]
+    msg_perms = it.permutations(msgs, 3)
     msg_combos = mi.collapse(
-        map(lambda n: it.product(("msg1", "msg2", "msg3")[0:n], repeat=n), range(4)),
+        map(
+            lambda mp: map(lambda n: it.product(mp[0:n], repeat=n), range(4)), msg_perms
+        ),
         base_type=tuple,
     )
+    msg_combos_list = sorted(set(msg_combos), key=lambda x: (len(x), x))
 
-    @pytest.mark.parametrize("msgs_arg", msg_combos)
+    # patterns = (
+    #     "msg0",
+    #     "msg1",
+    #     "msg2",
+    #     "msg3",
+    #     "msg[12]{1}",
+    #     "msg[13]{1}",
+    #     "msg[23]{1}",
+    #     "msg[123]{1}",
+    # )
+    patterns = (
+        "msg0",
+        "msg1",
+        "msg2",
+        "msg3",
+    )
+    pattern_3_combos = it.combinations(patterns, 3)
+    pattern_perms = mi.collapse(
+        map(lambda p3: it.permutations(p3, 3), pattern_3_combos), base_type=tuple
+    )
+
+    pattern_combos = mi.collapse(
+        map(
+            lambda mp: map(lambda n: it.product(mp[0:n], repeat=n), range(4)),
+            pattern_perms,
+        ),
+        base_type=tuple,
+    )
+    pattern_combos_list = sorted(set(pattern_combos), key=lambda x: (len(x), x))
+
+    @pytest.mark.parametrize("msgs_arg", msg_combos_list)
+    @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
     def test_log_verifier_contention(
         self,
         # num_patterns_arg: int,
         # num_msgs_arg: int,
         msgs_arg: Iterable[tuple[str]],
+        patterns_arg: Iterable[tuple[str]],
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -1183,7 +1224,40 @@ class TestLogVerBasic:
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
-        print(f"{msgs_arg=}")
+        print(f"\n{msgs_arg=}, \n{patterns_arg=}")
+        matched_msg_array: dict[str, tuple[str]] = {
+            "msg0": (),
+            "msg1": ("msg1",),
+            "msg2": ("msg2",),
+            "msg3": ("msg3",),
+            "msg[12]{1}": ("msg1", "msg2"),
+            "msg[13]{1}": ("msg1", "msg3"),
+            "msg[23]{1}": ("msg2", "msg3"),
+            "msg[123]{1}": ("msg1", "msg2", "msg3"),
+        }
+        unmatched_patterns: list[str] = []
+        matched_msgs: list[str] = []
+        patterns_arg_list = list(patterns_arg)
+        len0_len1_complete = False
+        while not len0_len1_complete:
+            len0_len1_complete = True
+            for pattern in patterns_arg_list:
+                msgs_matched = matched_msg_array[pattern]
+                if len(msgs_matched) == 0:
+                    unmatched_patterns.append(pattern)
+                    patterns_arg_list.remove(pattern)
+                    len0_len1_complete = False
+                    break
+                elif len(msgs_matched) == 1:
+                    if msgs_matched[0] in msgs_arg:
+                        matched_msgs.append(msgs_matched[0])
+                        patterns_arg_list.remove(pattern)
+                        len0_len1_complete = False
+                        break
+
+        print(f"{unmatched_patterns=}")
+        print(f"{matched_msgs=}")
+
         ################################################################
         # log msgs: msg1, msg2, msg3
         # patterns: msg0: no match
