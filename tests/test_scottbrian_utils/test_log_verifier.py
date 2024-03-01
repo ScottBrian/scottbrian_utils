@@ -7,6 +7,7 @@ from collections.abc import Iterable
 import itertools as it
 import more_itertools as mi
 import logging
+import pandas as pd
 import datetime
 import re
 import string
@@ -1176,22 +1177,17 @@ class TestLogVerBasic:
     )
     msg_combos_list = sorted(set(msg_combos), key=lambda x: (len(x), x))
 
-    # patterns = (
-    #     "msg0",
-    #     "msg1",
-    #     "msg2",
-    #     "msg3",
-    #     "msg[12]{1}",
-    #     "msg[13]{1}",
-    #     "msg[23]{1}",
-    #     "msg[123]{1}",
-    # )
     patterns = (
-        "msg0",
-        "msg1",
-        "msg2",
-        "msg3",
+        # "msg0",
+        # "msg1",
+        # "msg2",
+        # "msg3",
+        # "msg[12]{1}",
+        "msg[13]{1}",
+        "msg[23]{1}",
+        "msg[123]{1}",
     )
+
     pattern_3_combos = it.combinations(patterns, 3)
     pattern_perms = mi.collapse(
         map(lambda p3: it.permutations(p3, 3), pattern_3_combos), base_type=tuple
@@ -1225,37 +1221,104 @@ class TestLogVerBasic:
             caplog: pytest fixture to capture log output
         """
         print(f"\n{msgs_arg=}, \n{patterns_arg=}")
-        matched_msg_array: dict[str, tuple[str]] = {
-            "msg0": (),
-            "msg1": ("msg1",),
-            "msg2": ("msg2",),
-            "msg3": ("msg3",),
-            "msg[12]{1}": ("msg1", "msg2"),
-            "msg[13]{1}": ("msg1", "msg3"),
-            "msg[23]{1}": ("msg2", "msg3"),
-            "msg[123]{1}": ("msg1", "msg2", "msg3"),
+        matched_msg_array: dict[str, set[str]] = {
+            "msg0": {""},
+            "msg1": {"msg1"},
+            "msg2": {"msg2"},
+            "msg3": {"msg3"},
+            "msg[12]{1}": {"msg1", "msg2"},
+            "msg[13]{1}": {"msg1", "msg3"},
+            "msg[23]{1}": {"msg2", "msg3"},
+            "msg[123]{1}": {"msg1", "msg2", "msg3"},
         }
+
+        matched_pattern_array: dict[str, set[str]] = {
+            "msg1": {"msg1", "msg[12]{1}", "msg[13]{1}", "msg[123]{1}"},
+            "msg2": {"msg2", "msg[12]{1}", "msg[23]{1}", "msg[123]{1}"},
+            "msg3": {"msg3", "msg[13]{1}", "msg[123]{1}"},
+        }
+
+        def filter_potential_msgs(potential_msgs, filter_msgs):
+            return potential_msgs & filter_msgs
+
         unmatched_patterns: list[str] = []
+        unmatched_msgs: list[str] = []
         matched_msgs: list[str] = []
-        patterns_arg_list = list(patterns_arg)
-        len0_len1_complete = False
-        while not len0_len1_complete:
-            len0_len1_complete = True
-            for pattern in patterns_arg_list:
-                msgs_matched = matched_msg_array[pattern]
-                if len(msgs_matched) == 0:
-                    unmatched_patterns.append(pattern)
-                    patterns_arg_list.remove(pattern)
-                    len0_len1_complete = False
-                    break
-                elif len(msgs_matched) == 1:
-                    if msgs_matched[0] in msgs_arg:
-                        matched_msgs.append(msgs_matched[0])
-                        patterns_arg_list.remove(pattern)
-                        len0_len1_complete = False
-                        break
+
+        if msgs_arg:
+            msgs_arg_set = set(msgs_arg)
+        else:
+            msgs_arg_set = {""}
+
+        if patterns_arg:
+            patterns_arg_set = set(patterns_arg)
+        else:
+            patterns_arg_set = {""}
+        ################################################################
+        # create pandas array for patterns
+        ################################################################
+        if patterns_arg:
+            pattern_df = pd.DataFrame(patterns_arg, columns=["pattern"])
+
+            pattern_df["potential_msgs"] = pattern_df["pattern"].map(matched_msg_array)
+            pattern_df["potential_msgs2"] = pattern_df["potential_msgs"].apply(
+                filter_potential_msgs, filter_msgs=msgs_arg_set
+            )
+
+            print(f"\npattern_df: \n{pattern_df}")
+
+        if msgs_arg:
+            msg_df = pd.DataFrame(msgs_arg, columns=["msg"])
+            msg_df["potential_patterns"] = msg_df["msg"].map(matched_pattern_array)
+            msg_df["potential_patterns2"] = msg_df["potential_patterns"].apply(
+                filter_potential_msgs, filter_msgs=patterns_arg_set
+            )
+
+            print(f"\nmsg_df: \n{msg_df}")
+
+        # msgs_arg_list: list[str] = list(msgs_arg)
+        #
+        #
+        # patterns_arg_list: list[str] = list(patterns_arg)
+        #
+        # pattern_to_msg_candidates: dict[str, set[str]] = {}
+        #
+        # msg_to_pattern_candidates: dict[str, set[str]] = {}
+        #
+        # msgs_arg_set: set[str] = set(msgs_arg_list)
+        # print(f" 3 {msgs_arg_list=}")
+        # print(f" 4 {msgs_arg_set=}")
+        # for pattern in patterns_arg_list:
+        #     pattern_to_msg_candidates[pattern] = (matched_msg_array[pattern] &
+        #                                          msgs_arg_set)
+        #
+        #
+        #
+        #
+        #
+        # print(f" 4 {patterns_arg_list=}")
+        # len0_len1_complete = False
+        # while not len0_len1_complete:
+        #     len0_len1_complete = True
+        #     for pattern in patterns_arg_list:
+        #         print(f" 5 {pattern=}")
+        #         msgs_matched = matched_msg_array[pattern]
+        #         if len(msgs_matched) == 0:
+        #             unmatched_patterns.append(pattern)
+        #             patterns_arg_list.remove(pattern)
+        #             len0_len1_complete = False
+        #             break
+        #         elif len(msgs_matched) == 1:
+        #             if msgs_matched[0] in msgs_arg_list:
+        #                 matched_msgs.append(msgs_matched[0])
+        #                 msgs_arg_list.remove(msgs_matched[0])
+        #                 patterns_arg_list.remove(pattern)
+        #                 len0_len1_complete = False
+        #                 break
+        #         else:
 
         print(f"{unmatched_patterns=}")
+        print(f"{unmatched_msgs=}")
         print(f"{matched_msgs=}")
 
         ################################################################
