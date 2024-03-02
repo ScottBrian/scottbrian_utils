@@ -1272,9 +1272,9 @@ class TestLogVerBasic:
                 filter_potential_msgs, filter_msgs=msgs_arg_set
             )
             pattern_df["claimed_msg"] = "none"
-        else:
-            if msgs_arg:
-                unmatched_msgs = list(msgs_arg)
+        # else:
+        #     if msgs_arg:
+        #         unmatched_msgs = list(msgs_arg)
 
         if msgs_arg:
             msg_df = pd.DataFrame(msgs_arg, columns=["msg"])
@@ -1284,21 +1284,38 @@ class TestLogVerBasic:
             )
 
             msg_df["claimed_pattern"] = "none"
-        else:
-            if patterns_arg:
-                unmatched_patterns = list(patterns_arg)
+        # else:
+        #     if patterns_arg:
+        #         unmatched_patterns = list(patterns_arg)
 
         if patterns_arg and msgs_arg:
             for idx in range(len(pattern_df)):
                 pattern = pattern_df["pattern"].iloc[idx]
                 potential_msgs = list(pattern_df["potential_msgs2"].iloc[idx])
                 if len(potential_msgs) == 1:
-                    if (
-                        p_msg := pattern_df["potential_msgs2"].iloc[idx].pop()
-                    ) in msgs_arg_list:
-                        pattern_df["claimed_msg"].iloc[idx] = p_msg
-                        msgs_arg_list.remove(p_msg)
-
+                    p_msg = potential_msgs[0]
+                    for idx2 in range(len(msg_df)):
+                        if (
+                            p_msg == msg_df["msg"].iloc[idx2]
+                            and msg_df["claimed_pattern"].iloc[idx2] == "none"
+                        ):
+                            pattern_df["claimed_msg"].iloc[idx] = p_msg
+                            msg_df["claimed_pattern"].iloc[idx2] = pattern
+                            break
+            for idx in range(len(msg_df)):
+                if msg_df["claimed_pattern"].iloc[idx] == "none":
+                    msg = msg_df["msg"].iloc[idx]
+                    potential_patterns = list(msg_df["potential_patterns2"].iloc[idx])
+                    if len(potential_patterns) == 1:
+                        p_pattern = potential_patterns[0]
+                        for idx2 in range(len(pattern_df)):
+                            if (
+                                p_pattern == pattern_df["pattern"].iloc[idx2]
+                                and pattern_df["claimed_msg"].iloc[idx2] == "none"
+                            ):
+                                msg_df["claimed_pattern"].iloc[idx] = p_pattern
+                                pattern_df["claimed_msg"].iloc[idx2] = msg
+                                break
 
         for idx in range(len(pattern_df)):
             pattern = pattern_df["pattern"].iloc[idx]
