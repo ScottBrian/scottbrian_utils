@@ -1274,9 +1274,6 @@ class TestLogVerBasic:
                 filter_potential_msgs, filter_msgs=msgs_arg
             )
             pattern_df["claimed_msg"] = "none"
-        # else:
-        #     if msgs_arg:
-        #         unmatched_msgs = list(msgs_arg)
 
         if msgs_arg:
             msg_df = pd.DataFrame(msgs_arg, columns=["msg"])
@@ -1286,9 +1283,6 @@ class TestLogVerBasic:
             )
 
             msg_df["claimed_pattern"] = "none"
-        # else:
-        #     if patterns_arg:
-        #         unmatched_patterns = list(patterns_arg)
 
         if patterns_arg and msgs_arg:
             ############################################################
@@ -1384,6 +1378,52 @@ class TestLogVerBasic:
                         if pattern_df["claimed_msg"].iloc[idx] != "none":
                             break
 
+            for perm_idx in it.permutations(range(len(pattern_df))):
+                msg_combo_lists = []
+                for idx in perm_idx:
+                    if len(pattern_df["potential_msgs"].iloc[idx]) > 0:
+                        msg_combo_lists.append(pattern_df["potential_msgs"].iloc[idx])
+                    else:
+                        msg_combo_lists.append(["none"])
+                msg_prod = ""
+                if len(msg_combo_lists) == 1:
+                    msg_prod = it.product(
+                        msg_combo_lists[0],
+                    )
+                elif len(msg_combo_lists) == 1:
+                    msg_prod = it.product(
+                        msg_combo_lists[0],
+                        msg_combo_lists[1],
+                    )
+                elif len(msg_combo_lists) == 3:
+                    msg_prod = it.product(
+                        msg_combo_lists[0],
+                        msg_combo_lists[1],
+                        msg_combo_lists[2],
+                    )
+
+                print(
+                    f"{perm_idx=}, \n   {idx=}, \n      {msg_combo_lists=} \n  "
+                    f"       {list(msg_prod)=}"
+                )
+
+                # patterns_found_msg = {0: False, 1: False, 2: False}
+                # avail_msgs = msgs_arg.copy()
+                # for msg0 in msg_combo_lists[0]:
+                #     if msg0 in avail_msgs:
+                #         patterns_found_msg[perm_idx[0]] = True
+                #         avail_msgs.remove(msg0)
+                #     if len(msg_combo_lists) > 1:
+                #         for msg1 in msg_combo_lists[1]:
+                #             if msg1 in avail_msgs:
+                #                 patterns_found_msg[perm_idx[1]] = True
+                #                 avail_msgs.remove(msg1)
+                #             if len(msg_combo_lists) > 2:
+                #                 for msg2 in msg_combo_lists[2]:
+                #                     if msg2 in avail_msgs:
+                #                         patterns_found_msg[perm_idx[2]] = True
+                #                         avail_msgs.remove(msg2)
+
         for idx in range(len(pattern_df)):
             pattern = pattern_df["pattern"].iloc[idx]
             if pattern_df["claimed_msg"].iloc[idx] == "none":
@@ -1395,47 +1435,6 @@ class TestLogVerBasic:
                 unmatched_msgs.append(msg)
             else:
                 matched_msgs.append(msg)
-
-        # msgs_arg_list: list[str] = list(msgs_arg)
-        #
-        #
-        # patterns_arg_list: list[str] = list(patterns_arg)
-        #
-        # pattern_to_msg_candidates: dict[str, set[str]] = {}
-        #
-        # msg_to_pattern_candidates: dict[str, set[str]] = {}
-        #
-        # msgs_arg_set: set[str] = set(msgs_arg_list)
-        # print(f" 3 {msgs_arg_list=}")
-        # print(f" 4 {msgs_arg_set=}")
-        # for pattern in patterns_arg_list:
-        #     pattern_to_msg_candidates[pattern] = (matched_msg_array[pattern] &
-        #                                          msgs_arg_set)
-        #
-        #
-        #
-        #
-        #
-        # print(f" 4 {patterns_arg_list=}")
-        # len0_len1_complete = False
-        # while not len0_len1_complete:
-        #     len0_len1_complete = True
-        #     for pattern in patterns_arg_list:
-        #         print(f" 5 {pattern=}")
-        #         msgs_matched = matched_msg_array[pattern]
-        #         if len(msgs_matched) == 0:
-        #             unmatched_patterns.append(pattern)
-        #             patterns_arg_list.remove(pattern)
-        #             len0_len1_complete = False
-        #             break
-        #         elif len(msgs_matched) == 1:
-        #             if msgs_matched[0] in msgs_arg_list:
-        #                 matched_msgs.append(msgs_matched[0])
-        #                 msgs_arg_list.remove(msgs_matched[0])
-        #                 patterns_arg_list.remove(pattern)
-        #                 len0_len1_complete = False
-        #                 break
-        #         else:
 
         print(f"\npattern_df: \n{pattern_df}")
         print(f"\nmsg_df: \n{msg_df}")
