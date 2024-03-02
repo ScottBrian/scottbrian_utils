@@ -1245,15 +1245,22 @@ class TestLogVerBasic:
         unmatched_msgs: list[str] = []
         matched_msgs: list[str] = []
 
+        pattern_df = pd.DataFrame()
+        msg_df = pd.DataFrame()
+
         if msgs_arg:
             msgs_arg_set = set(msgs_arg)
+            msgs_arg_list = list(msgs_arg)
         else:
             msgs_arg_set = {""}
+            msgs_arg_list = []
 
         if patterns_arg:
             patterns_arg_set = set(patterns_arg)
+            patterns_arg_list = list(patterns_arg)
         else:
             patterns_arg_set = {""}
+            patterns_arg_list = []
         ################################################################
         # create pandas array for patterns
         ################################################################
@@ -1264,8 +1271,10 @@ class TestLogVerBasic:
             pattern_df["potential_msgs2"] = pattern_df["potential_msgs"].apply(
                 filter_potential_msgs, filter_msgs=msgs_arg_set
             )
-
-            print(f"\npattern_df: \n{pattern_df}")
+            pattern_df["claimed_msg"] = "none"
+        else:
+            if msgs_arg:
+                unmatched_msgs = list(msgs_arg)
 
         if msgs_arg:
             msg_df = pd.DataFrame(msgs_arg, columns=["msg"])
@@ -1274,7 +1283,34 @@ class TestLogVerBasic:
                 filter_potential_msgs, filter_msgs=patterns_arg_set
             )
 
-            print(f"\nmsg_df: \n{msg_df}")
+            msg_df["claimed_pattern"] = "none"
+        else:
+            if patterns_arg:
+                unmatched_patterns = list(patterns_arg)
+
+        if patterns_arg and msgs_arg:
+            for idx in range(len(pattern_df)):
+                pattern = pattern_df["pattern"].iloc[idx]
+                potential_msgs = list(pattern_df["potential_msgs2"].iloc[idx])
+                if len(potential_msgs) == 1:
+                    if (
+                        p_msg := pattern_df["potential_msgs2"].iloc[idx].pop()
+                    ) in msgs_arg_list:
+                        pattern_df["claimed_msg"].iloc[idx] = p_msg
+                        msgs_arg_list.remove(p_msg)
+
+
+        for idx in range(len(pattern_df)):
+            pattern = pattern_df["pattern"].iloc[idx]
+            if pattern_df["claimed_msg"].iloc[idx] == "none":
+                unmatched_patterns.append(pattern)
+
+        for idx in range(len(msg_df)):
+            msg = msg_df["msg"].iloc[idx]
+            if msg_df["claimed_pattern"].iloc[idx] == "none":
+                unmatched_msgs.append(msg)
+            else:
+                matched_msgs.append(msg)
 
         # msgs_arg_list: list[str] = list(msgs_arg)
         #
@@ -1317,6 +1353,8 @@ class TestLogVerBasic:
         #                 break
         #         else:
 
+        print(f"\npattern_df: \n{pattern_df}")
+        print(f"\nmsg_df: \n{msg_df}")
         print(f"{unmatched_patterns=}")
         print(f"{unmatched_msgs=}")
         print(f"{matched_msgs=}")
