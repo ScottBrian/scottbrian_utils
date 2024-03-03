@@ -1206,8 +1206,6 @@ class TestLogVerBasic:
     @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
     def test_log_verifier_contention(
         self,
-        # num_patterns_arg: int,
-        # num_msgs_arg: int,
         msgs_arg: Iterable[tuple[str]],
         patterns_arg: Iterable[tuple[str]],
         capsys: pytest.CaptureFixture[str],
@@ -1238,26 +1236,6 @@ class TestLogVerBasic:
             "msg3": {"msg3", "msg[13]{1}", "msg[23]{1}", "msg[123]{1}"},
         }
 
-        def filter_potential_msgs(potential_msgs, filter_msgs):
-            found_items = []
-
-            def sort_rtn(item):
-                nonlocal found_items
-                num_item_found = found_items.count(item)
-                found_idx = filter_msgs.index(item)
-                found_items.append(item)
-
-            ret_list = list(potential_msgs & set(filter_msgs))
-            ret_list.sort(key=filter_msgs.index)
-            return ret_list
-
-        unmatched_patterns: list[str] = []
-        unmatched_msgs: list[str] = []
-        matched_msgs: list[str] = []
-
-        pattern_df = pd.DataFrame()
-        msg_df = pd.DataFrame()
-
         if msgs_arg:
             msgs_arg_set = set(msgs_arg)
             msgs_arg_list = list(msgs_arg)
@@ -1271,6 +1249,63 @@ class TestLogVerBasic:
         else:
             patterns_arg_set = {""}
             patterns_arg_list = []
+
+        sort_x_y_x_msg = ""
+        if len(msgs_arg_list) == 3:
+            for msg in msgs_arg_list:
+                if msgs_arg_list.count(msg) > 1 and msg == msgs_arg_list[2]:
+                    sort_x_y_x_msg = msg
+                    break
+
+        sort_x_y_x_pattern = ""
+        if len(patterns_arg_list) == 3:
+            for pattern in patterns_arg_list:
+                if (
+                    patterns_arg_list.count(pattern) > 1
+                    and pattern == patterns_arg_list[2]
+                ):
+                    sort_x_y_x_pattern = pattern
+                    break
+
+        def sort_items(items: list[str], ref_list: list[str], sort_x_y_item: str):
+            x_y_z_item_found = False
+
+            def sort_rtn(item):
+                nonlocal x_y_z_item_found
+                if item == sort_x_y_item:
+                    if x_y_z_item_found:
+                        return 3
+                    else:
+                        x_y_z_item_found = True
+                return ref_list.index(item)
+
+            items.sort(key=sort_rtn)
+            return items
+
+        def filter_potential_msgs(potential_msgs, filter_msgs, sort_x_y_item):
+            # x_y_z_item_found = False
+            #
+            # def sort_rtn(item):
+            #     nonlocal x_y_z_item_found
+            #     if item == sort_x_y_item:
+            #         if x_y_z_item_found:
+            #             return 3
+            #         else:
+            #             x_y_z_item_found = True
+            #     return filter_msgs.index(item)
+
+            ret_list = list(potential_msgs & set(filter_msgs))
+            return sort_items(ret_list, filter_msgs, sort_x_y_item)
+            # ret_list.sort(key=sort_rtn)
+            # return ret_list
+
+        unmatched_patterns: list[str] = []
+        unmatched_msgs: list[str] = []
+        matched_msgs: list[str] = []
+
+        pattern_df = pd.DataFrame()
+        msg_df = pd.DataFrame()
+
         ################################################################
         # create pandas array for patterns
         ################################################################
@@ -1279,7 +1314,9 @@ class TestLogVerBasic:
 
             pattern_df["potential_msgs"] = pattern_df["pattern"].map(matched_msg_array)
             pattern_df["potential_msgs"] = pattern_df["potential_msgs"].apply(
-                filter_potential_msgs, filter_msgs=msgs_arg
+                filter_potential_msgs,
+                filter_msgs=msgs_arg_list,
+                sort_x_y_item=sort_x_y_x_msg,
             )
             pattern_df["claimed_msg"] = "none"
 
@@ -1287,13 +1324,16 @@ class TestLogVerBasic:
             msg_df = pd.DataFrame(msgs_arg, columns=["msg"])
             msg_df["potential_patterns"] = msg_df["msg"].map(matched_pattern_array)
             msg_df["potential_patterns"] = msg_df["potential_patterns"].apply(
-                filter_potential_msgs, filter_msgs=patterns_arg
+                filter_potential_msgs,
+                filter_msgs=patterns_arg_list,
+                sort_x_y_item=sort_x_y_x_pattern,
             )
 
             msg_df["claimed_pattern"] = "none"
 
         num_found_all_msgs = 0
-        test_found_msgs_list = []
+        test_matched_found_msgs_list = []
+        test_unmatched_found_msgs_list = []
         test_not_found_msgs_list = []
         no_match_patterns = []
         no_match_msgs = []
@@ -1418,7 +1458,8 @@ class TestLogVerBasic:
                         msg_combo_lists[1],
                         msg_combo_lists[2],
                     )
-
+                msg_prods = list(msg_prods)
+                print(f"{msg_prods=}")
                 for msg_prod in msg_prods:
                     test_found_msgs = []
                     msgs_arg_copy = msgs_arg_list.copy()
@@ -1426,20 +1467,41 @@ class TestLogVerBasic:
                         if msg in msgs_arg_copy:
                             test_found_msgs.append(msg)
                             msgs_arg_copy.remove(msg)
-                    test_found_msgs.sort(key=msgs_arg.index)
-                    test_found_msgs_list.append(test_found_msgs)
+                    # test_found_msgs.sort(key=msgs_arg.index)
+                    test_found_msgs = sort_items(
+                        test_found_msgs,
+                        msgs_arg_list,
+                        sort_x_y_x_msg,
+                    )
+                    msgs_arg_copy = sort_items(
+                        msgs_arg_copy,
+                        msgs_arg_list,
+                        sort_x_y_x_msg,
+                    )
+                    test_matched_found_msgs_list.append(test_found_msgs)
+                    test_unmatched_found_msgs_list.append(msgs_arg_copy.copy())
 
-                print(f"{test_found_msgs_list=}")
-                for found_msgs in test_found_msgs_list:
-                    if found_msgs == msgs_arg_list:
-                        num_found_all_msgs += 1
-                    else:
-                        test_not_found_msgs_list.append(found_msgs)
+                # print(f"{test_matched_found_msgs_list=}")
+                # matched_found_msgs = []
+                # unmatched_found_msgs = []
+                # for found_msgs in test_matched_found_msgs_list:
+                #     for idx, msg in enumerate(found_msgs):
+                #         if msg == msgs_arg_list[idx]:
+                #             matched_found_msgs.append(msg)
+                #         else:
+                #             unmatched_found_msgs.append(msgs_arg_list[idx])
+                #
+                #     if found_msgs == msgs_arg_list:
+                #         num_found_all_msgs += 1
+                #     else:
+                #         for idx, msg in enumerate(found_msgs):
+                #             if
+                #         test_not_found_msgs_list.append(found_msgs)
 
-            print(
-                f"{msgs_arg_list=} \n{num_found_all_msgs=}, \n   "
-                f" {test_not_found_msgs_list=}"
-            )
+            # print(
+            #     f"{msgs_arg_list=} \n{num_found_all_msgs=}, \n   "
+            #     f" {test_not_found_msgs_list=}"
+            # )
 
         for idx in range(len(pattern_df)):
             pattern = pattern_df["pattern"].iloc[idx]
@@ -1453,42 +1515,76 @@ class TestLogVerBasic:
             else:
                 matched_msgs.append(msg)
 
+        unmatched_msgs = sort_items(unmatched_msgs, msgs_arg_list, sort_x_y_x_msg)
+        matched_msgs = sort_items(matched_msgs, msgs_arg_list, sort_x_y_x_msg)
+
+        num_unmatched_agreed = 0
+        num_unmatched_not_agreed = 0
+        if patterns_arg_list and msgs_arg_list:
+            for test_unmatched_found_msgs in test_unmatched_found_msgs_list:
+                if test_unmatched_found_msgs == unmatched_msgs:
+                    num_unmatched_agreed += 1
+                else:
+                    num_unmatched_not_agreed += 1
+        else:
+            if not matched_msgs and unmatched_msgs == msgs_arg_list:
+                num_unmatched_agreed = 1
+
+        num_matched_agreed = 0
+        num_matched_not_agreed = 0
+        if patterns_arg_list and msgs_arg_list:
+            for test_matched_found_msgs in test_matched_found_msgs_list:
+                if test_matched_found_msgs == matched_msgs:
+                    num_matched_agreed += 1
+        else:
+            if not matched_msgs and unmatched_msgs == msgs_arg_list:
+                num_matched_agreed = 1
+
         print(f"\npattern_df: \n{pattern_df}")
         print(f"\nmsg_df: \n{msg_df}")
         print(f"{unmatched_patterns=}")
         print(f"{unmatched_msgs=}")
         print(f"{matched_msgs=}")
 
-        do_assert = True
-        for idx in range(len(pattern_df)):
-            if not pattern_df["potential_msgs"].iloc[idx]:
-                do_assert = False
+        print(f"{num_unmatched_agreed=}")
+        print(f"{num_unmatched_not_agreed=}")
 
-        avail_msgs = list(msgs_arg)
-        for idx in range(len(pattern_df)):
-            potential_msgs = list(pattern_df["potential_msgs"].iloc[idx])
-            if len(potential_msgs) == 1:
-                p_msg = potential_msgs[0]
-                if p_msg in avail_msgs:
-                    avail_msgs.remove(p_msg)
-                else:
-                    do_assert = False
+        print(f"{num_matched_agreed=}")
+        print(f"{num_matched_not_agreed=}")
 
-        for idx in range(len(msg_df)):
-            if not msg_df["potential_patterns"].iloc[idx]:
-                do_assert = False
+        assert num_unmatched_agreed
+        assert num_matched_agreed
 
-        if do_assert and len(pattern_df) == len(msg_df):
-            assert not unmatched_patterns
-            assert not unmatched_msgs
-
-        if (
-            (len(patterns_arg_list) > 0)
-            and (len(patterns_arg_list) == len(msgs_arg_list))
-            and not no_match_patterns
-            and not no_match_msgs
-        ):
-            assert num_found_all_msgs
+        # do_assert = True
+        # for idx in range(len(pattern_df)):
+        #     if not pattern_df["potential_msgs"].iloc[idx]:
+        #         do_assert = False
+        #
+        # avail_msgs = list(msgs_arg)
+        # for idx in range(len(pattern_df)):
+        #     potential_msgs = list(pattern_df["potential_msgs"].iloc[idx])
+        #     if len(potential_msgs) == 1:
+        #         p_msg = potential_msgs[0]
+        #         if p_msg in avail_msgs:
+        #             avail_msgs.remove(p_msg)
+        #         else:
+        #             do_assert = False
+        #
+        # for idx in range(len(msg_df)):
+        #     if not msg_df["potential_patterns"].iloc[idx]:
+        #         do_assert = False
+        #
+        # if do_assert and len(pattern_df) == len(msg_df):
+        #     assert not unmatched_patterns
+        #     assert not unmatched_msgs
+        #
+        # if (
+        #     (len(patterns_arg_list) > 0)
+        #     and (len(patterns_arg_list) == len(msgs_arg_list))
+        #     and not no_match_patterns
+        #     and not no_match_msgs
+        # ):
+        #     assert num_found_all_msgs
         ################################################################
         # log msgs: msg1, msg2, msg3
         # patterns: msg0: no match
