@@ -1239,6 +1239,14 @@ class TestLogVerBasic:
         }
 
         def filter_potential_msgs(potential_msgs, filter_msgs):
+            found_items = []
+
+            def sort_rtn(item):
+                nonlocal found_items
+                num_item_found = found_items.count(item)
+                found_idx = filter_msgs.index(item)
+                found_items.append(item)
+
             ret_list = list(potential_msgs & set(filter_msgs))
             ret_list.sort(key=filter_msgs.index)
             return ret_list
@@ -1284,12 +1292,19 @@ class TestLogVerBasic:
 
             msg_df["claimed_pattern"] = "none"
 
+        num_found_all_msgs = 0
+        test_found_msgs_list = []
+        test_not_found_msgs_list = []
+        no_match_patterns = []
+        no_match_msgs = []
         if patterns_arg and msgs_arg:
             ############################################################
             # handle patterns with 1 potential msg
             ############################################################
             for idx in range(len(pattern_df)):
                 pattern = pattern_df["pattern"].iloc[idx]
+                if len(pattern_df["potential_msgs"].iloc[idx]) == 0:
+                    no_match_patterns.append(pattern)
                 if len(pattern_df["potential_msgs"].iloc[idx]) == 1:
                     for p_msg in pattern_df["potential_msgs"].iloc[idx]:
                         for idx2 in range(len(msg_df)):
@@ -1309,6 +1324,8 @@ class TestLogVerBasic:
             for idx in range(len(msg_df)):
                 if msg_df["claimed_pattern"].iloc[idx] == "none":
                     msg = msg_df["msg"].iloc[idx]
+                    if len(msg_df["potential_patterns"].iloc[idx]) == 0:
+                        no_match_msgs.append(msg)
                     if len(msg_df["potential_patterns"].iloc[idx]) == 1:
                         for p_pattern in msg_df["potential_patterns"].iloc[idx]:
                             for idx2 in range(len(pattern_df)):
@@ -1385,44 +1402,44 @@ class TestLogVerBasic:
                         msg_combo_lists.append(pattern_df["potential_msgs"].iloc[idx])
                     else:
                         msg_combo_lists.append(["none"])
-                msg_prod = ""
+                msg_prods = ""
                 if len(msg_combo_lists) == 1:
-                    msg_prod = it.product(
+                    msg_prods = it.product(
                         msg_combo_lists[0],
                     )
-                elif len(msg_combo_lists) == 1:
-                    msg_prod = it.product(
+                elif len(msg_combo_lists) == 2:
+                    msg_prods = it.product(
                         msg_combo_lists[0],
                         msg_combo_lists[1],
                     )
                 elif len(msg_combo_lists) == 3:
-                    msg_prod = it.product(
+                    msg_prods = it.product(
                         msg_combo_lists[0],
                         msg_combo_lists[1],
                         msg_combo_lists[2],
                     )
 
-                print(
-                    f"{perm_idx=}, \n   {idx=}, \n      {msg_combo_lists=} \n  "
-                    f"       {list(msg_prod)=}"
-                )
+                for msg_prod in msg_prods:
+                    test_found_msgs = []
+                    msgs_arg_copy = msgs_arg_list.copy()
+                    for msg in msg_prod:
+                        if msg in msgs_arg_copy:
+                            test_found_msgs.append(msg)
+                            msgs_arg_copy.remove(msg)
+                    test_found_msgs.sort(key=msgs_arg.index)
+                    test_found_msgs_list.append(test_found_msgs)
 
-                # patterns_found_msg = {0: False, 1: False, 2: False}
-                # avail_msgs = msgs_arg.copy()
-                # for msg0 in msg_combo_lists[0]:
-                #     if msg0 in avail_msgs:
-                #         patterns_found_msg[perm_idx[0]] = True
-                #         avail_msgs.remove(msg0)
-                #     if len(msg_combo_lists) > 1:
-                #         for msg1 in msg_combo_lists[1]:
-                #             if msg1 in avail_msgs:
-                #                 patterns_found_msg[perm_idx[1]] = True
-                #                 avail_msgs.remove(msg1)
-                #             if len(msg_combo_lists) > 2:
-                #                 for msg2 in msg_combo_lists[2]:
-                #                     if msg2 in avail_msgs:
-                #                         patterns_found_msg[perm_idx[2]] = True
-                #                         avail_msgs.remove(msg2)
+                print(f"{test_found_msgs_list=}")
+                for found_msgs in test_found_msgs_list:
+                    if found_msgs == msgs_arg_list:
+                        num_found_all_msgs += 1
+                    else:
+                        test_not_found_msgs_list.append(found_msgs)
+
+            print(
+                f"{msgs_arg_list=} \n{num_found_all_msgs=}, \n   "
+                f" {test_not_found_msgs_list=}"
+            )
 
         for idx in range(len(pattern_df)):
             pattern = pattern_df["pattern"].iloc[idx]
@@ -1465,6 +1482,13 @@ class TestLogVerBasic:
             assert not unmatched_patterns
             assert not unmatched_msgs
 
+        if (
+            (len(patterns_arg_list) > 0)
+            and (len(patterns_arg_list) == len(msgs_arg_list))
+            and not no_match_patterns
+            and not no_match_msgs
+        ):
+            assert num_found_all_msgs
         ################################################################
         # log msgs: msg1, msg2, msg3
         # patterns: msg0: no match
