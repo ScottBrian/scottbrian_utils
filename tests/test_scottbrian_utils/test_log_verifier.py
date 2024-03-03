@@ -1300,6 +1300,8 @@ class TestLogVerBasic:
             # return ret_list
 
         unmatched_patterns: list[str] = []
+        matched_patterns: list[str] = []
+
         unmatched_msgs: list[str] = []
         matched_msgs: list[str] = []
 
@@ -1331,10 +1333,10 @@ class TestLogVerBasic:
 
             msg_df["claimed_pattern"] = "none"
 
-        num_found_all_msgs = 0
         test_matched_found_msgs_list = []
         test_unmatched_found_msgs_list = []
-        test_not_found_msgs_list = []
+        test_matched_found_patterns_list = []
+        test_unmatched_found_patterns_list = []
         no_match_patterns = []
         no_match_msgs = []
         if patterns_arg and msgs_arg:
@@ -1435,78 +1437,84 @@ class TestLogVerBasic:
                         if pattern_df["claimed_msg"].iloc[idx] != "none":
                             break
 
-            for perm_idx in it.permutations(range(len(pattern_df))):
-                msg_combo_lists = []
-                for idx in perm_idx:
-                    if len(pattern_df["potential_msgs"].iloc[idx]) > 0:
-                        msg_combo_lists.append(pattern_df["potential_msgs"].iloc[idx])
-                    else:
-                        msg_combo_lists.append(["none"])
-                msg_prods = ""
-                if len(msg_combo_lists) == 1:
-                    msg_prods = it.product(
-                        msg_combo_lists[0],
-                    )
-                elif len(msg_combo_lists) == 2:
-                    msg_prods = it.product(
-                        msg_combo_lists[0],
-                        msg_combo_lists[1],
-                    )
-                elif len(msg_combo_lists) == 3:
-                    msg_prods = it.product(
-                        msg_combo_lists[0],
-                        msg_combo_lists[1],
-                        msg_combo_lists[2],
-                    )
-                msg_prods = list(msg_prods)
-                print(f"{msg_prods=}")
-                for msg_prod in msg_prods:
-                    test_found_msgs = []
-                    msgs_arg_copy = msgs_arg_list.copy()
-                    for msg in msg_prod:
-                        if msg in msgs_arg_copy:
-                            test_found_msgs.append(msg)
-                            msgs_arg_copy.remove(msg)
-                    # test_found_msgs.sort(key=msgs_arg.index)
-                    test_found_msgs = sort_items(
-                        test_found_msgs,
-                        msgs_arg_list,
-                        sort_x_y_x_msg,
-                    )
-                    msgs_arg_copy = sort_items(
-                        msgs_arg_copy,
-                        msgs_arg_list,
-                        sort_x_y_x_msg,
-                    )
-                    test_matched_found_msgs_list.append(test_found_msgs)
-                    test_unmatched_found_msgs_list.append(msgs_arg_copy.copy())
+            def find_combo_matches(
+                item_df: pd.DataFrame,
+                potential_col: str,
+                items_arg_list: list[str],
+                test_matched_found_items_list: list[list[str]],
+                test_unmatched_found_items_list: list[list[str]],
+                sort_x_y_x_item: str,
+            ):
+                for perm_idx in it.permutations(range(len(item_df))):
+                    item_combo_lists = []
+                    for idx in perm_idx:
+                        if len(item_df[potential_col].iloc[idx]) > 0:
+                            item_combo_lists.append(item_df[potential_col].iloc[idx])
+                        else:
+                            item_combo_lists.append(["none"])
+                    item_prods = ""
+                    if len(item_combo_lists) == 1:
+                        item_prods = it.product(
+                            item_combo_lists[0],
+                        )
+                    elif len(item_combo_lists) == 2:
+                        item_prods = it.product(
+                            item_combo_lists[0],
+                            item_combo_lists[1],
+                        )
+                    elif len(item_combo_lists) == 3:
+                        item_prods = it.product(
+                            item_combo_lists[0],
+                            item_combo_lists[1],
+                            item_combo_lists[2],
+                        )
+                    item_prods = list(item_prods)
+                    print(f"{item_prods=}")
+                    for item_prod in item_prods:
+                        test_found_items = []
+                        items_arg_copy = items_arg_list.copy()
+                        for item in item_prod:
+                            if item in items_arg_copy:
+                                test_found_items.append(item)
+                                items_arg_copy.remove(item)
+                        # test_found_items.sort(key=items_arg.index)
+                        test_found_items = sort_items(
+                            test_found_items,
+                            items_arg_list,
+                            sort_x_y_x_item,
+                        )
+                        items_arg_copy = sort_items(
+                            items_arg_copy,
+                            items_arg_list,
+                            sort_x_y_x_item,
+                        )
+                        test_matched_found_items_list.append(test_found_items)
+                        test_unmatched_found_items_list.append(items_arg_copy.copy())
 
-                # print(f"{test_matched_found_msgs_list=}")
-                # matched_found_msgs = []
-                # unmatched_found_msgs = []
-                # for found_msgs in test_matched_found_msgs_list:
-                #     for idx, msg in enumerate(found_msgs):
-                #         if msg == msgs_arg_list[idx]:
-                #             matched_found_msgs.append(msg)
-                #         else:
-                #             unmatched_found_msgs.append(msgs_arg_list[idx])
-                #
-                #     if found_msgs == msgs_arg_list:
-                #         num_found_all_msgs += 1
-                #     else:
-                #         for idx, msg in enumerate(found_msgs):
-                #             if
-                #         test_not_found_msgs_list.append(found_msgs)
+            find_combo_matches(
+                item_df=pattern_df,
+                potential_col="potential_msgs",
+                items_arg_list=msgs_arg_list,
+                test_matched_found_items_list=test_matched_found_msgs_list,
+                test_unmatched_found_items_list=test_unmatched_found_msgs_list,
+                sort_x_y_x_item=sort_x_y_x_msg,
+            )
 
-            # print(
-            #     f"{msgs_arg_list=} \n{num_found_all_msgs=}, \n   "
-            #     f" {test_not_found_msgs_list=}"
-            # )
+            find_combo_matches(
+                item_df=msg_df,
+                potential_col="potential_patterns",
+                items_arg_list=patterns_arg_list,
+                test_matched_found_items_list=test_matched_found_patterns_list,
+                test_unmatched_found_items_list=test_unmatched_found_patterns_list,
+                sort_x_y_x_item=sort_x_y_x_pattern,
+            )
 
         for idx in range(len(pattern_df)):
             pattern = pattern_df["pattern"].iloc[idx]
             if pattern_df["claimed_msg"].iloc[idx] == "none":
                 unmatched_patterns.append(pattern)
+            else:
+                matched_patterns.append(pattern)
 
         for idx in range(len(msg_df)):
             msg = msg_df["msg"].iloc[idx]
@@ -1518,27 +1526,70 @@ class TestLogVerBasic:
         unmatched_msgs = sort_items(unmatched_msgs, msgs_arg_list, sort_x_y_x_msg)
         matched_msgs = sort_items(matched_msgs, msgs_arg_list, sort_x_y_x_msg)
 
-        num_unmatched_agreed = 0
-        num_unmatched_not_agreed = 0
-        if patterns_arg_list and msgs_arg_list:
-            for test_unmatched_found_msgs in test_unmatched_found_msgs_list:
-                if test_unmatched_found_msgs == unmatched_msgs:
-                    num_unmatched_agreed += 1
-                else:
-                    num_unmatched_not_agreed += 1
-        else:
-            if not matched_msgs and unmatched_msgs == msgs_arg_list:
-                num_unmatched_agreed = 1
+        def compare_combos(
+            test_matched_found_items_list: list[list[str]],
+            test_unmatched_found_items_list: list[list[str]],
+            matched_items: list[str],
+            unmatched_items: list[str],
+            items_arg_list: list[str],
+        ):
+            num_matched_items_agreed = 0
+            num_matched_items_not_agreed = 0
+            num_unmatched_items_agreed = 0
+            num_unmatched_items_not_agreed = 0
+            if patterns_arg_list and msgs_arg_list:
+                for test_unmatched_found_items in test_unmatched_found_items_list:
+                    if test_unmatched_found_items == unmatched_items:
+                        num_unmatched_items_agreed += 1
+                    else:
+                        num_unmatched_items_not_agreed += 1
 
-        num_matched_agreed = 0
-        num_matched_not_agreed = 0
-        if patterns_arg_list and msgs_arg_list:
-            for test_matched_found_msgs in test_matched_found_msgs_list:
-                if test_matched_found_msgs == matched_msgs:
-                    num_matched_agreed += 1
-        else:
-            if not matched_msgs and unmatched_msgs == msgs_arg_list:
-                num_matched_agreed = 1
+                for test_matched_found_items in test_matched_found_items_list:
+                    if test_matched_found_items == matched_items:
+                        num_matched_items_agreed += 1
+                    else:
+                        num_matched_items_not_agreed += 1
+                        # print(f"{test_matched_found_items=}")
+                        assert len(test_matched_found_items) <= len(matched_items)
+            else:
+                if not matched_items and unmatched_items == items_arg_list:
+                    num_matched_items_agreed = 1
+                    num_matched_items_not_agreed = 0
+                    num_unmatched_items_agreed = 1
+                    num_unmatched_items_not_agreed = 0
+
+            return (
+                num_matched_items_agreed,
+                num_matched_items_not_agreed,
+                num_unmatched_items_agreed,
+                num_unmatched_items_not_agreed,
+            )
+
+        (
+            num_matched_msgs_agreed,
+            num_matched_msgs_not_agreed,
+            num_unmatched_msgs_agreed,
+            num_unmatched_msgs_not_agreed,
+        ) = compare_combos(
+            test_matched_found_items_list=test_matched_found_msgs_list,
+            test_unmatched_found_items_list=test_unmatched_found_msgs_list,
+            matched_items=matched_msgs,
+            unmatched_items=unmatched_msgs,
+            items_arg_list=msgs_arg_list,
+        )
+
+        (
+            num_matched_patterns_agreed,
+            num_matched_patterns_not_agreed,
+            num_unmatched_patterns_agreed,
+            num_unmatched_patterns_not_agreed,
+        ) = compare_combos(
+            test_matched_found_items_list=test_matched_found_patterns_list,
+            test_unmatched_found_items_list=test_unmatched_found_patterns_list,
+            matched_items=matched_patterns,
+            unmatched_items=unmatched_patterns,
+            items_arg_list=patterns_arg_list,
+        )
 
         print(f"\npattern_df: \n{pattern_df}")
         print(f"\nmsg_df: \n{msg_df}")
@@ -1546,45 +1597,24 @@ class TestLogVerBasic:
         print(f"{unmatched_msgs=}")
         print(f"{matched_msgs=}")
 
-        print(f"{num_unmatched_agreed=}")
-        print(f"{num_unmatched_not_agreed=}")
+        print(f"{num_unmatched_msgs_agreed=}")
+        print(f"{num_unmatched_msgs_not_agreed=}")
 
-        print(f"{num_matched_agreed=}")
-        print(f"{num_matched_not_agreed=}")
+        print(f"{num_matched_msgs_agreed=}")
+        print(f"{num_matched_msgs_not_agreed=}")
 
-        assert num_unmatched_agreed
-        assert num_matched_agreed
+        print(f"{num_unmatched_patterns_agreed=}")
+        print(f"{num_unmatched_patterns_not_agreed=}")
 
-        # do_assert = True
-        # for idx in range(len(pattern_df)):
-        #     if not pattern_df["potential_msgs"].iloc[idx]:
-        #         do_assert = False
-        #
-        # avail_msgs = list(msgs_arg)
-        # for idx in range(len(pattern_df)):
-        #     potential_msgs = list(pattern_df["potential_msgs"].iloc[idx])
-        #     if len(potential_msgs) == 1:
-        #         p_msg = potential_msgs[0]
-        #         if p_msg in avail_msgs:
-        #             avail_msgs.remove(p_msg)
-        #         else:
-        #             do_assert = False
-        #
-        # for idx in range(len(msg_df)):
-        #     if not msg_df["potential_patterns"].iloc[idx]:
-        #         do_assert = False
-        #
-        # if do_assert and len(pattern_df) == len(msg_df):
-        #     assert not unmatched_patterns
-        #     assert not unmatched_msgs
-        #
-        # if (
-        #     (len(patterns_arg_list) > 0)
-        #     and (len(patterns_arg_list) == len(msgs_arg_list))
-        #     and not no_match_patterns
-        #     and not no_match_msgs
-        # ):
-        #     assert num_found_all_msgs
+        print(f"{num_matched_patterns_agreed=}")
+        print(f"{num_matched_patterns_not_agreed=}")
+
+        assert num_unmatched_msgs_agreed
+        assert num_matched_msgs_agreed
+
+        assert num_unmatched_patterns_agreed
+        assert num_matched_patterns_agreed
+
         ################################################################
         # log msgs: msg1, msg2, msg3
         # patterns: msg0: no match
