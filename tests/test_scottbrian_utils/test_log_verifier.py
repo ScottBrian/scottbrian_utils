@@ -1283,8 +1283,13 @@ class TestLogVerBasic:
             return items
 
         def filter_potential_msgs(potential_msgs, filter_msgs, sort_x_y_item):
-            ret_list = list(potential_msgs & set(filter_msgs))
-            return sort_items(ret_list, filter_msgs, sort_x_y_item)
+            potential_list = list(potential_msgs & set(filter_msgs))
+            sorted_pl = sort_items(potential_list, filter_msgs, sort_x_y_item)
+            ret_potential_list = []
+            for item in sorted_pl:
+                item_count = filter_msgs.count(item)
+                ret_potential_list.append([item_count, item])
+            return ret_potential_list
 
         unmatched_patterns: list[str] = []
         matched_patterns: list[str] = []
@@ -1308,7 +1313,14 @@ class TestLogVerBasic:
                 filter_msgs=msgs_arg_list,
                 sort_x_y_item=sort_x_y_x_msg,
             )
+            pattern_df["potential_finds2"] = "none"
+            for idx in range(len(pattern_df)):
+                pot_finds = pattern_df["potential_finds"][idx]
+                pattern_df["potential_finds2"][idx] = pot_finds.copy()
+
             pattern_df["claimed"] = "none"
+
+            print(f"\npattern_df: \n{pattern_df}")
 
             for idx in range(len(pattern_df)):
                 if len(pattern_df["potential_finds"].iloc[idx]) == 0:
@@ -1323,6 +1335,10 @@ class TestLogVerBasic:
                 filter_msgs=patterns_arg_list,
                 sort_x_y_item=sort_x_y_x_pattern,
             )
+            msg_df["potential_finds2"] = "none"
+            for idx in range(len(msg_df)):
+                pot_finds = msg_df["potential_finds"][idx]
+                msg_df["potential_finds2"][idx] = pot_finds.copy()
 
             msg_df["claimed"] = "none"
 
@@ -1330,12 +1346,22 @@ class TestLogVerBasic:
                 if len(msg_df["potential_finds"].iloc[idx]) == 0:
                     no_match_msgs.append(msg_df["item"].iloc[idx])
 
+            print(f"\nmsg_df: \n{msg_df}")
+
         test_matched_found_msgs_list = []
         test_unmatched_found_msgs_list = []
         test_matched_found_patterns_list = []
         test_unmatched_found_patterns_list = []
 
-        no_match_msgs = []
+        def remove_potential_find(target_df: pd.DataFrame, potential_item: str):
+            for idx in range(len(target_df)):
+                potential_finds = target_df["potential_finds"].iloc[idx]
+                for idx2 in range(len(potential_finds)):
+                    if potential_finds[idx2][1] == potential_item:
+                        potential_finds[idx2][0] -= 1
+                        if potential_finds[idx2][0] == 0:
+                            potential_finds.pop(idx2)
+                        break
 
         def search_df(
             search_arg_df: pd.DataFrame,
@@ -1352,13 +1378,25 @@ class TestLogVerBasic:
                         for potential_find in search_arg_df["potential_finds"].iloc[
                             idx
                         ]:
+                            potential_find_item = potential_find[1]
                             for idx2 in range(len(search_targ_df)):
                                 if (
-                                    potential_find == search_targ_df["item"].iloc[idx2]
+                                    potential_find_item
+                                    == search_targ_df["item"].iloc[idx2]
                                     and search_targ_df["claimed"].iloc[idx2] == "none"
                                 ):
-                                    search_arg_df["claimed"].iloc[idx] = potential_find
+                                    search_arg_df["claimed"].iloc[
+                                        idx
+                                    ] = potential_find_item
                                     search_targ_df["claimed"].iloc[idx2] = search_arg
+                                    remove_potential_find(
+                                        target_df=search_arg_df,
+                                        potential_item=potential_find_item,
+                                    )
+                                    remove_potential_find(
+                                        target_df=search_targ_df,
+                                        potential_item=search_arg,
+                                    )
                                     break
                             if search_arg_df["claimed"].iloc[idx] != "none":
                                 if num_potential_items == 1:
@@ -1389,101 +1427,6 @@ class TestLogVerBasic:
                         find_items = True
                         break
 
-            # for idx in range(len(pattern_df)):
-            #     if pattern_df["claimed"].iloc[idx] == "none":
-            #         pattern = pattern_df["item"].iloc[idx]
-            #         if len(pattern_df["potential_finds"].iloc[idx]) == 0:
-            #             no_match_patterns.append(pattern)
-            #         if len(pattern_df["potential_finds"].iloc[idx]) == 1:
-            #             for p_msg in pattern_df["potential_finds"].iloc[idx]:
-            #                 for idx2 in range(len(msg_df)):
-            #                     if (
-            #                         p_msg == msg_df["item"].iloc[idx2]
-            #                         and msg_df["claimed"].iloc[idx2] == "none"
-            #                     ):
-            #                         pattern_df["claimed"].iloc[idx] = p_msg
-            #                         msg_df["claimed"].iloc[idx2] = pattern
-            #                         break
-            #                 if pattern_df["claimed"].iloc[idx] != "none":
-            #                     break
-
-            ############################################################
-            # handle msgs with 1 potential pattern
-            ############################################################
-            # for idx in range(len(msg_df)):
-            #     if msg_df["claimed"].iloc[idx] == "none":
-            #         msg = msg_df["item"].iloc[idx]
-            #         if len(msg_df["potential_finds"].iloc[idx]) == 0:
-            #             no_match_msgs.append(msg)
-            #         if len(msg_df["potential_finds"].iloc[idx]) == 1:
-            #             for p_pattern in msg_df["potential_finds"].iloc[idx]:
-            #                 for idx2 in range(len(pattern_df)):
-            #                     if (
-            #                         p_pattern == pattern_df["item"].iloc[idx2]
-            #                         and pattern_df["claimed"].iloc[idx2] == "none"
-            #                     ):
-            #                         msg_df["claimed"].iloc[idx] = p_pattern
-            #                         pattern_df["claimed"].iloc[idx2] = msg
-            #                         break
-            #                 if msg_df["claimed"].iloc[idx] != "none":
-            #                     break
-            #
-            # ############################################################
-            # # handle patterns with 2 potential msgs
-            # ############################################################
-            # for idx in range(len(pattern_df)):
-            #     if pattern_df["claimed"].iloc[idx] == "none":
-            #         pattern = pattern_df["item"].iloc[idx]
-            #         if len(pattern_df["potential_finds"].iloc[idx]) == 2:
-            #             for p_msg in pattern_df["potential_finds"].iloc[idx]:
-            #                 for idx2 in range(len(msg_df)):
-            #                     if (
-            #                         p_msg == msg_df["item"].iloc[idx2]
-            #                         and msg_df["claimed"].iloc[idx2] == "none"
-            #                     ):
-            #                         pattern_df["claimed"].iloc[idx] = p_msg
-            #                         msg_df["claimed"].iloc[idx2] = pattern
-            #                         break
-            #                 if pattern_df["claimed"].iloc[idx] != "none":
-            #                     break
-            #
-            # ############################################################
-            # # handle msgs with 2 potential pattern
-            # ############################################################
-            # for idx in range(len(msg_df)):
-            #     if msg_df["claimed"].iloc[idx] == "none":
-            #         msg = msg_df["item"].iloc[idx]
-            #         if len(msg_df["potential_finds"].iloc[idx]) == 2:
-            #             for p_pattern in msg_df["potential_finds"].iloc[idx]:
-            #                 for idx2 in range(len(pattern_df)):
-            #                     if (
-            #                         p_pattern == pattern_df["item"].iloc[idx2]
-            #                         and pattern_df["claimed"].iloc[idx2] == "none"
-            #                     ):
-            #                         msg_df["claimed"].iloc[idx] = p_pattern
-            #                         pattern_df["claimed"].iloc[idx2] = msg
-            #                         break
-            #                 if msg_df["claimed"].iloc[idx] != "none":
-            #                     break
-            #
-            # ############################################################
-            # # complete patterns with unclaimed msgs
-            # ############################################################
-            # for idx in range(len(pattern_df)):
-            #     if pattern_df["claimed"].iloc[idx] == "none":
-            #         pattern = pattern_df["item"].iloc[idx]
-            #         for p_msg in pattern_df["potential_finds"].iloc[idx]:
-            #             for idx2 in range(len(msg_df)):
-            #                 if (
-            #                     p_msg == msg_df["item"].iloc[idx2]
-            #                     and msg_df["claimed"].iloc[idx2] == "none"
-            #                 ):
-            #                     pattern_df["claimed"].iloc[idx] = p_msg
-            #                     msg_df["claimed"].iloc[idx2] = pattern
-            #                     break
-            #             if pattern_df["claimed"].iloc[idx] != "none":
-            #                 break
-
             def find_combo_matches(
                 item_df: pd.DataFrame,
                 items_arg_list: list[str],
@@ -1494,10 +1437,13 @@ class TestLogVerBasic:
                 for perm_idx in it.permutations(range(len(item_df))):
                     item_combo_lists = []
                     for idx in perm_idx:
-                        if len(item_df["potential_finds"].iloc[idx]) > 0:
-                            item_combo_lists.append(
-                                item_df["potential_finds"].iloc[idx]
-                            )
+                        if len(item_df["potential_finds2"].iloc[idx]) > 0:
+                            c_items = []
+                            for potential_find_item in item_df["potential_finds2"].iloc[
+                                idx
+                            ]:
+                                c_items.append(potential_find_item[1])
+                            item_combo_lists.append(c_items)
                         else:
                             item_combo_lists.append(["none"])
                     item_prods = ""
