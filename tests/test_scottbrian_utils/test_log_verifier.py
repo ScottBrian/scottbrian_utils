@@ -1204,6 +1204,8 @@ class TestLogVerBasic:
 
     @pytest.mark.parametrize("msgs_arg", msg_combos_list)
     @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
+    # @pytest.mark.parametrize("msgs_arg", [("msg1", "msg2", "msg3")])
+    # @pytest.mark.parametrize("patterns_arg", [("msg[123]{1}", "msg[12]{1}", "msg1")])
     def test_log_verifier_contention(
         self,
         msgs_arg: Iterable[tuple[str]],
@@ -1399,10 +1401,11 @@ class TestLogVerBasic:
                                     )
                                     break
                             if search_arg_df["claimed"].iloc[idx] != "none":
-                                if num_potential_items == 1:
-                                    break
-                                else:
-                                    return True
+                                return True
+                                # if num_potential_items == 1:
+                                #     break
+                                # else:
+                                #     return True
 
         if patterns_arg and msgs_arg:
             ############################################################
@@ -1412,20 +1415,31 @@ class TestLogVerBasic:
             while find_items:
                 find_items = False
                 for num_items in range(1, 4):
+                    # print(f"************* {num_items=}")
+                    # print(f"\npattern_df: \n{pattern_df}")
+                    # print(f"\nmsg_df: \n{msg_df}")
                     if search_df(
                         search_arg_df=pattern_df,
                         search_targ_df=msg_df,
                         num_potential_items=num_items,
                     ):
                         find_items = True
+                        # print(f"\npattern_df 1a{find_items=}: \n{pattern_df}")
+                        # print(f"\nmsg_df 1a {find_items=}: \n{msg_df}")
                         break
+                    # print(f"\npattern_df 1b {find_items=}: \n{pattern_df}")
+                    # print(f"\nmsg_df 1b {find_items=}: \n{msg_df}")
                     if search_df(
                         search_arg_df=msg_df,
                         search_targ_df=pattern_df,
                         num_potential_items=num_items,
                     ):
                         find_items = True
+                        # print(f"\npattern_df 2a {find_items=}: \n{pattern_df}")
+                        # print(f"\nmsg_df 2a {find_items=}: \n{msg_df}")
                         break
+                    # print(f"\npattern_df 2b {find_items=}: \n{pattern_df}")
+                    # print(f"\nmsg_df 2b {find_items=}: \n{msg_df}")
 
             def find_combo_matches(
                 item_df: pd.DataFrame,
@@ -1554,6 +1568,11 @@ class TestLogVerBasic:
                         num_matched_items_agreed += 1
                     else:
                         num_matched_items_not_agreed += 1
+                        # print(
+                        #     f"{len(test_matched_found_items)=},"
+                        #     f" {test_matched_found_items=}"
+                        #     f"{len(matched_items)=}, {matched_items=}"
+                        # )
                         assert len(test_matched_found_items) <= len(matched_items)
             else:
                 if not matched_items and unmatched_items == items_arg_list:
