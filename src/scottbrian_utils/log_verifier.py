@@ -268,6 +268,12 @@ class MatchResults:
     matched_records: list[tuple[str, int, Any]]
 
 
+@dataclass
+class PotentialMatch:
+    count: int = 0
+    item: str = ""
+
+
 ########################################################################
 # LogVer class
 ########################################################################
@@ -434,12 +440,31 @@ class LogVer:
         #     self.expected_messages.append(
         #         (log_name_to_use, log_level, re.compile(log_msg))
         #     )
+
+        # if fullmatch:
+        #     self.expected_messages_fullmatch.append(
+        #         (log_name_to_use, log_level, log_msg)
+        #     )
+        # else:
+        #     self.expected_messages.append((log_name_to_use, log_level, log_msg))
+        pattern_col_names = (
+            "log_name",
+            "log_level",
+            "item",
+            "fullmatch",
+            "potential_matches",
+            "matched",
+            "matched_by",
+        )
+
         if fullmatch:
-            self.expected_messages_fullmatch.append(
-                (log_name_to_use, log_level, log_msg)
+            self.expected_messages.append(
+                (log_name_to_use, log_level, log_msg, True, [], False, None)
             )
         else:
-            self.expected_messages.append((log_name_to_use, log_level, log_msg))
+            self.expected_messages.append(
+                (log_name_to_use, log_level, log_msg, False, [], False, None)
+            )
 
     # ####################################################################
     # # get_match_results
@@ -550,72 +575,78 @@ class LogVer:
               or matching records
 
         """
-        # make a work copy of fullmatch expected records
-        unmatched_exp_records_fullmatch: list[
-            tuple[str, int, Any]
-        ] = self.expected_messages_fullmatch.copy()
-
-        df_regex_fullmatch = pd.DataFrame(
-            unmatched_exp_records_fullmatch,
-            columns=["log_name", "level", "regex_pattern"],
+        pattern_col_names = (
+            "log_name",
+            "log_level",
+            "item",
+            "fullmatch",
+            "potential_matches",
+            "matched",
+            "matched_by",
+        )
+        pattern_df = pd.DataFrame(
+            self.expected_messages,
+            columns=pattern_col_names,
         )
         # print(f"\n*************************************************")
-        # print(f"\ndf_regex_fullmatch=\n{df_regex_fullmatch}")
+        # print("\nmsg_df=\n", msg_df)
 
-        df_regex_fullmatch_grp = df_regex_fullmatch.groupby(
-            df_regex_fullmatch.columns.tolist(), as_index=False
-        ).size()
-        # print(f"\ndf_regex_fullmatch_grp=\n{df_regex_fullmatch_grp}")
-        # print(f"\ndf_regex_fullmatch_grp.regex_pattern="
-        #       f"\n{df_regex_fullmatch_grp.regex_pattern}")
-        # print(f"\ndf_regex_fullmatch_grp['size']=\n{df_regex_fullmatch_grp["size"]}")
+        # pattern_df_grp = pattern_df.groupby(
+        #     pattern_df.columns.tolist(), as_index=False
+        # ).size()
 
-        # make a work copy of expected records
-        unmatched_exp_records: list[
-            tuple[str, int, Any]
-        ] = self.expected_messages.copy()
-
-        df_regex_match = pd.DataFrame(
-            unmatched_exp_records, columns=["log_name", "level", "regex_pattern"]
+        # make df of actual records
+        msg_col_names = (
+            "log_name",
+            "log_level",
+            "item",
+            "potential_matches",
+            "matched",
+            "matched_by",
         )
-        # print(f"\n*************************************************")
-        # print(f"\ndf_regex_match=\n{df_regex_match}")
+        actual_records = []
+        for record in caplog.record_tuples:
+            actual_records.append((record[0], record[1], record[2], None, False, None))
 
-        df_regex_match_grp = df_regex_match.groupby(
-            df_regex_match.columns.tolist(), as_index=False
-        ).size()
-        # print(f"\ndf_regex_match_grp=\n{df_regex_match_grp}")
-        # print(f"\ndf_regex_match_grp.regex_pattern="
-        #       f"\n{df_regex_match_grp.regex_pattern}")
-        # print(f"\ndf_regex_match_grp['size']=\n{df_regex_match_grp["size"]}")
-
-        # make a work copy of actual records
-        unmatched_actual_records: list[
-            tuple[str, int, Any]
-        ] = caplog.record_tuples.copy()
-
-        df_log_msgs = pd.DataFrame(
-            unmatched_actual_records, columns=["log_name", "level", "log_msg"]
+        msg_df = pd.DataFrame(
+            actual_records,
+            columns=msg_col_names,
         )
-        # print(f"\n*************************************************")
-        # print("\ndf_log_msgs=\n", df_log_msgs)
 
-        df_log_msgs_grp = df_log_msgs.groupby(
-            df_log_msgs.columns.tolist(), as_index=False
-        ).size()
+        ################################################################
+        # match data frames
+        ################################################################
+        for idx, p_row in enumerate(pattern_df.itertuples()):
+            pattern_str = p_row.item
+            pattern_regex = re.compile(pattern_str)
+
+            for idx2, m_row in enumerate(msg_df.itertuples()):
+                if ((p_row.fullmatch and pattern_regex.fullmatch(m_row.item))
+                        or (not p_row.fullmatch and pattern_regex.match(m_row.item))):
+                    if (p_row.log_name == m_row.log_name
+                            and p_row.log_level == m_row.log_level):
+                        pattern_df["potential_matches"][idx].append(m_row.item)
+                        msg_df["potential_matches"][idx2].append(pattern_str)
+
+        # print(f"\n*************************************************")
+        # print("\nmsg_df=\n", msg_df)
+
+        # df_log_msgs_grp = df_log_msgs.groupby(
+        #     df_log_msgs.columns.tolist(), as_index=False
+        # ).size()
         # print(f"\ndf_log_msgs_grp=\n{df_log_msgs_grp}")
 
-        to_repl = df_regex_fullmatch_grp.regex_pattern.values.tolist()
+        # to_repl = df_regex_fullmatch_grp.regex_pattern.values.tolist()
         # vals = df_regex_fullmatch_grp["size"].to_list()
-        vals = df_regex_fullmatch_grp.index.to_list()
+        # vals = df_regex_fullmatch_grp.index.to_list()
         # vals2 = df_regex_fullmatch_grp.regex_pattern.values.tolist()
 
         # print(f"{to_repl=}")
         # print(f"{vals=}")
 
-        df_log_msgs_grp["fullmatch_idx"] = df_log_msgs_grp["log_msg"].replace(
-            to_repl, vals, regex=True
-        )
+        # df_log_msgs_grp["fullmatch_idx"] = df_log_msgs_grp["log_msg"].replace(
+        #     to_repl, vals, regex=True
+        # )
         # df_log_msgs_grp["exp_used_to_find"] = df_log_msgs_grp["log_msg"].replace(
         #     to_repl, vals2, regex=True
         # )
@@ -627,13 +658,13 @@ class LogVer:
 
         # print(f"count_result=\n{count_result}")
 
-        not_found = df_log_msgs_grp["log_msg"] == df_log_msgs_grp["fullmatch_idx"]
-
-        # print(f"\nnot_found=\n{not_found}")
-
-        df_log_msgs_grp["fullmatch_idx"] = df_log_msgs_grp["fullmatch_idx"].mask(
-            not_found, -1
-        )
+        # not_found = df_log_msgs_grp["log_msg"] == df_log_msgs_grp["fullmatch_idx"]
+        #
+        # # print(f"\nnot_found=\n{not_found}")
+        #
+        # df_log_msgs_grp["fullmatch_idx"] = df_log_msgs_grp["fullmatch_idx"].mask(
+        #     not_found, -1
+        # )
 
         # print(f"\n #### 2 {df_log_msgs_grp=}")
         # print(f"\n #### 2 {df_log_msgs_grp.info()=}")
@@ -669,8 +700,6 @@ class LogVer:
         # )
         # print(f"\n #### 4 {df_regex_fullmatch_grp=}")
         # print(f"\n #### 4 {df_regex_fullmatch_grp.info()=}")
-
-        matched_records: list[tuple[str, int, Any]] = []
 
         ################################################################
         # find matches, update working copies to reflect results

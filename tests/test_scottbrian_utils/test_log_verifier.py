@@ -1294,10 +1294,14 @@ class TestLogVerBasic:
             return ret_potential_list
 
         unmatched_patterns: list[str] = []
+        unmatched_patterns2: list[str] = []
         matched_patterns: list[str] = []
+        matched_patterns2: list[str] = []
 
         unmatched_msgs: list[str] = []
+        unmatched_msgs2: list[str] = []
         matched_msgs: list[str] = []
+        matched_msgs2: list[str] = []
 
         pattern_df = pd.DataFrame()
         msg_df = pd.DataFrame()
@@ -1322,7 +1326,7 @@ class TestLogVerBasic:
 
             pattern_df["claimed"] = "none"
 
-            print(f"\npattern_df: \n{pattern_df}")
+            # print(f"\npattern_df: \n{pattern_df}")
 
             for idx in range(len(pattern_df)):
                 if len(pattern_df["potential_finds"].iloc[idx]) == 0:
@@ -1348,7 +1352,7 @@ class TestLogVerBasic:
                 if len(msg_df["potential_finds"].iloc[idx]) == 0:
                     no_match_msgs.append(msg_df["item"].iloc[idx])
 
-            print(f"\nmsg_df: \n{msg_df}")
+            # print(f"\nmsg_df: \n{msg_df}")
 
         test_matched_found_msgs_list = []
         test_unmatched_found_msgs_list = []
@@ -1518,15 +1522,19 @@ class TestLogVerBasic:
             pattern = pattern_df["item"].iloc[idx]
             if pattern_df["claimed"].iloc[idx] == "none":
                 unmatched_patterns.append(pattern)
+                unmatched_patterns2.append(pattern)
             else:
                 matched_patterns.append(pattern)
+                matched_patterns2.append(pattern)
 
         for idx in range(len(msg_df)):
             msg = msg_df["item"].iloc[idx]
             if msg_df["claimed"].iloc[idx] == "none":
                 unmatched_msgs.append(msg)
+                unmatched_msgs2.append(msg)
             else:
                 matched_msgs.append(msg)
+                matched_msgs2.append(msg)
 
         unmatched_msgs = sort_items(unmatched_msgs, msgs_arg_list, sort_x_y_x_msg)
         matched_msgs = sort_items(matched_msgs, msgs_arg_list, sort_x_y_x_msg)
@@ -1538,12 +1546,12 @@ class TestLogVerBasic:
             matched_patterns, patterns_arg_list, sort_x_y_x_pattern
         )
 
-        print(f"\npattern_df: \n{pattern_df}")
-        print(f"\nmsg_df: \n{msg_df}")
-        print(f"{matched_patterns=}")
-        print(f"{unmatched_patterns=}")
-        print(f"{matched_msgs=}")
-        print(f"{unmatched_msgs=}")
+        # print(f"\npattern_df: \n{pattern_df}")
+        # print(f"\nmsg_df: \n{msg_df}")
+        # print(f"{matched_patterns=}")
+        # print(f"{unmatched_patterns=}")
+        # print(f"{matched_msgs=}")
+        # print(f"{unmatched_msgs=}")
 
         def compare_combos(
             test_matched_found_items_list: list[list[str]],
@@ -1672,11 +1680,11 @@ class TestLogVerBasic:
         expected_result += "**********************************\n"
         expected_result += f"* number expected log records: {len(patterns_arg)} *\n"
         expected_result += (
-            f"* number expected unmatched  : " f"{len(unmatched_patterns)} *\n"
+            f"* number expected unmatched  : " f"{len(unmatched_patterns2)} *\n"
         )
         expected_result += f"* number actual log records  : {len(msgs_arg)} *\n"
-        expected_result += f"* number actual unmatched    : {len(unmatched_msgs)} *\n"
-        expected_result += f"* number matched records     : {len(matched_msgs)} *\n"
+        expected_result += f"* number actual unmatched    : {len(unmatched_msgs2)} *\n"
+        expected_result += f"* number matched records     : {len(matched_msgs2)} *\n"
 
         expected_result += "**********************************\n"
         expected_result += "\n"
@@ -1684,7 +1692,7 @@ class TestLogVerBasic:
         expected_result += "* unmatched expected records    *\n"
         expected_result += "* (logger name, level, message) *\n"
         expected_result += "*********************************\n"
-        for pattern in unmatched_patterns:
+        for pattern in unmatched_patterns2:
             expected_result += f"('contention_0', 10, '{pattern}')\n"
 
         expected_result += "\n"
@@ -1692,7 +1700,7 @@ class TestLogVerBasic:
         expected_result += "* unmatched actual records      *\n"
         expected_result += "* (logger name, level, message) *\n"
         expected_result += "*********************************\n"
-        for msg in unmatched_msgs:
+        for msg in unmatched_msgs2:
             expected_result += f"('contention_0', 10, '{msg}')\n"
 
         expected_result += "\n"
@@ -1701,12 +1709,12 @@ class TestLogVerBasic:
         expected_result += "* (logger name, level, message) *\n"
         expected_result += "*********************************\n"
 
-        for msg in matched_msgs:
+        for msg in matched_msgs2:
             expected_result += f"('contention_0', 10, '{msg}')\n"
 
         captured = capsys.readouterr().out
 
-        # assert captured == expected_result
+        assert captured == expected_result
 
     ####################################################################
     # test_log_verifier_time_match
