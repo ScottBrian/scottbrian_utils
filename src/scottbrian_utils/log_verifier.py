@@ -202,6 +202,7 @@ The log_verifier module contains:
 ########################################################################
 # Standard Library
 ########################################################################
+from collections import defaultdict
 from dataclasses import dataclass
 import logging
 import pandas as pd
@@ -296,7 +297,7 @@ class LogVer:
         """
         self.specified_args = locals()  # used for __repr__, see below
         self.call_seqs: dict[str, str] = {}
-        self.expected_messages: list[tuple[str, int, Any]] = []
+        self.expected_messages: list[tuple[str, int, str, bool, list, bool, str]] = []
         self.expected_messages_fullmatch: list[tuple[str, int, Any]] = []
         self.log_name = log_name
 
@@ -459,11 +460,27 @@ class LogVer:
 
         if fullmatch:
             self.expected_messages.append(
-                (log_name_to_use, log_level, log_msg, True, [], False, None)
+                (
+                    log_name_to_use,
+                    log_level,
+                    log_msg,
+                    True,
+                    [],
+                    False,
+                    "",
+                )
             )
         else:
             self.expected_messages.append(
-                (log_name_to_use, log_level, log_msg, False, [], False, None)
+                (
+                    log_name_to_use,
+                    log_level,
+                    log_msg,
+                    False,
+                    [],
+                    False,
+                    "",
+                )
             )
 
     # ####################################################################
@@ -614,19 +631,29 @@ class LogVer:
         )
 
         ################################################################
-        # match data frames
+        # set potential matches in both data frames
         ################################################################
-        for idx, p_row in enumerate(pattern_df.itertuples()):
+        for p_row in pattern_df.itertuples():
             pattern_str = p_row.item
             pattern_regex = re.compile(pattern_str)
 
-            for idx2, m_row in enumerate(msg_df.itertuples()):
-                if ((p_row.fullmatch and pattern_regex.fullmatch(m_row.item))
-                        or (not p_row.fullmatch and pattern_regex.match(m_row.item))):
-                    if (p_row.log_name == m_row.log_name
-                            and p_row.log_level == m_row.log_level):
-                        pattern_df["potential_matches"][idx].append(m_row.item)
-                        msg_df["potential_matches"][idx2].append(pattern_str)
+            for m_row in msg_df.itertuples():
+                if (p_row.fullmatch and pattern_regex.fullmatch(m_row.item)) or (
+                    not p_row.fullmatch and pattern_regex.match(m_row.item)
+                ):
+                    if (
+                        p_row.log_name == m_row.log_name
+                        and p_row.log_level == m_row.log_level
+                    ):
+                        pattern_df.at[p_row.Index, "potential_matches"].append(
+                            m_row.Index)
+                        msg_df.at[m_row.Index, "potential_matches"].append(p_row.Index)
+
+        ################################################################
+        # settle matches
+        ################################################################
+        while True:
+
 
         # print(f"\n*************************************************")
         # print("\nmsg_df=\n", msg_df)
@@ -804,6 +831,58 @@ class LogVer:
             unmatched_actual_records=unmatched_actual_records,
             matched_records=matched_records,
         )
+
+    ####################################################################
+    # search_df for matches
+    ####################################################################
+    @staticmethod
+    def search_df(
+            search_arg_df: pd.DataFrame,
+            search_targ_df: pd.DataFrame,
+            num_potential_items: int,
+    ) -> bool:
+        """Print the match results.
+
+        Args:
+            search_arg_df: data frame that has the search arg
+            search_targ_df: data frame that has the search target
+            num_potential_items: number of potential items that each
+                entry in the search data frame must have
+
+        Returns:
+            True is returned if one or more items are claimed
+        """
+        claims_made = False
+        for search_item in search_arg_df.itertuples():
+            if (not search_item.claimed
+                    and len(search_item.potential_finds) == num_potential_items):
+                for potential_idx in search_item.potential_finds:
+                    if not search_targ_df.at[potential_idx, "claimed"]:
+                        search_arg_df.at[search_item.Index, "claimed"] = True
+                        search_arg_df.at[search_item.Index, "claimed_by"] = potential_idx
+
+                        search_targ_df.at[potential_idx, "claimed"] = True
+                        search_targ_df.at[potential_idx, "claimed_by"] = (
+                            search_item.Index)
+
+                        def remove_find(pot_finds, pot_item):
+                            if pot_item in pot_finds:
+                                pot_finds.remove(pot_item)
+
+                        search_arg_df["potential_finds"].apply(remove_find,
+                                                               potential_idx)
+                        search_targ_df["potential_finds"].apply(remove_find,
+                                                                search_item.Index)
+
+                        claims_made = True
+                        break
+                # We either found a match or tried each index and found that they
+                # were all claimed. The means that either way, we no longer have a need
+                # for potential finds. Clear it now to avoid the overhead of trying
+                # again to find unclaimed potential finds when we know that none exist.
+                search_arg_df.at[search_item, "potential_finds"] = []
+
+        return claims_made
 
     ####################################################################
     # print_match_results
