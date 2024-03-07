@@ -1161,12 +1161,6 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_same_len_fullmatch
     ####################################################################
-    # @pytest.mark.parametrize("num_patterns_arg", [0, 1, 2, 3])
-    # @pytest.mark.parametrize("num_msgs_arg", [0, 1, 2, 3])
-    # msg_combos = mi.collapse(
-    #     map(lambda n: it.product(("msg1", "msg2", "msg3")[0:n], repeat=n), range(4)),
-    #     base_type=tuple,
-    # )
     msgs = ["msg1", "msg2", "msg3"]
     msg_perms = it.permutations(msgs, 3)
     msg_combos = mi.collapse(
@@ -1202,10 +1196,10 @@ class TestLogVerBasic:
     )
     pattern_combos_list = sorted(set(pattern_combos), key=lambda x: (len(x), x))
 
-    @pytest.mark.parametrize("msgs_arg", msg_combos_list)
-    @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
-    # @pytest.mark.parametrize("msgs_arg", [("msg1", "msg2", "msg3")])
-    # @pytest.mark.parametrize("patterns_arg", [("msg[123]{1}", "msg[12]{1}", "msg1")])
+    # @pytest.mark.parametrize("msgs_arg", msg_combos_list)
+    # @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
+    @pytest.mark.parametrize("msgs_arg", [("msg1", "msg1", "msg2")])
+    @pytest.mark.parametrize("patterns_arg", [("msg1", "msg[123]{1}")])
     def test_log_verifier_contention(
         self,
         msgs_arg: Iterable[tuple[str]],
@@ -1715,6 +1709,542 @@ class TestLogVerBasic:
         captured = capsys.readouterr().out
 
         assert captured == expected_result
+
+    ####################################################################
+    # test_log_verifier_same_len_fullmatch
+    ####################################################################
+    msgs = ["msg1", "msg2", "msg3"]
+    msg_perms = it.permutations(msgs, 3)
+    msg_combos = mi.collapse(
+        map(
+            lambda mp: map(lambda n: it.product(mp[0:n], repeat=n), range(4)), msg_perms
+        ),
+        base_type=tuple,
+    )
+    msg_combos_list = sorted(set(msg_combos), key=lambda x: (len(x), x))
+
+    patterns = (
+        "msg0",
+        "msg1",
+        "msg2",
+        "msg3",
+        "msg[12]{1}",
+        "msg[13]{1}",
+        "msg[23]{1}",
+        "msg[123]{1}",
+    )
+
+    pattern_3_combos = it.combinations(patterns, 3)
+    pattern_perms = mi.collapse(
+        map(lambda p3: it.permutations(p3, 3), pattern_3_combos), base_type=tuple
+    )
+
+    pattern_combos = mi.collapse(
+        map(
+            lambda mp: map(lambda n: it.product(mp[0:n], repeat=n), range(4)),
+            pattern_perms,
+        ),
+        base_type=tuple,
+    )
+    pattern_combos_list = sorted(set(pattern_combos), key=lambda x: (len(x), x))
+
+    # @pytest.mark.parametrize("msgs_arg", msg_combos_list)
+    # @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
+    @pytest.mark.parametrize("msgs_arg", [("msg1", "msg1", "msg2")])
+    @pytest.mark.parametrize("patterns_arg", [("msg1", "msg[123]{1}")])
+    def test_log_verifier_contention2(
+        self,
+        msgs_arg: Iterable[tuple[str]],
+        patterns_arg: Iterable[tuple[str]],
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test log_verifier time match.
+
+        Args:
+            msgs_arg: tuple of log msgs to issue
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+        """
+        print(f"\n{msgs_arg=}\n{patterns_arg=}")
+        matched_msg_array: dict[str, set[str]] = {
+            "msg0": {""},
+            "msg1": {"msg1"},
+            "msg2": {"msg2"},
+            "msg3": {"msg3"},
+            "msg[12]{1}": {"msg1", "msg2"},
+            "msg[13]{1}": {"msg1", "msg3"},
+            "msg[23]{1}": {"msg2", "msg3"},
+            "msg[123]{1}": {"msg1", "msg2", "msg3"},
+        }
+
+        matched_pattern_array: dict[str, set[str]] = {
+            "msg1": {"msg1", "msg[12]{1}", "msg[13]{1}", "msg[123]{1}"},
+            "msg2": {"msg2", "msg[12]{1}", "msg[23]{1}", "msg[123]{1}"},
+            "msg3": {"msg3", "msg[13]{1}", "msg[23]{1}", "msg[123]{1}"},
+        }
+
+        if msgs_arg:
+            msgs_arg_list = list(msgs_arg)
+        else:
+            msgs_arg_list = []
+
+        if patterns_arg:
+            patterns_arg_list = list(patterns_arg)
+        else:
+            patterns_arg_list = []
+
+        sort_x_y_x_msg = ""
+        if len(msgs_arg_list) == 3:
+            for msg in msgs_arg_list:
+                if msgs_arg_list.count(msg) > 1 and msg == msgs_arg_list[2]:
+                    sort_x_y_x_msg = msg
+                    break
+
+        sort_x_y_x_pattern = ""
+        if len(patterns_arg_list) == 3:
+            for pattern in patterns_arg_list:
+                if (
+                    patterns_arg_list.count(pattern) > 1
+                    and pattern == patterns_arg_list[2]
+                ):
+                    sort_x_y_x_pattern = pattern
+                    break
+
+        def sort_items(items: list[str], ref_list: list[str], sort_x_y_item: str):
+            x_y_z_item_found = False
+
+            def sort_rtn(item):
+                nonlocal x_y_z_item_found
+                if item == sort_x_y_item:
+                    if x_y_z_item_found:
+                        return 3
+                    else:
+                        x_y_z_item_found = True
+                return ref_list.index(item)
+
+            items.sort(key=sort_rtn)
+            return items
+
+        def filter_potential_msgs(potential_msgs, filter_msgs, sort_x_y_item):
+            potential_list = list(potential_msgs & set(filter_msgs))
+            sorted_pl = sort_items(potential_list, filter_msgs, sort_x_y_item)
+            ret_potential_list = []
+            for item in sorted_pl:
+                item_count = filter_msgs.count(item)
+                ret_potential_list.append([item_count, item])
+            return ret_potential_list
+
+        unmatched_patterns: list[str] = []
+        unmatched_patterns2: list[str] = []
+        matched_patterns: list[str] = []
+        matched_patterns2: list[str] = []
+
+        unmatched_msgs: list[str] = []
+        unmatched_msgs2: list[str] = []
+        matched_msgs: list[str] = []
+        matched_msgs2: list[str] = []
+
+        pattern_df = pd.DataFrame()
+        msg_df = pd.DataFrame()
+
+        ################################################################
+        # create pandas array for patterns
+        ################################################################
+        no_match_patterns = []
+        if patterns_arg:
+            pattern_df = pd.DataFrame(patterns_arg, columns=["item"])
+
+            pattern_df["potential_finds"] = pattern_df["item"].map(matched_msg_array)
+            pattern_df["potential_finds"] = pattern_df["potential_finds"].apply(
+                filter_potential_msgs,
+                filter_msgs=msgs_arg_list,
+                sort_x_y_item=sort_x_y_x_msg,
+            )
+            pattern_df["potential_finds2"] = "none"
+            for idx in range(len(pattern_df)):
+                pot_finds = pattern_df["potential_finds"][idx]
+                pattern_df["potential_finds2"][idx] = pot_finds.copy()
+
+            pattern_df["claimed"] = "none"
+
+            # print(f"\npattern_df: \n{pattern_df}")
+
+            for idx in range(len(pattern_df)):
+                if len(pattern_df["potential_finds"].iloc[idx]) == 0:
+                    no_match_patterns.append(pattern_df["item"].iloc[idx])
+
+        no_match_msgs = []
+        if msgs_arg:
+            msg_df = pd.DataFrame(msgs_arg, columns=["item"])
+            msg_df["potential_finds"] = msg_df["item"].map(matched_pattern_array)
+            msg_df["potential_finds"] = msg_df["potential_finds"].apply(
+                filter_potential_msgs,
+                filter_msgs=patterns_arg_list,
+                sort_x_y_item=sort_x_y_x_pattern,
+            )
+            msg_df["potential_finds2"] = "none"
+            for idx in range(len(msg_df)):
+                pot_finds = msg_df["potential_finds"][idx]
+                msg_df["potential_finds2"][idx] = pot_finds.copy()
+
+            msg_df["claimed"] = "none"
+
+            for idx in range(len(msg_df)):
+                if len(msg_df["potential_finds"].iloc[idx]) == 0:
+                    no_match_msgs.append(msg_df["item"].iloc[idx])
+
+            # print(f"\nmsg_df: \n{msg_df}")
+
+        test_matched_found_msgs_list = []
+        test_unmatched_found_msgs_list = []
+        test_matched_found_patterns_list = []
+        test_unmatched_found_patterns_list = []
+
+        def remove_potential_find(target_df: pd.DataFrame, potential_item: str):
+            for idx in range(len(target_df)):
+                potential_finds = target_df["potential_finds"].iloc[idx]
+                for idx2 in range(len(potential_finds)):
+                    if potential_finds[idx2][1] == potential_item:
+                        potential_finds[idx2][0] -= 1
+                        if potential_finds[idx2][0] == 0:
+                            potential_finds.pop(idx2)
+                        break
+
+        def search_df(
+            search_arg_df: pd.DataFrame,
+            search_targ_df: pd.DataFrame,
+            num_potential_items: int,
+        ) -> bool:
+            for idx in range(len(search_arg_df)):
+                if search_arg_df["claimed"].iloc[idx] == "none":
+                    search_arg = search_arg_df["item"].iloc[idx]
+                    if (
+                        len(search_arg_df["potential_finds"].iloc[idx])
+                        == num_potential_items
+                    ):
+                        for potential_find in search_arg_df["potential_finds"].iloc[
+                            idx
+                        ]:
+                            potential_find_item = potential_find[1]
+                            for idx2 in range(len(search_targ_df)):
+                                if (
+                                    potential_find_item
+                                    == search_targ_df["item"].iloc[idx2]
+                                    and search_targ_df["claimed"].iloc[idx2] == "none"
+                                ):
+                                    search_arg_df["claimed"].iloc[
+                                        idx
+                                    ] = potential_find_item
+                                    search_targ_df["claimed"].iloc[idx2] = search_arg
+                                    remove_potential_find(
+                                        target_df=search_arg_df,
+                                        potential_item=potential_find_item,
+                                    )
+                                    remove_potential_find(
+                                        target_df=search_targ_df,
+                                        potential_item=search_arg,
+                                    )
+                                    break
+                            if search_arg_df["claimed"].iloc[idx] != "none":
+                                return True
+                                # if num_potential_items == 1:
+                                #     break
+                                # else:
+                                #     return True
+
+        if patterns_arg and msgs_arg:
+            ############################################################
+            # handle patterns with 1 potential msg
+            ############################################################
+            find_items = True
+            while find_items:
+                find_items = False
+                for num_items in range(1, 4):
+                    # print(f"************* {num_items=}")
+                    # print(f"\npattern_df: \n{pattern_df}")
+                    # print(f"\nmsg_df: \n{msg_df}")
+                    if search_df(
+                        search_arg_df=pattern_df,
+                        search_targ_df=msg_df,
+                        num_potential_items=num_items,
+                    ):
+                        find_items = True
+                        # print(f"\npattern_df 1a{find_items=}: \n{pattern_df}")
+                        # print(f"\nmsg_df 1a {find_items=}: \n{msg_df}")
+                        break
+                    # print(f"\npattern_df 1b {find_items=}: \n{pattern_df}")
+                    # print(f"\nmsg_df 1b {find_items=}: \n{msg_df}")
+                    if search_df(
+                        search_arg_df=msg_df,
+                        search_targ_df=pattern_df,
+                        num_potential_items=num_items,
+                    ):
+                        find_items = True
+                        # print(f"\npattern_df 2a {find_items=}: \n{pattern_df}")
+                        # print(f"\nmsg_df 2a {find_items=}: \n{msg_df}")
+                        break
+                    # print(f"\npattern_df 2b {find_items=}: \n{pattern_df}")
+                    # print(f"\nmsg_df 2b {find_items=}: \n{msg_df}")
+
+            def find_combo_matches(
+                item_df: pd.DataFrame,
+                items_arg_list: list[str],
+                test_matched_found_items_list: list[list[str]],
+                test_unmatched_found_items_list: list[list[str]],
+                sort_x_y_x_item: str,
+            ):
+                for perm_idx in it.permutations(range(len(item_df))):
+                    item_combo_lists = []
+                    for idx in perm_idx:
+                        if len(item_df["potential_finds2"].iloc[idx]) > 0:
+                            c_items = []
+                            for potential_find_item in item_df["potential_finds2"].iloc[
+                                idx
+                            ]:
+                                c_items.append(potential_find_item[1])
+                            item_combo_lists.append(c_items)
+                        else:
+                            item_combo_lists.append(["none"])
+                    item_prods = ""
+                    if len(item_combo_lists) == 1:
+                        item_prods = it.product(
+                            item_combo_lists[0],
+                        )
+                    elif len(item_combo_lists) == 2:
+                        item_prods = it.product(
+                            item_combo_lists[0],
+                            item_combo_lists[1],
+                        )
+                    elif len(item_combo_lists) == 3:
+                        item_prods = it.product(
+                            item_combo_lists[0],
+                            item_combo_lists[1],
+                            item_combo_lists[2],
+                        )
+                    item_prods = list(item_prods)
+                    for item_prod in item_prods:
+                        test_found_items = []
+                        items_arg_copy = items_arg_list.copy()
+                        for item in item_prod:
+                            if item in items_arg_copy:
+                                test_found_items.append(item)
+                                items_arg_copy.remove(item)
+                        # test_found_items.sort(key=items_arg.index)
+                        test_found_items = sort_items(
+                            test_found_items,
+                            items_arg_list,
+                            sort_x_y_x_item,
+                        )
+                        items_arg_copy = sort_items(
+                            items_arg_copy,
+                            items_arg_list,
+                            sort_x_y_x_item,
+                        )
+                        test_matched_found_items_list.append(test_found_items)
+                        test_unmatched_found_items_list.append(items_arg_copy.copy())
+
+            find_combo_matches(
+                item_df=pattern_df,
+                items_arg_list=msgs_arg_list,
+                test_matched_found_items_list=test_matched_found_msgs_list,
+                test_unmatched_found_items_list=test_unmatched_found_msgs_list,
+                sort_x_y_x_item=sort_x_y_x_msg,
+            )
+
+            find_combo_matches(
+                item_df=msg_df,
+                items_arg_list=patterns_arg_list,
+                test_matched_found_items_list=test_matched_found_patterns_list,
+                test_unmatched_found_items_list=test_unmatched_found_patterns_list,
+                sort_x_y_x_item=sort_x_y_x_pattern,
+            )
+
+        for idx in range(len(pattern_df)):
+            pattern = pattern_df["item"].iloc[idx]
+            if pattern_df["claimed"].iloc[idx] == "none":
+                unmatched_patterns.append(pattern)
+                unmatched_patterns2.append(pattern)
+            else:
+                matched_patterns.append(pattern)
+                matched_patterns2.append(pattern)
+
+        for idx in range(len(msg_df)):
+            msg = msg_df["item"].iloc[idx]
+            if msg_df["claimed"].iloc[idx] == "none":
+                unmatched_msgs.append(msg)
+                unmatched_msgs2.append(msg)
+            else:
+                matched_msgs.append(msg)
+                matched_msgs2.append(msg)
+
+        unmatched_msgs = sort_items(unmatched_msgs, msgs_arg_list, sort_x_y_x_msg)
+        matched_msgs = sort_items(matched_msgs, msgs_arg_list, sort_x_y_x_msg)
+
+        unmatched_patterns = sort_items(
+            unmatched_patterns, patterns_arg_list, sort_x_y_x_pattern
+        )
+        matched_patterns = sort_items(
+            matched_patterns, patterns_arg_list, sort_x_y_x_pattern
+        )
+
+        # print(f"\npattern_df: \n{pattern_df}")
+        # print(f"\nmsg_df: \n{msg_df}")
+        # print(f"{matched_patterns=}")
+        # print(f"{unmatched_patterns=}")
+        # print(f"{matched_msgs=}")
+        # print(f"{unmatched_msgs=}")
+
+        def compare_combos(
+            test_matched_found_items_list: list[list[str]],
+            test_unmatched_found_items_list: list[list[str]],
+            matched_items: list[str],
+            unmatched_items: list[str],
+            items_arg_list: list[str],
+        ):
+            num_matched_items_agreed = 0
+            num_matched_items_not_agreed = 0
+            num_unmatched_items_agreed = 0
+            num_unmatched_items_not_agreed = 0
+            if patterns_arg_list and msgs_arg_list:
+                for test_unmatched_found_items in test_unmatched_found_items_list:
+                    if test_unmatched_found_items == unmatched_items:
+                        num_unmatched_items_agreed += 1
+                    else:
+                        num_unmatched_items_not_agreed += 1
+
+                for test_matched_found_items in test_matched_found_items_list:
+                    if test_matched_found_items == matched_items:
+                        num_matched_items_agreed += 1
+                    else:
+                        num_matched_items_not_agreed += 1
+                        # print(
+                        #     f"{len(test_matched_found_items)=},"
+                        #     f" {test_matched_found_items=}"
+                        #     f"{len(matched_items)=}, {matched_items=}"
+                        # )
+                        assert len(test_matched_found_items) <= len(matched_items)
+            else:
+                if not matched_items and unmatched_items == items_arg_list:
+                    num_matched_items_agreed = 1
+                    num_matched_items_not_agreed = 0
+                    num_unmatched_items_agreed = 1
+                    num_unmatched_items_not_agreed = 0
+
+            return (
+                num_matched_items_agreed,
+                num_matched_items_not_agreed,
+                num_unmatched_items_agreed,
+                num_unmatched_items_not_agreed,
+            )
+
+        (
+            num_matched_msgs_agreed,
+            num_matched_msgs_not_agreed,
+            num_unmatched_msgs_agreed,
+            num_unmatched_msgs_not_agreed,
+        ) = compare_combos(
+            test_matched_found_items_list=test_matched_found_msgs_list,
+            test_unmatched_found_items_list=test_unmatched_found_msgs_list,
+            matched_items=matched_msgs,
+            unmatched_items=unmatched_msgs,
+            items_arg_list=msgs_arg_list,
+        )
+
+        (
+            num_matched_patterns_agreed,
+            num_matched_patterns_not_agreed,
+            num_unmatched_patterns_agreed,
+            num_unmatched_patterns_not_agreed,
+        ) = compare_combos(
+            test_matched_found_items_list=test_matched_found_patterns_list,
+            test_unmatched_found_items_list=test_unmatched_found_patterns_list,
+            matched_items=matched_patterns,
+            unmatched_items=unmatched_patterns,
+            items_arg_list=patterns_arg_list,
+        )
+
+        #
+        # print(f"{num_unmatched_msgs_agreed=}")
+        # print(f"{num_unmatched_msgs_not_agreed=}")
+        #
+        # print(f"{num_matched_msgs_agreed=}")
+        # print(f"{num_matched_msgs_not_agreed=}")
+        #
+        # print(f"{num_unmatched_patterns_agreed=}")
+        # print(f"{num_unmatched_patterns_not_agreed=}")
+        #
+        # print(f"{num_matched_patterns_agreed=}")
+        # print(f"{num_matched_patterns_not_agreed=}")
+
+        assert num_unmatched_msgs_agreed
+        assert num_matched_msgs_agreed
+
+        assert num_unmatched_patterns_agreed
+        assert num_matched_patterns_agreed
+
+        ################################################################
+        # add patterns and issue log msgs
+        ################################################################
+        caplog.clear()
+
+        log_name = "contention_0"
+        t_logger = logging.getLogger(log_name)
+        log_ver = LogVer(log_name=log_name)
+
+        fullmatch_tf_arg = True
+        for pattern in patterns_arg:
+            log_ver.add_msg(log_msg=pattern, fullmatch=fullmatch_tf_arg)
+
+        for msg in msgs_arg:
+            t_logger.debug(msg)
+
+        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
+
+        expected_result = "\n"
+        expected_result += f"{msgs_arg=}\n"
+        expected_result += f"{patterns_arg=}\n"
+
+        expected_result += "\n"
+        expected_result += "**********************************\n"
+        expected_result += f"* number expected log records: {len(patterns_arg)} *\n"
+        expected_result += (
+            f"* number expected unmatched  : " f"{len(unmatched_patterns2)} *\n"
+        )
+        expected_result += f"* number actual log records  : {len(msgs_arg)} *\n"
+        expected_result += f"* number actual unmatched    : {len(unmatched_msgs2)} *\n"
+        expected_result += f"* number matched records     : {len(matched_msgs2)} *\n"
+
+        expected_result += "**********************************\n"
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* unmatched expected records    *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        for pattern in unmatched_patterns2:
+            expected_result += f"('contention_0', 10, '{pattern}')\n"
+
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* unmatched actual records      *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+        for msg in unmatched_msgs2:
+            expected_result += f"('contention_0', 10, '{msg}')\n"
+
+        expected_result += "\n"
+        expected_result += "*********************************\n"
+        expected_result += "* matched records               *\n"
+        expected_result += "* (logger name, level, message) *\n"
+        expected_result += "*********************************\n"
+
+        for msg in matched_msgs2:
+            expected_result += f"('contention_0', 10, '{msg}')\n"
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
 
     ####################################################################
     # test_log_verifier_time_match
