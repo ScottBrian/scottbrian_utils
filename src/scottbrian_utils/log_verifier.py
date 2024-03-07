@@ -454,8 +454,8 @@ class LogVer:
             "item",
             "fullmatch",
             "potential_matches",
-            "matched",
-            "matched_by",
+            "claimed",
+            "claimed_by",
         )
 
         if fullmatch:
@@ -598,8 +598,8 @@ class LogVer:
             "item",
             "fullmatch",
             "potential_matches",
-            "matched",
-            "matched_by",
+            "claimed",
+            "claimed_by",
         )
         pattern_df = pd.DataFrame(
             self.expected_messages,
@@ -618,12 +618,12 @@ class LogVer:
             "log_level",
             "item",
             "potential_matches",
-            "matched",
-            "matched_by",
+            "claimed",
+            "claimed_by",
         )
         actual_records = []
         for record in caplog.record_tuples:
-            actual_records.append((record[0], record[1], record[2], None, False, None))
+            actual_records.append((record[0], record[1], record[2], [], False, ""))
 
         msg_df = pd.DataFrame(
             actual_records,
@@ -661,23 +661,61 @@ class LogVer:
                 # count only non-zero len lists
                 len_potential_matches = len(potential_matches)
                 if len_potential_matches:
-                    min_potential_matches = min(
-                        min_potential_matches, len_potential_matches
-                    )
+                    if min_potential_matches:
+                        min_potential_matches = min(
+                            min_potential_matches, len_potential_matches
+                        )
+                    else:  # min_potential_matches is zero
+                        min_potential_matches = len_potential_matches
 
             pattern_df["potential_matches"].apply(count_matches)
             msg_df["potential_matches"].apply(count_matches)
+
+            if not min_potential_matches:
+                break
 
             new_min_potential_matches = self.search_df(
                 search_arg_df=pattern_df,
                 search_targ_df=msg_df,
                 min_potential_matches=min_potential_matches,
             )
-            new_min_potential_matches = self.search_df(
+            self.search_df(
                 search_arg_df=pattern_df,
                 search_targ_df=msg_df,
                 min_potential_matches=new_min_potential_matches,
             )
+
+        unmatched_exp_records = []
+        unmatched_actual_records = []
+        matched_records = []
+        for pattern_item in pattern_df.itertuples():
+            if not pattern_item.claimed:
+                unmatched_exp_records.append(
+                    (pattern_item.log_name, pattern_item.log_level, pattern_item.item)
+                )
+
+        for msg_item in msg_df.itertuples():
+            if msg_item.claimed:
+                matched_records.append(
+                    (msg_item.log_name, msg_item.log_level, msg_item.item)
+                )
+            else:
+                unmatched_actual_records.append(
+                    (msg_item.log_name, msg_item.log_level, msg_item.item)
+                )
+
+        return MatchResults(
+            num_exp_records=(
+                len(self.expected_messages) + len(self.expected_messages_fullmatch)
+            ),
+            num_exp_unmatched=len(unmatched_exp_records),
+            num_actual_records=len(caplog.records),
+            num_actual_unmatched=len(unmatched_actual_records),
+            num_records_matched=len(matched_records),
+            unmatched_exp_records=unmatched_exp_records,
+            unmatched_actual_records=unmatched_actual_records,
+            matched_records=matched_records,
+        )
 
         # print(f"\n*************************************************")
         # print("\nmsg_df=\n", msg_df)
@@ -755,106 +793,106 @@ class LogVer:
         ################################################################
         # find matches, update working copies to reflect results
         ################################################################
-        def run_full_match(actual_record):
-            # nonlocal unmatched_exp_records_fullmatch
-            # nonlocal unmatched_actual_records
-            # nonlocal matched_records
-
-            for idx, exp_record in enumerate(unmatched_exp_records_fullmatch):
-                # check that the logger name, level, and message
-                # match
-                if (
-                    exp_record[0] == actual_record[0]
-                    and exp_record[1] == actual_record[1]
-                    and re.compile(exp_record[2]).fullmatch(actual_record[2])
-                ):
-                    unmatched_exp_records_fullmatch.pop(idx)
-                    unmatched_actual_records.remove(actual_record)
-                    matched_records.append(
-                        (actual_record[0], actual_record[1], actual_record[2])
-                    )
-                    break
-
-        if unmatched_exp_records_fullmatch:  # if fullmatch records
-            # print(f" 42 get_match_results")
-            list(map(run_full_match, caplog.record_tuples))
-            # look for fullmatch
-            # for idx, exp_record in enumerate(unmatched_exp_records_fullmatch):
-            #     # check that the logger name, level, and message
-            #     # match
-            #     if (
-            #         exp_record[0] == actual_record[0]
-            #         and exp_record[1] == actual_record[1]
-            #         and exp_record[2].fullmatch(actual_record[2])
-            #     ):
-            #         unmatched_exp_records_fullmatch.pop(idx)
-            #         unmatched_actual_records.remove(actual_record)
-            #         matched_records.append(
-            #             (actual_record[0], actual_record[1], actual_record[2])
-            #         )
-            #         break
-
-        def run_partial_match(actual_record):
-            for idx, exp_record in enumerate(unmatched_exp_records):
-                # check that the logger name, level, and message
-                # match
-                if (
-                    exp_record[0] == actual_record[0]
-                    and exp_record[1] == actual_record[1]
-                    and re.compile(exp_record[2]).match(actual_record[2])
-                ):
-                    unmatched_exp_records.pop(idx)
-                    unmatched_actual_records.remove(actual_record)
-                    matched_records.append(
-                        (actual_record[0], actual_record[1], actual_record[2])
-                    )
-                    break
-
-        if unmatched_exp_records:  # if partial match records
-            # for actual_record in unmatched_actual_records.copy():
-            list(map(run_partial_match, unmatched_actual_records.copy()))
-            # look for partial match in unmatched_exp_records
-            # for idx, exp_record in enumerate(unmatched_exp_records):
-            #     # check that the logger name, level, and message
-            #     # match
-            #     if (
-            #         exp_record[0] == actual_record[0]
-            #         and exp_record[1] == actual_record[1]
-            #         and exp_record[2].match(actual_record[2])
-            #     ):
-            #         unmatched_exp_records.pop(idx)
-            #         unmatched_actual_records.remove(actual_record)
-            #         matched_records.append(
-            #             (actual_record[0], actual_record[1], actual_record[2])
-            #         )
-            #         break
-
-        # convert unmatched expected records to string form
-        unmatched_exp_records_2 = []
+        # def run_full_match(actual_record):
+        #     # nonlocal unmatched_exp_records_fullmatch
+        #     # nonlocal unmatched_actual_records
+        #     # nonlocal matched_records
+        #
+        #     for idx, exp_record in enumerate(unmatched_exp_records_fullmatch):
+        #         # check that the logger name, level, and message
+        #         # match
+        #         if (
+        #             exp_record[0] == actual_record[0]
+        #             and exp_record[1] == actual_record[1]
+        #             and re.compile(exp_record[2]).fullmatch(actual_record[2])
+        #         ):
+        #             unmatched_exp_records_fullmatch.pop(idx)
+        #             unmatched_actual_records.remove(actual_record)
+        #             matched_records.append(
+        #                 (actual_record[0], actual_record[1], actual_record[2])
+        #             )
+        #             break
+        #
+        # if unmatched_exp_records_fullmatch:  # if fullmatch records
+        #     # print(f" 42 get_match_results")
+        #     list(map(run_full_match, caplog.record_tuples))
+        #     # look for fullmatch
+        #     # for idx, exp_record in enumerate(unmatched_exp_records_fullmatch):
+        #     #     # check that the logger name, level, and message
+        #     #     # match
+        #     #     if (
+        #     #         exp_record[0] == actual_record[0]
+        #     #         and exp_record[1] == actual_record[1]
+        #     #         and exp_record[2].fullmatch(actual_record[2])
+        #     #     ):
+        #     #         unmatched_exp_records_fullmatch.pop(idx)
+        #     #         unmatched_actual_records.remove(actual_record)
+        #     #         matched_records.append(
+        #     #             (actual_record[0], actual_record[1], actual_record[2])
+        #     #         )
+        #     #         break
+        #
+        # def run_partial_match(actual_record):
+        #     for idx, exp_record in enumerate(unmatched_exp_records):
+        #         # check that the logger name, level, and message
+        #         # match
+        #         if (
+        #             exp_record[0] == actual_record[0]
+        #             and exp_record[1] == actual_record[1]
+        #             and re.compile(exp_record[2]).match(actual_record[2])
+        #         ):
+        #             unmatched_exp_records.pop(idx)
+        #             unmatched_actual_records.remove(actual_record)
+        #             matched_records.append(
+        #                 (actual_record[0], actual_record[1], actual_record[2])
+        #             )
+        #             break
+        #
+        # if unmatched_exp_records:  # if partial match records
+        #     # for actual_record in unmatched_actual_records.copy():
+        #     list(map(run_partial_match, unmatched_actual_records.copy()))
+        #     # look for partial match in unmatched_exp_records
+        #     # for idx, exp_record in enumerate(unmatched_exp_records):
+        #     #     # check that the logger name, level, and message
+        #     #     # match
+        #     #     if (
+        #     #         exp_record[0] == actual_record[0]
+        #     #         and exp_record[1] == actual_record[1]
+        #     #         and exp_record[2].match(actual_record[2])
+        #     #     ):
+        #     #         unmatched_exp_records.pop(idx)
+        #     #         unmatched_actual_records.remove(actual_record)
+        #     #         matched_records.append(
+        #     #             (actual_record[0], actual_record[1], actual_record[2])
+        #     #         )
+        #     #         break
+        #
+        # # convert unmatched expected records to string form
+        # unmatched_exp_records_2 = []
+        # # for item in unmatched_exp_records_fullmatch:
+        # #     unmatched_exp_records_2.append((item[0], item[1], item[2].pattern))
+        # #
+        # # for item in unmatched_exp_records:
+        # #     unmatched_exp_records_2.append((item[0], item[1], item[2].pattern))
+        #
         # for item in unmatched_exp_records_fullmatch:
-        #     unmatched_exp_records_2.append((item[0], item[1], item[2].pattern))
+        #     unmatched_exp_records_2.append((item[0], item[1], item[2]))
         #
         # for item in unmatched_exp_records:
-        #     unmatched_exp_records_2.append((item[0], item[1], item[2].pattern))
-
-        for item in unmatched_exp_records_fullmatch:
-            unmatched_exp_records_2.append((item[0], item[1], item[2]))
-
-        for item in unmatched_exp_records:
-            unmatched_exp_records_2.append((item[0], item[1], item[2]))
-
-        return MatchResults(
-            num_exp_records=(
-                len(self.expected_messages) + len(self.expected_messages_fullmatch)
-            ),
-            num_exp_unmatched=len(unmatched_exp_records_2),
-            num_actual_records=len(caplog.records),
-            num_actual_unmatched=len(unmatched_actual_records),
-            num_records_matched=len(matched_records),
-            unmatched_exp_records=unmatched_exp_records_2,
-            unmatched_actual_records=unmatched_actual_records,
-            matched_records=matched_records,
-        )
+        #     unmatched_exp_records_2.append((item[0], item[1], item[2]))
+        #
+        # return MatchResults(
+        #     num_exp_records=(
+        #         len(self.expected_messages) + len(self.expected_messages_fullmatch)
+        #     ),
+        #     num_exp_unmatched=len(unmatched_exp_records),
+        #     num_actual_records=len(caplog.records),
+        #     num_actual_unmatched=len(unmatched_actual_records),
+        #     num_records_matched=len(matched_records),
+        #     unmatched_exp_records=unmatched_exp_records,
+        #     unmatched_actual_records=unmatched_actual_records,
+        #     matched_records=matched_records,
+        # )
 
     ####################################################################
     # search_df for matches
