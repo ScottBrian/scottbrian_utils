@@ -646,14 +646,38 @@ class LogVer:
                         and p_row.log_level == m_row.log_level
                     ):
                         pattern_df.at[p_row.Index, "potential_matches"].append(
-                            m_row.Index)
+                            m_row.Index
+                        )
                         msg_df.at[m_row.Index, "potential_matches"].append(p_row.Index)
 
         ################################################################
         # settle matches
         ################################################################
         while True:
+            min_potential_matches = 0
 
+            def count_matches(potential_matches):
+                nonlocal min_potential_matches
+                # count only non-zero len lists
+                len_potential_matches = len(potential_matches)
+                if len_potential_matches:
+                    min_potential_matches = min(
+                        min_potential_matches, len_potential_matches
+                    )
+
+            pattern_df["potential_matches"].apply(count_matches)
+            msg_df["potential_matches"].apply(count_matches)
+
+            new_min_potential_matches = self.search_df(
+                search_arg_df=pattern_df,
+                search_targ_df=msg_df,
+                min_potential_matches=min_potential_matches,
+            )
+            new_min_potential_matches = self.search_df(
+                search_arg_df=pattern_df,
+                search_targ_df=msg_df,
+                min_potential_matches=new_min_potential_matches,
+            )
 
         # print(f"\n*************************************************")
         # print("\nmsg_df=\n", msg_df)
@@ -837,52 +861,86 @@ class LogVer:
     ####################################################################
     @staticmethod
     def search_df(
-            search_arg_df: pd.DataFrame,
-            search_targ_df: pd.DataFrame,
-            num_potential_items: int,
-    ) -> bool:
+        search_arg_df: pd.DataFrame,
+        search_targ_df: pd.DataFrame,
+        min_potential_matches: int,
+    ) -> int:
         """Print the match results.
 
         Args:
             search_arg_df: data frame that has the search arg
             search_targ_df: data frame that has the search target
-            num_potential_items: number of potential items that each
-                entry in the search data frame must have
+            min_potential_matches: the currently known minimum number of
+                non-zero potential matches that need to be processed
 
         Returns:
-            True is returned if one or more items are claimed
+            min_potential_matches, which is either the same or lower
         """
-        claims_made = False
+        # This method is called for each of the two data frames, the
+        # first call having the pattern_df acting as the search_arg_df
+        # and the msg_df as the search_targ_df, and the second call with
+        # the two data frames in reversed roles.
+        # We iterate ove the search_arg_df, selecting only entries whose
+        # number of potential_matches is equal to min_potential_matches.
+        # The idea is to make sure we give entries with few choices a
+        # chance to claim matches before entries with more choices
+        # claim them.
+        # Once we make a claim, we remove the choice from all entries,
+        # which now means some entries may now have fewer choices than
+        # min_potential_matches. In order to avoid these entries from
+        # facing that same scenario of having their limited choices
+        # "stolen" by an entry with more choices, we need to reduce
+        # min_potential_matches dynamically.
+        # We stop calling when we determine no additional matches are
+        # possible as indicated when all entries have either made a
+        # match are have exhausted their potential_matches.
         for search_item in search_arg_df.itertuples():
-            if (not search_item.claimed
-                    and len(search_item.potential_finds) == num_potential_items):
-                for potential_idx in search_item.potential_finds:
+            if (
+                not search_item.claimed
+                and len(search_item.potential_matches) == min_potential_matches
+            ):
+                for potential_idx in search_item.potential_matches:
                     if not search_targ_df.at[potential_idx, "claimed"]:
                         search_arg_df.at[search_item.Index, "claimed"] = True
-                        search_arg_df.at[search_item.Index, "claimed_by"] = potential_idx
+                        search_arg_df.at[
+                            search_item.Index, "claimed_by"
+                        ] = potential_idx
 
                         search_targ_df.at[potential_idx, "claimed"] = True
-                        search_targ_df.at[potential_idx, "claimed_by"] = (
-                            search_item.Index)
+                        search_targ_df.at[
+                            potential_idx, "claimed_by"
+                        ] = search_item.Index
 
-                        def remove_find(pot_finds, pot_item):
-                            if pot_item in pot_finds:
-                                pot_finds.remove(pot_item)
+                        # remove potential_items to prevent counting them
+                        search_arg_df.at[search_item.Index, "potential_matches"] = []
+                        search_targ_df.at[potential_idx, "potential_matches"] = []
 
-                        search_arg_df["potential_finds"].apply(remove_find,
-                                                               potential_idx)
-                        search_targ_df["potential_finds"].apply(remove_find,
-                                                                search_item.Index)
+                        def remove_match(potential_matches, idx):
+                            nonlocal min_potential_matches
+                            if idx in potential_matches:
+                                potential_matches.remove(idx)
+                            len_potential_matches = len(potential_matches)
+                            if len_potential_matches:
+                                min_potential_matches = min(
+                                    min_potential_matches, len_potential_matches
+                                )
 
-                        claims_made = True
+                        search_arg_df["potential_matches"] = search_arg_df[
+                            "potential_matches"
+                        ].apply(remove_match, potential_idx)
+                        search_targ_df["potential_matches"] = search_targ_df[
+                            "potential_matches"
+                        ].apply(remove_match, search_item.Index)
+
                         break
-                # We either found a match or tried each index and found that they
-                # were all claimed. The means that either way, we no longer have a need
-                # for potential finds. Clear it now to avoid the overhead of trying
-                # again to find unclaimed potential finds when we know that none exist.
-                search_arg_df.at[search_item, "potential_finds"] = []
+                # We either found a match or tried each index and found
+                # that they were all claimed. Either way, we no longer
+                # have a need for potential_matches. Clear it now to
+                # avoid the overhead of trying again to find unclaimed
+                # potential matches when we know that none exist.
+                search_arg_df.at[search_item.Index, "potential_matches"] = []
 
-        return claims_made
+        return min_potential_matches
 
     ####################################################################
     # print_match_results
