@@ -671,18 +671,18 @@ class LogVer:
             if not min_potential_matches:
                 break
 
-            print(f" 42 pattern_df=\n{pattern_df}")
-            print(f" 42 msg_df=\n{msg_df}")
-            print(f" 42 {min_potential_matches=}")
+            # print(f" 42 pattern_df=\n{pattern_df}")
+            # print(f" 42 msg_df=\n{msg_df}")
+            # print(f" 42 {min_potential_matches=}")
             new_min_potential_matches = self.search_df(
                 search_arg_df=pattern_df,
                 search_targ_df=msg_df,
                 min_potential_matches=min_potential_matches,
             )
 
-            print(f" 62 pattern_df=\n{pattern_df}")
-            print(f" 62 msg_df=\n{msg_df}")
-            print(f" 62 {new_min_potential_matches=}")
+            # print(f" 62 pattern_df=\n{pattern_df}")
+            # print(f" 62 msg_df=\n{msg_df}")
+            # print(f" 62 {new_min_potential_matches=}")
             self.search_df(
                 search_arg_df=msg_df,
                 search_targ_df=pattern_df,
