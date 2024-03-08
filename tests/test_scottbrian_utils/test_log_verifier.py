@@ -4,6 +4,7 @@
 # Standard Library
 ########################################################################
 from collections.abc import Iterable
+from dataclasses import dataclass
 import itertools as it
 import more_itertools as mi
 import logging
@@ -1200,7 +1201,7 @@ class TestLogVerBasic:
     # @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
     @pytest.mark.parametrize("msgs_arg", [("msg1", "msg1", "msg2")])
     @pytest.mark.parametrize("patterns_arg", [("msg1", "msg[123]{1}")])
-    def test_log_verifier_contention(
+    def test_log_verifier_contention2(
         self,
         msgs_arg: Iterable[tuple[str]],
         patterns_arg: Iterable[tuple[str]],
@@ -1752,7 +1753,7 @@ class TestLogVerBasic:
     # @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
     @pytest.mark.parametrize("msgs_arg", [("msg1", "msg1", "msg2")])
     @pytest.mark.parametrize("patterns_arg", [("msg1", "msg[123]{1}")])
-    def test_log_verifier_contention2(
+    def test_log_verifier_contention(
         self,
         msgs_arg: Iterable[tuple[str]],
         patterns_arg: Iterable[tuple[str]],
@@ -1783,6 +1784,155 @@ class TestLogVerBasic:
             "msg2": {"msg2", "msg[12]{1}", "msg[23]{1}", "msg[123]{1}"},
             "msg3": {"msg3", "msg[13]{1}", "msg[23]{1}", "msg[123]{1}"},
         }
+
+        @dataclass
+        class ItemTracker:
+            item: str
+            claimed: bool
+            potential_matches: list[int]
+
+        pattern_array: dict[int, ItemTracker] = {}
+        msg_array: dict[int, ItemTracker] = {}
+
+        for idx in range(len(patterns_arg)):
+            pattern = patterns_arg[idx]
+            potential_matches = []
+
+            for idx2, msg in enumerate(msgs_arg):
+                if msg in matched_msg_array[pattern]:
+                    potential_matches.append(idx2)
+
+            pattern_array[idx] = ItemTracker(
+                item=pattern,
+                claimed=False,
+                potential_matches=potential_matches.copy(),
+            )
+
+        for idx in range(len(msgs_arg)):
+            msg = msgs_arg[idx]
+            potential_matches = []
+
+            for idx2, pattern in enumerate(patterns_arg):
+                if pattern in matched_pattern_array[msg]:
+                    potential_matches.append(idx2)
+
+            msg_array[idx] = ItemTracker(
+                item=msg,
+                claimed=False,
+                potential_matches=potential_matches.copy(),
+            )
+
+        while True:
+            min_count = 0
+
+            for key, item in pattern_array.items():
+                len_potentials = len(item.potential_matches)
+                if len_potentials > 0:
+                    if min_count == 0:
+                        min_count = len_potentials
+                    else:
+                        min_count = min(min_count, len_potentials)
+
+            for key, item in msg_array.items():
+                len_potentials = len(item.potential_matches)
+                if len_potentials > 0:
+                    if min_count == 0:
+                        min_count = len_potentials
+                    else:
+                        min_count = min(min_count, len_potentials)
+
+            if min_count == 0:
+                break
+
+            ############################################################
+            # search pattern array
+            ############################################################
+            for idx in pattern_array.keys():
+                potential_matches = pattern_array[idx].potential_matches
+                if (
+                    not pattern_array[idx].claimed
+                    and len(potential_matches) == min_count
+                ):
+                    for idx2 in potential_matches:
+                        if not msg_array[idx2].claimed:
+                            msg_array[idx2].claimed = True
+                            msg_array[idx2].potential_matches = []
+                            pattern_array[idx].potential_matches = []
+
+                            for idx3 in pattern_array.keys():
+                                if idx2 in pattern_array[idx3].potential_matches:
+                                    pattern_array[idx3].potential_matches.remove(idx2)
+                                    if len(pattern_array[idx3].potential_matches) > 0:
+                                        min_count = min(
+                                            min_count,
+                                            len(pattern_array[idx3].potential_matches),
+                                        )
+                            for idx3 in msg_array.keys():
+                                if idx in msg_array[idx3].potential_matches:
+                                    msg_array[idx3].potential_matches.remove(idx)
+                                    if len(msg_array[idx3].potential_matches) > 0:
+                                        min_count = min(
+                                            min_count,
+                                            len(msg_array[idx3].potential_matches),
+                                        )
+                            break
+                    pattern_array[idx].potential_matches = []
+
+            ############################################################
+            # search msg_array
+            ############################################################
+            for idx in msg_array.keys():
+                potential_matches = msg_array[idx].potential_matches
+                if not msg_array[idx].claimed and len(potential_matches) == min_count:
+                    for idx2 in potential_matches:
+                        if not pattern_array[idx2].claimed:
+                            pattern_array[idx2].claimed = True
+                            pattern_array[idx2].potential_matches = []
+                            msg_array[idx].potential_matches = []
+
+                            for idx3 in msg_array.keys():
+                                if idx2 in msg_array[idx3].potential_matches:
+                                    msg_array[idx3].potential_matches.remove(idx2)
+                                    if len(msg_array[idx3].potential_matches) > 0:
+                                        min_count = min(
+                                            min_count,
+                                            len(msg_array[idx3].potential_matches),
+                                        )
+                            for idx3 in pattern_array.keys():
+                                if idx in pattern_array[idx3].potential_matches:
+                                    pattern_array[idx3].potential_matches.remove(idx)
+                                    if len(pattern_array[idx3].potential_matches) > 0:
+                                        min_count = min(
+                                            min_count,
+                                            len(pattern_array[idx3].potential_matches),
+                                        )
+                            break
+                    msg_array[idx].potential_matches = []
+
+        unmatched_patterns: list[str] = []
+        unmatched_patterns2: list[str] = []
+        matched_patterns: list[str] = []
+        matched_patterns2: list[str] = []
+
+        unmatched_msgs: list[str] = []
+        unmatched_msgs2: list[str] = []
+        matched_msgs: list[str] = []
+        matched_msgs2: list[str] = []
+
+        print(f"\n  42 pattern_array: \n{pattern_array}")
+        print(f"\n  42 msg_array: \n{msg_array}")
+
+        for idx in pattern_array.keys():
+            if pattern_array[idx].claimed:
+                matched_patterns2.append(pattern_array[idx].item)
+            else:
+                unmatched_patterns2.append(pattern_array[idx].item)
+
+        for idx in msg_array.keys():
+            if msg_array[idx].claimed:
+                matched_msgs2.append(msg_array[idx].item)
+            else:
+                unmatched_msgs2.append(msg_array[idx].item)
 
         if msgs_arg:
             msgs_arg_list = list(msgs_arg)
@@ -1834,16 +1984,6 @@ class TestLogVerBasic:
                 item_count = filter_msgs.count(item)
                 ret_potential_list.append([item_count, item])
             return ret_potential_list
-
-        unmatched_patterns: list[str] = []
-        unmatched_patterns2: list[str] = []
-        matched_patterns: list[str] = []
-        matched_patterns2: list[str] = []
-
-        unmatched_msgs: list[str] = []
-        unmatched_msgs2: list[str] = []
-        matched_msgs: list[str] = []
-        matched_msgs2: list[str] = []
 
         pattern_df = pd.DataFrame()
         msg_df = pd.DataFrame()
@@ -2064,19 +2204,19 @@ class TestLogVerBasic:
             pattern = pattern_df["item"].iloc[idx]
             if pattern_df["claimed"].iloc[idx] == "none":
                 unmatched_patterns.append(pattern)
-                unmatched_patterns2.append(pattern)
+                # unmatched_patterns2.append(pattern)
             else:
                 matched_patterns.append(pattern)
-                matched_patterns2.append(pattern)
+                # matched_patterns2.append(pattern)
 
         for idx in range(len(msg_df)):
             msg = msg_df["item"].iloc[idx]
             if msg_df["claimed"].iloc[idx] == "none":
                 unmatched_msgs.append(msg)
-                unmatched_msgs2.append(msg)
+                # unmatched_msgs2.append(msg)
             else:
                 matched_msgs.append(msg)
-                matched_msgs2.append(msg)
+                # matched_msgs2.append(msg)
 
         unmatched_msgs = sort_items(unmatched_msgs, msgs_arg_list, sort_x_y_x_msg)
         matched_msgs = sort_items(matched_msgs, msgs_arg_list, sort_x_y_x_msg)
@@ -2244,7 +2384,6 @@ class TestLogVerBasic:
         captured = capsys.readouterr().out
 
         assert captured == expected_result
-
 
     ####################################################################
     # test_log_verifier_time_match
