@@ -206,6 +206,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 import logging
 import pandas as pd
+import pyarrow as pa
 import pytest
 import re
 from typing import Any, Optional, Type, TYPE_CHECKING, Union
@@ -297,7 +298,8 @@ class LogVer:
         """
         self.specified_args = locals()  # used for __repr__, see below
         self.call_seqs: dict[str, str] = {}
-        self.expected_messages: list[tuple[str, int, str, bool, list, bool, str]] = []
+        # self.expected_messages: list[tuple[str, int, str, bool, list, bool, str]] = []
+        self.expected_messages: list[tuple[str, int, str, bool, bool, str]] = []
         self.expected_messages_fullmatch: list[tuple[str, int, Any]] = []
         self.log_name = log_name
 
@@ -433,22 +435,6 @@ class LogVer:
         else:
             log_name_to_use = self.log_name
 
-        # if fullmatch:
-        #     self.expected_messages_fullmatch.append(
-        #         (log_name_to_use, log_level, re.compile(log_msg))
-        #     )
-        # else:
-        #     self.expected_messages.append(
-        #         (log_name_to_use, log_level, re.compile(log_msg))
-        #     )
-
-        # if fullmatch:
-        #     self.expected_messages_fullmatch.append(
-        #         (log_name_to_use, log_level, log_msg)
-        #     )
-        # else:
-        #     self.expected_messages.append((log_name_to_use, log_level, log_msg))
-
         if fullmatch:
             self.expected_messages.append(
                 (
@@ -456,7 +442,7 @@ class LogVer:
                     log_level,
                     log_msg,
                     True,
-                    [],
+                    # [],
                     False,
                     "",
                 )
@@ -468,7 +454,7 @@ class LogVer:
                     log_level,
                     log_msg,
                     False,
-                    [],
+                    # [],
                     False,
                     "",
                 )
@@ -588,13 +574,16 @@ class LogVer:
             "log_level",
             "item",
             "fullmatch",
-            "potential_matches",
+            # "potential_matches",
             "claimed",
             "claimed_by",
         )
         pattern_df = pd.DataFrame(
             self.expected_messages,
             columns=pattern_col_names,
+        )
+        pattern_df["potential_matches"] = pd.Series(
+            [[]], dtype=pd.ArrowDtype(pa.list_(pa.int64()))
         )
         # print(f"\n*************************************************")
         # print("\nmsg_df=\n", msg_df)
@@ -608,17 +597,22 @@ class LogVer:
             "log_name",
             "log_level",
             "item",
-            "potential_matches",
+            # "potential_matches",
             "claimed",
             "claimed_by",
         )
         actual_records = []
-        for record in caplog.record_tuples:
-            actual_records.append((record[0], record[1], record[2], [], False, ""))
+        # for record in caplog.record_tuples:
+        #     actual_records.append((record[0], record[1], record[2], [], False, ""))
 
+        for record in caplog.record_tuples:
+            actual_records.append((record[0], record[1], record[2], False, ""))
         msg_df = pd.DataFrame(
             actual_records,
             columns=msg_col_names,
+        )
+        msg_df["potential_matches"] = pd.Series(
+            [[]], dtype=pd.ArrowDtype(pa.list_(pa.int64()))
         )
 
         ################################################################
@@ -651,7 +645,7 @@ class LogVer:
                 nonlocal min_potential_matches
                 # count only non-zero len lists
                 # print(f" 67 {type(potential_matches)=}, {potential_matches=}")
-                len_potential_matches = len(potential_matches)
+                len_potential_matches = potential_matches.list.len()
                 if len_potential_matches:
                     if min_potential_matches:
                         min_potential_matches = min(
@@ -674,7 +668,7 @@ class LogVer:
             # print(f" 42 pattern_df=\n{pattern_df}")
             # print(f" 42 msg_df=\n{msg_df}")
             # print(f" 42 {min_potential_matches=}")
-            new_min_potential_matches = self.search_df(
+            min_potential_matches = self.search_df(
                 search_arg_df=pattern_df,
                 search_targ_df=msg_df,
                 min_potential_matches=min_potential_matches,
@@ -686,7 +680,7 @@ class LogVer:
             self.search_df(
                 search_arg_df=msg_df,
                 search_targ_df=pattern_df,
-                min_potential_matches=new_min_potential_matches,
+                min_potential_matches=min_potential_matches,
             )
 
         unmatched_exp_records = []
@@ -709,9 +703,7 @@ class LogVer:
                 )
 
         return MatchResults(
-            num_exp_records=(
-                len(self.expected_messages) + len(self.expected_messages_fullmatch)
-            ),
+            num_exp_records=len(self.expected_messages),
             num_exp_unmatched=len(unmatched_exp_records),
             num_actual_records=len(caplog.records),
             num_actual_unmatched=len(unmatched_actual_records),
@@ -767,14 +759,14 @@ class LogVer:
                 for potential_idx in search_item.potential_matches:
                     if not search_targ_df.at[potential_idx, "claimed"]:
                         search_arg_df.at[search_item.Index, "claimed"] = True
-                        search_arg_df.at[
-                            search_item.Index, "claimed_by"
-                        ] = potential_idx
+                        search_arg_df.at[search_item.Index, "claimed_by"] = (
+                            potential_idx
+                        )
 
                         search_targ_df.at[potential_idx, "claimed"] = True
-                        search_targ_df.at[
-                            potential_idx, "claimed_by"
-                        ] = search_item.Index
+                        search_targ_df.at[potential_idx, "claimed_by"] = (
+                            search_item.Index
+                        )
 
                         # remove potential_items to prevent counting them
                         search_arg_df.at[search_item.Index, "potential_matches"] = []
