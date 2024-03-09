@@ -1795,157 +1795,130 @@ class TestLogVerBasic:
         pattern_array: dict[int, ItemTracker] = {}
         msg_array: dict[int, ItemTracker] = {}
 
-        for idx in range(len(patterns_arg)):
-            pattern = patterns_arg[idx]
-            potential_matches = []
-            potential_matches2 = set()
+        def build_search_array(
+            search_array: dict[int, ItemTracker],
+            search_args: set[str],
+            target_args: set[str],
+            matched_array: dict[str, set[str]],
+        ) -> None:
+            for idx in range(len(search_args)):
+                search_arg = search_args[idx]
+                potential_matches = []
+                potential_matches2 = set()
 
-            for idx2, msg in enumerate(msgs_arg):
-                if msg in matched_msg_array[pattern]:
-                    potential_matches.append(idx2)
-                    potential_matches2 |= {msg}
+                for idx2, target_arg in enumerate(target_args):
+                    if target_arg in matched_array[search_arg]:
+                        potential_matches.append(idx2)
+                        potential_matches2 |= {target_arg}
 
-            pattern_array[idx] = ItemTracker(
-                item=pattern,
-                claimed=False,
-                potential_matches=potential_matches.copy(),
-                potential_matches2=potential_matches2.copy(),
-            )
+                search_array[idx] = ItemTracker(
+                    item=search_arg,
+                    claimed=False,
+                    potential_matches=potential_matches.copy(),
+                    potential_matches2=potential_matches2.copy(),
+                )
 
-        for idx in range(len(msgs_arg)):
-            msg = msgs_arg[idx]
-            potential_matches = []
-            potential_matches2 = set()
+        build_search_array(
+            search_array=pattern_array,
+            search_args=patterns_arg,
+            target_args=msgs_arg,
+            matched_array=matched_msg_array,
+        )
+        build_search_array(
+            search_array=msg_array,
+            search_args=msgs_arg,
+            target_args=patterns_arg,
+            matched_array=matched_pattern_array,
+        )
 
-            for idx2, pattern in enumerate(patterns_arg):
-                if pattern in matched_pattern_array[msg]:
-                    potential_matches.append(idx2)
-                    potential_matches2 |= {pattern}
+        def make_claims(
+            search_array: dict[int, ItemTracker],
+            target_array: dict[int, ItemTracker],
+            min_count: int,
+        ) -> int:
+            for idx in search_array.keys():
+                potential_matches = search_array[idx].potential_matches
+                if (
+                    not search_array[idx].claimed
+                    and len(potential_matches) == min_count
+                ):
+                    for idx2 in potential_matches:
+                        if not target_array[idx2].claimed:
+                            target_array[idx2].claimed = True
+                            target_array[idx2].potential_matches = []
+                            search_array[idx].claimed = True
+                            search_array[idx].potential_matches = []
 
-            msg_array[idx] = ItemTracker(
-                item=msg,
-                claimed=False,
-                potential_matches=potential_matches.copy(),
-                potential_matches2=potential_matches2.copy(),
-            )
+                            for clean_array, rem_idx in zip(
+                                [search_array, target_array], [idx2, idx]
+                            ):
+                                for idx3 in clean_array.keys():
+                                    if rem_idx in clean_array[idx3].potential_matches:
+                                        clean_array[idx3].potential_matches.remove(
+                                            rem_idx
+                                        )
+                                        if len(clean_array[idx3].potential_matches) > 0:
+                                            min_count = min(
+                                                min_count,
+                                                len(
+                                                    clean_array[idx3].potential_matches
+                                                ),
+                                            )
+                            break
+                    search_array[idx].potential_matches = []
+            return min_count
 
         while True:
             min_count = 0
-
-            for key, item in pattern_array.items():
-                len_potentials = len(item.potential_matches)
-                if len_potentials > 0:
-                    if min_count == 0:
-                        min_count = len_potentials
-                    else:
-                        min_count = min(min_count, len_potentials)
-
-            for key, item in msg_array.items():
-                len_potentials = len(item.potential_matches)
-                if len_potentials > 0:
-                    if min_count == 0:
-                        min_count = len_potentials
-                    else:
-                        min_count = min(min_count, len_potentials)
+            for check_array in [pattern_array, msg_array]:
+                for key, item in check_array.items():
+                    len_potentials = len(item.potential_matches)
+                    if len_potentials > 0:
+                        if min_count == 0:
+                            min_count = len_potentials
+                        else:
+                            min_count = min(min_count, len_potentials)
 
             if min_count == 0:
                 break
 
-            ############################################################
-            # search pattern array
-            ############################################################
-            for idx in pattern_array.keys():
-                potential_matches = pattern_array[idx].potential_matches
-                if (
-                    not pattern_array[idx].claimed
-                    and len(potential_matches) == min_count
-                ):
-                    for idx2 in potential_matches:
-                        if not msg_array[idx2].claimed:
-                            msg_array[idx2].claimed = True
-                            msg_array[idx2].potential_matches = []
-                            pattern_array[idx].claimed = True
-                            pattern_array[idx].potential_matches = []
-
-                            for idx3 in pattern_array.keys():
-                                if idx2 in pattern_array[idx3].potential_matches:
-                                    pattern_array[idx3].potential_matches.remove(idx2)
-                                    if len(pattern_array[idx3].potential_matches) > 0:
-                                        min_count = min(
-                                            min_count,
-                                            len(pattern_array[idx3].potential_matches),
-                                        )
-                            for idx3 in msg_array.keys():
-                                if idx in msg_array[idx3].potential_matches:
-                                    msg_array[idx3].potential_matches.remove(idx)
-                                    if len(msg_array[idx3].potential_matches) > 0:
-                                        min_count = min(
-                                            min_count,
-                                            len(msg_array[idx3].potential_matches),
-                                        )
-                            break
-                    pattern_array[idx].potential_matches = []
-
-            ############################################################
-            # search msg_array
-            ############################################################
-            for idx in msg_array.keys():
-                potential_matches = msg_array[idx].potential_matches
-                if not msg_array[idx].claimed and len(potential_matches) == min_count:
-                    for idx2 in potential_matches:
-                        if not pattern_array[idx2].claimed:
-                            pattern_array[idx2].claimed = True
-                            pattern_array[idx2].potential_matches = []
-                            msg_array[idx].claimed = True
-                            msg_array[idx].potential_matches = []
-
-                            for idx3 in msg_array.keys():
-                                if idx2 in msg_array[idx3].potential_matches:
-                                    msg_array[idx3].potential_matches.remove(idx2)
-                                    if len(msg_array[idx3].potential_matches) > 0:
-                                        min_count = min(
-                                            min_count,
-                                            len(msg_array[idx3].potential_matches),
-                                        )
-                            for idx3 in pattern_array.keys():
-                                if idx in pattern_array[idx3].potential_matches:
-                                    pattern_array[idx3].potential_matches.remove(idx)
-                                    if len(pattern_array[idx3].potential_matches) > 0:
-                                        min_count = min(
-                                            min_count,
-                                            len(pattern_array[idx3].potential_matches),
-                                        )
-                            break
-                    msg_array[idx].potential_matches = []
+            min_count = make_claims(
+                search_array=pattern_array,
+                target_array=msg_array,
+                min_count=min_count,
+            )
+            make_claims(
+                search_array=msg_array,
+                target_array=pattern_array,
+                min_count=min_count,
+            )
 
         unmatched_patterns: list[str] = []
-        unmatched_patterns2: list[str] = []
+        # unmatched_patterns2: list[str] = []
         matched_patterns: list[str] = []
-        matched_patterns2: list[str] = []
+        # matched_patterns2: list[str] = []
 
         unmatched_msgs: list[str] = []
-        unmatched_msgs2: list[str] = []
+        # unmatched_msgs2: list[str] = []
         matched_msgs: list[str] = []
-        matched_msgs2: list[str] = []
+        # matched_msgs2: list[str] = []
 
-        # print(f"\n  42 pattern_array: \n{pattern_array}")
-        # print(f"\n  42 msg_array: \n{msg_array}")
+        for match_array, matched_list, unmatched_list in zip(
+            [pattern_array, msg_array],
+            [matched_patterns, matched_msgs],
+            [unmatched_patterns, unmatched_msgs],
+        ):
+            for idx in match_array.keys():
+                if match_array[idx].claimed:
+                    matched_list.append(match_array[idx].item)
+                else:
+                    unmatched_list.append(match_array[idx].item)
 
-        for idx in pattern_array.keys():
-            if pattern_array[idx].claimed:
-                matched_patterns.append(pattern_array[idx].item)
-                matched_patterns2.append(pattern_array[idx].item)
-            else:
-                unmatched_patterns.append(pattern_array[idx].item)
-                unmatched_patterns2.append(pattern_array[idx].item)
+        matched_patterns2 = matched_patterns.copy()
+        unmatched_patterns2 = unmatched_patterns.copy()
 
-        for idx in msg_array.keys():
-            if msg_array[idx].claimed:
-                matched_msgs.append(msg_array[idx].item)
-                matched_msgs2.append(msg_array[idx].item)
-            else:
-                unmatched_msgs.append(msg_array[idx].item)
-                unmatched_msgs2.append(msg_array[idx].item)
+        matched_msgs2 = matched_msgs.copy()
+        unmatched_msgs2 = unmatched_msgs.copy()
 
         if msgs_arg:
             msgs_arg_list = list(msgs_arg)
