@@ -1751,8 +1751,8 @@ class TestLogVerBasic:
 
     @pytest.mark.parametrize("msgs_arg", msg_combos_list)
     @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
-    # @pytest.mark.parametrize("msgs_arg", [("msg1", "msg1", "msg2")])
-    # @pytest.mark.parametrize("patterns_arg", [("msg1", "msg[123]{1}")])
+    # @pytest.mark.parametrize("msgs_arg", [("msg1",)])
+    # @pytest.mark.parametrize("patterns_arg", [("msg1",)])
     def test_log_verifier_contention(
         self,
         msgs_arg: Iterable[tuple[str]],

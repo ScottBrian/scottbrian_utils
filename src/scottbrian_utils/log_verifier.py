@@ -204,7 +204,9 @@ The log_verifier module contains:
 ########################################################################
 from collections import defaultdict
 from dataclasses import dataclass
+import itertools as it
 import logging
+import more_itertools as mi
 import pandas as pd
 import pyarrow as pa
 import pytest
@@ -298,9 +300,7 @@ class LogVer:
         """
         self.specified_args = locals()  # used for __repr__, see below
         self.call_seqs: dict[str, str] = {}
-        # self.expected_messages: list[tuple[str, int, str, bool, list, bool, str]] = []
-        self.expected_messages: list[tuple[str, int, str, bool, bool, str]] = []
-        self.expected_messages_fullmatch: list[tuple[str, int, Any]] = []
+        self.expected_messages: list[tuple[str, int, str, bool, list, bool, str]] = []
         self.log_name = log_name
 
     ####################################################################
@@ -442,7 +442,7 @@ class LogVer:
                     log_level,
                     log_msg,
                     True,
-                    # [],
+                    [],
                     False,
                     "",
                 )
@@ -454,7 +454,7 @@ class LogVer:
                     log_level,
                     log_msg,
                     False,
-                    # [],
+                    [],
                     False,
                     "",
                 )
@@ -574,7 +574,7 @@ class LogVer:
             "log_level",
             "item",
             "fullmatch",
-            # "potential_matches",
+            "potential_matches",
             "claimed",
             "claimed_by",
         )
@@ -582,11 +582,16 @@ class LogVer:
             self.expected_messages,
             columns=pattern_col_names,
         )
-        pattern_df["potential_matches"] = pd.Series(
-            [[]], dtype=pd.ArrowDtype(pa.list_(pa.int64()))
-        )
-        # print(f"\n*************************************************")
-        # print("\nmsg_df=\n", msg_df)
+        # pattern_df["potential_matches2"] = pd.Series(
+        #     pattern_df["potential_matches"],
+        #     dtype=pd.ArrowDtype(pa.list_(pa.int64())),
+        # )
+
+        # print(f"\n   init *******************************************")
+        # print("\npattern_df=\n", pattern_df)
+
+        # lens = pattern_df["potential_matches2"].list.len()
+        # print(f"{lens=}")
 
         # pattern_df_grp = pattern_df.groupby(
         #     pattern_df.columns.tolist(), as_index=False
@@ -597,7 +602,7 @@ class LogVer:
             "log_name",
             "log_level",
             "item",
-            # "potential_matches",
+            "potential_matches",
             "claimed",
             "claimed_by",
         )
@@ -606,15 +611,22 @@ class LogVer:
         #     actual_records.append((record[0], record[1], record[2], [], False, ""))
 
         for record in caplog.record_tuples:
-            actual_records.append((record[0], record[1], record[2], False, ""))
+            actual_records.append((record[0], record[1], record[2], [], False, ""))
         msg_df = pd.DataFrame(
             actual_records,
             columns=msg_col_names,
         )
-        msg_df["potential_matches"] = pd.Series(
-            [[]], dtype=pd.ArrowDtype(pa.list_(pa.int64()))
-        )
+        # print(f"\n   init ******************************************")
+        # print("\nmsg_df=\n", msg_df)
 
+        # def find_matches(p_m_row):
+        #     print(f"{p_m_row=}")
+        #     print(f"{p_m_row[0].item=}")
+        #     print(f"{p_m_row[1].item=}")
+        #
+        # mi.consume(
+        #     map(find_matches, it.product(pattern_df.itertuples(), msg_df.itertuples()))
+        # )
         ################################################################
         # set potential matches in both data frames
         ################################################################
@@ -641,42 +653,63 @@ class LogVer:
         while True:
             min_potential_matches = 0
 
-            def count_matches(potential_matches):
-                nonlocal min_potential_matches
-                # count only non-zero len lists
-                # print(f" 67 {type(potential_matches)=}, {potential_matches=}")
-                len_potential_matches = potential_matches.list.len()
-                if len_potential_matches:
-                    if min_potential_matches:
-                        min_potential_matches = min(
-                            min_potential_matches, len_potential_matches
-                        )
-                    else:  # min_potential_matches is zero
-                        min_potential_matches = len_potential_matches
+            # def count_matches(potential_matches):
+            #     nonlocal min_potential_matches
+            #     len_potential_matches = len(potential_matches)
+            #     if len_potential_matches:
+            #         if min_potential_matches:
+            #             min_potential_matches = min(
+            #                 min_potential_matches, len_potential_matches
+            #             )
+            #         else:  # min_potential_matches is zero
+            #             min_potential_matches = len_potential_matches
 
-            # print(f" 62 pattern_df=\n{pattern_df}")
-            pattern_df["potential_matches"].apply(count_matches)
-            # print(f"  72 {min_potential_matches=}")
+            # pattern_df["potential_matches"].apply(count_matches)
+            #
+            # msg_df["potential_matches"].apply(count_matches)
 
-            # print(f" 63 msg_df=\n{msg_df}")
-            msg_df["potential_matches"].apply(count_matches)
-            # print(f"  73 {min_potential_matches=}")
+            p_len = pd.Series(
+                pattern_df["potential_matches"],
+                dtype=pd.ArrowDtype(pa.list_(pa.int64())),
+            ).list.len()
+
+            p_len = p_len[p_len > 0]
+
+            if not p_len.empty:
+                min_potential_matches1 = min(p_len)
+            else:
+                min_potential_matches1 = 0
+
+            m_len = pd.Series(
+                msg_df["potential_matches"],
+                dtype=pd.ArrowDtype(pa.list_(pa.int64())),
+            ).list.len()
+
+            m_len = m_len[m_len > 0]
+
+            if not m_len.empty:
+                min_potential_matches2 = min(m_len)
+            else:
+                min_potential_matches2 = 0
+
+            if min_potential_matches1 == 0:
+                min_potential_matches = min_potential_matches2
+            elif min_potential_matches2 == 0:
+                min_potential_matches = min_potential_matches1
+            else:
+                min_potential_matches = min(
+                    min_potential_matches1, min_potential_matches2
+                )
 
             if not min_potential_matches:
                 break
 
-            # print(f" 42 pattern_df=\n{pattern_df}")
-            # print(f" 42 msg_df=\n{msg_df}")
-            # print(f" 42 {min_potential_matches=}")
             min_potential_matches = self.search_df(
                 search_arg_df=pattern_df,
                 search_targ_df=msg_df,
                 min_potential_matches=min_potential_matches,
             )
 
-            # print(f" 62 pattern_df=\n{pattern_df}")
-            # print(f" 62 msg_df=\n{msg_df}")
-            # print(f" 62 {new_min_potential_matches=}")
             self.search_df(
                 search_arg_df=msg_df,
                 search_targ_df=pattern_df,
