@@ -859,9 +859,9 @@ class TestEntryTraceCombos:
     # @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
     # @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
     # @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
-    @pytest.mark.parametrize("num_po_arg", [1])
-    @pytest.mark.parametrize("num_pk_arg", [0])
-    @pytest.mark.parametrize("num_ko_arg", [0])
+    @pytest.mark.parametrize("num_po_arg", [3])
+    @pytest.mark.parametrize("num_pk_arg", [3])
+    @pytest.mark.parametrize("num_ko_arg", [3])
     def test_etrace_combo_signature(
         self,
         num_po_arg: int,
@@ -909,6 +909,10 @@ class TestEntryTraceCombos:
         #    (a, b=2, c=3): f(1, 2, 3), f(1, 2), f(1)
         #    (a=1, b=2, c=3): f(1, 2, 3), f(1, 2), f(1), f()
 
+        print(
+            f"test_etrace_combo_signature entered: {num_po_arg=}, {num_pk_arg=}, "
+            f"{num_ko_arg=}"
+        )
         log_ver = LogVer()
 
         @dataclass
@@ -1143,13 +1147,13 @@ class TestEntryTraceCombos:
 
                 omit_variations: list[OmitVariation] = []
                 for omit_parm_parts in omit_parms_powers_set:
-                    print(f"{omit_parm_parts=}")
+                    # print(f"{omit_parm_parts=}")
                     if omit_parm_parts:
                         omit_parms = list(omit_parm_parts)
                     else:
                         omit_parms = []
 
-                    print(f"55 {omit_parms=}")
+                    # print(f"55 {omit_parms=}")
                     # comma = ""
                     # for omit_part in omit_parm_parts:
                     #     omit_parms = f"{omit_parms}{comma}{omit_part}"
@@ -1272,6 +1276,8 @@ class TestEntryTraceCombos:
         plist_spec = PlistSpec(num_po=num_po_arg, num_pk=num_pk_arg, num_ko=num_ko_arg)
 
         for idx1, final_plist_combo in enumerate(plist_spec.final_plist_combos):
+            # if idx1 == 32:
+            #     break
             for omit_variation in final_plist_combo.omit_variations:
                 if omit_variation.omit_parms:
                     omit_parms_str = f",omit_parms={omit_variation.omit_parms}"
@@ -1286,14 +1292,14 @@ class TestEntryTraceCombos:
                     f"\nf999=f1"
                 )
 
-                plist_spec_log_msg = f"##################### {final_plist_combo.plist=}"
+                # plist_spec_log_msg = f"##################### {final_plist_combo.plist=}"
                 # logger.debug(plist_spec_log_msg)
-                log_ver.add_msg(
-                    log_level=logging.DEBUG,
-                    log_msg=re.escape(plist_spec_log_msg),
-                    log_name="test_scottbrian_utils.test_entry_trace",
-                    fullmatch=True,
-                )
+                # log_ver.add_msg(
+                #     log_level=logging.DEBUG,
+                #     log_msg=re.escape(plist_spec_log_msg),
+                #     log_name="test_scottbrian_utils.test_entry_trace",
+                #     fullmatch=True,
+                # )
                 exec(code)
 
                 for idx2, arg_spec_ret_res in enumerate(
@@ -1335,14 +1341,14 @@ class TestEntryTraceCombos:
                         fullmatch=True,
                     )
 
-                print(f"\n{idx2=}")
-        print(f"{idx1=}")
-        print(f"{(idx1*idx2)=}")
+        #         print(f"\n{idx2=}")
+        # print(f"{idx1=}")
+        # print(f"{(idx1*idx2)=}")
         ################################################################
         # check log results
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
-        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.print_match_results(match_results, print_matched=False)
         log_ver.verify_log_results(match_results)
 
     ####################################################################

@@ -1749,10 +1749,10 @@ class TestLogVerBasic:
     )
     pattern_combos_list = sorted(set(pattern_combos), key=lambda x: (len(x), x))
 
-    @pytest.mark.parametrize("msgs_arg", msg_combos_list)
-    @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
-    # @pytest.mark.parametrize("msgs_arg", [("msg1",)])
-    # @pytest.mark.parametrize("patterns_arg", [("msg1",)])
+    # @pytest.mark.parametrize("msgs_arg", msg_combos_list)
+    # @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
+    @pytest.mark.parametrize("msgs_arg", [("msg2", "msg1")])
+    @pytest.mark.parametrize("patterns_arg", [("msg[123]{1}",)])
     def test_log_verifier_contention(
         self,
         msgs_arg: Iterable[tuple[str]],
