@@ -891,6 +891,15 @@ class LogVer:
 
             # saved_m_row = None
             # all_matches_same = True
+            # print(f"{pattern_str=}")
+            # msg_grp2 = msg_grp[pattern_regex.fullmatch(msg_grp.item)]
+            # print(f"msg_grp2:\n{msg_grp2}")
+
+            # for m_row in msg_grp2.itertuples():
+            #     pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
+            #     msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
+
+            pattern_potentials = []
             for m_row in msg_grp.itertuples():
                 if (p_row.fullmatch and pattern_regex.fullmatch(m_row.item)) or (
                     not p_row.fullmatch and pattern_regex.match(m_row.item)
@@ -899,15 +908,16 @@ class LogVer:
                         p_row.log_name == m_row.log_name
                         and p_row.log_level == m_row.log_level
                     ):
-                        pattern_grp.at[p_row.Index, "potential_matches"].append(
-                            m_row.Index
-                        )
+                        # pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
+                        pattern_potentials.append(m_row.Index)
                         msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
-                        # if saved_m_row is None:
-                        #     saved_m_row = m_row
-                        # else:
-                        #     if saved_m_row[1:] != m_row[1:]:
-                        #         all_matches_same = False
+
+            pattern_grp.at[p_row.Index, "potential_matches"] = pattern_potentials
+            # if saved_m_row is None:
+            #     saved_m_row = m_row
+            # else:
+            #     if saved_m_row[1:] != m_row[1:]:
+            #         all_matches_same = False
             # if (
             #     len(pattern_df.at[p_row.Index, "potential_matches"]) > 0
             #     and all_matches_same
@@ -1008,147 +1018,69 @@ class LogVer:
             )
 
         ################################################################
-        # reconcile matches
+        # reconcile pattern matches
         ################################################################
-        # print(f"\n****** ready to reconcile matches: {time.time()-start_time=}\n")
-        # print(f"\npattern_grp=\n{pattern_grp}")
-        # print(f"\nmsg_grp=\n{msg_grp}")
-        #
-        pattern_size_sum = pattern_grp["size"].sum()
-        pattern_num_claimed_sum = pattern_grp.num_claimed.sum()
-        #
-        # print(f"{pattern_size_sum=}")
-        # print(f"{pattern_num_claimed_sum=}")
-
-        # if pattern_size_sum == pattern_num_claimed_sum:
-        #     pattern_df["claimed"] = True
-        #
-        # else:
-        #     for p_grp_row in pattern_grp.itertuples():
-        #         num_claimed = p_grp_row.num_claimed
-        #         for p_row in pattern_df.itertuples():
-        #             if num_claimed == 0:
-        #                 break
-        #             if (
-        #                 p_grp_row.item == p_row.item
-        #                 and p_grp_row.log_name == p_row.log_name
-        #                 and p_grp_row.log_level == p_row.log_level
-        #             ):
-        #                 pattern_df.at[p_row.Index, "claimed"] = True
-        #                 num_claimed -= 1
+        print(f"\n****** 1 ready to reconcile matches: {time.time()-start_time=}\n")
         unmatched_exp_records = []
-        unmatched_patterns = []
-        if pattern_size_sum != pattern_num_claimed_sum:
+        if pattern_grp["size"].sum() != pattern_grp.num_claimed.sum():
+            unmatched_patterns_to_concat = []
             for p_grp_row in pattern_grp.itertuples():
                 num_claimed = p_grp_row.num_claimed
                 item = p_grp_row.item
 
-                # matched_pattern = pattern_df.loc[
-                #     pattern_df.item == item, ["log_name", "log_level", "item"]
-                # ].iloc[:num_claimed]
-                unmatched_pattern = pattern_df.loc[
+                unmatched_patterns = pattern_df.loc[
                     pattern_df.item == item, ["log_name", "log_level", "item"]
                 ].iloc[num_claimed:]
-                # print(f"matched_pattern: \n{matched_pattern}")
-                # print(f"unmatched_pattern: \n{unmatched_pattern}")
-                # matched_patterns.append(matched_pattern)
-                unmatched_patterns.append(unmatched_pattern)
 
-            res_unmatched_patterns = pd.concat(unmatched_patterns)
+                unmatched_patterns_to_concat.append(unmatched_patterns)
+
+            res_unmatched_patterns = pd.concat(unmatched_patterns_to_concat)
             for pattern_item in res_unmatched_patterns.itertuples():
                 unmatched_exp_records.append(
                     (pattern_item.log_name, pattern_item.log_level, pattern_item.item)
                 )
 
-            # for p_row in pattern_df.itertuples():
-            #     if num_claimed == 0:
-            #         break
-            #     if (
-            #         p_grp_row.item == p_row.item
-            #         and p_grp_row.log_name == p_row.log_name
-            #         and p_grp_row.log_level == p_row.log_level
-            #     ):
-            #         pattern_df.at[p_row.Index, "claimed"] = True
-            #         num_claimed -= 1
-
-        # res_matched_patterns = pd.concat(matched_patterns)
-        # res_unmatched_patterns = pd.concat(unmatched_patterns)
-        msg_size_sum = msg_grp["size"].sum()
-        msg_num_claimed_sum = msg_grp.num_claimed.sum()
-
-        # print(f"{msg_size_sum=}")
-        # print(f"{msg_num_claimed_sum=}")
-
-        # if msg_size_sum == msg_num_claimed_sum:
-        #     msg_df["claimed"] = True
-        #
-        # else:
-        #     for m_grp_row in msg_grp.itertuples():
-        #         num_claimed = m_grp_row.num_claimed
-        #         for m_row in msg_df.itertuples():
-        #             if num_claimed == 0:
-        #                 break
-        #             if (
-        #                 m_grp_row.item == m_row.item
-        #                 and m_grp_row.log_name == m_row.log_name
-        #                 and m_grp_row.log_level == m_row.log_level
-        #             ):
-        #                 msg_df.at[m_row.Index, "claimed"] = True
-        #                 num_claimed -= 1
-
-        matched_msgs = []
-        unmatched_msgs = []
-        for m_grp_row in msg_grp.itertuples():
-            num_claimed = m_grp_row.num_claimed
-            item = m_grp_row.item
-
-            matched_msg = msg_df.loc[
-                msg_df.item == item, ["log_name", "log_level", "item"]
-            ].iloc[:num_claimed]
-            unmatched_msg = msg_df.loc[
-                msg_df.item == item, ["log_name", "log_level", "item"]
-            ].iloc[num_claimed:]
-            # print(f"matched_msg: \n{matched_msg}")
-            # print(f"unmatched_msg: \n{unmatched_msg}")
-            matched_msgs.append(matched_msg)
-            unmatched_msgs.append(unmatched_msg)
-
-        res_matched_msgs = pd.concat(matched_msgs)
-        res_unmatched_msgs = pd.concat(unmatched_msgs)
-
-        unmatched_exp_records = []
+        ################################################################
+        # reconcile msg matches
+        ################################################################
+        print(f"\n****** 2 ready to reconcile matches: {time.time()-start_time=}\n")
+        matched_actual_records = []
         unmatched_actual_records = []
-        matched_records = []
-        # print(f"res_matched_patterns:\n{res_matched_patterns}")
-        # for pattern_item in res_unmatched_patterns.itertuples():
-        #     unmatched_exp_records.append(
-        #         (pattern_item.log_name, pattern_item.log_level, pattern_item.item)
-        #     )
+        if msg_grp["size"].sum() == msg_grp.num_claimed.sum():
+            for msg_item in msg_df.itertuples():
+                matched_actual_records.append(
+                    (msg_item.log_name, msg_item.log_level, msg_item.item)
+                )
+        else:
+            matched_msgs_to_concat = []
+            unmatched_msgs_to_concat = []
 
-        # for pattern_item in pattern_df.itertuples():
-        #     if not pattern_item.claimed:
-        #         unmatched_exp_records.append(
-        #             (pattern_item.log_name, pattern_item.log_level, pattern_item.item)
-        #         )
-        for msg_item in res_unmatched_msgs.itertuples():
-            unmatched_actual_records.append(
-                (msg_item.log_name, msg_item.log_level, msg_item.item)
-            )
-        for msg_item in res_matched_msgs.itertuples():
-            matched_records.append(
-                (msg_item.log_name, msg_item.log_level, msg_item.item)
-            )
+            for m_grp_row in msg_grp.itertuples():
+                num_claimed = m_grp_row.num_claimed
+                item = m_grp_row.item
 
-        # for msg_item in msg_df.itertuples():
-        #     if msg_item.claimed:
-        #         matched_records.append(
-        #             (msg_item.log_name, msg_item.log_level, msg_item.item)
-        #         )
-        #     else:
-        #         unmatched_actual_records.append(
-        #             (msg_item.log_name, msg_item.log_level, msg_item.item)
-        #         )
-        #
+                matched_msgs = msg_df.loc[
+                    msg_df.item == item, ["log_name", "log_level", "item"]
+                ].iloc[:num_claimed]
+                unmatched_msgs = msg_df.loc[
+                    msg_df.item == item, ["log_name", "log_level", "item"]
+                ].iloc[num_claimed:]
+
+                matched_msgs_to_concat.append(matched_msgs)
+                unmatched_msgs_to_concat.append(unmatched_msgs)
+
+            res_matched_msgs = pd.concat(matched_msgs_to_concat)
+            res_unmatched_msgs = pd.concat(unmatched_msgs_to_concat)
+
+            for msg_item in res_matched_msgs.itertuples():
+                matched_actual_records.append(
+                    (msg_item.log_name, msg_item.log_level, msg_item.item)
+                )
+            for msg_item in res_unmatched_msgs.itertuples():
+                unmatched_actual_records.append(
+                    (msg_item.log_name, msg_item.log_level, msg_item.item)
+                )
+
         print(
             f"returning match results {max_potential_matches=}, {num_loops=}, "
             f"{time.time()-start_time=} "
@@ -1158,10 +1090,10 @@ class LogVer:
             num_exp_unmatched=len(unmatched_exp_records),
             num_actual_records=len(caplog.records),
             num_actual_unmatched=len(unmatched_actual_records),
-            num_records_matched=len(matched_records),
+            num_records_matched=len(matched_actual_records),
             unmatched_exp_records=unmatched_exp_records,
             unmatched_actual_records=unmatched_actual_records,
-            matched_records=matched_records,
+            matched_records=matched_actual_records,
         )
 
     ####################################################################

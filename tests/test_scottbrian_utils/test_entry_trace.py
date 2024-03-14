@@ -1283,6 +1283,8 @@ class TestEntryTraceCombos:
                     omit_parms_str = f",omit_parms={omit_variation.omit_parms}"
                 else:
                     omit_parms_str = ""
+                    # if idx1 == 1:
+                    #     omit_parms_str = ",omit_return_value=True"
 
                 code = (
                     f"global f999"
