@@ -859,9 +859,9 @@ class TestEntryTraceCombos:
     # @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
     # @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
     # @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
-    @pytest.mark.parametrize("num_po_arg", [3])
-    @pytest.mark.parametrize("num_pk_arg", [3])
-    @pytest.mark.parametrize("num_ko_arg", [3])
+    @pytest.mark.parametrize("num_po_arg", [1])
+    @pytest.mark.parametrize("num_pk_arg", [1])
+    @pytest.mark.parametrize("num_ko_arg", [1])
     def test_etrace_combo_signature(
         self,
         num_po_arg: int,
@@ -1350,7 +1350,7 @@ class TestEntryTraceCombos:
         # check log results
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
-        log_ver.print_match_results(match_results, print_matched=False)
+        log_ver.print_match_results(match_results, print_matched=True)
         log_ver.verify_log_results(match_results)
 
     ####################################################################
