@@ -496,6 +496,7 @@ class LogVer:
         pattern_grp = pattern_df.groupby(
             pattern_df.columns.tolist(), as_index=False
         ).size()
+        pattern_grp.rename(columns={"size": "num_records"}, inplace=True)
         pattern_grp["potential_matches"] = [[] for _ in range(len(pattern_grp))]
         pattern_grp["num_matched"] = 0
 
@@ -540,6 +541,7 @@ class LogVer:
         # print(f"\nmsg_df=\n{msg_df}")
 
         msg_grp = msg_df.groupby(msg_df.columns.tolist(), as_index=False).size()
+        msg_grp.rename(columns={"size": "num_records"}, inplace=True)
         msg_grp["potential_matches"] = [[] for _ in range(len(msg_grp))]
         msg_grp["num_matched"] = 0
         # print(f"\nmsg_grp=\n{msg_grp}")
@@ -694,71 +696,75 @@ class LogVer:
         # reconcile pattern matches
         ################################################################
         print(f"\n****** 1 ready to reconcile matches: {time.time()-start_time=}\n")
-        unmatched_exp_records = []
-        if pattern_grp["size"].sum() != pattern_grp.num_matched.sum():
-            unmatched_patterns_to_concat = []
-            for p_grp_row in pattern_grp.itertuples():
-                num_matched = p_grp_row.num_matched
-                log_msg = p_grp_row.log_msg
-
-                unmatched_patterns = pattern_df.loc[
-                    pattern_df.log_msg == log_msg, ["log_name", "log_level", "log_msg"]
-                ].iloc[num_matched:]
-
-                unmatched_patterns_to_concat.append(unmatched_patterns)
-
-            res_unmatched_patterns = pd.concat(unmatched_patterns_to_concat)
-            for pattern_log_msg in res_unmatched_patterns.itertuples():
-                unmatched_exp_records.append(
-                    (
-                        pattern_log_msg.log_name,
-                        pattern_log_msg.log_level,
-                        pattern_log_msg.log_msg,
-                    )
+        num_patterns = pattern_grp["num_records"].sum()
+        num_matched_patterns = pattern_grp.num_matched.sum()
+        num_unmatched_patterns = num_patterns - num_matched_patterns
+        unmatched_pattern_print = ""
+        if num_patterns != num_matched_patterns:
+            unmatched_pattern_df = pattern_grp[
+                pattern_grp.num_records != pattern_grp.num_matched
+            ]
+            if unmatched_pattern_df.empty:
+                unmatched_pattern_print = ""
+            else:
+                unmatched_pattern_print = unmatched_pattern_df.to_string(
+                    columns=[
+                        "log_name",
+                        "log_level",
+                        "log_msg",
+                        "num_records",
+                        "num_matched",
+                    ],
+                    index=False,
                 )
 
         ################################################################
         # reconcile msg matches
         ################################################################
         print(f"\n****** 2 ready to reconcile matches: {time.time()-start_time=}\n")
-        matched_actual_records = []
-        unmatched_actual_records = []
-        num_msgs = msg_grp["size"].sum()
+        num_msgs = msg_grp["num_records"].sum()
         num_matched_msgs = msg_grp.num_matched.sum()
         num_unmatched_msgs = num_msgs - num_matched_msgs
-        if msg_grp["size"].sum() == msg_grp.num_matched.sum():
-            mar_print = msg_grp.to_string(
-                columns=["log_name", "log_level", "log_msg", "num_matched"], index=False
+        if num_msgs > 0 and num_msgs == num_matched_msgs:
+            matched_actual_print = msg_grp.to_string(
+                columns=[
+                    "log_name",
+                    "log_level",
+                    "log_msg",
+                    "num_records",
+                    "num_matched",
+                ],
+                index=False,
             )
-            matched_actual_records.append(mar_print)
+            unmatched_actual_print = ""
         else:
-            matched_msgs_to_concat = []
-            unmatched_msgs_to_concat = []
-
-            for m_grp_row in msg_grp.itertuples():
-                num_matched = m_grp_row.num_matched
-                log_msg = m_grp_row.log_msg
-
-                matched_msgs = msg_df.loc[
-                    msg_df.log_msg == log_msg, ["log_name", "log_level", "log_msg"]
-                ].iloc[:num_matched]
-                unmatched_msgs = msg_df.loc[
-                    msg_df.log_msg == log_msg, ["log_name", "log_level", "log_msg"]
-                ].iloc[num_matched:]
-
-                matched_msgs_to_concat.append(matched_msgs)
-                unmatched_msgs_to_concat.append(unmatched_msgs)
-
-            res_matched_msgs = pd.concat(matched_msgs_to_concat)
-            res_unmatched_msgs = pd.concat(unmatched_msgs_to_concat)
-
-            mar_print = msg_grp.to_string(
-                columns=["log_name", "log_level", "log_msg", "num_matched"], index=False
-            )
-            matched_actual_records.append(mar_print)
-            for msg_log_msg in res_unmatched_msgs.itertuples():
-                unmatched_actual_records.append(
-                    (msg_log_msg.log_name, msg_log_msg.log_level, msg_log_msg.log_msg)
+            matched_actual_df = msg_grp[msg_grp.num_records == msg_grp.num_matched]
+            if matched_actual_df.empty:
+                matched_actual_print = ""
+            else:
+                matched_actual_print = matched_actual_df.to_string(
+                    columns=[
+                        "log_name",
+                        "log_level",
+                        "log_msg",
+                        "num_records",
+                        "num_matched",
+                    ],
+                    index=False,
+                )
+            unmatched_actual_df = msg_grp[msg_grp.num_records != msg_grp.num_matched]
+            if unmatched_actual_df.empty:
+                unmatched_actual_print = ""
+            else:
+                unmatched_actual_print = unmatched_actual_df.to_string(
+                    columns=[
+                        "log_name",
+                        "log_level",
+                        "log_msg",
+                        "num_records",
+                        "num_matched",
+                    ],
+                    index=False,
                 )
 
         print(
@@ -766,14 +772,14 @@ class LogVer:
             f"{time.time()-start_time=} "
         )
         return MatchResults(
-            num_exp_records=len(self.expected_messages),
-            num_exp_unmatched=len(unmatched_exp_records),
-            num_actual_records=len(caplog.records),
-            num_actual_unmatched=len(unmatched_actual_records),
-            num_records_matched=len(matched_actual_records),
-            unmatched_exp_records=unmatched_exp_records,
-            unmatched_actual_records=unmatched_actual_records,
-            matched_records=matched_actual_records,
+            num_exp_records=num_patterns,
+            num_exp_unmatched=num_unmatched_patterns,
+            num_actual_records=num_msgs,
+            num_actual_unmatched=num_unmatched_msgs,
+            num_records_matched=num_matched_msgs,
+            unmatched_exp_records=unmatched_pattern_print,
+            unmatched_actual_records=unmatched_actual_print,
+            matched_records=matched_actual_print,
         )
 
     ####################################################################
@@ -815,14 +821,14 @@ class LogVer:
         # possible as indicated when all entries have either made a
         # match are have exhausted their potential_matches.
         for search_item in search_arg_df.itertuples():
-            arg_num_avail = search_item.size - search_item.num_matched
+            arg_num_avail = search_item.num_records - search_item.num_matched
             if (
                 arg_num_avail > 0
                 and len(search_item.potential_matches) == min_potential_matches
             ):
                 for potential_idx in search_item.potential_matches:
                     targ_num_avail = (
-                        search_targ_df.at[potential_idx, "size"]
+                        search_targ_df.at[potential_idx, "num_records"]
                         - search_targ_df.at[potential_idx, "num_matched"]
                     )
                     if targ_num_avail > 0:
@@ -952,13 +958,17 @@ class LogVer:
             print(log_msg)
 
         print_flower_box_msg(["unmatched actual records", legend_msg])
-        for log_msg in match_results.unmatched_actual_records:
-            print(log_msg)
+        if match_results.unmatched_actual_records:
+            print(match_results.unmatched_actual_records)
+        # for log_msg in match_results.unmatched_actual_records:
+        #     print(log_msg)
 
         if print_matched:
             print_flower_box_msg(["matched records", legend_msg])
-            for log_msg in match_results.matched_records:
-                print(log_msg)
+            if match_results.matched_records:
+                print(match_results.matched_records)
+            # for log_msg in match_results.matched_records:
+            #     print(log_msg)
 
     ####################################################################
     # verify log messages
