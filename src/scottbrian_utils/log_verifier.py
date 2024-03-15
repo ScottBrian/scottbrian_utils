@@ -497,8 +497,9 @@ class LogVer:
             pattern_df.columns.tolist(), as_index=False
         ).size()
         pattern_grp.rename(columns={"size": "num_records"}, inplace=True)
-        pattern_grp["potential_matches"] = [[] for _ in range(len(pattern_grp))]
+        # pattern_grp["potential_matches"] = [[] for _ in range(len(pattern_grp))]
         pattern_grp["num_matched"] = 0
+        pattern_grp["num_avail"] = pattern_grp["num_records"]
 
         # print(f"\npattern_grp=\n{pattern_grp}")
         # pattern_df["potential_matches2"] = pd.Series(
@@ -542,8 +543,9 @@ class LogVer:
 
         msg_grp = msg_df.groupby(msg_df.columns.tolist(), as_index=False).size()
         msg_grp.rename(columns={"size": "num_records"}, inplace=True)
-        msg_grp["potential_matches"] = [[] for _ in range(len(msg_grp))]
+        # msg_grp["potential_matches"] = [[] for _ in range(len(msg_grp))]
         msg_grp["num_matched"] = 0
+        msg_grp["num_avail"] = msg_grp["num_records"]
         # print(f"\nmsg_grp=\n{msg_grp}")
         # print(f"\n   init ******************************************")
         # print("\nmsg_df=\n", msg_df)
@@ -560,53 +562,53 @@ class LogVer:
         # set potential matches in both data frames
         ################################################################
         print(f"DataFrames built: {time.time()-start_time=}")
-        for p_row in pattern_grp.itertuples():
-            pattern_str = p_row.log_msg
-            pattern_regex = re.compile(pattern_str)
-
-            # saved_m_row = None
-            # all_matches_same = True
-            # print(f"{pattern_str=}")
-            # msg_grp2 = msg_grp[pattern_regex.fullmatch(msg_grp.log_msg)]
-            # print(f"msg_grp2:\n{msg_grp2}")
-
-            # for m_row in msg_grp2.itertuples():
-            #     pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
-            #     msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
-
-            pattern_potentials = []
-            for m_row in msg_grp.itertuples():
-                if (p_row.fullmatch and pattern_regex.fullmatch(m_row.log_msg)) or (
-                    not p_row.fullmatch and pattern_regex.match(m_row.log_msg)
-                ):
-                    if (
-                        p_row.log_name == m_row.log_name
-                        and p_row.log_level == m_row.log_level
-                    ):
-                        # pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
-                        pattern_potentials.append(m_row.Index)
-                        msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
-
-            pattern_grp.at[p_row.Index, "potential_matches"] = pattern_potentials
-            # if saved_m_row is None:
-            #     saved_m_row = m_row
-            # else:
-            #     if saved_m_row[1:] != m_row[1:]:
-            #         all_matches_same = False
-            # if (
-            #     len(pattern_df.at[p_row.Index, "potential_matches"]) > 0
-            #     and all_matches_same
-            # ):
-            #     msg_df_idx = pattern_df.at[p_row.Index, "potential_matches"][0]
-            #     pattern_df.at[p_row.Index, "claimed"] = True
-            #     pattern_df.at[p_row.Index, "claimed_by"] = msg_df_idx
-            #
-            #     msg_df.at[msg_df_idx, "claimed"] = True
-            #     msg_df.at[msg_df_idx, "claimed_by"] = p_row.Index
-            #
-            #     # remove potential_items to prevent counting them
-            #     pattern_df.at[p_row.Index, "potential_matches"] = []
-            #     msg_df.at[msg_df_idx, "potential_matches"] = []
+        # for p_row in pattern_grp.itertuples():
+        #     pattern_str = p_row.log_msg
+        #     pattern_regex = re.compile(pattern_str)
+        #
+        #     # saved_m_row = None
+        #     # all_matches_same = True
+        #     # print(f"{pattern_str=}")
+        #     # msg_grp2 = msg_grp[pattern_regex.fullmatch(msg_grp.log_msg)]
+        #     # print(f"msg_grp2:\n{msg_grp2}")
+        #
+        #     # for m_row in msg_grp2.itertuples():
+        #     #     pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
+        #     #     msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
+        #
+        #     pattern_potentials = []
+        #     for m_row in msg_grp.itertuples():
+        #         if (p_row.fullmatch and pattern_regex.fullmatch(m_row.log_msg)) or (
+        #             not p_row.fullmatch and pattern_regex.match(m_row.log_msg)
+        #         ):
+        #             if (
+        #                 p_row.log_name == m_row.log_name
+        #                 and p_row.log_level == m_row.log_level
+        #             ):
+        #                 # pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
+        #                 pattern_potentials.append(m_row.Index)
+        #                 msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
+        #
+        #     pattern_grp.at[p_row.Index, "potential_matches"] = pattern_potentials
+        #     if saved_m_row is None:
+        #         saved_m_row = m_row
+        #     else:
+        #         if saved_m_row[1:] != m_row[1:]:
+        #             all_matches_same = False
+        #     if (
+        #         len(pattern_df.at[p_row.Index, "potential_matches"]) > 0
+        #         and all_matches_same
+        #     ):
+        #         msg_df_idx = pattern_df.at[p_row.Index, "potential_matches"][0]
+        #         pattern_df.at[p_row.Index, "claimed"] = True
+        #         pattern_df.at[p_row.Index, "claimed_by"] = msg_df_idx
+        #
+        #         msg_df.at[msg_df_idx, "claimed"] = True
+        #         msg_df.at[msg_df_idx, "claimed_by"] = p_row.Index
+        #
+        #         # remove potential_items to prevent counting them
+        #         pattern_df.at[p_row.Index, "potential_matches"] = []
+        #         msg_df.at[msg_df_idx, "potential_matches"] = []
 
         print(f"\n****** potential matches set: {time.time()-start_time=}\n")
 
@@ -619,31 +621,67 @@ class LogVer:
         max_potential_matches = 0
         while True:
             num_loops += 1
+            pattern_grp["potential_matches"] = [[] for _ in range(len(pattern_grp))]
+            msg_grp["potential_matches"] = [[] for _ in range(len(msg_grp))]
+            for p_row in pattern_grp.itertuples():
+                if p_row.num_avail == 0:
+                    continue
+                pattern_str = p_row.log_msg
+                pattern_regex = re.compile(pattern_str)
+
+                # saved_m_row = None
+                # all_matches_same = True
+                # print(f"{pattern_str=}")
+                # msg_grp2 = msg_grp[pattern_regex.fullmatch(msg_grp.log_msg)]
+                # print(f"msg_grp2:\n{msg_grp2}")
+
+                # for m_row in msg_grp2.itertuples():
+                #     pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
+                #     msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
+
+                pattern_potentials = []
+                for m_row in msg_grp.itertuples():
+                    if m_row.num_avail == 0:
+                        continue
+                    if (p_row.fullmatch and pattern_regex.fullmatch(m_row.log_msg)) or (
+                        not p_row.fullmatch and pattern_regex.match(m_row.log_msg)
+                    ):
+                        if (
+                            p_row.log_name == m_row.log_name
+                            and p_row.log_level == m_row.log_level
+                        ):
+                            # pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
+                            pattern_potentials.append(m_row.Index)
+                            msg_grp.at[m_row.Index, "potential_matches"].append(
+                                p_row.Index
+                            )
+
+                pattern_grp.at[p_row.Index, "potential_matches"] = pattern_potentials
             # if num_loops % 10 == 0:
             #     print(f"match results {num_loops=}, {time.time()-start_time=} ")
-            min_potential_matches = 0
+            # min_potential_matches = 0
 
-            def count_matches(potential_matches):
-                nonlocal min_potential_matches
-                len_potential_matches = len(potential_matches)
-                if len_potential_matches:
-                    if min_potential_matches:
-                        min_potential_matches = min(
-                            min_potential_matches, len_potential_matches
-                        )
-                    else:  # min_potential_matches is zero
-                        min_potential_matches = len_potential_matches
-
-            pattern_grp["potential_matches"].apply(count_matches)
-
-            msg_grp["potential_matches"].apply(count_matches)
+            # def count_matches(potential_matches):
+            #     nonlocal min_potential_matches
+            #     len_potential_matches = len(potential_matches)
+            #     if len_potential_matches:
+            #         if min_potential_matches:
+            #             min_potential_matches = min(
+            #                 min_potential_matches, len_potential_matches
+            #             )
+            #         else:  # min_potential_matches is zero
+            #             min_potential_matches = len_potential_matches
+            #
+            # pattern_grp["potential_matches"].apply(count_matches)
+            #
+            # msg_grp["potential_matches"].apply(count_matches)
 
             # p_len = pd.Series(
             #     pattern_df["potential_matches"],
             #     dtype=pd.ArrowDtype(pa.list_(pa.int64())),
             # ).list.len()
             #
-            # p_len = p_len[p_len > 0]
+            # p_len_non_zero = p_len[p_len > 0]
             #
             # if not p_len.empty:
             #     min_potential_matches1 = min(p_len)
@@ -655,7 +693,7 @@ class LogVer:
             #     dtype=pd.ArrowDtype(pa.list_(pa.int64())),
             # ).list.len()
             #
-            # m_len = m_len[m_len > 0]
+            # m_len_non_zero = m_len[m_len > 0]
             #
             # if not m_len.empty:
             #     min_potential_matches2 = min(m_len)
@@ -669,10 +707,37 @@ class LogVer:
             # else:
             #     min_potential_matches = min(
             #         min_potential_matches1, min_potential_matches2
-            #     )
+            #
 
-            if not min_potential_matches:
+            p_len = pd.Series(
+                pattern_grp["potential_matches"],
+                dtype=pd.ArrowDtype(pa.list_(pa.int64())),
+            ).list.len()
+
+            p_len_non_zero = p_len[p_len > 0]
+
+            if p_len_non_zero.empty:
                 break
+
+            m_len = pd.Series(
+                msg_grp["potential_matches"],
+                dtype=pd.ArrowDtype(pa.list_(pa.int64())),
+            ).list.len()
+
+            m_len_non_zero = m_len[m_len > 0]
+
+            if m_len_non_zero.empty:
+                break
+
+            p_min_potential_matches = min(p_len_non_zero)
+            m_min_potential_matches = min(m_len_non_zero)
+
+            min_potential_matches = min(
+                p_min_potential_matches, m_min_potential_matches
+            )
+
+            # if not min_potential_matches:
+            #     break
 
             if num_loops % 10 == 0:
                 print(
@@ -680,17 +745,26 @@ class LogVer:
                     f"{time.time()-start_time=} "
                 )
             max_potential_matches = max(max_potential_matches, min_potential_matches)
-            min_potential_matches = self.search_df(
-                search_arg_df=pattern_grp,
-                search_targ_df=msg_grp,
-                min_potential_matches=min_potential_matches,
-            )
 
-            self.search_df(
-                search_arg_df=msg_grp,
-                search_targ_df=pattern_grp,
-                min_potential_matches=min_potential_matches,
-            )
+            if p_min_potential_matches <= m_min_potential_matches:
+                min_potential_matches = self.search_df(
+                    search_arg_df=pattern_grp,
+                    search_targ_df=msg_grp,
+                    min_potential_matches=min_potential_matches,
+                )
+
+            else:
+                min_potential_matches = self.search_df(
+                    search_arg_df=msg_grp,
+                    search_targ_df=pattern_grp,
+                    min_potential_matches=min_potential_matches,
+                )
+
+                min_potential_matches = self.search_df(
+                    search_arg_df=pattern_grp,
+                    search_targ_df=msg_grp,
+                    min_potential_matches=min_potential_matches,
+                )
 
         ################################################################
         # reconcile pattern matches
@@ -820,22 +894,21 @@ class LogVer:
         # We stop calling when we determine no additional matches are
         # possible as indicated when all entries have either made a
         # match are have exhausted their potential_matches.
-        for search_item in search_arg_df.itertuples():
-            arg_num_avail = search_item.num_records - search_item.num_matched
-            if (
-                arg_num_avail > 0
-                and len(search_item.potential_matches) == min_potential_matches
-            ):
+        filtered_search_arg_df = search_arg_df[search_arg_df["num_avail"] > 0]
+        for search_item in filtered_search_arg_df.itertuples():
+            arg_num_avail = search_item.num_avail
+            if len(search_item.potential_matches) == min_potential_matches:
                 for potential_idx in search_item.potential_matches:
-                    targ_num_avail = (
-                        search_targ_df.at[potential_idx, "num_records"]
-                        - search_targ_df.at[potential_idx, "num_matched"]
-                    )
+                    targ_num_avail = search_targ_df.at[potential_idx, "num_avail"]
+                    #     search_targ_df.at[potential_idx, "num_records"]
+                    #     - search_targ_df.at[potential_idx, "num_matched"]
+                    # )
                     if targ_num_avail > 0:
                         if arg_num_avail == targ_num_avail:
                             search_arg_df.at[
                                 search_item.Index, "num_matched"
                             ] += arg_num_avail
+                            search_arg_df.at[search_item.Index, "num_avail"] = 0
                             search_arg_df.at[search_item.Index, "potential_matches"] = (
                                 []
                             )
@@ -843,26 +916,40 @@ class LogVer:
                             search_targ_df.at[
                                 potential_idx, "num_matched"
                             ] += targ_num_avail
+                            search_targ_df.at[potential_idx, "num_avail"] = 0
                             search_targ_df.at[potential_idx, "potential_matches"] = []
                         elif arg_num_avail > targ_num_avail:
                             search_arg_df.at[
                                 search_item.Index, "num_matched"
                             ] += targ_num_avail
 
+                            search_arg_df.at[search_item.Index, "num_avail"] = (
+                                arg_num_avail - targ_num_avail
+                            )
+
                             search_targ_df.at[
                                 potential_idx, "num_matched"
                             ] += targ_num_avail
+                            search_targ_df.at[potential_idx, "num_avail"] = (
+                                arg_num_avail - targ_num_avail
+                            )
                             search_targ_df.at[potential_idx, "potential_matches"] = []
                         else:
                             search_arg_df.at[
                                 search_item.Index, "num_matched"
                             ] += arg_num_avail
+                            search_arg_df.at[search_item.Index, "num_avail"] = (
+                                targ_num_avail - arg_num_avail
+                            )
                             search_arg_df.at[search_item.Index, "potential_matches"] = (
                                 []
                             )
                             search_targ_df.at[
                                 potential_idx, "num_matched"
                             ] += arg_num_avail
+                            search_targ_df.at[potential_idx, "num_avail"] = (
+                                targ_num_avail - arg_num_avail
+                            )
 
                         # search_arg_df.at[search_item.Index, "claimed"] = True
                         # search_arg_df.at[search_item.Index, "claimed_by"] = (
