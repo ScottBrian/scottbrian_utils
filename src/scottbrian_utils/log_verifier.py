@@ -562,34 +562,24 @@ class LogVer:
         # set potential matches in both data frames
         ################################################################
         print(f"DataFrames built: {time.time()-start_time=}")
-        # for p_row in pattern_grp.itertuples():
-        #     pattern_str = p_row.log_msg
-        #     pattern_regex = re.compile(pattern_str)
-        #
-        #     # saved_m_row = None
-        #     # all_matches_same = True
-        #     # print(f"{pattern_str=}")
-        #     # msg_grp2 = msg_grp[pattern_regex.fullmatch(msg_grp.log_msg)]
-        #     # print(f"msg_grp2:\n{msg_grp2}")
-        #
-        #     # for m_row in msg_grp2.itertuples():
-        #     #     pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
-        #     #     msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
-        #
-        #     pattern_potentials = []
-        #     for m_row in msg_grp.itertuples():
-        #         if (p_row.fullmatch and pattern_regex.fullmatch(m_row.log_msg)) or (
-        #             not p_row.fullmatch and pattern_regex.match(m_row.log_msg)
-        #         ):
-        #             if (
-        #                 p_row.log_name == m_row.log_name
-        #                 and p_row.log_level == m_row.log_level
-        #             ):
-        #                 # pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
-        #                 pattern_potentials.append(m_row.Index)
-        #                 msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
-        #
-        #     pattern_grp.at[p_row.Index, "potential_matches"] = pattern_potentials
+        for p_row in pattern_grp.itertuples():
+            pattern_str = p_row.log_msg
+            pattern_regex = re.compile(pattern_str)
+
+            pattern_potentials = []
+            for m_row in msg_grp.itertuples():
+                if (p_row.fullmatch and pattern_regex.fullmatch(m_row.log_msg)) or (
+                    not p_row.fullmatch and pattern_regex.match(m_row.log_msg)
+                ):
+                    if (
+                        p_row.log_name == m_row.log_name
+                        and p_row.log_level == m_row.log_level
+                    ):
+                        # pattern_grp.at[p_row.Index, "potential_matches"].append(m_row.Index)
+                        pattern_potentials.append(m_row.Index)
+                        msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
+
+            pattern_grp.at[p_row.Index, "potential_matches"] = pattern_potentials
         #     if saved_m_row is None:
         #         saved_m_row = m_row
         #     else:
@@ -630,32 +620,32 @@ class LogVer:
             if avail_msg_grp.empty:
                 print(f"avail_msg_grp is empty")
                 break
-            avail_pattern_grp["potential_matches"] = [
-                [] for _ in range(len(avail_pattern_grp))
-            ]
-            avail_msg_grp["potential_matches"] = [[] for _ in range(len(avail_msg_grp))]
+            # avail_pattern_grp["potential_matches"] = [
+            #     [] for _ in range(len(avail_pattern_grp))
+            # ]
+            # avail_msg_grp["potential_matches"] = [[] for _ in range(len(avail_msg_grp))]
             # print(f"scanning avail_pattern_grp: {num_loops=}")
-            for p_row in avail_pattern_grp.itertuples():
-                pattern_str = p_row.log_msg
-                pattern_regex = re.compile(pattern_str)
-
-                pattern_potentials = []
-                for m_row in avail_msg_grp.itertuples():
-                    if (p_row.fullmatch and pattern_regex.fullmatch(m_row.log_msg)) or (
-                        not p_row.fullmatch and pattern_regex.match(m_row.log_msg)
-                    ):
-                        if (
-                            p_row.log_name == m_row.log_name
-                            and p_row.log_level == m_row.log_level
-                        ):
-                            pattern_potentials.append(m_row.Index)
-                            avail_msg_grp.at[m_row.Index, "potential_matches"].append(
-                                p_row.Index
-                            )
-
-                avail_pattern_grp.at[p_row.Index, "potential_matches"] = (
-                    pattern_potentials
-                )
+            # for p_row in avail_pattern_grp.itertuples():
+            #     pattern_str = p_row.log_msg
+            #     pattern_regex = re.compile(pattern_str)
+            #
+            #     pattern_potentials = []
+            #     for m_row in avail_msg_grp.itertuples():
+            #         if (p_row.fullmatch and pattern_regex.fullmatch(m_row.log_msg)) or (
+            #             not p_row.fullmatch and pattern_regex.match(m_row.log_msg)
+            #         ):
+            #             if (
+            #                 p_row.log_name == m_row.log_name
+            #                 and p_row.log_level == m_row.log_level
+            #             ):
+            #                 pattern_potentials.append(m_row.Index)
+            #                 avail_msg_grp.at[m_row.Index, "potential_matches"].append(
+            #                     p_row.Index
+            #                 )
+            #
+            #     avail_pattern_grp.at[p_row.Index, "potential_matches"] = (
+            #         pattern_potentials
+            #     )
 
             # print(f"getting pattern list lens: {num_loops=}")
             p_len = pd.Series(
@@ -836,6 +826,7 @@ class LogVer:
         Returns:
             min_potential_matches, which is either the same or lower
         """
+
         # This method is called for each of the two data frames, the
         # first call having the pattern_df acting as the search_arg_df
         # and the msg_df as the search_targ_df, and the second call with
@@ -855,9 +846,42 @@ class LogVer:
         # possible as indicated when all entries have either made a
         # match are have exhausted their potential_matches.
         # print(f"entered search_df {min_potential_matches=}")
+        def adjust_potential_matches(
+            adj_df: pd.DataFrame,
+            idx_adjust_list: list[int],
+            remove_idx: int,
+            min_len: int,
+        ) -> int:
+            """Adjust the potential_matches list for the adj_df
+
+            Args:
+                adj_df: data frame whose potential_matches need to be
+                    adjusted
+                idx_adjust_list: list of idxs to remove from the
+                    potential_matches list
+                remove_idx: idx to remove from the potential_matches
+                    list
+                min_len: min_potential_matches
+
+            Returns:
+                length of adjusted potential_matches list
+
+            """
+            ret_min_len = min_len
+            for idx_adjust in idx_adjust_list:
+                if remove_idx in adj_df.at[idx_adjust, "potential_matches"]:
+                    adj_df.at[idx_adjust, "potential_matches"].remove(remove_idx)
+                    new_len = len(adj_df.at[idx_adjust, "potential_matches"])
+                    if new_len:
+                        ret_min_len = min(ret_min_len, new_len)
+
+            return ret_min_len
+
         for search_item in avail_df.itertuples():
             arg_num_avail = search_item.num_avail
             if len(search_item.potential_matches) == min_potential_matches:
+                arg_df_idx_adjust_list = []
+                targ_df_idx_adjust_list = []
                 for potential_idx in search_item.potential_matches:
                     targ_num_avail = search_targ_df.at[potential_idx, "num_avail"]
                     if targ_num_avail > 0:
@@ -870,16 +894,42 @@ class LogVer:
                             # search_arg_df.at[search_item.Index, "potential_matches"] = (
                             #     []
                             # )
+                            targ_df_idx_adjust_list = (
+                                search_item.potential_matches.copy()
+                            )
+                            targ_df_idx_adjust_list.remove(potential_idx)
+                            if targ_df_idx_adjust_list:
+                                new_targ_min = adjust_potential_matches(
+                                    adj_df=search_targ_df,
+                                    idx_adjust_list=targ_df_idx_adjust_list,
+                                    remove_idx=search_item.Index,
+                                    min_len=min_potential_matches,
+                                )
 
                             search_targ_df.at[
                                 potential_idx, "num_matched"
                             ] += targ_num_avail
                             search_targ_df.at[potential_idx, "num_avail"] = 0
-                            # search_targ_df.at[potential_idx, "potential_matches"] = []
-                            # print(f"returning: {arg_num_avail=}, {targ_num_avail=}")
-                            if min_potential_matches == 1:
-                                break  # continue with next item from avail_df
-                            return  # return to calculate new min_potential matches
+                            arg_df_idx_adjust_list = search_targ_df.at[
+                                potential_idx, "potential_matches"
+                            ].copy()
+                            arg_df_idx_adjust_list.remove(search_item.Index)
+                            if arg_df_idx_adjust_list:
+                                new_arg_min = adjust_potential_matches(
+                                    adj_df=search_arg_df,
+                                    idx_adjust_list=arg_df_idx_adjust_list,
+                                    remove_idx=potential_idx,
+                                    min_len=min_potential_matches,
+                                )
+
+                            if new_targ_min < new_arg_min:
+                                return
+                            min_potential_matches = min(
+                                min_potential_matches,
+                                new_targ_min,
+                                new_arg_min,
+                            )
+                            break
                         elif arg_num_avail > targ_num_avail:
                             search_arg_df.at[
                                 search_item.Index, "num_matched"
@@ -894,14 +944,18 @@ class LogVer:
                                 potential_idx, "num_matched"
                             ] += targ_num_avail
                             search_targ_df.at[potential_idx, "num_avail"] = 0
+                            arg_df_idx_adjust_list = search_targ_df.at[
+                                potential_idx, "potential_matches"
+                            ].copy()
+                            # arg_df_idx_adjust_list.remove(search_item.Index)
                             # search_targ_df.at[potential_idx, "potential_matches"] = []
 
                             # we still have some avail, but if this is a min 1 scan
                             # then we won't have any addition potentials to try.
                             # If not a min 1 scan, then return to calculate a new min
-                            if min_potential_matches == 1:
-                                break  # continue with next item from avail_df
-                            return  # return to calculate new min_potential matches
+                            # if min_potential_matches == 1:
+                            #     break  # continue with next item from avail_df
+                            # return  # return to calculate new min_potential matches
                         else:  # targ_num_avail > arg_num_avail
                             search_arg_df.at[
                                 search_item.Index, "num_matched"
@@ -911,6 +965,10 @@ class LogVer:
                             search_arg_df.at[search_item.Index, "num_avail"] = (
                                 arg_num_avail
                             )
+                            targ_df_idx_adjust_list = (
+                                search_item.potential_matches.copy()
+                            )
+                            # targ_df_idx_adjust_list.remove(potential_idx)
 
                             # search_arg_df.at[search_item.Index, "potential_matches"] = (
                             #     []
@@ -921,9 +979,9 @@ class LogVer:
                             search_targ_df.at[potential_idx, "num_avail"] = (
                                 targ_num_avail - arg_num_avail
                             )
-                            if min_potential_matches == 1:
-                                break  # continue with next item from avail_df
-                            return  # return to calculate new min_potential matches
+                            # if min_potential_matches == 1:
+                            #     break  # continue with next item from avail_df
+                            # return  # return to calculate new min_potential matches
 
                         # search_arg_df.at[search_item.Index, "claimed"] = True
                         # search_arg_df.at[search_item.Index, "claimed_by"] = (
