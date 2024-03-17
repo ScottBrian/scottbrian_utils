@@ -859,9 +859,9 @@ class TestEntryTraceCombos:
     @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
     @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
     @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
-    # @pytest.mark.parametrize("num_po_arg", [3])
-    # @pytest.mark.parametrize("num_pk_arg", [3])
-    # @pytest.mark.parametrize("num_ko_arg", [3])
+    # @pytest.mark.parametrize("num_po_arg", [2])
+    # @pytest.mark.parametrize("num_pk_arg", [2])
+    # @pytest.mark.parametrize("num_ko_arg", [2])
     def test_etrace_combo_signature(
         self,
         num_po_arg: int,

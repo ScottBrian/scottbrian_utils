@@ -169,6 +169,13 @@ def num_act_msgs3(request: Any) -> int:
     return cast(int, request.param)
 
 
+@dataclass
+class LogMsgDescriptor:
+    log_name: str
+    log_level: int
+    log_msg: str
+
+
 ########################################################################
 # TestLogVerExamples class
 ########################################################################
@@ -3211,3 +3218,159 @@ class TestLogVerScratch:
         #     1 unmatched patterns, 0 unmatched msgs, 2 matched msgs
         # scenario 3, 3: 2 patterns, 3 msgs
         #     0 unmatched patterns, 0 unmatched msgs, 3 matched msgs
+
+    # @pytest.mark.parametrize("num_a_msg_arg", [0, 1, 2])
+    # @pytest.mark.parametrize("num_a_pat_arg", [0, 1, 2])
+    @pytest.mark.parametrize("num_a_msg_arg", [1])
+    @pytest.mark.parametrize("num_a_pat_arg", [1])
+    def test_log_verifier_scratch(
+        self,
+        num_a_msg_arg: int,
+        num_a_pat_arg: int,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test log_verifier time match.
+
+        Args:
+            num_a_msg_arg: number of a log msgs to issue
+            num_a_pat_arg: number of a patterns to use
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+        """
+        ################################################################
+        # add pattern and issue log msgs
+        ################################################################
+        log_name = "fullmatch_0"
+        max_log_name_len = len(log_name)
+
+        t_logger = logging.getLogger(log_name)
+        log_ver = LogVer(log_name=log_name)
+
+        exp_unmatched_patterns = []
+        exp_unmatched_msgs = []
+        exp_matched_msgs = []
+
+        for _ in range(num_a_msg_arg):
+            t_logger.debug("a")
+
+        for _ in range(num_a_pat_arg):
+            log_ver.add_msg(log_msg="a")
+
+        exp_matched_msgs.append(
+            LogMsgDescriptor(log_name=log_name, log_level=10, log_msg="a")
+        )
+
+        max_log_msg_len = len("a")
+
+        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
+        log_ver.verify_log_results(log_results)
+
+        num_expected_records = 1
+        num_expected_unmatched_records = 0
+        num_actual_log_records = 1
+        num_actual_unmatched_records = 0
+        num_matched_log_records = 1
+
+        num_expected_records_line = (
+            f"* number expected log records: {num_expected_records} *"
+        )
+        num_expected_unmatched_records_line = (
+            f"* number expected unmatched  : {num_expected_unmatched_records} *"
+        )
+        num_actual_records_line = (
+            f"* number actual log records  : {num_actual_log_records} *"
+        )
+        num_actual_unmatched_records_line = (
+            f"* number actual unmatched    : {num_actual_unmatched_records} *"
+        )
+
+        num_matched_log_records_line = (
+            f"* number matched records     : {num_matched_log_records} *"
+        )
+
+        max_line_len = max(
+            len(num_expected_records_line),
+            len(num_expected_unmatched_records_line),
+            len(num_actual_records_line),
+            len(num_actual_unmatched_records_line),
+            len(num_matched_log_records_line),
+        )
+
+        stats_asterisks_line = "*" * max_line_len
+
+        expected_stats_result = []
+        expected_stats_result.append("")
+        expected_stats_result.append(stats_asterisks_line)
+        expected_stats_result.append(num_expected_records_line)
+        expected_stats_result.append(num_expected_unmatched_records_line)
+        expected_stats_result.append(num_actual_records_line)
+        expected_stats_result.append(num_actual_unmatched_records_line)
+        expected_stats_result.append(num_matched_log_records_line)
+        expected_stats_result.append(stats_asterisks_line)
+
+        expected_unmatched_exp_result = []
+        expected_unmatched_exp_result.append("")
+        expected_unmatched_exp_result.append("******************************")
+        expected_unmatched_exp_result.append("* unmatched expected records *")
+        expected_unmatched_exp_result.append("******************************")
+
+        expected_unmatched_actual_result = []
+        expected_unmatched_actual_result.append("")
+        expected_unmatched_actual_result.append("******************************")
+        expected_unmatched_actual_result.append("*  unmatched actual records  *")
+        expected_unmatched_actual_result.append("******************************")
+
+        expected_matched_result = []
+        expected_matched_result.append("")
+        expected_matched_result.append("******************************")
+        expected_matched_result.append("*      matched records       *")
+        expected_matched_result.append("******************************")
+
+        log_name_len = len(log_name)
+        header_log_name_len = len("log_name")
+        if log_name_len > header_log_name_len:
+            log_name_hdr = " " * (log_name_len - header_log_name_len) + "log_name"
+        else:
+            log_name_hdr = "log_name"
+
+        log_level_hdr = " " * 2 + "log_level"
+
+        log_msg_hdr_len = len("log_msg")
+        if max_log_msg_len > log_msg_hdr_len:
+            log_msg_hdr = " " * (max_log_msg_len - log_msg_hdr_len) + " " + "log_msg"
+        else:
+            log_msg_hdr = " " + "log_msg"
+
+        num_records_hdr = " " * 2 + "num_records"
+
+        num_matched_hdr = " " * 2 + "num_matched"
+
+        # expected_result.append(
+        #     log_name_hdr
+        #     + log_level_hdr
+        #     + log_msg_hdr
+        #     + num_records_hdr
+        #     + num_matched_hdr
+        # )
+        #
+        # expected_result.append(f"fullmatch_0        10    a       1    1")
+
+        captured = capsys.readouterr().out
+
+        captured_lines = captured.split("\n")
+        print()
+        for idx in range(len(expected_stats_result)):
+            print(f"expected: {idx=} {expected_stats_result[idx]}")
+            print(f"captured: {idx=} {captured_lines[idx]}")
+            assert captured_lines[idx] == expected_stats_result[idx]
+
+        cap_offset = len(expected_stats_result)
+        for idx in range(len(expected_unmatched_exp_result)):
+            print(f"expected2: {idx=} {expected_unmatched_exp_result[idx]}")
+            print(f"captured2: {idx=} {captured_lines[idx+cap_offset]}")
+            assert (
+                captured_lines[idx + cap_offset] == expected_unmatched_exp_result[idx]
+            )
+
+        # assert captured == expected_result
