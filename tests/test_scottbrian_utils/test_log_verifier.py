@@ -175,10 +175,12 @@ class LogItemDescriptor:
     log_level: int
     item: str
     claimed: bool = False
+    fullmatch: bool = False
 
 
 @dataclass
 class LogVerScenario:
+    num_matched_log_msgs: int = 0
     unmatched_patterns: list[LogItemDescriptor] = field(default_factory=list)
     unmatched_log_msgs: list[LogItemDescriptor] = field(default_factory=list)
     matched_log_msgs: list[LogItemDescriptor] = field(default_factory=list)
@@ -224,10 +226,6 @@ class TestLogVerification:
 
         self.log_ver_record = LogVerRecord()
 
-        # self.pattern_stats: ItemStats = ItemStats()
-        # self.log_msg_stats: ItemStats = ItemStats()
-        # self.scenarios: list[LogVerScenario] = []
-
     def add_scenario(self, scenario: LogVerScenario):
         pass
 
@@ -253,6 +251,7 @@ class TestLogVerification:
         pattern: str,
         log_level: int = logging.DEBUG,
         log_name: Optional[str] = None,
+        fullmatch: bool = False,
     ):
         if log_name is None:
             log_name = self.log_name
@@ -262,6 +261,7 @@ class TestLogVerification:
                 log_name=log_name,
                 log_level=log_level,
                 item=pattern,
+                fullmatch=fullmatch,
             )
         )
 
@@ -291,6 +291,7 @@ class TestLogVerification:
         # self.log_ver.verify_log_results(log_results)
 
     def build_scenarios(self) -> None:
+
         patterns_len = len(self.self.patterns)
         log_msgs_len = len(self.log_msgs)
         if patterns_len > log_msgs_len:
@@ -314,9 +315,56 @@ class TestLogVerification:
                     )
                 )
 
-        pairs_array: tuple[LogItemDescriptor] = it.product(
-            self.self.patterns, self.log_msgs
+        def build_scenario(
+            pattern_desc: LogItemDescriptor, log_msg_desc: LogItemDescriptor
+        ):
+            nonlocal staging_scenario
+            c_pattern = re.compile(pattern_desc.item)
+            if (
+                (
+                    (pattern_desc.fullmatch and c_pattern.fullmatch(log_msg_desc.item))
+                    or (
+                        not pattern_desc.fullmatch
+                        and c_pattern.match(log_msg_desc.item)
+                    )
+                )
+                and pattern_desc.log_name == log_msg_desc.log_name
+                and pattern_desc.log_level == log_msg_desc.log_level
+            ):
+                staging_scenario.num_matched_log_msgs += 1
+                staging_scenario.matched_log_msgs.append(log_msg_desc)
+            else:
+                staging_scenario.unmatched_patterns.append(pattern_desc)
+                staging_scenario.unmatched_log_msgs.append(log_msg_desc)
+
+        completed_scenarios: list[LogVerScenario] = []
+        max_matched_msgs = 0
+        log_msg_perms = it.permutation(self.log_msgs)
+        for log_msg_perm in log_msg_perms:
+            staging_scenario: LogVerScenario = LogVerScenario()
+            map(build_scenario, self.patterns, log_msg_perm)
+            max_matched_msgs = max(
+                max_matched_msgs, staging_scenario.num_matched_log_msgs
+            )
+            completed_scenarios.append(staging_scenario)
+
+        for scenario in completed_scenarios:
+            if scenario.num_matched_log_msgs == max_matched_msgs:
+                self.log_ver_record.scenarios.append(scenario)
+
+        self.log_ver_record.pattern_stats.num_items = patterns_len
+        self.log_ver_record.pattern_stats.num_matched_items = max_matched_msgs
+        self.log_ver_record.pattern_stats.num_unmatched_items = (
+            patterns_len - max_matched_msgs
         )
+
+        self.log_ver_record.log_msg_stats.num_items = log_msgs_len
+        self.log_ver_record.log_msg_stats.num_matched_items = max_matched_msgs
+        self.log_ver_record.log_msg_stats.num_unmatched_items = (
+            log_msgs_len - max_matched_msgs
+        )
+
+
 
     def build_stats_section(self) -> None:
         pass
