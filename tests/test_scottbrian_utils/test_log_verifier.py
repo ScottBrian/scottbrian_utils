@@ -4,7 +4,7 @@
 # Standard Library
 ########################################################################
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import itertools as it
 import more_itertools as mi
 import logging
@@ -170,10 +170,144 @@ def num_act_msgs3(request: Any) -> int:
 
 
 @dataclass
-class LogMsgDescriptor:
+class LogItemDescriptor:
     log_name: str
     log_level: int
-    log_msg: str
+    item: str
+
+
+@dataclass
+class LogVerScenario:
+    unmatched_patterns: list[LogItemDescriptor] = field(default_factory=list)
+    unmatched_log_msgs: list[LogItemDescriptor] = field(default_factory=list)
+    matched_log_msgs: list[LogItemDescriptor] = field(default_factory=list)
+
+
+@dataclass
+class ItemStats:
+    num_items: int = 0
+    num_matched_items: int = 0
+    num_unmatched_items: int = 0
+
+
+@dataclass
+class LogVerRecord:
+    pattern_stats: ItemStats = field(default_factory=ItemStats)
+    log_msg_stats: ItemStats = field(default_factory=ItemStats)
+    capsys_stats_lines: list[str] = field(default_factory=list)
+    capsys_unmatched_pattern_lines: list[str] = field(default_factory=list)
+    capsys_unmatched_log_msgs_lines: list[str] = field(default_factory=list)
+    capsys_matched_log_msgs_lines: list[str] = field(default_factory=list)
+    scenarios: list[LogVerScenario] = field(default_factory=list)
+
+
+class TestLogVerification:
+    """Verify the log output."""
+
+    def __init__(
+        self,
+        log_name: str,
+        capsys_to_use: pytest.CaptureFixture[str],
+        caplog_to_use: pytest.LogCaptureFixture,
+    ):
+        self.log_name: str = log_name
+        self.capsys_to_use = capsys_to_use
+        self.caplog_to_use = caplog_to_use
+        self.loggers: dict[str, logging.Logger] = {}
+        self.patterns: list[LogItemDescriptor] = []
+        self.log_msgs: list[LogItemDescriptor] = []
+
+        self.loggers[log_name] = logging.getLogger(log_name)
+
+        self.log_ver = LogVer(log_name=log_name)
+
+        # self.pattern_stats: ItemStats = ItemStats()
+        # self.log_msg_stats: ItemStats = ItemStats()
+        # self.scenarios: list[LogVerScenario] = []
+
+    def add_scenario(self, scenario: LogVerScenario):
+        pass
+
+    def issue_log_msg(
+        self,
+        log_msg: str,
+        log_level: int = logging.DEBUG,
+        log_name: Optional[str] = None,
+    ):
+        if log_name is None:
+            log_name = self.log_name
+        self.loggers[log_name].log(log_level, log_msg)
+        self.log_msgs.append(
+            LogItemDescriptor(
+                log_name=log_name,
+                log_level=log_level,
+                item=log_msg,
+            )
+        )
+
+    def add_pattern(
+        self,
+        pattern: str,
+        log_level: int = logging.DEBUG,
+        log_name: Optional[str] = None,
+    ):
+        if log_name is None:
+            log_name = self.log_name
+        self.log_ver.add_pattern()
+        self.patterns.append(
+            LogItemDescriptor(
+                log_name=log_name,
+                log_level=log_level,
+                item=pattern,
+            )
+        )
+
+    def verify_results(self) -> None:
+        """Verify the log records."""
+        log_ver_record: LogVerRecord = self.build_ver_record()
+        self.verify_stats(log_ver_record)
+        for scenario in log_ver_record.scenarios:
+            self.verify_unmatched_patterns(
+                log_ver_record=log_ver_record, scenario=scenario.unmatched_patterns
+            )
+            self.verify_unmatched_log_msgs(
+                log_ver_record=log_ver_record, scenario=scenario.unmatched_log_msgs
+            )
+            self.verify_matched_log_msgs(
+                log_ver_record=log_ver_record, scenario=scenario.matched_log_msgs
+            )
+
+    def build_ver_record(self) -> LogVerRecord:
+        log_results = self.log_ver.get_match_results(self.caplog_to_use)
+        self.log_ver.print_match_results(log_results)
+        self.log_ver.verify_log_results(log_results)
+
+    def verify_stats(
+        self,
+        log_ver_record: LogVerRecord,
+    ):
+        pass
+
+    def verify_unmatched_patterns(
+        self,
+        log_ver_record: LogVerRecord,
+        scenario: list[LogItemDescriptor],
+    ):
+        pass
+
+    def verify_unmatched_log_msgs(
+        self,
+        log_ver_record: LogVerRecord,
+        scenario: list[LogItemDescriptor],
+    ):
+        pass
+
+    def verify_matched_log_msgs(
+        self,
+        log_ver_record: LogVerRecord,
+        scenario: list[LogItemDescriptor],
+    ):
+        pass
 
 
 ########################################################################
@@ -3238,11 +3372,11 @@ class TestLogVerScratch:
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
+        test_log_ver = TestLogVerification(log_name="scratch_1")
         ################################################################
         # add pattern and issue log msgs
         ################################################################
         log_name = "fullmatch_0"
-        max_log_name_len = len(log_name)
 
         t_logger = logging.getLogger(log_name)
         log_ver = LogVer(log_name=log_name)
@@ -3258,7 +3392,7 @@ class TestLogVerScratch:
             log_ver.add_msg(log_msg="a")
 
         exp_matched_msgs.append(
-            LogMsgDescriptor(log_name=log_name, log_level=10, log_msg="a")
+            LogItemDescriptor(log_name=log_name, log_level=10, log_msg="a")
         )
 
         max_log_msg_len = len("a")

@@ -303,7 +303,7 @@ class LogVer:
         """
         self.specified_args = locals()  # used for __repr__, see below
         self.call_seqs: dict[str, str] = {}
-        self.expected_messages: list[
+        self.patterns: list[
             tuple[
                 str,
                 int,
@@ -392,7 +392,34 @@ class LogVer:
             fullmatch: if True, use regex fullmatch instead of
                 match in method get_match_results
 
-        Example: add two messages, each at a different level
+        """
+        self.add_pattern(
+            pattern=log_msg,
+            log_level=log_level,
+            log_name=log_name,
+            fullmatch=fullmatch,
+        )
+
+    ####################################################################
+    # add_pattern
+    ####################################################################
+    def add_pattern(
+        self,
+        pattern: str,
+        log_level: int = logging.DEBUG,
+        log_name: Optional[str] = None,
+        fullmatch: bool = False,
+    ) -> None:
+        """Add a message to the expected log messages.
+
+        Args:
+            pattern: pattern to use to find log_msg in the log
+            log_level: logging level to use
+            log_name: logger name to use
+            fullmatch: if True, use regex fullmatch instead of
+                match in method get_match_results
+
+        Example: add two patterns, each at a different level
 
         .. code-block:: python
 
@@ -402,9 +429,9 @@ class LogVer:
                 log_ver = LogVer('add_msg')
                 log_msg1 = 'hello'
                 log_msg2 = 'goodbye'
-                log_ver.add_msg(log_msg=log_msg1)
-                log_ver.add_msg(log_msg=log_msg2,
-                                log_level=logging.ERROR)
+                log_ver.add_pattern(pattern=log_msg1)
+                log_ver.add_pattern(pattern=log_msg2,
+                                    log_level=logging.ERROR)
                 logger.debug(log_msg1)
                 logger.error(log_msg2)
                 match_results = log_ver.get_match_results()
@@ -446,20 +473,20 @@ class LogVer:
             log_name_to_use = self.log_name
 
         if fullmatch:
-            self.expected_messages.append(
+            self.patterns.append(
                 (
                     log_name_to_use,
                     log_level,
-                    log_msg,
+                    pattern,
                     True,
                 )
             )
         else:
-            self.expected_messages.append(
+            self.patterns.append(
                 (
                     log_name_to_use,
                     log_level,
-                    log_msg,
+                    pattern,
                     False,
                 )
             )
@@ -487,7 +514,7 @@ class LogVer:
             "fullmatch",
         )
         pattern_df = pd.DataFrame(
-            self.expected_messages,
+            self.patterns,
             columns=pattern_col_names,
         )
 
@@ -927,7 +954,7 @@ class LogVer:
             }
         )
 
-        print_flower_box_msg("      summary stats       ")
+        print_flower_box_msg("               summary stats                ")
         print_stats = summary_stats_df.to_string(
             columns=[
                 "item_type",
@@ -940,16 +967,16 @@ class LogVer:
 
         print(print_stats)
 
-        print_flower_box_msg("unmatched patterns")
+        print_flower_box_msg("unmatched patterns:")
         if match_results.unmatched_patterns:
             print(match_results.unmatched_patterns)
 
-        print_flower_box_msg("unmatched log_msgs")
+        print_flower_box_msg("unmatched log_msgs:")
         if match_results.unmatched_log_msgs:
             print(match_results.unmatched_log_msgs)
 
         if print_matched:
-            print_flower_box_msg(" matched log_msgs ")
+            print_flower_box_msg(" matched log_msgs: ")
             if match_results.matched_log_msgs:
                 print(match_results.matched_log_msgs)
 
