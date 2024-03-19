@@ -174,6 +174,7 @@ class LogItemDescriptor:
     log_name: str
     log_level: int
     item: str
+    claimed: bool = False
 
 
 @dataclass
@@ -290,10 +291,36 @@ class TestLogVerification:
         # self.log_ver.verify_log_results(log_results)
 
     def build_scenarios(self) -> None:
+        patterns_len = len(self.self.patterns)
+        log_msgs_len = len(self.log_msgs)
+        if patterns_len > log_msgs_len:
+            for idx in range(patterns_len - log_msgs_len):
+                # add dummy log_msgs
+                self.log_msgs.append(
+                    LogItemDescriptor(
+                        log_name=f"dummy_log_name{idx}",
+                        log_level=42,
+                        item=f"dummy_item_name{idx}",
+                    )
+                )
+        elif patterns_len < log_msgs_len:
+            for idx in range(log_msgs_len - patterns_len):
+                # add dummy log_msgs
+                self.patterns.append(
+                    LogItemDescriptor(
+                        log_name=f"dummy_log_name{idx}",
+                        log_level=42,
+                        item=f"dummy_pattern_name{idx}",
+                    )
+                )
 
+        pairs_array: tuple[LogItemDescriptor] = it.product(
+            self.self.patterns, self.log_msgs
+        )
 
     def build_stats_section(self) -> None:
         pass
+
     def get_ver_output_lines(self, log_ver_record: LogVerRecord):
         log_results = self.log_ver.get_match_results(self.caplog_to_use)
         self.log_ver.print_match_results(log_results)
@@ -309,7 +336,6 @@ class TestLogVerification:
         captured_lines = captured.split("\n")
 
         for line in captured_lines:
-
 
             print(f"expected: {idx=} {expected_stats_result[idx]}")
             print(f"captured: {idx=} {captured_lines[idx]}")
