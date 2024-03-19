@@ -221,6 +221,8 @@ class TestLogVerification:
 
         self.log_ver = LogVer(log_name=log_name)
 
+        self.log_ver_record = LogVerRecord()
+
         # self.pattern_stats: ItemStats = ItemStats()
         # self.log_msg_stats: ItemStats = ItemStats()
         # self.scenarios: list[LogVerScenario] = []
@@ -264,7 +266,7 @@ class TestLogVerification:
 
     def verify_results(self) -> None:
         """Verify the log records."""
-        log_ver_record: LogVerRecord = self.build_ver_record()
+        self.build_ver_record()
         self.verify_stats(log_ver_record)
         for scenario in log_ver_record.scenarios:
             self.verify_unmatched_patterns(
@@ -277,10 +279,41 @@ class TestLogVerification:
                 log_ver_record=log_ver_record, scenario=scenario.matched_log_msgs
             )
 
-    def build_ver_record(self) -> LogVerRecord:
+    def build_ver_record(self):
+        self.build_scenarios()
+        self.build_stats_section()
+
+        self.get_ver_output_lines(log_ver_record=log_ver_record)
         log_results = self.log_ver.get_match_results(self.caplog_to_use)
         self.log_ver.print_match_results(log_results)
-        self.log_ver.verify_log_results(log_results)
+
+        # self.log_ver.verify_log_results(log_results)
+
+    def build_scenarios(self) -> None:
+
+
+    def build_stats_section(self) -> None:
+        pass
+    def get_ver_output_lines(self, log_ver_record: LogVerRecord):
+        log_results = self.log_ver.get_match_results(self.caplog_to_use)
+        self.log_ver.print_match_results(log_results)
+
+        # clear the capsys
+        captured = self.capsys_to_use.readouterr().out
+
+        # get log results and print them
+        log_results = self.log_ver.get_match_results(self.caplog_to_use)
+        self.log_ver.print_match_results(log_results)
+
+        captured = self.capsys_to_use.readouterr().out
+        captured_lines = captured.split("\n")
+
+        for line in captured_lines:
+
+
+            print(f"expected: {idx=} {expected_stats_result[idx]}")
+            print(f"captured: {idx=} {captured_lines[idx]}")
+            assert captured_lines[idx] == expected_stats_result[idx]
 
     def verify_stats(
         self,
@@ -1863,7 +1896,7 @@ class TestLogVerBasic:
         ),
         base_type=tuple,
     )
-    msg_combos_list = sorted(set(msg_combos), key=lambda x: (len(x), x))
+    msg_combos_list2 = sorted(set(msg_combos), key=lambda x: (len(x), x))
 
     patterns = (
         "msg0",
@@ -1888,10 +1921,10 @@ class TestLogVerBasic:
         ),
         base_type=tuple,
     )
-    pattern_combos_list = sorted(set(pattern_combos), key=lambda x: (len(x), x))
+    pattern_combos_list2 = sorted(set(pattern_combos), key=lambda x: (len(x), x))
 
-    # @pytest.mark.parametrize("msgs_arg", msg_combos_list)
-    # @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
+    # @pytest.mark.parametrize("msgs_arg", msg_combos_list2)
+    # @pytest.mark.parametrize("patterns_arg", pattern_combos_list2)
     @pytest.mark.parametrize("msgs_arg", [("msg2", "msg1")])
     @pytest.mark.parametrize("patterns_arg", [("msg[123]{1}",)])
     def test_log_verifier_contention(
@@ -1938,8 +1971,8 @@ class TestLogVerBasic:
 
         def build_search_array(
             search_array: dict[int, ItemTracker],
-            search_args: set[str],
-            target_args: set[str],
+            search_args: Iterable[tuple[str]],
+            target_args: Iterable[tuple[str]],
             matched_array: dict[str, set[str]],
         ) -> None:
             for idx in range(len(search_args)):
