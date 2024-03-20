@@ -265,20 +265,45 @@ class TestLogVerification:
             )
         )
 
+    def verify_line(self,
+                    expected_lines: list[LogItemDescriptor],
+                    actual_lines: list[str]):
+        pass
+
     def verify_results(self) -> None:
         """Verify the log records."""
         self.build_ver_record()
-        self.verify_stats(log_ver_record)
-        for scenario in log_ver_record.scenarios:
-            self.verify_unmatched_patterns(
-                log_ver_record=log_ver_record, scenario=scenario.unmatched_patterns
-            )
-            self.verify_unmatched_log_msgs(
-                log_ver_record=log_ver_record, scenario=scenario.unmatched_log_msgs
-            )
-            self.verify_matched_log_msgs(
-                log_ver_record=log_ver_record, scenario=scenario.matched_log_msgs
-            )
+
+        for scenario in self.log_ver_record.scenarios:
+            if self.log_ver_record.pattern_stats.num_unmatched_items:
+                assert len(scenario.unmatched_patterns) > 0
+                assert len(self.log_ver_record.capsys_unmatched_pattern_lines) > 0
+                self.verify_lines(scenario.unmatched_patterns,
+                                  self.log_ver_record.capsys_unmatched_pattern_lines,
+                                  )
+            else:
+                assert len(scenario.unmatched_patterns) == 0
+                assert len(self.log_ver_record.capsys_unmatched_pattern_lines) == 0
+
+            if self.log_ver_record.log_msg_stats.num_unmatched_items:
+                assert len(scenario.unmatched_log_msgs) > 0
+                assert len(self.log_ver_record.capsys_unmatched_log_msgs_lines) > 0
+                self.verify_lines(scenario.unmatched_log_msgs,
+                                  self.log_ver_record.capsys_unmatched_log_msgs_lines,
+                                  )
+            else:
+                assert len(scenario.unmatched_log_msgs) == 0
+                assert len(self.log_ver_record.capsys_unmatched_log_msgs_lines) == 0
+
+            if self.log_ver_record.log_msg_stats.num_matched_items:
+                assert len(scenario.matched_log_msgs) > 0
+                assert len(self.log_ver_record.capsys_matched_log_msgs_lines) > 0
+                self.verify_lines(scenario.matched_log_msgs,
+                                  self.log_ver_record.capsys_matched_log_msgs_lines,
+                                  )
+            else:
+                assert len(scenario.matched_log_msgs) == 0
+                assert len(self.log_ver_record.capsys_matched_log_msgs_lines) == 0
 
     def build_ver_record(self):
         self.build_scenarios()
@@ -293,9 +318,6 @@ class TestLogVerification:
         unmatched_patterns_hdr_line = "* unmatched patterns: *"
         unmatched_log_msgs_hdr_line = "* unmatched log_msgs: *"
         matched_log_msgs_hdr_line = "*  matched log_msgs:  *"
-
-        unmatched_patterns_df_hdr_line = "          log_name"
-
 
         paterns_stats_line = (
             f" patterns           {self.log_ver_record.pattern_stats.num_items} "
@@ -331,14 +353,41 @@ class TestLogVerification:
         assert captured_lines[10] == unmatched_patterns_hdr_line
         assert captured_lines[11] == section_asterisks
 
-        if self.log_ver_record.pattern_stats.num_unmatched_items:
-            assert captured_lines[12] == unmatched_patterns_df_hdr_line
+        if captured_lines[12] == "":
+            start_next_section = 13
+        else:
+            for idx in range(12, len(captured_lines)):
+                if captured_lines[idx] == section_asterisks:
+                    start_next_section = idx
+                else:
+                    self.log_ver_record.capsys_unmatched_pattern_lines.append(
+                        captured_lines[idx]
+                    )
 
-        for line in captured_lines:
+        assert captured_lines[start_next_section] == section_asterisks
+        assert captured_lines[start_next_section + 1] == unmatched_log_msgs_hdr_line
+        assert captured_lines[start_next_section + 2] == section_asterisks
 
-            print(f"expected: {idx=} {expected_stats_result[idx]}")
-            print(f"captured: {idx=} {captured_lines[idx]}")
-            assert captured_lines[idx] == expected_stats_result[idx]
+        if captured_lines[start_next_section + 3] == "":
+            start_next_section = start_next_section + 4
+        else:
+            for idx in range(start_next_section + 3, len(captured_lines)):
+                if captured_lines[idx] == section_asterisks:
+                    start_next_section = idx
+                else:
+                    self.log_ver_record.capsys_unmatched_log_msgs_lines.append(
+                        captured_lines[idx]
+                    )
+
+        assert captured_lines[start_next_section] == section_asterisks
+        assert captured_lines[start_next_section + 1] == matched_log_msgs_hdr_line
+        assert captured_lines[start_next_section + 2] == section_asterisks
+
+        if captured_lines[start_next_section + 3] != "":
+            for idx in range(start_next_section + 3, len(captured_lines)):
+                self.log_ver_record.capsys_unmatched_log_msgs_lines.append(
+                    captured_lines[idx]
+                )
 
     def build_scenarios(self) -> None:
 
@@ -417,10 +466,7 @@ class TestLogVerification:
     def build_stats_section(self) -> None:
         pass
 
-    def verify_stats(
-        self,
-        log_ver_record: LogVerRecord,
-    ):
+    def verify_stats(self):
         pass
 
     def verify_unmatched_patterns(
