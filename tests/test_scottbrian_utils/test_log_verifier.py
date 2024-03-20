@@ -197,11 +197,11 @@ class ItemStats:
 class LogVerRecord:
     pattern_stats: ItemStats = field(default_factory=ItemStats)
     log_msg_stats: ItemStats = field(default_factory=ItemStats)
+    scenarios: list[LogVerScenario] = field(default_factory=list)
     capsys_stats_lines: list[str] = field(default_factory=list)
     capsys_unmatched_pattern_lines: list[str] = field(default_factory=list)
     capsys_unmatched_log_msgs_lines: list[str] = field(default_factory=list)
     capsys_matched_log_msgs_lines: list[str] = field(default_factory=list)
-    scenarios: list[LogVerScenario] = field(default_factory=list)
 
 
 class TestLogVerification:
@@ -282,13 +282,63 @@ class TestLogVerification:
 
     def build_ver_record(self):
         self.build_scenarios()
-        self.build_stats_section()
+        self.get_ver_output_lines()
 
-        self.get_ver_output_lines(log_ver_record=log_ver_record)
+    def get_ver_output_lines(self):
+
+        stats_asterisks = "************************************************"
+        stats_line = "*                summary stats                 *"
+
+        section_asterisks = "***********************"
+        unmatched_patterns_hdr_line = "* unmatched patterns: *"
+        unmatched_log_msgs_hdr_line = "* unmatched log_msgs: *"
+        matched_log_msgs_hdr_line = "*  matched log_msgs:  *"
+
+        unmatched_patterns_df_hdr_line = "          log_name"
+
+
+        paterns_stats_line = (
+            f" patterns           {self.log_ver_record.pattern_stats.num_items} "
+            f"         {self.log_ver_record.pattern_stats.num_matched_items} "
+            f"               {self.log_ver_record.pattern_stats.num_unmatched_items}"
+        )
+
+        log_msgs_stats_line = (
+            f" log_msgs           {self.log_ver_record.log_msg_stats.num_items} "
+            f"         {self.log_ver_record.log_msg_stats.num_matched_items} "
+            f"               {self.log_ver_record.log_msg_stats.num_unmatched_items}"
+        )
+        # clear the capsys
+        captured = self.capsys_to_use.readouterr().out
+
+        # get log results and print them
         log_results = self.log_ver.get_match_results(self.caplog_to_use)
         self.log_ver.print_match_results(log_results)
 
-        # self.log_ver.verify_log_results(log_results)
+        captured = self.capsys_to_use.readouterr().out
+        captured_lines = captured.split("\n")
+
+        assert captured_lines[0] == stats_asterisks
+        assert captured_lines[1] == stats_line
+        assert captured_lines[2] == stats_asterisks
+        assert captured_lines[3] == "item_type  num_items  num_matched  num_unmatched"
+        assert captured_lines[4] == paterns_stats_line
+        assert captured_lines[5] == log_msgs_stats_line
+        assert captured_lines[6] == paterns_stats_line
+        assert captured_lines[7] == log_msgs_stats_line
+        assert captured_lines[8] == ""
+        assert captured_lines[9] == section_asterisks
+        assert captured_lines[10] == unmatched_patterns_hdr_line
+        assert captured_lines[11] == section_asterisks
+
+        if self.log_ver_record.pattern_stats.num_unmatched_items:
+            assert captured_lines[12] == unmatched_patterns_df_hdr_line
+
+        for line in captured_lines:
+
+            print(f"expected: {idx=} {expected_stats_result[idx]}")
+            print(f"captured: {idx=} {captured_lines[idx]}")
+            assert captured_lines[idx] == expected_stats_result[idx]
 
     def build_scenarios(self) -> None:
 
@@ -364,30 +414,8 @@ class TestLogVerification:
             log_msgs_len - max_matched_msgs
         )
 
-
-
     def build_stats_section(self) -> None:
         pass
-
-    def get_ver_output_lines(self, log_ver_record: LogVerRecord):
-        log_results = self.log_ver.get_match_results(self.caplog_to_use)
-        self.log_ver.print_match_results(log_results)
-
-        # clear the capsys
-        captured = self.capsys_to_use.readouterr().out
-
-        # get log results and print them
-        log_results = self.log_ver.get_match_results(self.caplog_to_use)
-        self.log_ver.print_match_results(log_results)
-
-        captured = self.capsys_to_use.readouterr().out
-        captured_lines = captured.split("\n")
-
-        for line in captured_lines:
-
-            print(f"expected: {idx=} {expected_stats_result[idx]}")
-            print(f"captured: {idx=} {captured_lines[idx]}")
-            assert captured_lines[idx] == expected_stats_result[idx]
 
     def verify_stats(
         self,
