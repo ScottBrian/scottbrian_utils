@@ -175,6 +175,7 @@ class LogItemDescriptor:
     log_level: int
     item: str
     fullmatch: bool = False
+    dummy: bool = False
 
 
 @dataclass
@@ -291,12 +292,12 @@ class TestLogVerification:
             )
         )
 
-    def verify_line(
+    def verify_lines(
         self,
         item_text: str,
         num_items: int,
         expected_items: list[LogItemDescriptor],
-        actual_item: list[LogItemDescriptor],
+        actual_lines: list[LogItemDescriptor],
     ):
         if num_items == 0:
             assert len(expected_items) == 0
@@ -332,26 +333,26 @@ class TestLogVerification:
         """Verify the log records."""
         self.build_ver_record()
 
-        for scenario in self.log_ver_record.scenarios:
+        for scenario in self.scenarios:
             self.verify_lines(
                 item_text="pattern",
-                num_items=self.log_ver_record.pattern_stats.num_unmatched_items,
+                num_items=self.stats["patterns"].num_unmatched_items,
                 expected_items=scenario.unmatched_patterns,
-                actual_lines=self.log_ver_record.capsys_unmatched_pattern_lines,
+                actual_lines=self.capsys_sections["unmatched_patterns"].line_items,
             )
 
             self.verify_lines(
                 item_text="log_msg",
-                num_items=self.log_ver_record.log_msg_stats.num_unmatched_items,
+                num_items=self.stats["log_msgs"].num_unmatched_items,
                 expected_items=scenario.unmatched_log_msgs,
-                actual_lines=self.log_ver_record.capsys_unmatched_log_msgs_lines,
+                actual_lines=self.capsys_sections["unmatched_log_msgs"].line_items,
             )
 
             self.verify_lines(
                 item_text="log_msg",
-                num_items=self.log_ver_record.log_msg_stats.num_matched_items,
+                num_items=self.stats["log_msgs"].num_matched_items,
                 expected_items=scenario.matched_log_msgs,
-                actual_lines=self.log_ver_record.capsys_matched_log_msgs_lines,
+                actual_lines=self.capsys_sections["matched_log_msgs"].line_items,
             )
 
     def build_ver_record(self):
@@ -368,15 +369,15 @@ class TestLogVerification:
         matched_log_msgs_hdr_line = "*  matched log_msgs:  *"
 
         paterns_stats_line = (
-            f" patterns           {self.log_ver_record.pattern_stats.num_items} "
-            f"         {self.log_ver_record.pattern_stats.num_matched_items} "
-            f"               {self.log_ver_record.pattern_stats.num_unmatched_items}"
+            f" patterns           {self.stats["patterns"].num_items} "
+            f"         {self.stats["patterns"].num_matched_items} "
+            f"               {self.stats["patterns"].num_unmatched_items}"
         )
 
         log_msgs_stats_line = (
-            f" log_msgs           {self.log_ver_record.log_msg_stats.num_items} "
-            f"         {self.log_ver_record.log_msg_stats.num_matched_items} "
-            f"               {self.log_ver_record.log_msg_stats.num_unmatched_items}"
+            f" log_msgs           {self.stats["log_msgs"].num_items} "
+            f"         {self.stats["log_msgs"].num_matched_items} "
+            f"               {self.stats["log_msgs"].num_unmatched_items}"
         )
         # clear the capsys
         captured = self.capsys_to_use.readouterr().out
@@ -473,6 +474,7 @@ class TestLogVerification:
                         log_name=f"dummy_log_name{idx}",
                         log_level=42,
                         item=f"dummy_item_name{idx}",
+                        dummy=True,
                     )
                 )
         elif patterns_len < log_msgs_len:
@@ -483,6 +485,7 @@ class TestLogVerification:
                         log_name=f"dummy_log_name{idx}",
                         log_level=42,
                         item=f"dummy_pattern_name{idx}",
+                        dummy=True,
                     )
                 )
 
@@ -505,12 +508,14 @@ class TestLogVerification:
                 staging_scenario.num_matched_log_msgs += 1
                 staging_scenario.matched_log_msgs.append(log_msg_desc)
             else:
-                staging_scenario.unmatched_patterns.append(pattern_desc)
-                staging_scenario.unmatched_log_msgs.append(log_msg_desc)
+                if not pattern_desc.dummy:
+                    staging_scenario.unmatched_patterns.append(pattern_desc)
+                if not log_msg_desc.dummy:
+                    staging_scenario.unmatched_log_msgs.append(log_msg_desc)
 
         completed_scenarios: list[LogVerScenario] = []
         max_matched_msgs = 0
-        log_msg_perms = it.permutation(self.log_msgs)
+        log_msg_perms = it.permutations(self.log_msgs)
         for log_msg_perm in log_msg_perms:
             staging_scenario: LogVerScenario = LogVerScenario()
             map(build_scenario, self.patterns, log_msg_perm)
@@ -521,18 +526,17 @@ class TestLogVerification:
 
         for scenario in completed_scenarios:
             if scenario.num_matched_log_msgs == max_matched_msgs:
-                self.log_ver_record.scenarios.append(scenario)
+                self.scenarios.append(scenario)
 
-        self.log_ver_record.pattern_stats.num_items = patterns_len
-        self.log_ver_record.pattern_stats.num_matched_items = max_matched_msgs
-        self.log_ver_record.pattern_stats.num_unmatched_items = (
-            patterns_len - max_matched_msgs
+        self.stats["patterns"] = ItemStats(
+            num_items=patterns_len,
+            num_matched_items=max_matched_msgs,
+            num_unmatched_items=patterns_len - max_matched_msgs,
         )
-
-        self.log_ver_record.log_msg_stats.num_items = log_msgs_len
-        self.log_ver_record.log_msg_stats.num_matched_items = max_matched_msgs
-        self.log_ver_record.log_msg_stats.num_unmatched_items = (
-            log_msgs_len - max_matched_msgs
+        self.stats["log_msgs"] = ItemStats(
+            num_items=log_msgs_len,
+            num_matched_items=max_matched_msgs,
+            num_unmatched_items=log_msgs_len - max_matched_msgs,
         )
 
     def build_stats_section(self) -> None:
@@ -543,21 +547,18 @@ class TestLogVerification:
 
     def verify_unmatched_patterns(
         self,
-        log_ver_record: LogVerRecord,
         scenario: list[LogItemDescriptor],
     ):
         pass
 
     def verify_unmatched_log_msgs(
         self,
-        log_ver_record: LogVerRecord,
         scenario: list[LogItemDescriptor],
     ):
         pass
 
     def verify_matched_log_msgs(
         self,
-        log_ver_record: LogVerRecord,
         scenario: list[LogItemDescriptor],
     ):
         pass
