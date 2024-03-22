@@ -510,7 +510,7 @@ class LogVer:
         pattern_col_names = (
             "log_name",
             "log_level",
-            "log_msg",
+            "pattern",
             "fullmatch",
         )
         pattern_df = pd.DataFrame(
@@ -557,7 +557,7 @@ class LogVer:
         # set potential matches in both data frames
         ################################################################
         for p_row in pattern_grp.itertuples():
-            pattern_str = p_row.log_msg
+            pattern_str = p_row.pattern
             pattern_regex = re.compile(pattern_str)
 
             pattern_potentials = []
@@ -643,19 +643,19 @@ class LogVer:
             unmatched_pattern_df = pattern_grp[
                 pattern_grp.num_records != pattern_grp.num_matched
             ]
-            if unmatched_pattern_df.empty:
-                unmatched_pattern_print = ""
-            else:
-                unmatched_pattern_print = unmatched_pattern_df.to_string(
-                    columns=[
-                        "log_name",
-                        "log_level",
-                        "log_msg",
-                        "num_records",
-                        "num_matched",
-                    ],
-                    index=False,
-                )
+            # if unmatched_pattern_df.empty:
+            #     unmatched_pattern_print = ""
+            # else:
+            unmatched_pattern_print = unmatched_pattern_df.to_string(
+                columns=[
+                    "log_name",
+                    "log_level",
+                    "pattern",
+                    "num_records",
+                    "num_matched",
+                ],
+                index=False,
+            )
 
         ################################################################
         # reconcile msg matches

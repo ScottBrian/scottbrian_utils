@@ -190,8 +190,10 @@ class LogSectionLineItem:
     log_level: int
     item: str
     num_items: int
+    num_actual_unmatches: int
     num_actual_matches: int
-    num_reconciled_matches: int = 0
+    num_counted_unmatched: int = 0
+    num_counted_matched: int = 0
 
 
 @dataclass
@@ -204,8 +206,10 @@ class LogSection:
 
 @dataclass
 class LogVerScenario:
+    num_matched_patterns: int = 0
     num_matched_log_msgs: int = 0
     unmatched_patterns: list[LogItemDescriptor] = field(default_factory=list)
+    matched_patterns: list[LogItemDescriptor] = field(default_factory=list)
     unmatched_log_msgs: list[LogItemDescriptor] = field(default_factory=list)
     matched_log_msgs: list[LogItemDescriptor] = field(default_factory=list)
 
@@ -299,25 +303,34 @@ class TestLogVerification:
             ver_result = VerResult()
             if self.verify_lines(
                 item_text="pattern",
-                num_items=self.stats["patterns"].num_unmatched_items,
-                expected_items=scenario.unmatched_patterns,
+                num_unmatched_stats=self.stats["patterns"].num_unmatched_items,
+                num_matched_stats=self.stats["patterns"].num_matched_items,
+                unmatched_items=scenario.unmatched_patterns,
+                matched_items=scenario.matched_patterns,
                 log_section=self.capsys_sections["unmatched_patterns"],
+                matched_section=False,
             ):
                 ver_result.unmatched_patterns = True
 
             if self.verify_lines(
                 item_text="log_msg",
-                num_items=self.stats["log_msgs"].num_unmatched_items,
-                expected_items=scenario.unmatched_log_msgs,
+                num_unmatched_stats=self.stats["log_msgs"].num_unmatched_items,
+                num_matched_stats=self.stats["log_msgs"].num_matched_items,
+                unmatched_items=scenario.unmatched_log_msgs,
+                matched_items=scenario.matched_log_msgs,
                 log_section=self.capsys_sections["unmatched_log_msgs"],
+                matched_section=False,
             ):
                 ver_result.unmatched_log_msgs = True
 
             if self.verify_lines(
                 item_text="log_msg",
-                num_items=self.stats["log_msgs"].num_matched_items,
-                expected_items=scenario.matched_log_msgs,
+                num_unmatched_stats=self.stats["log_msgs"].num_unmatched_items,
+                num_matched_stats=self.stats["log_msgs"].num_matched_items,
+                unmatched_items=scenario.unmatched_log_msgs,
+                matched_items=scenario.matched_log_msgs,
                 log_section=self.capsys_sections["matched_log_msgs"],
+                matched_section=True,
             ):
                 ver_result.matched_log_msgs = True
 
@@ -334,30 +347,50 @@ class TestLogVerification:
     def verify_lines(
         self,
         item_text: str,
-        num_items: int,
-        expected_items: list[LogItemDescriptor],
+        num_unmatched_stats: int,
+        num_matched_stats: int,
+        unmatched_items: list[LogItemDescriptor],
+        matched_items: list[LogItemDescriptor],
         log_section: LogSection,
+        matched_section: bool,
     ) -> bool:
-        logger.debug(
-            f"verify_lines entry: {item_text=}, {num_items=}, {expected_items=}, {log_section=}"
-        )
-        if num_items == 0:
-            assert len(expected_items) == 0
-            assert len(log_section.line_items) == 0
-            return True
+        # logger.debug(
+        #     f"verify_lines entry: {item_text=}, {num_items=}, {expected_items=}, {log_section=}"
+        # )
+        if matched_section:
+            if num_matched_stats == 0:
+                assert len(matched_items) == 0
+                assert len(log_section.line_items) == 0
+                logger.debug(f"verify_lines returning True 1")
+                return True
+            else:
+                assert len(matched_items) > 0
+                assert len(log_section.line_items) > 0
 
-        assert len(expected_items) > 0
-        assert len(log_section.line_items) > 0
+        else:
+            if num_unmatched_stats == 0:
+                assert len(unmatched_items) == 0
+                assert len(log_section.line_items) == 0
+                logger.debug(f"verify_lines returning True 2")
+                return True
+            else:
+                assert len(unmatched_items) > 0
+                assert len(log_section.line_items) > 0
 
         max_log_name_len = 0
         max_log_msg_len = 0
-        for expected_item in expected_items:
-            max_log_name_len = max(max_log_name_len, len(expected_item.log_name))
-            max_log_msg_len = max(max_log_msg_len, len(expected_item.item))
+        for item in unmatched_items:
+            max_log_name_len = max(max_log_name_len, len(item.log_name))
+            max_log_msg_len = max(max_log_msg_len, len(item.item))
+        for item in matched_items:
+            max_log_name_len = max(max_log_name_len, len(item.log_name))
+            max_log_msg_len = max(max_log_msg_len, len(item.item))
 
         expected_hdr_line = (
             " " * (max_log_name_len - len("log_name"))
             + "log_name"
+            + " "
+            + " log_level"
             + " "
             + " " * (max_log_msg_len - len(item_text))
             + item_text
@@ -365,16 +398,35 @@ class TestLogVerification:
             + "  num_matched"
         )
         if log_section.hdr_line != expected_hdr_line:
+            logger.debug(
+                f"verify_lines returning False 3 "
+                f"\n{log_section.hdr_line=} \n{expected_hdr_line=}"
+            )
             return False
 
-        for expected_item in expected_items:
-            if expected_item.item in log_section.line_items:
-                log_section.line_items[expected_item.item].num_reconciled_matches += 1
+        for item in unmatched_items:
+            if item.item in log_section.line_items:
+                log_section.line_items[item.item].num_counted_unmatched += 1
+
+        for item in matched_items:
+            if item.item in log_section.line_items:
+                log_section.line_items[item.item].num_counted_matched += 1
 
         for key, line_item in log_section.line_items.items():
-            if line_item.num_reconciled_matches != line_item.num_actual_matches:
+            if line_item.num_actual_matches != line_item.num_counted_matched:
+                logger.debug(
+                    f"verify_lines returning False 4 "
+                    f"{line_item.num_actual_matches=} {line_item.num_counted_matched=}"
+                )
+                return False
+            if line_item.num_actual_unmatches != line_item.num_counted_unmatched:
+                logger.debug(
+                    f"verify_lines returning False 5 "
+                    f"{line_item.num_actual_unmatches=} {line_item.num_counted_unmatched=}"
+                )
                 return False
 
+        logger.debug(f"verify_lines returning True 6")
         return True
 
     def build_ver_record(self):
@@ -424,6 +476,7 @@ class TestLogVerification:
             start_idx=8,
             captured_lines=captured_lines,
             section_hdr_line=unmatched_patterns_hdr_line,
+            matched_section=False,
         )
 
         self.capsys_sections["unmatched_patterns"] = section_item
@@ -432,6 +485,7 @@ class TestLogVerification:
             start_idx=section_item.end_idx + 1,
             captured_lines=captured_lines,
             section_hdr_line=unmatched_log_msgs_hdr_line,
+            matched_section=False,
         )
 
         self.capsys_sections["unmatched_log_msgs"] = section_item
@@ -440,12 +494,17 @@ class TestLogVerification:
             start_idx=section_item.end_idx + 1,
             captured_lines=captured_lines,
             section_hdr_line=matched_log_msgs_hdr_line,
+            matched_section=True,
         )
 
         self.capsys_sections["matched_log_msgs"] = section_item
 
     def get_section(
-        self, start_idx: int, captured_lines: list[str], section_hdr_line: str
+        self,
+        start_idx: int,
+        captured_lines: list[str],
+        section_hdr_line: str,
+        matched_section: bool,
     ) -> LogSection:
         section_asterisks = "***********************"
         assert captured_lines[start_idx] == section_asterisks
@@ -473,13 +532,21 @@ class TestLogVerification:
             else:
                 rsplit_actual = captured_lines[idx].rsplit(maxsplit=2)
                 lsplit_actual = rsplit_actual[0].split(maxsplit=2)
+                num_items = int(rsplit_actual[1])
+                num_matches = int(rsplit_actual[2])
+                # if matched_section:
+                #     num_exp_reconciled = num_matches
+                # else:
+                #     num_exp_reconciled = num_items - num_matches
                 ret_section.line_items[lsplit_actual[2]] = LogSectionLineItem(
                     log_name=lsplit_actual[0],
                     log_level=int(lsplit_actual[1]),
                     item=lsplit_actual[2],
-                    num_items=int(rsplit_actual[1]),
-                    num_actual_matches=int(rsplit_actual[2]),
-                    num_reconciled_matches=0,
+                    num_items=num_items,
+                    num_actual_unmatches=num_items - num_matches,
+                    num_actual_matches=num_matches,
+                    num_counted_unmatched=0,
+                    num_counted_matched=0,
                 )
         # ret_section.end_idx = idx
         # return ret_section
@@ -533,6 +600,8 @@ class TestLogVerification:
                 # logger.debug(f"pattern_desc: {pattern_desc}")
                 # logger.debug(f"log_msg_desc: {log_msg_desc}")
                 # logger.debug(f"{staging_scenario.num_matched_log_msgs=}")
+                staging_scenario.num_matched_patterns += 1
+                staging_scenario.matched_patterns.append(pattern_desc)
                 staging_scenario.num_matched_log_msgs += 1
                 staging_scenario.matched_log_msgs.append(log_msg_desc)
             else:
@@ -3613,10 +3682,10 @@ class TestLogVerScratch:
         # scenario 3, 3: 2 patterns, 3 msgs
         #     0 unmatched patterns, 0 unmatched msgs, 3 matched msgs
 
-    # @pytest.mark.parametrize("num_a_msg_arg", [0, 1, 2])
-    # @pytest.mark.parametrize("num_a_pat_arg", [0, 1, 2])
-    @pytest.mark.parametrize("num_a_msg_arg", [1])
-    @pytest.mark.parametrize("num_a_pat_arg", [1])
+    @pytest.mark.parametrize("num_a_msg_arg", [0, 1, 2])
+    @pytest.mark.parametrize("num_a_pat_arg", [0, 1, 2])
+    # @pytest.mark.parametrize("num_a_msg_arg", [1])
+    # @pytest.mark.parametrize("num_a_pat_arg", [1])
     def test_log_verifier_scratch(
         self,
         num_a_msg_arg: int,
@@ -3640,7 +3709,6 @@ class TestLogVerScratch:
         ################################################################
         for _ in range(num_a_msg_arg):
             test_log_ver.issue_log_msg("a")
-            test_log_ver.add_pattern("a")
 
         for _ in range(num_a_pat_arg):
             test_log_ver.add_pattern("a")
