@@ -179,7 +179,7 @@ class LogItemDescriptor:
 
 
 @dataclass
-class LogItemLineDescriptor:
+class LogSectionLineItem:
     log_name: str
     log_level: int
     item: str
@@ -189,11 +189,11 @@ class LogItemLineDescriptor:
 
 
 @dataclass
-class LogItemSection:
+class LogSection:
     hdr_line: str
     start_idx: int
     end_idx: int
-    line_items: list[LogItemLineDescriptor]
+    line_items: dict[str, LogSectionLineItem] = field(default_factory=dict)
 
 
 @dataclass
@@ -209,22 +209,6 @@ class ItemStats:
     num_items: int = 0
     num_matched_items: int = 0
     num_unmatched_items: int = 0
-
-
-# @dataclass
-# class LogVerRecord:
-#     pattern_stats: ItemStats = field(default_factory=ItemStats)
-#     log_msg_stats: ItemStats = field(default_factory=ItemStats)
-#     scenarios: list[LogVerScenario] = field(default_factory=list)
-#     capsys_stats_hdr: str = ""
-#     capsys_stats_lines: list[str] = field(default_factory=list)
-#     capsys_sections: dict[str, LogItemSection] = field(default_factory=dict)
-#     capsys_unmatched_pattern_section: LogItemSection = ""
-#     capsys_unmatched_pattern_lines: list[LogItemLineDescriptor] = field(default_factory=list)
-#     capsys_unmatched_log_msgs_hdr: str = ""
-#     capsys_unmatched_log_msgs_lines: list[LogItemLineDescriptor] = field(default_factory=list)
-#     capsys_matched_log_msgs_hdr: str = ""
-#     capsys_matched_log_msgs_lines: list[LogItemLineDescriptor] = field(default_factory=list)
 
 
 class TestLogVerification:
@@ -251,7 +235,7 @@ class TestLogVerification:
         self.scenarios: list[LogVerScenario] = []
         self.capsys_stats_hdr: str = ""
         self.capsys_stats_lines: list[str] = []
-        self.capsys_sections: dict[str, LogItemSection] = {}
+        self.capsys_sections: dict[str, LogSection] = {}
 
     def add_scenario(self, scenario: LogVerScenario):
         pass
@@ -282,7 +266,9 @@ class TestLogVerification:
     ):
         if log_name is None:
             log_name = self.log_name
-        self.log_ver.add_pattern()
+        self.log_ver.add_pattern(
+            pattern=pattern, log_level=log_level, log_name=log_name, fullmatch=fullmatch
+        )
         self.patterns.append(
             LogItemDescriptor(
                 log_name=log_name,
@@ -297,15 +283,15 @@ class TestLogVerification:
         item_text: str,
         num_items: int,
         expected_items: list[LogItemDescriptor],
-        actual_lines: list[LogItemDescriptor],
+        log_section: LogSection,
     ):
         if num_items == 0:
             assert len(expected_items) == 0
-            assert len(actual_lines) == 0
+            assert len(log_section.line_items) == 0
             return
 
         assert len(expected_items) > 0
-        assert len(actual_lines) > 0
+        assert len(log_section.line_items) > 0
 
         max_log_name_len = 0
         max_log_msg_len = 0
@@ -322,12 +308,16 @@ class TestLogVerification:
             + "  num_records"
             + "  num_matched"
         )
-        assert actual_lines.pop(0) == expected_hdr_line
+        assert log_section.hdr_line == expected_hdr_line
 
         for expected_item in expected_items:
-            for actual_line in actual_lines:
-                rsplit_actual = actual_line.rsplit(maxsplit=2)
-                # if expected_item.log_name == actual_line
+            assert expected_item.item in log_section
+            log_section[expected_item.log_msg].num_reconciled_matches += 1
+
+        assert (
+            log_section[expected_item.log_msg].num_reconciled_matches
+            == log_section[expected_item.log_msg].num_actual_matches
+        )
 
     def verify_results(self) -> None:
         """Verify the log records."""
@@ -338,21 +328,21 @@ class TestLogVerification:
                 item_text="pattern",
                 num_items=self.stats["patterns"].num_unmatched_items,
                 expected_items=scenario.unmatched_patterns,
-                actual_lines=self.capsys_sections["unmatched_patterns"].line_items,
+                log_section=self.capsys_sections["unmatched_patterns"],
             )
 
             self.verify_lines(
                 item_text="log_msg",
                 num_items=self.stats["log_msgs"].num_unmatched_items,
                 expected_items=scenario.unmatched_log_msgs,
-                actual_lines=self.capsys_sections["unmatched_log_msgs"].line_items,
+                log_section=self.capsys_sections["unmatched_log_msgs"],
             )
 
             self.verify_lines(
                 item_text="log_msg",
                 num_items=self.stats["log_msgs"].num_matched_items,
                 expected_items=scenario.matched_log_msgs,
-                actual_lines=self.capsys_sections["matched_log_msgs"].line_items,
+                log_section=self.capsys_sections["matched_log_msgs"],
             )
 
     def build_ver_record(self):
@@ -368,16 +358,16 @@ class TestLogVerification:
         unmatched_log_msgs_hdr_line = "* unmatched log_msgs: *"
         matched_log_msgs_hdr_line = "*  matched log_msgs:  *"
 
-        paterns_stats_line = (
-            f" patterns           {self.stats["patterns"].num_items} "
-            f"         {self.stats["patterns"].num_matched_items} "
-            f"               {self.stats["patterns"].num_unmatched_items}"
+        patterns_stats_line = (
+            f" patterns          {self.stats['patterns'].num_items} "
+            f"           {self.stats['patterns'].num_matched_items} "
+            f"             {self.stats['patterns'].num_unmatched_items}"
         )
 
         log_msgs_stats_line = (
-            f" log_msgs           {self.stats["log_msgs"].num_items} "
-            f"         {self.stats["log_msgs"].num_matched_items} "
-            f"               {self.stats["log_msgs"].num_unmatched_items}"
+            f" log_msgs          {self.stats['log_msgs'].num_items} "
+            f"           {self.stats['log_msgs'].num_matched_items} "
+            f"             {self.stats['log_msgs'].num_unmatched_items}"
         )
         # clear the capsys
         captured = self.capsys_to_use.readouterr().out
@@ -389,18 +379,17 @@ class TestLogVerification:
         captured = self.capsys_to_use.readouterr().out
         captured_lines = captured.split("\n")
 
-        assert captured_lines[0] == stats_asterisks
-        assert captured_lines[1] == stats_line
-        assert captured_lines[2] == stats_asterisks
-        assert captured_lines[3] == "item_type  num_items  num_matched  num_unmatched"
-        assert captured_lines[4] == paterns_stats_line
-        assert captured_lines[5] == log_msgs_stats_line
-        assert captured_lines[6] == paterns_stats_line
-        assert captured_lines[7] == log_msgs_stats_line
-        assert captured_lines[8] == ""
+        assert captured_lines[0] == ""
+        assert captured_lines[1] == stats_asterisks
+        assert captured_lines[2] == stats_line
+        assert captured_lines[3] == stats_asterisks
+        assert captured_lines[4] == "item_type  num_items  num_matched  num_unmatched"
+        assert captured_lines[5] == patterns_stats_line
+        assert captured_lines[6] == log_msgs_stats_line
+        assert captured_lines[7] == ""
 
         section_item = self.get_section(
-            start_idx=9,
+            start_idx=8,
             captured_lines=captured_lines,
             section_hdr_line=unmatched_patterns_hdr_line,
         )
@@ -425,21 +414,24 @@ class TestLogVerification:
 
     def get_section(
         self, start_idx: int, captured_lines: list[str], section_hdr_line: str
-    ) -> LogItemSection:
+    ) -> LogSection:
         section_asterisks = "***********************"
         assert captured_lines[start_idx] == section_asterisks
         assert captured_lines[start_idx + 1] == section_hdr_line
         assert captured_lines[start_idx + 2] == section_asterisks
         if captured_lines[start_idx + 3] == "":
-            return LogItemSection(
-                hdr_line="", start_idx=start_idx, end_idx=start_idx + 3, line_items=[]
+            return LogSection(
+                hdr_line="",
+                start_idx=start_idx,
+                end_idx=start_idx + 3,
+                line_items={},
             )
 
-        ret_section = LogItemSection(
+        ret_section = LogSection(
             hdr_line=captured_lines[start_idx + 3],
             start_idx=start_idx,
             end_idx=0,
-            line_items=[],
+            line_items={},
         )
 
         for idx in range(start_idx + 4, len(captured_lines)):
@@ -449,22 +441,20 @@ class TestLogVerification:
             else:
                 rsplit_actual = captured_lines[idx].rsplit(maxsplit=2)
                 lsplit_actual = rsplit_actual[0].split(maxsplit=2)
-                ret_section.line_items.append(
-                    LogItemLineDescriptor(
-                        log_name=lsplit_actual[0],
-                        log_level=int(lsplit_actual[1]),
-                        item=lsplit_actual[2],
-                        num_items=int(rsplit_actual[1]),
-                        num_actual_matches=int(rsplit_actual[2]),
-                        num_reconciled_matches=0,
-                    )
+                ret_section.line_items[lsplit_actual[2]] = LogSectionLineItem(
+                    log_name=lsplit_actual[0],
+                    log_level=int(lsplit_actual[1]),
+                    item=lsplit_actual[2],
+                    num_items=int(rsplit_actual[1]),
+                    num_actual_matches=int(rsplit_actual[2]),
+                    num_reconciled_matches=0,
                 )
         ret_section.end_idx = idx
         return ret_section
 
     def build_scenarios(self) -> None:
 
-        patterns_len = len(self.self.patterns)
+        patterns_len = len(self.patterns)
         log_msgs_len = len(self.log_msgs)
         if patterns_len > log_msgs_len:
             for idx in range(patterns_len - log_msgs_len):
@@ -493,6 +483,9 @@ class TestLogVerification:
             pattern_desc: LogItemDescriptor, log_msg_desc: LogItemDescriptor
         ):
             nonlocal staging_scenario
+            # logger.debug(f"pattern_desc: {pattern_desc}")
+            # logger.debug(f"log_msg_desc: {log_msg_desc}")
+            # logger.debug(f"{staging_scenario.num_matched_log_msgs=}")
             c_pattern = re.compile(pattern_desc.item)
             if (
                 (
@@ -505,6 +498,9 @@ class TestLogVerification:
                 and pattern_desc.log_name == log_msg_desc.log_name
                 and pattern_desc.log_level == log_msg_desc.log_level
             ):
+                # logger.debug(f"pattern_desc: {pattern_desc}")
+                # logger.debug(f"log_msg_desc: {log_msg_desc}")
+                # logger.debug(f"{staging_scenario.num_matched_log_msgs=}")
                 staging_scenario.num_matched_log_msgs += 1
                 staging_scenario.matched_log_msgs.append(log_msg_desc)
             else:
@@ -517,8 +513,9 @@ class TestLogVerification:
         max_matched_msgs = 0
         log_msg_perms = it.permutations(self.log_msgs)
         for log_msg_perm in log_msg_perms:
+            # logger.debug(f"log_msg_perm: {log_msg_perm}")
             staging_scenario: LogVerScenario = LogVerScenario()
-            map(build_scenario, self.patterns, log_msg_perm)
+            mi.consume(map(build_scenario, self.patterns, log_msg_perm))
             max_matched_msgs = max(
                 max_matched_msgs, staging_scenario.num_matched_log_msgs
             )
@@ -528,6 +525,7 @@ class TestLogVerification:
             if scenario.num_matched_log_msgs == max_matched_msgs:
                 self.scenarios.append(scenario)
 
+        # logger.debug(f"{max_matched_msgs=}")
         self.stats["patterns"] = ItemStats(
             num_items=patterns_len,
             num_matched_items=max_matched_msgs,
@@ -538,30 +536,6 @@ class TestLogVerification:
             num_matched_items=max_matched_msgs,
             num_unmatched_items=log_msgs_len - max_matched_msgs,
         )
-
-    def build_stats_section(self) -> None:
-        pass
-
-    def verify_stats(self):
-        pass
-
-    def verify_unmatched_patterns(
-        self,
-        scenario: list[LogItemDescriptor],
-    ):
-        pass
-
-    def verify_unmatched_log_msgs(
-        self,
-        scenario: list[LogItemDescriptor],
-    ):
-        pass
-
-    def verify_matched_log_msgs(
-        self,
-        scenario: list[LogItemDescriptor],
-    ):
-        pass
 
 
 ########################################################################
@@ -3626,139 +3600,17 @@ class TestLogVerScratch:
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
-        test_log_ver = TestLogVerification(log_name="scratch_1")
+        test_log_ver = TestLogVerification(
+            log_name="scratch_1", capsys_to_use=capsys, caplog_to_use=caplog
+        )
         ################################################################
         # add pattern and issue log msgs
         ################################################################
-        log_name = "fullmatch_0"
-
-        t_logger = logging.getLogger(log_name)
-        log_ver = LogVer(log_name=log_name)
-
-        exp_unmatched_patterns = []
-        exp_unmatched_msgs = []
-        exp_matched_msgs = []
-
         for _ in range(num_a_msg_arg):
-            t_logger.debug("a")
+            test_log_ver.issue_log_msg("a")
+            test_log_ver.add_pattern("a")
 
         for _ in range(num_a_pat_arg):
-            log_ver.add_msg(log_msg="a")
+            test_log_ver.add_pattern("a")
 
-        exp_matched_msgs.append(
-            LogItemDescriptor(log_name=log_name, log_level=10, log_msg="a")
-        )
-
-        max_log_msg_len = len("a")
-
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-        log_ver.verify_log_results(log_results)
-
-        num_expected_records = 1
-        num_expected_unmatched_records = 0
-        num_actual_log_records = 1
-        num_actual_unmatched_records = 0
-        num_matched_log_records = 1
-
-        num_expected_records_line = (
-            f"* number expected log records: {num_expected_records} *"
-        )
-        num_expected_unmatched_records_line = (
-            f"* number expected unmatched  : {num_expected_unmatched_records} *"
-        )
-        num_actual_records_line = (
-            f"* number actual log records  : {num_actual_log_records} *"
-        )
-        num_actual_unmatched_records_line = (
-            f"* number actual unmatched    : {num_actual_unmatched_records} *"
-        )
-
-        num_matched_log_records_line = (
-            f"* number matched records     : {num_matched_log_records} *"
-        )
-
-        max_line_len = max(
-            len(num_expected_records_line),
-            len(num_expected_unmatched_records_line),
-            len(num_actual_records_line),
-            len(num_actual_unmatched_records_line),
-            len(num_matched_log_records_line),
-        )
-
-        stats_asterisks_line = "*" * max_line_len
-
-        expected_stats_result = []
-        expected_stats_result.append("")
-        expected_stats_result.append(stats_asterisks_line)
-        expected_stats_result.append(num_expected_records_line)
-        expected_stats_result.append(num_expected_unmatched_records_line)
-        expected_stats_result.append(num_actual_records_line)
-        expected_stats_result.append(num_actual_unmatched_records_line)
-        expected_stats_result.append(num_matched_log_records_line)
-        expected_stats_result.append(stats_asterisks_line)
-
-        expected_unmatched_exp_result = []
-        expected_unmatched_exp_result.append("")
-        expected_unmatched_exp_result.append("******************************")
-        expected_unmatched_exp_result.append("* unmatched expected records *")
-        expected_unmatched_exp_result.append("******************************")
-
-        expected_unmatched_actual_result = []
-        expected_unmatched_actual_result.append("")
-        expected_unmatched_actual_result.append("******************************")
-        expected_unmatched_actual_result.append("*  unmatched actual records  *")
-        expected_unmatched_actual_result.append("******************************")
-
-        expected_matched_result = []
-        expected_matched_result.append("")
-        expected_matched_result.append("******************************")
-        expected_matched_result.append("*      matched records       *")
-        expected_matched_result.append("******************************")
-
-        log_name_len = len(log_name)
-        header_log_name_len = len("log_name")
-        if log_name_len > header_log_name_len:
-            log_name_hdr = " " * (log_name_len - header_log_name_len) + "log_name"
-        else:
-            log_name_hdr = "log_name"
-
-        log_level_hdr = " " * 2 + "log_level"
-
-        log_msg_hdr_len = len("log_msg")
-        if max_log_msg_len > log_msg_hdr_len:
-            log_msg_hdr = " " * (max_log_msg_len - log_msg_hdr_len) + " " + "log_msg"
-        else:
-            log_msg_hdr = " " + "log_msg"
-
-        num_records_hdr = " " * 2 + "num_records"
-
-        num_matched_hdr = " " * 2 + "num_matched"
-
-        # expected_result.append(
-        #     log_name_hdr
-        #     + log_level_hdr
-        #     + log_msg_hdr
-        #     + num_records_hdr
-        #     + num_matched_hdr
-        # )
-        #
-        # expected_result.append(f"fullmatch_0        10    a       1    1")
-
-        captured = capsys.readouterr().out
-
-        captured_lines = captured.split("\n")
-        print()
-        for idx in range(len(expected_stats_result)):
-            print(f"expected: {idx=} {expected_stats_result[idx]}")
-            print(f"captured: {idx=} {captured_lines[idx]}")
-            assert captured_lines[idx] == expected_stats_result[idx]
-
-        cap_offset = len(expected_stats_result)
-        for idx in range(len(expected_unmatched_exp_result)):
-            print(f"expected2: {idx=} {expected_unmatched_exp_result[idx]}")
-            print(f"captured2: {idx=} {captured_lines[idx+cap_offset]}")
-            assert (
-                captured_lines[idx + cap_offset] == expected_unmatched_exp_result[idx]
-            )
-
-        # assert captured == expected_result
+        test_log_ver.verify_results()
