@@ -47,6 +47,12 @@ class ErrorTstLogVer(Exception):
     pass
 
 
+class LogFailedVerification(ErrorTstLogVer):
+    """Verification of log failed"""
+
+    pass
+
+
 ########################################################################
 # log_enabled_arg
 ########################################################################
@@ -278,17 +284,67 @@ class TestLogVerification:
             )
         )
 
+    def verify_results(self) -> None:
+        """Verify the log records."""
+        self.build_ver_record()
+
+        @dataclass
+        class VerResult:
+            unmatched_patterns: bool = False
+            unmatched_log_msgs: bool = False
+            matched_log_msgs: bool = False
+
+        ver_result_array: dict[int, VerResult] = {}
+        for idx, scenario in enumerate(self.scenarios):
+            ver_result = VerResult()
+            if self.verify_lines(
+                item_text="pattern",
+                num_items=self.stats["patterns"].num_unmatched_items,
+                expected_items=scenario.unmatched_patterns,
+                log_section=self.capsys_sections["unmatched_patterns"],
+            ):
+                ver_result.unmatched_patterns = True
+
+            if self.verify_lines(
+                item_text="log_msg",
+                num_items=self.stats["log_msgs"].num_unmatched_items,
+                expected_items=scenario.unmatched_log_msgs,
+                log_section=self.capsys_sections["unmatched_log_msgs"],
+            ):
+                ver_result.unmatched_log_msgs = True
+
+            if self.verify_lines(
+                item_text="log_msg",
+                num_items=self.stats["log_msgs"].num_matched_items,
+                expected_items=scenario.matched_log_msgs,
+                log_section=self.capsys_sections["matched_log_msgs"],
+            ):
+                ver_result.matched_log_msgs = True
+
+            if (
+                ver_result.unmatched_patterns
+                and ver_result.unmatched_log_msgs
+                and ver_result.matched_log_msgs
+            ):
+                return
+            ver_result_array[idx] = ver_result
+
+        raise LogFailedVerification(f"log failed to verify \n{ver_result_array=}")
+
     def verify_lines(
         self,
         item_text: str,
         num_items: int,
         expected_items: list[LogItemDescriptor],
         log_section: LogSection,
-    ):
+    ) -> bool:
+        logger.debug(
+            f"verify_lines entry: {item_text=}, {num_items=}, {expected_items=}, {log_section=}"
+        )
         if num_items == 0:
             assert len(expected_items) == 0
             assert len(log_section.line_items) == 0
-            return
+            return True
 
         assert len(expected_items) > 0
         assert len(log_section.line_items) > 0
@@ -308,42 +364,18 @@ class TestLogVerification:
             + "  num_records"
             + "  num_matched"
         )
-        assert log_section.hdr_line == expected_hdr_line
+        if log_section.hdr_line != expected_hdr_line:
+            return False
 
         for expected_item in expected_items:
-            assert expected_item.item in log_section
-            log_section[expected_item.log_msg].num_reconciled_matches += 1
+            if expected_item.item in log_section.line_items:
+                log_section.line_items[expected_item.item].num_reconciled_matches += 1
 
-        assert (
-            log_section[expected_item.log_msg].num_reconciled_matches
-            == log_section[expected_item.log_msg].num_actual_matches
-        )
+        for key, line_item in log_section.line_items.items():
+            if line_item.num_reconciled_matches != line_item.num_actual_matches:
+                return False
 
-    def verify_results(self) -> None:
-        """Verify the log records."""
-        self.build_ver_record()
-
-        for scenario in self.scenarios:
-            self.verify_lines(
-                item_text="pattern",
-                num_items=self.stats["patterns"].num_unmatched_items,
-                expected_items=scenario.unmatched_patterns,
-                log_section=self.capsys_sections["unmatched_patterns"],
-            )
-
-            self.verify_lines(
-                item_text="log_msg",
-                num_items=self.stats["log_msgs"].num_unmatched_items,
-                expected_items=scenario.unmatched_log_msgs,
-                log_section=self.capsys_sections["unmatched_log_msgs"],
-            )
-
-            self.verify_lines(
-                item_text="log_msg",
-                num_items=self.stats["log_msgs"].num_matched_items,
-                expected_items=scenario.matched_log_msgs,
-                log_section=self.capsys_sections["matched_log_msgs"],
-            )
+        return True
 
     def build_ver_record(self):
         self.build_scenarios()
@@ -435,8 +467,8 @@ class TestLogVerification:
         )
 
         for idx in range(start_idx + 4, len(captured_lines)):
-            if captured_lines[idx] == section_asterisks:
-                ret_section.end_idx = idx - 1
+            if captured_lines[idx] == "":
+                ret_section.end_idx = idx
                 return ret_section
             else:
                 rsplit_actual = captured_lines[idx].rsplit(maxsplit=2)
@@ -449,8 +481,8 @@ class TestLogVerification:
                     num_actual_matches=int(rsplit_actual[2]),
                     num_reconciled_matches=0,
                 )
-        ret_section.end_idx = idx
-        return ret_section
+        # ret_section.end_idx = idx
+        # return ret_section
 
     def build_scenarios(self) -> None:
 
