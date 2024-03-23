@@ -230,6 +230,7 @@ logger = logging.getLogger("log_ver1")
 pd.set_option("mode.chained_assignment", "raise")
 pd.set_option("display.max_columns", 30)
 pd.set_option("max_colwidth", 120)
+pd.set_option("display.width", 300)
 pd.options.mode.copy_on_write = True
 
 ########################################################################
@@ -621,6 +622,12 @@ class LogVer:
             max_potential_matches = max(max_potential_matches, min_potential_matches)
 
             if p_min_potential_matches <= m_min_potential_matches:
+                # logger.debug(
+                #     f"calling search_df 1 {p_min_potential_matches=}, {m_min_potential_matches=}, {min_potential_matches=}, {max_potential_matches=}"
+                # )
+                # logger.debug(f"before avail_pattern_grp: \n{avail_pattern_grp}")
+                # logger.debug(f"before pattern_grp: \n{pattern_grp}")
+                # logger.debug(f"before msg_grp: \n{msg_grp}")
                 self.search_df(
                     avail_df=avail_pattern_grp,
                     search_arg_df=pattern_grp,
@@ -628,6 +635,9 @@ class LogVer:
                     min_potential_matches=min_potential_matches,
                 )
             else:
+                # logger.debug(
+                #     f"calling search_df 2 {p_min_potential_matches=}, {m_min_potential_matches=}, {min_potential_matches=}, {max_potential_matches=}"
+                # )
                 self.search_df(
                     avail_df=avail_msg_grp,
                     search_arg_df=msg_grp,
@@ -638,7 +648,8 @@ class LogVer:
         ################################################################
         # reconcile pattern matches
         ################################################################
-        # logger.debug(f"pattern_grp= \n{pattern_grp}")
+        # logger.debug(f"2 pattern_grp: \n{pattern_grp}")
+        # logger.debug(f"2 msg_grp: \n{msg_grp}")
         num_patterns = pattern_grp["num_records"].sum()
         num_matched_patterns = pattern_grp.num_matched.sum()
         num_unmatched_patterns = num_patterns - num_matched_patterns
@@ -868,7 +879,7 @@ class LogVer:
                             arg_df_idx_adjust_list = search_targ_df.at[
                                 potential_idx, "potential_matches"
                             ].copy()
-                            arg_df_idx_adjust_list.remove(search_item.Index)
+                            # arg_df_idx_adjust_list.remove(search_item.Index)
                             new_arg_min = min_potential_matches
                             if arg_df_idx_adjust_list:
                                 new_arg_min = adjust_potential_matches(
@@ -894,7 +905,7 @@ class LogVer:
                             targ_df_idx_adjust_list = (
                                 search_item.potential_matches.copy()
                             )
-                            targ_df_idx_adjust_list.remove(potential_idx)
+                            # targ_df_idx_adjust_list.remove(potential_idx)
                             new_targ_min = min_potential_matches
                             if targ_df_idx_adjust_list:
                                 new_targ_min = adjust_potential_matches(

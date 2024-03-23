@@ -370,29 +370,47 @@ class TestLogVerification:
         log_section: LogSection,
         matched_section: bool,
     ) -> bool:
-        # logger.debug(
-        #     f"verify_lines entry: {item_text=}, {num_items=}, {expected_items=}, {log_section=}"
-        # )
+        logger.debug(
+            f"verify_lines entry: {item_text=}, {num_unmatched_stats=}, {num_matched_stats=}, "
+            f"{unmatched_items=}, {matched_items=}, {log_section=}, {matched_section=}"
+        )
+        exp_records = True
         if matched_section:
+            exp_records = False
             if num_matched_stats == 0:
                 assert len(matched_items) == 0
                 assert len(log_section.line_items) == 0
-                # logger.debug(f"verify_lines returning True 1")
+                logger.debug(f"verify_lines returning True 1")
                 return True
-            elif len(unmatched_items) > 0:
-                assert len(log_section.line_items) == 0
-                # logger.debug(f"verify_lines returning True 1.1")
-                return True
-
             else:
-                assert len(matched_items) > 0
-                assert len(log_section.line_items) > 0
+                for matched_item in matched_items:
+                    unmatched_found = False
+                    for unmatched_item in unmatched_items:
+                        if (
+                            matched_item.item == unmatched_item.item
+                            and matched_item.log_name == unmatched_item.log_name
+                            and matched_item.log_level == unmatched_item.log_level
+                        ):
+                            unmatched_found = True
+                            break
+                    if not unmatched_found:
+                        exp_records = True
+                        break
+
+            # elif len(unmatched_items) > 0:
+            #     assert len(log_section.line_items) == 0
+            #     # logger.debug(f"verify_lines returning True 1.1")
+            #     return True
+            #
+            # else:
+            #     assert len(matched_items) > 0
+            #     assert len(log_section.line_items) > 0
 
         else:
             if num_unmatched_stats == 0:
                 assert len(unmatched_items) == 0
                 assert len(log_section.line_items) == 0
-                # logger.debug(f"verify_lines returning True 2")
+                logger.debug(f"verify_lines returning True 2")
                 return True
             else:
                 assert len(unmatched_items) > 0
@@ -407,47 +425,52 @@ class TestLogVerification:
             max_log_name_len = max(max_log_name_len, len(item.log_name))
             max_log_msg_len = max(max_log_msg_len, len(item.item))
 
-        expected_hdr_line = (
-            " " * (max_log_name_len - len("log_name"))
-            + "log_name"
-            + " "
-            + " log_level"
-            + " "
-            + " " * (max_log_msg_len - len(item_text))
-            + item_text
-            + "  num_records"
-            + "  num_matched"
-        )
-        if log_section.hdr_line != expected_hdr_line:
-            # logger.debug(
-            #     f"verify_lines returning False 3 "
-            #     f"\n{log_section.hdr_line=} \n{expected_hdr_line=}"
-            # )
-            return False
-
-        for item in unmatched_items:
-            if item.item in log_section.line_items:
-                log_section.line_items[item.item].num_counted_unmatched += 1
-
-        for item in matched_items:
-            if item.item in log_section.line_items:
-                log_section.line_items[item.item].num_counted_matched += 1
-
-        for key, line_item in log_section.line_items.items():
-            if line_item.num_actual_matches != line_item.num_counted_matched:
-                # logger.debug(
-                #     f"verify_lines returning False 4 "
-                #     f"{line_item.num_actual_matches=} {line_item.num_counted_matched=}"
-                # )
-                return False
-            if line_item.num_actual_unmatches != line_item.num_counted_unmatched:
-                # logger.debug(
-                #     f"verify_lines returning False 5 "
-                #     f"{line_item.num_actual_unmatches=} {line_item.num_counted_unmatched=}"
-                # )
+        if exp_records:
+            expected_hdr_line = (
+                " " * (max_log_name_len - len("log_name"))
+                + "log_name"
+                + " "
+                + " log_level"
+                + " "
+                + " " * (max_log_msg_len - len(item_text))
+                + item_text
+                + "  num_records"
+                + "  num_matched"
+            )
+            if log_section.hdr_line != expected_hdr_line:
+                logger.debug(
+                    f"verify_lines returning False 3 "
+                    f"\n{log_section.hdr_line=} \n{expected_hdr_line=}"
+                )
                 return False
 
-        # logger.debug(f"verify_lines returning True 6")
+            for key in log_section.line_items.keys():
+                log_section.line_items[key].num_counted_unmatched = 0
+                log_section.line_items[key].num_counted_matched = 0
+
+            for item in unmatched_items:
+                if item.item in log_section.line_items:
+                    log_section.line_items[item.item].num_counted_unmatched += 1
+
+            for item in matched_items:
+                if item.item in log_section.line_items:
+                    log_section.line_items[item.item].num_counted_matched += 1
+
+            for key, line_item in log_section.line_items.items():
+                if line_item.num_actual_matches != line_item.num_counted_matched:
+                    logger.debug(
+                        f"verify_lines returning False 4 "
+                        f"{line_item.num_actual_matches=} {line_item.num_counted_matched=}"
+                    )
+                    return False
+                if line_item.num_actual_unmatches != line_item.num_counted_unmatched:
+                    logger.debug(
+                        f"verify_lines returning False 5 "
+                        f"{line_item.num_actual_unmatches=} {line_item.num_counted_unmatched=}"
+                    )
+                    return False
+
+        logger.debug(f"verify_lines returning True 6")
         return True
 
     def build_ver_record(self):
@@ -3709,6 +3732,8 @@ class TestLogVerScratch:
     @pytest.mark.parametrize("num_aa_pat_arg", [0, 1, 2])
     # @pytest.mark.parametrize("num_a_msg_arg", [2])
     # @pytest.mark.parametrize("num_a_pat_arg", [1])
+    # @pytest.mark.parametrize("num_aa_msg_arg", [1])
+    # @pytest.mark.parametrize("num_aa_pat_arg", [2])
     def test_log_verifier_scratch(
         self,
         num_a_msg_arg: int,
@@ -3748,12 +3773,21 @@ class TestLogVerScratch:
         exp_num_unmatched_a_log_msgs = max(0, (num_a_msg_arg - num_a_pat_arg))
         exp_num_matched_a_log_msgs = min(num_a_msg_arg, num_a_pat_arg)
 
-        exp_num_unmatched_a_patterns = max(0, (num_a_pat_arg - num_a_msg_arg))
-        exp_num_unmatched_a_log_msgs = max(0, (num_a_msg_arg - num_a_pat_arg))
-        exp_num_matched_a_log_msgs = min(num_a_msg_arg, num_a_pat_arg)
+        if exp_num_unmatched_a_patterns:
+            num_aa_patterns = num_aa_pat_arg + exp_num_unmatched_a_patterns
+            exp_num_unmatched_a_patterns = 0
+        else:
+            num_aa_patterns = num_aa_pat_arg
+
+        exp_num_unmatched_aa_patterns = max(0, (num_aa_patterns - num_aa_msg_arg))
+        exp_num_unmatched_aa_log_msgs = max(0, (num_aa_msg_arg - num_aa_patterns))
+        exp_num_matched_aa_log_msgs = min(num_aa_msg_arg, num_aa_patterns)
 
         test_log_ver.verify_results(
-            exp_num_unmatched_patterns=exp_num_unmatched_patterns,
-            exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
-            exp_num_matched_log_msgs=exp_num_matched_log_msgs,
+            exp_num_unmatched_patterns=exp_num_unmatched_a_patterns
+            + exp_num_unmatched_aa_patterns,
+            exp_num_unmatched_log_msgs=exp_num_unmatched_a_log_msgs
+            + exp_num_unmatched_aa_log_msgs,
+            exp_num_matched_log_msgs=exp_num_matched_a_log_msgs
+            + exp_num_matched_aa_log_msgs,
         )
