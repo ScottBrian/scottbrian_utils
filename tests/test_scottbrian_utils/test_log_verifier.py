@@ -288,9 +288,25 @@ class TestLogVerification:
             )
         )
 
-    def verify_results(self) -> None:
+    def verify_results(
+        self,
+        exp_num_unmatched_patterns: Optional[int] = None,
+        exp_num_unmatched_log_msgs: Optional[int] = None,
+        exp_num_matched_log_msgs: Optional[int] = None,
+    ) -> None:
         """Verify the log records."""
         self.build_ver_record()
+
+        if exp_num_unmatched_patterns is not None:
+            assert (
+                self.stats["patterns"].num_unmatched_items == exp_num_unmatched_patterns
+            )
+        if exp_num_unmatched_log_msgs is not None:
+            assert (
+                self.stats["log_msgs"].num_unmatched_items == exp_num_unmatched_log_msgs
+            )
+        if exp_num_matched_log_msgs is not None:
+            assert self.stats["log_msgs"].num_matched_items == exp_num_matched_log_msgs
 
         @dataclass
         class VerResult:
@@ -361,8 +377,13 @@ class TestLogVerification:
             if num_matched_stats == 0:
                 assert len(matched_items) == 0
                 assert len(log_section.line_items) == 0
-                logger.debug(f"verify_lines returning True 1")
+                # logger.debug(f"verify_lines returning True 1")
                 return True
+            elif len(unmatched_items) > 0:
+                assert len(log_section.line_items) == 0
+                # logger.debug(f"verify_lines returning True 1.1")
+                return True
+
             else:
                 assert len(matched_items) > 0
                 assert len(log_section.line_items) > 0
@@ -371,7 +392,7 @@ class TestLogVerification:
             if num_unmatched_stats == 0:
                 assert len(unmatched_items) == 0
                 assert len(log_section.line_items) == 0
-                logger.debug(f"verify_lines returning True 2")
+                # logger.debug(f"verify_lines returning True 2")
                 return True
             else:
                 assert len(unmatched_items) > 0
@@ -398,10 +419,10 @@ class TestLogVerification:
             + "  num_matched"
         )
         if log_section.hdr_line != expected_hdr_line:
-            logger.debug(
-                f"verify_lines returning False 3 "
-                f"\n{log_section.hdr_line=} \n{expected_hdr_line=}"
-            )
+            # logger.debug(
+            #     f"verify_lines returning False 3 "
+            #     f"\n{log_section.hdr_line=} \n{expected_hdr_line=}"
+            # )
             return False
 
         for item in unmatched_items:
@@ -414,19 +435,19 @@ class TestLogVerification:
 
         for key, line_item in log_section.line_items.items():
             if line_item.num_actual_matches != line_item.num_counted_matched:
-                logger.debug(
-                    f"verify_lines returning False 4 "
-                    f"{line_item.num_actual_matches=} {line_item.num_counted_matched=}"
-                )
+                # logger.debug(
+                #     f"verify_lines returning False 4 "
+                #     f"{line_item.num_actual_matches=} {line_item.num_counted_matched=}"
+                # )
                 return False
             if line_item.num_actual_unmatches != line_item.num_counted_unmatched:
-                logger.debug(
-                    f"verify_lines returning False 5 "
-                    f"{line_item.num_actual_unmatches=} {line_item.num_counted_unmatched=}"
-                )
+                # logger.debug(
+                #     f"verify_lines returning False 5 "
+                #     f"{line_item.num_actual_unmatches=} {line_item.num_counted_unmatched=}"
+                # )
                 return False
 
-        logger.debug(f"verify_lines returning True 6")
+        # logger.debug(f"verify_lines returning True 6")
         return True
 
     def build_ver_record(self):
@@ -3684,12 +3705,16 @@ class TestLogVerScratch:
 
     @pytest.mark.parametrize("num_a_msg_arg", [0, 1, 2])
     @pytest.mark.parametrize("num_a_pat_arg", [0, 1, 2])
-    # @pytest.mark.parametrize("num_a_msg_arg", [1])
+    @pytest.mark.parametrize("num_aa_msg_arg", [0, 1, 2])
+    @pytest.mark.parametrize("num_aa_pat_arg", [0, 1, 2])
+    # @pytest.mark.parametrize("num_a_msg_arg", [2])
     # @pytest.mark.parametrize("num_a_pat_arg", [1])
     def test_log_verifier_scratch(
         self,
         num_a_msg_arg: int,
         num_a_pat_arg: int,
+        num_aa_msg_arg: int,
+        num_aa_pat_arg: int,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -3698,6 +3723,8 @@ class TestLogVerScratch:
         Args:
             num_a_msg_arg: number of a log msgs to issue
             num_a_pat_arg: number of a patterns to use
+            num_aa_msg_arg: number of aa log msgs to issue
+            num_aa_pat_arg: number of aa patterns to use
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
@@ -3709,8 +3736,24 @@ class TestLogVerScratch:
         ################################################################
         for _ in range(num_a_msg_arg):
             test_log_ver.issue_log_msg("a")
+        for _ in range(num_aa_msg_arg):
+            test_log_ver.issue_log_msg("aa")
 
         for _ in range(num_a_pat_arg):
             test_log_ver.add_pattern("a")
+        for _ in range(num_aa_pat_arg):
+            test_log_ver.add_pattern("aa")
 
-        test_log_ver.verify_results()
+        exp_num_unmatched_a_patterns = max(0, (num_a_pat_arg - num_a_msg_arg))
+        exp_num_unmatched_a_log_msgs = max(0, (num_a_msg_arg - num_a_pat_arg))
+        exp_num_matched_a_log_msgs = min(num_a_msg_arg, num_a_pat_arg)
+
+        exp_num_unmatched_a_patterns = max(0, (num_a_pat_arg - num_a_msg_arg))
+        exp_num_unmatched_a_log_msgs = max(0, (num_a_msg_arg - num_a_pat_arg))
+        exp_num_matched_a_log_msgs = min(num_a_msg_arg, num_a_pat_arg)
+
+        test_log_ver.verify_results(
+            exp_num_unmatched_patterns=exp_num_unmatched_patterns,
+            exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
+            exp_num_matched_log_msgs=exp_num_matched_log_msgs,
+        )

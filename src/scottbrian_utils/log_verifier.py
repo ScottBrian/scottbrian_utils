@@ -577,6 +577,9 @@ class LogVer:
         ################################################################
         # settle matches
         ################################################################
+        # logger.debug(f"1 pattern_grp: \n{pattern_grp}")
+        # logger.debug(f"1 msg_grp: \n{msg_grp}")
+
         num_loops = 0
         max_potential_matches = 0
         while True:
@@ -635,6 +638,7 @@ class LogVer:
         ################################################################
         # reconcile pattern matches
         ################################################################
+        # logger.debug(f"pattern_grp= \n{pattern_grp}")
         num_patterns = pattern_grp["num_records"].sum()
         num_matched_patterns = pattern_grp.num_matched.sum()
         num_unmatched_patterns = num_patterns - num_matched_patterns
@@ -660,11 +664,12 @@ class LogVer:
         ################################################################
         # reconcile msg matches
         ################################################################
+        # logger.debug(f"msg_grp= \n{msg_grp}")
         num_msgs = msg_grp["num_records"].sum()
         num_matched_msgs = msg_grp.num_matched.sum()
         num_unmatched_msgs = num_msgs - num_matched_msgs
         if num_msgs > 0 and num_msgs == num_matched_msgs:
-            matched_actual_print = msg_grp.to_string(
+            matched_log_msg_print = msg_grp.to_string(
                 columns=[
                     "log_name",
                     "log_level",
@@ -678,9 +683,9 @@ class LogVer:
         else:
             matched_actual_df = msg_grp[msg_grp.num_records == msg_grp.num_matched]
             if matched_actual_df.empty:
-                matched_actual_print = ""
+                matched_log_msg_print = ""
             else:
-                matched_actual_print = matched_actual_df.to_string(
+                matched_log_msg_print = matched_actual_df.to_string(
                     columns=[
                         "log_name",
                         "log_level",
@@ -714,7 +719,7 @@ class LogVer:
             num_unmatched_log_msgs=num_unmatched_msgs,
             unmatched_patterns=unmatched_pattern_print,
             unmatched_log_msgs=unmatched_log_msg_print,
-            matched_log_msgs=matched_actual_print,
+            matched_log_msgs=matched_log_msg_print,
         )
 
     ####################################################################
@@ -885,10 +890,7 @@ class LogVer:
                                 search_item.Index, "num_matched"
                             ] += arg_num_avail
 
-                            arg_num_avail = 0
-                            search_arg_df.at[search_item.Index, "num_avail"] = (
-                                arg_num_avail
-                            )
+                            search_arg_df.at[search_item.Index, "num_avail"] = 0
                             targ_df_idx_adjust_list = (
                                 search_item.potential_matches.copy()
                             )
@@ -910,6 +912,10 @@ class LogVer:
                             )
                             if new_targ_min < min_potential_matches:
                                 return new_targ_min
+
+                            # move on since this arg is now depleted
+                            # regardless of any additional potential
+                            # targets to try
                             break
 
                 # We either found a match or tried each index and found
