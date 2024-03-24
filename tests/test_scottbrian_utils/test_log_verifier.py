@@ -189,6 +189,7 @@ class LogSectionLineItem:
     log_name: str
     log_level: int
     item: str
+    fullmatch: str
     num_items: int
     num_actual_unmatches: int
     num_actual_matches: int
@@ -426,6 +427,11 @@ class TestLogVerification:
             max_log_msg_len = max(max_log_msg_len, len(item.item))
 
         if exp_records:
+            if item_text == "pattern":
+                fullmatch_text = "  fullmatch"
+            else:
+                fullmatch_text = ""
+
             expected_hdr_line = (
                 " " * (max_log_name_len - len("log_name"))
                 + "log_name"
@@ -434,6 +440,7 @@ class TestLogVerification:
                 + " "
                 + " " * (max_log_msg_len - len(item_text))
                 + item_text
+                + fullmatch_text
                 + "  num_records"
                 + "  num_matched"
             )
@@ -520,7 +527,7 @@ class TestLogVerification:
             start_idx=8,
             captured_lines=captured_lines,
             section_hdr_line=unmatched_patterns_hdr_line,
-            matched_section=False,
+            section_is_pattern=True,
         )
 
         self.capsys_sections["unmatched_patterns"] = section_item
@@ -529,7 +536,7 @@ class TestLogVerification:
             start_idx=section_item.end_idx + 1,
             captured_lines=captured_lines,
             section_hdr_line=unmatched_log_msgs_hdr_line,
-            matched_section=False,
+            section_is_pattern=False,
         )
 
         self.capsys_sections["unmatched_log_msgs"] = section_item
@@ -538,7 +545,7 @@ class TestLogVerification:
             start_idx=section_item.end_idx + 1,
             captured_lines=captured_lines,
             section_hdr_line=matched_log_msgs_hdr_line,
-            matched_section=True,
+            section_is_pattern=False,
         )
 
         self.capsys_sections["matched_log_msgs"] = section_item
@@ -548,7 +555,7 @@ class TestLogVerification:
         start_idx: int,
         captured_lines: list[str],
         section_hdr_line: str,
-        matched_section: bool,
+        section_is_pattern: bool,
     ) -> LogSection:
         section_asterisks = "***********************"
         assert captured_lines[start_idx] == section_asterisks
@@ -582,10 +589,13 @@ class TestLogVerification:
                 #     num_exp_reconciled = num_matches
                 # else:
                 #     num_exp_reconciled = num_items - num_matches
+                if section_is_pattern:
+                    item =
                 ret_section.line_items[lsplit_actual[2]] = LogSectionLineItem(
                     log_name=lsplit_actual[0],
                     log_level=int(lsplit_actual[1]),
                     item=lsplit_actual[2],
+                    fullmatch=fm_var,
                     num_items=num_items,
                     num_actual_unmatches=num_items - num_matches,
                     num_actual_matches=num_matches,
@@ -3726,20 +3736,26 @@ class TestLogVerScratch:
         # scenario 3, 3: 2 patterns, 3 msgs
         #     0 unmatched patterns, 0 unmatched msgs, 3 matched msgs
 
-    @pytest.mark.parametrize("num_a_msg_arg", [0, 1, 2])
-    @pytest.mark.parametrize("num_a_pat_arg", [0, 1, 2])
-    @pytest.mark.parametrize("num_aa_msg_arg", [0, 1, 2])
-    @pytest.mark.parametrize("num_aa_pat_arg", [0, 1, 2])
-    # @pytest.mark.parametrize("num_a_msg_arg", [2])
-    # @pytest.mark.parametrize("num_a_pat_arg", [1])
-    # @pytest.mark.parametrize("num_aa_msg_arg", [1])
-    # @pytest.mark.parametrize("num_aa_pat_arg", [2])
+    # @pytest.mark.parametrize("num_a_msg_arg", [0, 1, 2])
+    # @pytest.mark.parametrize("num_a_pat_arg", [0, 1, 2])
+    # @pytest.mark.parametrize("num_a_fm_pat_arg", [0, 1, 2])
+    # @pytest.mark.parametrize("num_aa_msg_arg", [0, 1, 2])
+    # @pytest.mark.parametrize("num_aa_pat_arg", [0, 1, 2])
+    # @pytest.mark.parametrize("num_aa_fm_pat_arg", [0, 1, 2])
+    @pytest.mark.parametrize("num_a_msg_arg", [0])
+    @pytest.mark.parametrize("num_a_pat_arg", [1])
+    @pytest.mark.parametrize("num_a_fm_pat_arg", [1])
+    @pytest.mark.parametrize("num_aa_msg_arg", [0])
+    @pytest.mark.parametrize("num_aa_pat_arg", [0])
+    @pytest.mark.parametrize("num_aa_fm_pat_arg", [0])
     def test_log_verifier_scratch(
         self,
         num_a_msg_arg: int,
         num_a_pat_arg: int,
+        num_a_fm_pat_arg: int,
         num_aa_msg_arg: int,
         num_aa_pat_arg: int,
+        num_aa_fm_pat_arg: int,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -3748,8 +3764,10 @@ class TestLogVerScratch:
         Args:
             num_a_msg_arg: number of a log msgs to issue
             num_a_pat_arg: number of a patterns to use
+            num_a_fm_pat_arg: number of a fullmatch patterns to use
             num_aa_msg_arg: number of aa log msgs to issue
             num_aa_pat_arg: number of aa patterns to use
+            num_aa_fm_pat_arg: number of aa fullmatch patterns to use
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
@@ -3757,27 +3775,54 @@ class TestLogVerScratch:
             log_name="scratch_1", capsys_to_use=capsys, caplog_to_use=caplog
         )
         ################################################################
-        # add pattern and issue log msgs
+        # issue log msgs
         ################################################################
         for _ in range(num_a_msg_arg):
             test_log_ver.issue_log_msg("a")
+
         for _ in range(num_aa_msg_arg):
             test_log_ver.issue_log_msg("aa")
 
+        ################################################################
+        # add patterns
+        ################################################################
         for _ in range(num_a_pat_arg):
             test_log_ver.add_pattern("a")
+
+        for _ in range(num_a_fm_pat_arg):
+            test_log_ver.add_pattern("a", fullmatch=True)
+
         for _ in range(num_aa_pat_arg):
             test_log_ver.add_pattern("aa")
 
-        exp_num_unmatched_a_patterns = max(0, (num_a_pat_arg - num_a_msg_arg))
-        exp_num_unmatched_a_log_msgs = max(0, (num_a_msg_arg - num_a_pat_arg))
-        exp_num_matched_a_log_msgs = min(num_a_msg_arg, num_a_pat_arg)
+        for _ in range(num_aa_fm_pat_arg):
+            test_log_ver.add_pattern("aa", fullmatch=True)
+
+        ################################################################
+        # calculate expected match numbers
+        ################################################################
+        exp_num_unmatched_a_fm_patterns = max(0, (num_a_fm_pat_arg - num_a_msg_arg))
+        if exp_num_unmatched_a_fm_patterns > 0:
+            exp_num_unmatched_a_patterns = num_a_pat_arg
+        else:
+            exp_num_unmatched_a_patterns = max(
+                0, (num_a_pat_arg + num_a_fm_pat_arg - num_a_msg_arg)
+            )
+
+        exp_num_unmatched_a_log_msgs = max(
+            0, (num_a_msg_arg - num_a_pat_arg - num_a_fm_pat_arg)
+        )
+        exp_num_matched_a_log_msgs = min(
+            num_a_msg_arg, (num_a_pat_arg + num_a_fm_pat_arg)
+        )
 
         if exp_num_unmatched_a_patterns:
-            num_aa_patterns = num_aa_pat_arg + exp_num_unmatched_a_patterns
+            num_aa_patterns = (
+                num_aa_pat_arg + num_aa_fm_pat_arg + exp_num_unmatched_a_patterns
+            )
             exp_num_unmatched_a_patterns = 0
         else:
-            num_aa_patterns = num_aa_pat_arg
+            num_aa_patterns = num_aa_pat_arg + num_aa_fm_pat_arg
 
         exp_num_unmatched_aa_patterns = max(0, (num_aa_patterns - num_aa_msg_arg))
         exp_num_unmatched_aa_log_msgs = max(0, (num_aa_msg_arg - num_aa_patterns))
@@ -3785,9 +3830,13 @@ class TestLogVerScratch:
 
         test_log_ver.verify_results(
             exp_num_unmatched_patterns=exp_num_unmatched_a_patterns
+            + exp_num_unmatched_a_fm_patterns
             + exp_num_unmatched_aa_patterns,
             exp_num_unmatched_log_msgs=exp_num_unmatched_a_log_msgs
             + exp_num_unmatched_aa_log_msgs,
             exp_num_matched_log_msgs=exp_num_matched_a_log_msgs
             + exp_num_matched_aa_log_msgs,
         )
+
+        # log_results = test_log_ver.log_ver.get_match_results(caplog)
+        # test_log_ver.log_ver.print_match_results(log_results)

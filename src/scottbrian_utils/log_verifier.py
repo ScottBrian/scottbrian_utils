@@ -666,6 +666,7 @@ class LogVer:
                     "log_name",
                     "log_level",
                     "pattern",
+                    "fullmatch",
                     "num_records",
                     "num_matched",
                 ],
