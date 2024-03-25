@@ -3754,12 +3754,12 @@ class TestLogVerScratch:
     @pytest.mark.parametrize("num_aaa_pat_arg", [0, 1, 2])
     @pytest.mark.parametrize("num_aaa_fm_pat_arg", [0, 1, 2])
     # @pytest.mark.parametrize("num_a_msg_arg", [0])
-    # @pytest.mark.parametrize("num_a_pat_arg", [1])
+    # @pytest.mark.parametrize("num_a_pat_arg", [0])
     # @pytest.mark.parametrize("num_a_fm_pat_arg", [0])
-    # @pytest.mark.parametrize("num_aa_msg_arg", [1])
+    # @pytest.mark.parametrize("num_aa_msg_arg", [0])
     # @pytest.mark.parametrize("num_aa_pat_arg", [0])
-    # @pytest.mark.parametrize("num_aa_fm_pat_arg", [0])
-    # @pytest.mark.parametrize("num_aaa_msg_arg", [0])
+    # @pytest.mark.parametrize("num_aa_fm_pat_arg", [1])
+    # @pytest.mark.parametrize("num_aaa_msg_arg", [1])
     # @pytest.mark.parametrize("num_aaa_pat_arg", [0])
     # @pytest.mark.parametrize("num_aaa_fm_pat_arg", [0])
     def test_log_verifier_scratch(
@@ -3824,68 +3824,75 @@ class TestLogVerScratch:
         for _ in range(num_aaa_fm_pat_arg):
             test_log_ver.add_pattern("aaa", fullmatch=True)
 
+        @dataclass
+        class NumExpectedAccumulator:
+            num_surplus_match_patterns: int = 0
+            num_unmatched_patterns: int = 0
+            num_unmatched_log_msgs: int = 0
+            num_matched_log_msgs: int = 0
+
+        def calc_expected_values(
+            num_exp_accumulator: NumExpectedAccumulator,
+            num_match_patterns: int,
+            num_fullmatch_patterns: int,
+            num_log_msgs,
+        ) -> None:
+            input_surplus_match_patterns = (
+                num_exp_accumulator.num_surplus_match_patterns
+            )
+            num_patterns = (
+                input_surplus_match_patterns
+                + num_match_patterns
+                + num_fullmatch_patterns
+            )
+            num_surplus_both_patterns = max(0, (num_patterns - num_log_msgs))
+            num_surplus_fullmatch_patterns = max(
+                0, (num_fullmatch_patterns - num_log_msgs)
+            )
+            num_surplus_match_patterns = max(
+                0, (num_surplus_both_patterns - num_surplus_fullmatch_patterns)
+            )
+
+            num_exp_accumulator.num_surplus_match_patterns = num_surplus_match_patterns
+            num_exp_accumulator.num_unmatched_patterns = (
+                num_exp_accumulator.num_unmatched_patterns
+                + num_surplus_both_patterns
+                - input_surplus_match_patterns
+            )
+            num_exp_accumulator.num_unmatched_log_msgs += max(
+                0, (num_log_msgs - num_patterns)
+            )
+            num_exp_accumulator.num_matched_log_msgs += min(num_log_msgs, num_patterns)
+
         ################################################################
         # calculate expected match numbers
         ################################################################
-        exp_num_unmatched_a_fm_patterns = max(0, (num_a_fm_pat_arg - num_a_msg_arg))
-        if exp_num_unmatched_a_fm_patterns > 0:
-            exp_num_unmatched_a_patterns = num_a_pat_arg
-        else:
-            exp_num_unmatched_a_patterns = max(
-                0, (num_a_pat_arg + num_a_fm_pat_arg - num_a_msg_arg)
-            )
-
-        exp_num_unmatched_a_log_msgs = max(
-            0, (num_a_msg_arg - num_a_pat_arg - num_a_fm_pat_arg)
-        )
-        exp_num_matched_a_log_msgs = min(
-            num_a_msg_arg, (num_a_pat_arg + num_a_fm_pat_arg)
+        num_exp_accumulator = NumExpectedAccumulator()
+        calc_expected_values(
+            num_exp_accumulator=num_exp_accumulator,
+            num_match_patterns=num_a_pat_arg,
+            num_fullmatch_patterns=num_a_fm_pat_arg,
+            num_log_msgs=num_a_msg_arg,
         )
 
-        # exp_num_unmatched_aa_fm_patterns = max(0, (num_aa_fm_pat_arg - num_aa_msg_arg))
-        # if exp_num_unmatched_aa_fm_patterns > 0:
-        #     exp_num_unmatched_aa_patterns = num_aa_pat_arg + exp_num_unmatched_a_patterns
-        #     exp_num_unmatched_a_patterns = 0
-        # else:
-        #     exp_num_unmatched_aa_patterns = max(
-        #         0, (exp_num_unmatched_a_patterns + num_aa_pat_arg + num_aa_fm_pat_arg - num_aa_msg_arg)
-        #     )
+        calc_expected_values(
+            num_exp_accumulator=num_exp_accumulator,
+            num_match_patterns=num_aa_pat_arg,
+            num_fullmatch_patterns=num_aa_fm_pat_arg,
+            num_log_msgs=num_aa_msg_arg,
+        )
 
-        if exp_num_unmatched_a_patterns:
-            num_aa_patterns = (
-                num_aa_pat_arg + num_aa_fm_pat_arg + exp_num_unmatched_a_patterns
-            )
-            exp_num_unmatched_a_patterns = 0
-        else:
-            num_aa_patterns = num_aa_pat_arg + num_aa_fm_pat_arg
-
-        exp_num_unmatched_aa_patterns = max(0, (num_aa_patterns - num_aa_msg_arg))
-        exp_num_unmatched_aa_log_msgs = max(0, (num_aa_msg_arg - num_aa_patterns))
-        exp_num_matched_aa_log_msgs = min(num_aa_msg_arg, num_aa_patterns)
-
-        if exp_num_unmatched_aa_patterns:
-            num_aaa_patterns = (
-                num_aaa_pat_arg + num_aaa_fm_pat_arg + exp_num_unmatched_aa_patterns
-            )
-            exp_num_unmatched_aa_patterns = 0
-        else:
-            num_aaa_patterns = num_aaa_pat_arg + num_aaa_fm_pat_arg
-
-        exp_num_unmatched_aaa_patterns = max(0, (num_aaa_patterns - num_aaa_msg_arg))
-        exp_num_unmatched_aaa_log_msgs = max(0, (num_aaa_msg_arg - num_aaa_patterns))
-        exp_num_matched_aaa_log_msgs = min(num_aaa_msg_arg, num_aaa_patterns)
+        calc_expected_values(
+            num_exp_accumulator=num_exp_accumulator,
+            num_match_patterns=num_aaa_pat_arg,
+            num_fullmatch_patterns=num_aaa_fm_pat_arg,
+            num_log_msgs=num_aaa_msg_arg,
+        )
 
         test_log_ver.verify_results(
-            exp_num_unmatched_patterns=exp_num_unmatched_a_patterns
-            + exp_num_unmatched_a_fm_patterns
-            + exp_num_unmatched_aa_patterns
-            + exp_num_unmatched_aaa_patterns,
-            exp_num_unmatched_log_msgs=exp_num_unmatched_a_log_msgs
-            + exp_num_unmatched_aa_log_msgs
-            + exp_num_unmatched_aaa_log_msgs,
-            exp_num_matched_log_msgs=exp_num_matched_a_log_msgs
-            + exp_num_matched_aa_log_msgs
-            + exp_num_matched_aaa_log_msgs,
+            exp_num_unmatched_patterns=num_exp_accumulator.num_unmatched_patterns,
+            exp_num_unmatched_log_msgs=num_exp_accumulator.num_unmatched_log_msgs,
+            exp_num_matched_log_msgs=num_exp_accumulator.num_matched_log_msgs,
         )
 
         # log_results = test_log_ver.log_ver.get_match_results(caplog)
