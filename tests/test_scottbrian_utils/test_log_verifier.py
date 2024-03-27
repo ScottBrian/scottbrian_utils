@@ -241,7 +241,7 @@ class TestLogVerification:
         self.patterns: list[LogItemDescriptor] = []
         self.log_msgs: list[LogItemDescriptor] = []
 
-        self.matches_array: list[np.ndarray] = []
+        self.matches_array: list[list[int]] = []
 
         self.loggers[log_name] = logging.getLogger(log_name)
 
@@ -707,9 +707,8 @@ class TestLogVerification:
         self.build_match_arrays(patterns_len=patterns_len, log_msgs_len=log_msgs_len)
         if patterns_len < log_msgs_len:
             log_msg_perms = list(it.permutations(self.log_msgs))
-            match_perms = it.permutations(self.matches_array)
-            for idx, match_perm in enumerate(match_perms):
-                diag_match_array = np.ndarray(match_perm)
+            for idx, match_perm in enumerate(it.permutations(self.matches_array)):
+                diag_match_array = np.array(match_perm)
                 num_matched_items = np.trace(diag_match_array)
                 max_matched_msgs = max(max_matched_msgs, num_matched_items)
 
@@ -719,8 +718,10 @@ class TestLogVerification:
                         num_matched_log_msgs=num_matched_items,
                     )
                     log_msg_perm = log_msg_perms[idx]
+                    # if diag_match_array[idx2, idx2]:
+                    diag_bits = np.diag(diag_match_array)
                     for idx2 in range(patterns_len):
-                        if diag_match_array[idx2, idx2]:
+                        if diag_bits[idx2]:
                             staging_scenario.matched_patterns.append(
                                 self.patterns[idx2]
                             )
@@ -741,9 +742,10 @@ class TestLogVerification:
 
         else:
             pattern_perms = list(it.permutations(self.patterns))
-            match_perms = it.permutations(self.matches_array)
-            for idx, match_perm in enumerate(match_perms):
-                diag_match_array = np.ndarray(match_perm)
+            for idx, match_perm in enumerate(it.permutations(self.matches_array)):
+                # match_perm = list(match_perm)
+                # logger.debug(f"match_perm: \n{match_perm}")
+                diag_match_array = np.array(match_perm)
                 num_matched_items = np.trace(diag_match_array)
                 max_matched_msgs = max(max_matched_msgs, num_matched_items)
 
@@ -753,8 +755,10 @@ class TestLogVerification:
                         num_matched_log_msgs=num_matched_items,
                     )
                     pattern_perm = pattern_perms[idx]
+                    # if diag_match_array[idx2, idx2]:
+                    diag_bits = np.diag(diag_match_array)
                     for idx2 in range(log_msgs_len):
-                        if diag_match_array[idx2, idx2]:
+                        if diag_bits[idx2]:
                             staging_scenario.matched_patterns.append(pattern_perm[idx2])
                             staging_scenario.matched_log_msgs.append(
                                 self.log_msgs[idx2]
@@ -836,7 +840,7 @@ class TestLogVerification:
     def build_match_arrays(self, patterns_len: int, log_msgs_len: int) -> None:
         if patterns_len < log_msgs_len:
             for log_msg_desc in self.log_msgs:
-                match_array: np.ndarray = np.zeros(log_msgs_len)
+                match_array: list[int] = [0] * log_msgs_len
                 for idx, pattern_desc in enumerate(self.patterns):
                     if (
                         (
@@ -857,7 +861,7 @@ class TestLogVerification:
 
         else:
             for pattern_desc in self.patterns:
-                match_array: np.ndarray = np.zeros(patterns_len)
+                match_array: list[int] = [0] * patterns_len
                 for idx, log_msg_desc in enumerate(self.log_msgs):
                     if (
                         (
