@@ -241,12 +241,15 @@ class TestLogVerification:
         self.patterns: list[LogItemDescriptor] = []
         self.log_msgs: list[LogItemDescriptor] = []
 
+        self.matches_array: list[np.ndarray] = []
+
         self.loggers[log_name] = logging.getLogger(log_name)
 
         self.log_ver = LogVer(log_name=log_name)
 
         self.stats: dict[str, ItemStats] = {}
         self.scenarios: list[LogVerScenario] = []
+
         self.capsys_stats_hdr: str = ""
         self.capsys_stats_lines: list[str] = []
         self.capsys_sections: dict[str, LogSection] = {}
@@ -703,74 +706,72 @@ class TestLogVerification:
         ################################################################
         self.build_match_arrays(patterns_len=patterns_len, log_msgs_len=log_msgs_len)
         if patterns_len < log_msgs_len:
-            log_msg_perms = it.permutations(self.log_msgs)
-            num_unmatched_allowed = patterns_len - self.captured_num_matches
-            staging_scenario: LogVerScenario = LogVerScenario()
-            for log_msg_perm in log_msg_perms:
-                for idx, log_msg_desc in enumerate(log_msg_perm):
-                    if log_msg_desc.match_array[idx]:
-                        staging_scenario.num_matched_patterns += 1
-                        staging_scenario.matched_patterns.append(self.patterns[idx])
-                        staging_scenario.num_matched_log_msgs += 1
-                        staging_scenario.matched_log_msgs.append(log_msg_desc)
-                    else:
-                        staging_scenario.num_unmatched_items += 1
-                        staging_scenario.unmatched_patterns.append(self.patterns[idx])
-                        staging_scenario.unmatched_log_msgs.append(log_msg_desc)
+            log_msg_perms = list(it.permutations(self.log_msgs))
+            match_perms = it.permutations(self.matches_array)
+            for idx, match_perm in enumerate(match_perms):
+                diag_match_array = np.ndarray(match_perm)
+                num_matched_items = np.trace(diag_match_array)
+                max_matched_msgs = max(max_matched_msgs, num_matched_items)
 
+                if num_matched_items == self.captured_num_matches:
+                    staging_scenario: LogVerScenario = LogVerScenario(
+                        num_matched_patterns=num_matched_items,
+                        num_matched_log_msgs=num_matched_items,
+                    )
+                    log_msg_perm = log_msg_perms[idx]
+                    for idx2 in range(patterns_len):
+                        if diag_match_array[idx2, idx2]:
+                            staging_scenario.matched_patterns.append(
+                                self.patterns[idx2]
+                            )
+                            staging_scenario.matched_log_msgs.append(log_msg_perm[idx2])
+                        else:
+                            staging_scenario.unmatched_patterns.append(
+                                self.patterns[idx2]
+                            )
+                            staging_scenario.unmatched_log_msgs.append(
+                                log_msg_perm[idx2]
+                            )
+                    staging_scenario.unmatched_log_msgs.extend(
+                        log_msg_perm[patterns_len:]
+                    )
+                    self.scenarios.append(staging_scenario)
+                else:
+                    assert num_matched_items <= self.captured_num_matches
 
-                # for idx, log_msg in enumerate(log_msg_perm):
-                #     if idx == 0:
-                #         diag_match_array = log_msg.match_array
-                #     else:
-                #         diag_match_array = np.concatenate(
-                #             (diag_match_array, log_msg.match_array)
-                #         )
-
-                # num_matched_items = np.trace(diag_match_array)
-                assert staging_scenario.num_matched_patterns <= self.captured_num_matches
-                if staging_scenario.num_matched_patterns == self.captured_num_matches:
-
-                continue_flag = False
-                staging_scenario: LogVerScenario = LogVerScenario()
-                # mi.consume(map(build_scenario, self.patterns, log_msg_perm))
-                for idx in range(patterns_len):
-                    build_scenario(self.patterns[idx], log_msg_perm[idx])
-                    if staging_scenario.num_unmatched_items > num_unmatched_allowed:
-                        continue_flag = True
-                        break
-
-                if continue_flag:
-                    continue
-                # if staging_scenario.num_matched_log_msgs < max_matched_msgs:
-                #     continue
-                max_matched_msgs = max(
-                    max_matched_msgs, staging_scenario.num_matched_log_msgs
-                )
-                staging_scenario.unmatched_log_msgs.extend(log_msg_perm[patterns_len:])
-                completed_scenarios.append(staging_scenario)
         else:
-            pattern_perms = it.permutations(self.patterns)
-            num_unmatched_allowed = log_msgs_len - self.captured_num_matches
-            for pattern_perm in pattern_perms:
-                continue_flag = False
-                staging_scenario: LogVerScenario = LogVerScenario()
-                # mi.consume(map(build_scenario, pattern_perm, self.log_msgs))
-                for idx in range(log_msgs_len):
-                    build_scenario(pattern_perm[idx], self.log_msgs[idx])
-                    if staging_scenario.num_unmatched_items > num_unmatched_allowed:
-                        continue_flag = True
-                        break
+            pattern_perms = list(it.permutations(self.patterns))
+            match_perms = it.permutations(self.matches_array)
+            for idx, match_perm in enumerate(match_perms):
+                diag_match_array = np.ndarray(match_perm)
+                num_matched_items = np.trace(diag_match_array)
+                max_matched_msgs = max(max_matched_msgs, num_matched_items)
 
-                if continue_flag:
-                    continue
-                # if staging_scenario.num_matched_log_msgs < max_matched_msgs:
-                #     continue
-                max_matched_msgs = max(
-                    max_matched_msgs, staging_scenario.num_matched_log_msgs
-                )
-                staging_scenario.unmatched_patterns.extend(pattern_perm[log_msgs_len:])
-                completed_scenarios.append(staging_scenario)
+                if num_matched_items == self.captured_num_matches:
+                    staging_scenario: LogVerScenario = LogVerScenario(
+                        num_matched_patterns=num_matched_items,
+                        num_matched_log_msgs=num_matched_items,
+                    )
+                    pattern_perm = pattern_perms[idx]
+                    for idx2 in range(log_msgs_len):
+                        if diag_match_array[idx2, idx2]:
+                            staging_scenario.matched_patterns.append(pattern_perm[idx2])
+                            staging_scenario.matched_log_msgs.append(
+                                self.log_msgs[idx2]
+                            )
+                        else:
+                            staging_scenario.unmatched_patterns.append(
+                                pattern_perm[idx2]
+                            )
+                            staging_scenario.unmatched_log_msgs.append(
+                                self.log_msgs[idx2]
+                            )
+                    staging_scenario.unmatched_patterns.extend(
+                        pattern_perm[log_msgs_len:]
+                    )
+                    self.scenarios.append(staging_scenario)
+                else:
+                    assert num_matched_items <= self.captured_num_matches
         # if patterns_len < log_msgs_len:
         #     log_msg_perms = it.permutations(self.log_msgs)
         #     num_unmatched_allowed = patterns_len - self.captured_num_matches
@@ -816,9 +817,9 @@ class TestLogVerification:
         #         staging_scenario.unmatched_patterns.extend(pattern_perm[log_msgs_len:])
         #         completed_scenarios.append(staging_scenario)
 
-        for scenario in completed_scenarios:
-            if scenario.num_matched_log_msgs == max_matched_msgs:
-                self.scenarios.append(scenario)
+        # for scenario in completed_scenarios:
+        #     if scenario.num_matched_log_msgs == max_matched_msgs:
+        #         self.scenarios.append(scenario)
 
         # logger.debug(f"{max_matched_msgs=}")
         self.stats["patterns"] = ItemStats(
@@ -835,9 +836,8 @@ class TestLogVerification:
     def build_match_arrays(self, patterns_len: int, log_msgs_len: int) -> None:
         if patterns_len < log_msgs_len:
             for log_msg_desc in self.log_msgs:
-                log_msg_desc.match_array = np.zeros(log_msgs_len)
-            for idx, pattern_desc in enumerate(self.patterns):
-                for log_msg_desc in self.log_msgs:
+                match_array: np.ndarray = np.zeros(log_msgs_len)
+                for idx, pattern_desc in enumerate(self.patterns):
                     if (
                         (
                             (
@@ -852,12 +852,13 @@ class TestLogVerification:
                         and pattern_desc.log_name == log_msg_desc.log_name
                         and pattern_desc.log_level == log_msg_desc.log_level
                     ):
-                        log_msg_desc.match_array[idx] = 1
+                        match_array[idx] = 1
+                self.matches_array.append(match_array)
+
         else:
             for pattern_desc in self.patterns:
-                pattern_desc.match_array = np.zeros(patterns_len)
-            for idx, log_msg_desc in enumerate(self.log_msgs):
-                for pattern_desc in self.patterns:
+                match_array: np.ndarray = np.zeros(patterns_len)
+                for idx, log_msg_desc in enumerate(self.log_msgs):
                     if (
                         (
                             (
@@ -872,7 +873,8 @@ class TestLogVerification:
                         and pattern_desc.log_name == log_msg_desc.log_name
                         and pattern_desc.log_level == log_msg_desc.log_level
                     ):
-                        pattern_desc.match_array[idx] = 1
+                        match_array[idx] = 1
+                self.matches_array.append(match_array)
 
 
 ########################################################################
