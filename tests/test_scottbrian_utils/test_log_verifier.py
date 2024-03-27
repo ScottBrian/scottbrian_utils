@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 import itertools as it
 import more_itertools as mi
 import logging
+import numpy as np
 import pandas as pd
 import datetime
 import re
@@ -180,9 +181,9 @@ class LogItemDescriptor:
     log_name: str
     log_level: int
     item: str
+    match_array: np.ndarray  # np.ndarray([0])
     c_pattern: re.Pattern[str] = ""
     fullmatch: bool = False
-    dummy: bool = False
 
 
 @dataclass
@@ -210,6 +211,7 @@ class LogSection:
 class LogVerScenario:
     num_matched_patterns: int = 0
     num_matched_log_msgs: int = 0
+    num_unmatched_items: int = 0
     unmatched_patterns: list[LogItemDescriptor] = field(default_factory=list)
     matched_patterns: list[LogItemDescriptor] = field(default_factory=list)
     unmatched_log_msgs: list[LogItemDescriptor] = field(default_factory=list)
@@ -249,6 +251,10 @@ class TestLogVerification:
         self.capsys_stats_lines: list[str] = []
         self.capsys_sections: dict[str, LogSection] = {}
 
+        self.captured_pattern_stats_line: str = ""
+        self.captured_log_msgs_stats_line: str = ""
+        self.captured_num_matches: int = 0
+
     def add_scenario(self, scenario: LogVerScenario):
         pass
 
@@ -266,6 +272,7 @@ class TestLogVerification:
                 log_name=log_name,
                 log_level=log_level,
                 item=log_msg,
+                match_array=np.zeros(1),
             )
         )
 
@@ -286,6 +293,7 @@ class TestLogVerification:
                 log_name=log_name,
                 log_level=log_level,
                 item=pattern,
+                match_array=np.zeros(1),
                 c_pattern=re.compile(pattern),
                 fullmatch=fullmatch,
             )
@@ -310,6 +318,23 @@ class TestLogVerification:
             )
         if exp_num_matched_log_msgs is not None:
             assert self.stats["log_msgs"].num_matched_items == exp_num_matched_log_msgs
+
+        patterns_stats_line = (
+            f" patterns "
+            f"{self.stats['patterns'].num_items:>10} "
+            f"{self.stats['patterns'].num_matched_items:>12} "
+            f"{self.stats['patterns'].num_unmatched_items:>14}"
+        )
+
+        log_msgs_stats_line = (
+            f" log_msgs "
+            f"{self.stats['log_msgs'].num_items:>10} "
+            f"{self.stats['log_msgs'].num_matched_items:>12} "
+            f"{self.stats['log_msgs'].num_unmatched_items:>14}"
+        )
+
+        assert self.captured_pattern_stats_line == patterns_stats_line
+        assert self.captured_log_msgs_stats_line == log_msgs_stats_line
 
         @dataclass
         class VerResult:
@@ -482,8 +507,9 @@ class TestLogVerification:
         return True
 
     def build_ver_record(self):
-        self.build_scenarios()
+        # self.build_scenarios()
         self.get_ver_output_lines()
+        self.build_scenarios()
 
     def get_ver_output_lines(self):
 
@@ -494,19 +520,19 @@ class TestLogVerification:
         unmatched_log_msgs_hdr_line = "* unmatched log_msgs: *"
         matched_log_msgs_hdr_line = "*  matched log_msgs:  *"
 
-        patterns_stats_line = (
-            f" patterns "
-            f"{self.stats['patterns'].num_items:>10} "
-            f"{self.stats['patterns'].num_matched_items:>12} "
-            f"{self.stats['patterns'].num_unmatched_items:>14}"
-        )
-
-        log_msgs_stats_line = (
-            f" log_msgs "
-            f"{self.stats['log_msgs'].num_items:>10} "
-            f"{self.stats['log_msgs'].num_matched_items:>12} "
-            f"{self.stats['log_msgs'].num_unmatched_items:>14}"
-        )
+        # patterns_stats_line = (
+        #     f" patterns "
+        #     f"{self.stats['patterns'].num_items:>10} "
+        #     f"{self.stats['patterns'].num_matched_items:>12} "
+        #     f"{self.stats['patterns'].num_unmatched_items:>14}"
+        # )
+        #
+        # log_msgs_stats_line = (
+        #     f" log_msgs "
+        #     f"{self.stats['log_msgs'].num_items:>10} "
+        #     f"{self.stats['log_msgs'].num_matched_items:>12} "
+        #     f"{self.stats['log_msgs'].num_unmatched_items:>14}"
+        # )
         # clear the capsys
         captured = self.capsys_to_use.readouterr().out
 
@@ -522,9 +548,14 @@ class TestLogVerification:
         assert captured_lines[2] == stats_line
         assert captured_lines[3] == stats_asterisks
         assert captured_lines[4] == "item_type  num_items  num_matched  num_unmatched"
-        assert captured_lines[5] == patterns_stats_line
-        assert captured_lines[6] == log_msgs_stats_line
+        # assert captured_lines[5] == patterns_stats_line
+        # assert captured_lines[6] == log_msgs_stats_line
         assert captured_lines[7] == ""
+
+        self.captured_pattern_stats_line = captured_lines[5]
+        self.captured_log_msgs_stats_line = captured_lines[6]
+        split_log_msgs_stats = self.captured_log_msgs_stats_line.split()
+        self.captured_num_matches = int(split_log_msgs_stats[2])
 
         section_item = self.get_section(
             start_idx=8,
@@ -661,21 +692,58 @@ class TestLogVerification:
                 staging_scenario.num_matched_log_msgs += 1
                 staging_scenario.matched_log_msgs.append(log_msg_desc)
             else:
-                if not pattern_desc.dummy:
-                    staging_scenario.unmatched_patterns.append(pattern_desc)
-                if not log_msg_desc.dummy:
-                    staging_scenario.unmatched_log_msgs.append(log_msg_desc)
+                staging_scenario.num_unmatched_items += 1
+                staging_scenario.unmatched_patterns.append(pattern_desc)
+                staging_scenario.unmatched_log_msgs.append(log_msg_desc)
 
         completed_scenarios: list[LogVerScenario] = []
         max_matched_msgs = 0
+        ################################################################
+        # pre-build the matched arrays
+        ################################################################
+        self.build_match_arrays(patterns_len=patterns_len, log_msgs_len=log_msgs_len)
         if patterns_len < log_msgs_len:
             log_msg_perms = it.permutations(self.log_msgs)
+            num_unmatched_allowed = patterns_len - self.captured_num_matches
+            staging_scenario: LogVerScenario = LogVerScenario()
             for log_msg_perm in log_msg_perms:
-                staging_scenario: LogVerScenario = LogVerScenario()
-                mi.consume(map(build_scenario, self.patterns, log_msg_perm))
+                for idx, log_msg_desc in enumerate(log_msg_perm):
+                    if log_msg_desc.match_array[idx]:
+                        staging_scenario.num_matched_patterns += 1
+                        staging_scenario.matched_patterns.append(self.patterns[idx])
+                        staging_scenario.num_matched_log_msgs += 1
+                        staging_scenario.matched_log_msgs.append(log_msg_desc)
+                    else:
+                        staging_scenario.num_unmatched_items += 1
+                        staging_scenario.unmatched_patterns.append(self.patterns[idx])
+                        staging_scenario.unmatched_log_msgs.append(log_msg_desc)
 
-                if staging_scenario.num_matched_log_msgs < max_matched_msgs:
+
+                # for idx, log_msg in enumerate(log_msg_perm):
+                #     if idx == 0:
+                #         diag_match_array = log_msg.match_array
+                #     else:
+                #         diag_match_array = np.concatenate(
+                #             (diag_match_array, log_msg.match_array)
+                #         )
+
+                # num_matched_items = np.trace(diag_match_array)
+                assert staging_scenario.num_matched_patterns <= self.captured_num_matches
+                if staging_scenario.num_matched_patterns == self.captured_num_matches:
+
+                continue_flag = False
+                staging_scenario: LogVerScenario = LogVerScenario()
+                # mi.consume(map(build_scenario, self.patterns, log_msg_perm))
+                for idx in range(patterns_len):
+                    build_scenario(self.patterns[idx], log_msg_perm[idx])
+                    if staging_scenario.num_unmatched_items > num_unmatched_allowed:
+                        continue_flag = True
+                        break
+
+                if continue_flag:
                     continue
+                # if staging_scenario.num_matched_log_msgs < max_matched_msgs:
+                #     continue
                 max_matched_msgs = max(
                     max_matched_msgs, staging_scenario.num_matched_log_msgs
                 )
@@ -683,16 +751,70 @@ class TestLogVerification:
                 completed_scenarios.append(staging_scenario)
         else:
             pattern_perms = it.permutations(self.patterns)
+            num_unmatched_allowed = log_msgs_len - self.captured_num_matches
             for pattern_perm in pattern_perms:
+                continue_flag = False
                 staging_scenario: LogVerScenario = LogVerScenario()
-                mi.consume(map(build_scenario, pattern_perm, self.log_msgs))
-                if staging_scenario.num_matched_log_msgs < max_matched_msgs:
+                # mi.consume(map(build_scenario, pattern_perm, self.log_msgs))
+                for idx in range(log_msgs_len):
+                    build_scenario(pattern_perm[idx], self.log_msgs[idx])
+                    if staging_scenario.num_unmatched_items > num_unmatched_allowed:
+                        continue_flag = True
+                        break
+
+                if continue_flag:
                     continue
+                # if staging_scenario.num_matched_log_msgs < max_matched_msgs:
+                #     continue
                 max_matched_msgs = max(
                     max_matched_msgs, staging_scenario.num_matched_log_msgs
                 )
                 staging_scenario.unmatched_patterns.extend(pattern_perm[log_msgs_len:])
                 completed_scenarios.append(staging_scenario)
+        # if patterns_len < log_msgs_len:
+        #     log_msg_perms = it.permutations(self.log_msgs)
+        #     num_unmatched_allowed = patterns_len - self.captured_num_matches
+        #     for log_msg_perm in log_msg_perms:
+        #         continue_flag = False
+        #         staging_scenario: LogVerScenario = LogVerScenario()
+        #         # mi.consume(map(build_scenario, self.patterns, log_msg_perm))
+        #         for idx in range(patterns_len):
+        #             build_scenario(self.patterns[idx], log_msg_perm[idx])
+        #             if staging_scenario.num_unmatched_items > num_unmatched_allowed:
+        #                 continue_flag = True
+        #                 break
+        #
+        #         if continue_flag:
+        #             continue
+        #         # if staging_scenario.num_matched_log_msgs < max_matched_msgs:
+        #         #     continue
+        #         max_matched_msgs = max(
+        #             max_matched_msgs, staging_scenario.num_matched_log_msgs
+        #         )
+        #         staging_scenario.unmatched_log_msgs.extend(log_msg_perm[patterns_len:])
+        #         completed_scenarios.append(staging_scenario)
+        # else:
+        #     pattern_perms = it.permutations(self.patterns)
+        #     num_unmatched_allowed = log_msgs_len - self.captured_num_matches
+        #     for pattern_perm in pattern_perms:
+        #         continue_flag = False
+        #         staging_scenario: LogVerScenario = LogVerScenario()
+        #         # mi.consume(map(build_scenario, pattern_perm, self.log_msgs))
+        #         for idx in range(log_msgs_len):
+        #             build_scenario(pattern_perm[idx], self.log_msgs[idx])
+        #             if staging_scenario.num_unmatched_items > num_unmatched_allowed:
+        #                 continue_flag = True
+        #                 break
+        #
+        #         if continue_flag:
+        #             continue
+        #         # if staging_scenario.num_matched_log_msgs < max_matched_msgs:
+        #         #     continue
+        #         max_matched_msgs = max(
+        #             max_matched_msgs, staging_scenario.num_matched_log_msgs
+        #         )
+        #         staging_scenario.unmatched_patterns.extend(pattern_perm[log_msgs_len:])
+        #         completed_scenarios.append(staging_scenario)
 
         for scenario in completed_scenarios:
             if scenario.num_matched_log_msgs == max_matched_msgs:
@@ -709,6 +831,48 @@ class TestLogVerification:
             num_matched_items=max_matched_msgs,
             num_unmatched_items=log_msgs_len - max_matched_msgs,
         )
+
+    def build_match_arrays(self, patterns_len: int, log_msgs_len: int) -> None:
+        if patterns_len < log_msgs_len:
+            for log_msg_desc in self.log_msgs:
+                log_msg_desc.match_array = np.zeros(log_msgs_len)
+            for idx, pattern_desc in enumerate(self.patterns):
+                for log_msg_desc in self.log_msgs:
+                    if (
+                        (
+                            (
+                                pattern_desc.fullmatch
+                                and pattern_desc.c_pattern.fullmatch(log_msg_desc.item)
+                            )
+                            or (
+                                not pattern_desc.fullmatch
+                                and pattern_desc.c_pattern.match(log_msg_desc.item)
+                            )
+                        )
+                        and pattern_desc.log_name == log_msg_desc.log_name
+                        and pattern_desc.log_level == log_msg_desc.log_level
+                    ):
+                        log_msg_desc.match_array[idx] = 1
+        else:
+            for pattern_desc in self.patterns:
+                pattern_desc.match_array = np.zeros(patterns_len)
+            for idx, log_msg_desc in enumerate(self.log_msgs):
+                for pattern_desc in self.patterns:
+                    if (
+                        (
+                            (
+                                pattern_desc.fullmatch
+                                and pattern_desc.c_pattern.fullmatch(log_msg_desc.item)
+                            )
+                            or (
+                                not pattern_desc.fullmatch
+                                and pattern_desc.c_pattern.match(log_msg_desc.item)
+                            )
+                        )
+                        and pattern_desc.log_name == log_msg_desc.log_name
+                        and pattern_desc.log_level == log_msg_desc.log_level
+                    ):
+                        pattern_desc.match_array[idx] = 1
 
 
 ########################################################################
