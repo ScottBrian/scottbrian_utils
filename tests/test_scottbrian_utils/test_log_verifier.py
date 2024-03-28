@@ -213,7 +213,7 @@ class LogSection:
 class LogVerScenario:
     num_matched_patterns: int = 0
     num_matched_log_msgs: int = 0
-    num_unmatched_items: int = 0
+    # num_unmatched_items: int = 0
     unmatched_patterns: list[LogItemDescriptor] = field(default_factory=list)
     matched_patterns: list[LogItemDescriptor] = field(default_factory=list)
     unmatched_log_msgs: list[LogItemDescriptor] = field(default_factory=list)
@@ -779,21 +779,9 @@ class TestLogVerification:
         else:
             num_perm_diag_successes = 0
             skip_scenario = False
-            idx_values = [83000, 83500, 84000, 85000, 90000, 150000, 200000, 400000]
-            for idx, match_perm in enumerate(it.permutations(self.matches_array)):
-                # match_perm = list(match_perm)
-                # logger.debug(f"match_perm: \n{match_perm}")
-                # if idx % mod_value == 0:
-                #     logger.debug(
-                #         f"build_scenarios 1: {idx=}, {num_perm_diag_successes=} "
-                #         f"{time.time() - self.start_time}"
-                #     )
-                if idx in idx_values:
-                    logger.debug(
-                        f"build_scenarios 1: {idx=}, {num_perm_diag_successes=} "
-                        f"{time.time() - self.start_time}"
-                    )
-
+            for idx, match_perm in enumerate(
+                it.permutations(self.matches_array, log_msgs_len)
+            ):
                 diag_match_array = np.array(match_perm)
                 num_matched_items = np.trace(diag_match_array)
                 max_matched_msgs = max(max_matched_msgs, num_matched_items)
@@ -803,40 +791,28 @@ class TestLogVerification:
                     if skip_scenario:
                         continue
 
+                    diag_bits = np.diag(diag_match_array)
+                    pattern_match_sel = np.zeros(patterns_len)
+
+                    for idx2 in range(log_msgs_len):
+                        pattern_match_sel[diag_match_array[idx2, -1]] = diag_bits[idx2]
+
                     staging_scenario: LogVerScenario = LogVerScenario(
                         num_matched_patterns=num_matched_items,
                         num_matched_log_msgs=num_matched_items,
-                    )
-                    # pattern_perm = mi.nth(it.permutations(self.patterns), idx)
-                    if idx in idx_values:
-                        logger.debug(
-                            f"build_scenarios 3: {idx=}, {num_perm_diag_successes=} "
-                            f"{time.time() - self.start_time}"
-                        )
-
-                    diag_bits = np.diag(diag_match_array)
-                    for idx2 in range(patterns_len):
-                        pidx = diag_match_array[idx2][-1]
-                        pattern_item = self.patterns[pidx]
-                        if diag_bits[idx2]:
-                            # staging_scenario.matched_patterns.append(pattern_perm[idx2])
-                            staging_scenario.matched_patterns.append(pattern_item)
-                            staging_scenario.matched_log_msgs.append(
-                                self.log_msgs[idx2]
+                        unmatched_patterns=list(
+                            it.compress(
+                                self.patterns, np.logical_not(pattern_match_sel)
                             )
-                        else:
-                            # staging_scenario.unmatched_patterns.append(
-                            #     pattern_perm[idx2]
-                            # )
-                            staging_scenario.unmatched_patterns.append(pattern_item)
-                            if idx2 < log_msgs_len:
-                                staging_scenario.unmatched_log_msgs.append(
-                                    self.log_msgs[idx2]
-                                )
-
-                    # staging_scenario.unmatched_patterns.extend(
-                    #     pattern_perm[log_msgs_len:]
-                    # )
+                        ),
+                        matched_patterns=list(
+                            it.compress(self.patterns, pattern_match_sel)
+                        ),
+                        unmatched_log_msgs=list(
+                            it.compress(self.log_msgs, np.logical_not(diag_bits))
+                        ),
+                        matched_log_msgs=list(it.compress(self.log_msgs, diag_bits)),
+                    )
 
                     logger.debug(
                         f"calling verify_scenario {idx=}, {num_perm_diag_successes=}"
