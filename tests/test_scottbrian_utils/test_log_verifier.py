@@ -28,6 +28,7 @@ import pytest
 ########################################################################
 from scottbrian_utils.diag_msg import get_formatted_call_sequence
 from scottbrian_utils.log_verifier import LogVer
+from scottbrian_utils.log_verifier import MatchResults
 from scottbrian_utils.log_verifier import UnmatchedExpectedMessages
 from scottbrian_utils.log_verifier import UnmatchedActualMessages
 from scottbrian_utils.time_hdr import get_datetime_match_string
@@ -54,25 +55,6 @@ class LogFailedVerification(ErrorTstLogVer):
     """Verification of log failed"""
 
     pass
-
-
-########################################################################
-# log_enabled_arg
-########################################################################
-log_enabled_arg_list = [True, False]
-
-
-@pytest.fixture(params=log_enabled_arg_list)
-def log_enabled_arg(request: Any) -> bool:
-    """Using enabled and disabled logging.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(bool, request.param)
 
 
 ########################################################################
@@ -183,7 +165,6 @@ class LogItemDescriptor:
     log_name: str
     log_level: int
     item: str
-    match_array: np.ndarray  # np.ndarray([0])
     c_pattern: re.Pattern[str] = ""
     fullmatch: bool = False
 
@@ -242,10 +223,21 @@ class TestLogVerification:
         log_name: str,
         capsys_to_use: pytest.CaptureFixture[str],
         caplog_to_use: pytest.LogCaptureFixture,
+        log_level: int = logging.DEBUG,
     ):
+        """Initialize the test log verification.
+
+        Args:
+            log_name: log name to use
+            capsys_to_use: pytest CaptureFixture for syslog
+            caplog_to_use: pytest LogCaptureFixture for log messages
+            log_level: specifies the log level
+
+        """
         self.log_name: str = log_name
         self.capsys_to_use = capsys_to_use
         self.caplog_to_use = caplog_to_use
+        self.log_level = log_level
         self.loggers: dict[str, logging.Logger] = {}
         self.patterns: list[LogItemDescriptor] = []
         self.log_msgs: list[LogItemDescriptor] = []
@@ -253,6 +245,7 @@ class TestLogVerification:
         self.matches_array: list[np.array] = []
 
         self.loggers[log_name] = logging.getLogger(log_name)
+        self.loggers[log_name].setLevel(log_level)
 
         self.log_ver = LogVer(log_name=log_name)
 
@@ -266,6 +259,8 @@ class TestLogVerification:
         self.captured_pattern_stats_line: str = ""
         self.captured_log_msgs_stats_line: str = ""
         self.captured_num_matches: int = 0
+
+        self.log_results: MatchResults = MatchResults()
 
         self.start_time = 0
 
@@ -281,14 +276,16 @@ class TestLogVerification:
         if log_name is None:
             log_name = self.log_name
         self.loggers[log_name].log(log_level, log_msg)
-        self.log_msgs.append(
-            LogItemDescriptor(
-                log_name=log_name,
-                log_level=log_level,
-                item=log_msg,
-                match_array=np.zeros(1),
+
+        # add the log_msg to track only if it was logged per log_level
+        if self.log_level <= log_level:
+            self.log_msgs.append(
+                LogItemDescriptor(
+                    log_name=log_name,
+                    log_level=log_level,
+                    item=log_msg,
+                )
             )
-        )
 
     def add_pattern(
         self,
@@ -307,7 +304,6 @@ class TestLogVerification:
                 log_name=log_name,
                 log_level=log_level,
                 item=pattern,
-                match_array=np.zeros(1),
                 c_pattern=re.compile(pattern),
                 fullmatch=fullmatch,
             )
@@ -351,6 +347,15 @@ class TestLogVerification:
         assert self.captured_pattern_stats_line == patterns_stats_line
         assert self.captured_log_msgs_stats_line == log_msgs_stats_line
 
+        if self.stats["patterns"].num_unmatched_items:
+            with pytest.raises(UnmatchedExpectedMessages):
+                self.log_ver.verify_log_results(self.log_results)
+        elif self.stats["log_msgs"].num_unmatched_items:
+            with pytest.raises(UnmatchedActualMessages):
+                self.log_ver.verify_log_results(self.log_results)
+        else:
+            self.log_ver.verify_log_results(self.log_results)
+
         assert self.match_scenario_found
 
     def verify_scenario(self, scenario: LogVerScenario) -> bool:
@@ -391,14 +396,12 @@ class TestLogVerification:
             # logger.debug(f"verify_scenario returning True")
             return True
         else:
-            # logger.debug(f"verify_scenario returning False")
+            # logger.debug(f"verify_scenario returning False ver_result: \n{ver_result}")
             return False
 
     def verify_lines(
         self,
         item_text: str,
-        # num_unmatched_stats: int,
-        # num_matched_stats: int,
         unmatched_items: list[LogItemDescriptor],
         matched_items: list[LogItemDescriptor],
         log_section: LogSection,
@@ -433,12 +436,20 @@ class TestLogVerification:
 
         max_log_name_len = 0
         max_log_msg_len = 0
-        for item in unmatched_items:
-            max_log_name_len = max(max_log_name_len, len(item.log_name))
-            max_log_msg_len = max(max_log_msg_len, len(item.item))
-        for item in matched_items:
-            max_log_name_len = max(max_log_name_len, len(item.log_name))
-            max_log_msg_len = max(max_log_msg_len, len(item.item))
+        if matched_section:
+            for item in matched_items:
+                max_log_name_len = max(max_log_name_len, len(item.log_name))
+                max_log_msg_len = max(max_log_msg_len, len(item.item))
+                # logger.debug(
+                #     f"verify_lines 2: {max_log_msg_len=}, {len(item.item)=}, {item.item=}"
+                # )
+        else:
+            for item in unmatched_items:
+                max_log_name_len = max(max_log_name_len, len(item.log_name))
+                max_log_msg_len = max(max_log_msg_len, len(item.item))
+                # logger.debug(
+                #     f"verify_lines 1: {max_log_msg_len=}, {len(item.item)=}, {item.item=}"
+                # )
 
         if exp_records:
             if item_text == "pattern":
@@ -446,6 +457,9 @@ class TestLogVerification:
             else:
                 fullmatch_text = ""
 
+            # logger.debug(
+            #     f"verify_lines 3: {max_log_msg_len=}, {len(item_text)=}, {item_text=}"
+            # )
             expected_hdr_line = (
                 " " * (max_log_name_len - len("log_name"))
                 + "log_name"
@@ -517,14 +531,14 @@ class TestLogVerification:
         matched_log_msgs_hdr_line = "*  matched log_msgs:  *"
 
         # clear the capsys
-        captured = self.capsys_to_use.readouterr().out
+        _ = self.capsys_to_use.readouterr().out
 
         # get log results and print them
-        log_results = self.log_ver.get_match_results(self.caplog_to_use)
-        self.log_ver.print_match_results(log_results)
+        self.log_results = self.log_ver.get_match_results(self.caplog_to_use)
+        self.log_ver.print_match_results(self.log_results)
 
-        captured = self.capsys_to_use.readouterr().out
-        captured_lines = captured.split("\n")
+        captured_capsys = self.capsys_to_use.readouterr().out
+        captured_lines = captured_capsys.split("\n")
 
         assert captured_lines[0] == ""
         assert captured_lines[1] == stats_asterisks
@@ -565,8 +579,8 @@ class TestLogVerification:
 
         self.capsys_sections["matched_log_msgs"] = section_item
 
+    @staticmethod
     def get_section(
-        self,
         start_idx: int,
         captured_lines: list[str],
         section_hdr_line: str,
@@ -577,6 +591,9 @@ class TestLogVerification:
         assert captured_lines[start_idx + 1] == section_hdr_line
         assert captured_lines[start_idx + 2] == section_asterisks
         if captured_lines[start_idx + 3] == "":
+            # logger.critical(f"get_section return 1:")
+            # for idx in range(start_idx, min(len(captured_lines), start_idx + 10)):
+            #     logger.critical(f"{captured_lines[idx]}")
             return LogSection(
                 hdr_line="",
                 start_idx=start_idx,
@@ -591,9 +608,13 @@ class TestLogVerification:
             line_items={},
         )
 
+        # logger.critical(f"get_section 2:")
+        # for idx in range(start_idx, min(len(captured_lines), start_idx + 10)):
+        #     logger.critical(f"{captured_lines[idx]}")
         for idx in range(start_idx + 4, len(captured_lines)):
             if captured_lines[idx] == "":
                 ret_section.end_idx = idx
+                # logger.critical(f"get_section 3: \n{captured_lines[idx-1:idx+2]}")
                 return ret_section
             else:
                 if section_is_pattern:
@@ -700,52 +721,11 @@ class TestLogVerification:
                     ),
                 )
 
+                # logger.debug(f"scenario: \n{staging_scenario}")
                 if self.verify_scenario(scenario=staging_scenario):
                     self.match_scenario_found = True
             else:
                 assert num_matched_items <= self.captured_num_matches
-
-        # else:
-        #     self.match_scenario_found = False
-        #     for idx, match_perm in enumerate(
-        #         it.permutations(self.matches_array, min_desc_len)
-        #     ):
-        #         diag_match_array = np.array(match_perm)
-        #         num_matched_items = np.trace(diag_match_array)
-        #         max_matched_msgs = max(max_matched_msgs, num_matched_items)
-        #
-        #         if num_matched_items == self.captured_num_matches:
-        #             if self.match_scenario_found:
-        #                 continue
-        #
-        #             diag_bits = np.diag(diag_match_array)
-        #             pattern_match_sel = np.zeros(max_desc_len)
-        #
-        #             for idx2 in range(min_desc_len):
-        #                 pattern_match_sel[diag_match_array[idx2, -1]] = diag_bits[idx2]
-        #
-        #             staging_scenario: LogVerScenario = LogVerScenario(
-        #                 num_matched_patterns=num_matched_items,
-        #                 num_matched_log_msgs=num_matched_items,
-        #                 unmatched_patterns=list(
-        #                     it.compress(
-        #                         self.patterns, np.logical_not(pattern_match_sel)
-        #                     )
-        #                 ),
-        #                 matched_patterns=list(
-        #                     it.compress(self.patterns, pattern_match_sel)
-        #                 ),
-        #                 unmatched_log_msgs=list(
-        #                     it.compress(self.log_msgs, np.logical_not(diag_bits))
-        #                 ),
-        #                 matched_log_msgs=list(it.compress(self.log_msgs, diag_bits)),
-        #             )
-        #
-        #             if self.verify_scenario(scenario=staging_scenario):
-        #                 self.match_scenario_found = True
-        #
-        #         else:
-        #             assert num_matched_items <= self.captured_num_matches
 
         self.stats["patterns"] = ItemStats(
             num_items=patterns_len,
@@ -1821,10 +1801,10 @@ class TestLogVerBasic:
     )
     pattern_combos_list = sorted(set(pattern_combos), key=lambda x: (len(x), x))
 
-    # @pytest.mark.parametrize("msgs_arg", msg_combos_list)
-    # @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
-    @pytest.mark.parametrize("msgs_arg", [("msg1", "msg1", "msg2")])
-    @pytest.mark.parametrize("patterns_arg", [("msg1", "msg[123]{1}")])
+    @pytest.mark.parametrize("msgs_arg", msg_combos_list)
+    @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
+    # @pytest.mark.parametrize("msgs_arg", [("msg1", "msg1", "msg2")])
+    # @pytest.mark.parametrize("patterns_arg", [("msg1", "msg[123]{1}")])
     def test_log_verifier_contention2(
         self,
         msgs_arg: Iterable[tuple[str]],
@@ -2375,8 +2355,16 @@ class TestLogVerBasic:
 
     @pytest.mark.parametrize("msgs_arg", msg_combos_list2)
     @pytest.mark.parametrize("patterns_arg", pattern_combos_list2)
-    # @pytest.mark.parametrize("msgs_arg", [("msg2", "msg1")])
-    # @pytest.mark.parametrize("patterns_arg", [("msg[123]{1}",)])
+    # @pytest.mark.parametrize("msgs_arg", [("msg1",)])
+    # @pytest.mark.parametrize(
+    #     "patterns_arg",
+    #     [
+    #         (
+    #             "msg0",
+    #             "msg[123]{1}",
+    #         )
+    #     ],
+    # )
     def test_log_verifier_contention(
         self,
         msgs_arg: Iterable[tuple[str]],
@@ -2750,17 +2738,11 @@ class TestLogVerBasic:
             log_name="contention_0", capsys_to_use=capsys, caplog_to_use=caplog
         )
 
-        # log_name = "contention_0"
-        # t_logger = logging.getLogger(log_name)
-        # log_ver = LogVer(log_name=log_name)
-
         fullmatch_tf_arg = True
         for pattern in patterns_arg:
-            # log_ver.add_msg(log_msg=pattern, fullmatch=fullmatch_tf_arg)
             test_log_ver.add_pattern(pattern=pattern, fullmatch=fullmatch_tf_arg)
 
         for msg in msgs_arg:
-            # t_logger.debug(msg)
             test_log_ver.issue_log_msg(msg)
 
         test_log_ver.verify_results(
@@ -2769,51 +2751,8 @@ class TestLogVerBasic:
             exp_num_matched_log_msgs=len(matched_msgs2),
         )
 
-        # log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-        #
-        # expected_result = "\n"
-        # expected_result += f"{msgs_arg=}\n"
-        # expected_result += f"{patterns_arg=}\n"
-        #
-        # expected_result += "\n"
-        # expected_result += "**********************************\n"
-        # expected_result += f"* number expected log records: {len(patterns_arg)} *\n"
-        # expected_result += (
-        #     f"* number expected unmatched  : " f"{len(unmatched_patterns2)} *\n"
-        # )
-        # expected_result += f"* number actual log records  : {len(msgs_arg)} *\n"
-        # expected_result += f"* number actual unmatched    : {len(unmatched_msgs2)} *\n"
-        # expected_result += f"* number matched records     : {len(matched_msgs2)} *\n"
-        #
-        # expected_result += "**********************************\n"
-        # expected_result += "\n"
-        # expected_result += "*********************************\n"
-        # expected_result += "* unmatched expected records    *\n"
-        # expected_result += "* (logger name, level, message) *\n"
-        # expected_result += "*********************************\n"
-        # for pattern in unmatched_patterns2:
-        #     expected_result += f"('contention_0', 10, '{pattern}')\n"
-        #
-        # expected_result += "\n"
-        # expected_result += "*********************************\n"
-        # expected_result += "* unmatched actual records      *\n"
-        # expected_result += "* (logger name, level, message) *\n"
-        # expected_result += "*********************************\n"
-        # for msg in unmatched_msgs2:
-        #     expected_result += f"('contention_0', 10, '{msg}')\n"
-        #
-        # expected_result += "\n"
-        # expected_result += "*********************************\n"
-        # expected_result += "* matched records               *\n"
-        # expected_result += "* (logger name, level, message) *\n"
-        # expected_result += "*********************************\n"
-        #
-        # for msg in matched_msgs2:
-        #     expected_result += f"('contention_0', 10, '{msg}')\n"
-        #
-        # captured = capsys.readouterr().out
-        #
-        # assert captured == expected_result
+        # log_results = test_log_ver.log_ver.get_match_results(caplog)
+        # test_log_ver.log_ver.print_match_results(log_results)
 
     ####################################################################
     # test_log_verifier_time_match
@@ -3064,80 +3003,58 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_no_log
     ####################################################################
-    def test_log_verifier_no_log(
+    @pytest.mark.parametrize(
+        "log_level_arg",
+        (logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL),
+    )
+    def test_log_verifier_levels(
         self,
-        log_enabled_arg: bool,
+        log_level_arg: int,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test log_verifier with logging disabled and enabled.
 
         Args:
-            log_enabled_arg: fixture to indicate whether log is enabled
+            log_level_arg: specifies the log level
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
-        t_logger = logging.getLogger("no_log")
-        log_ver = LogVer(log_name="no_log")
-        if log_enabled_arg:
-            t_logger.setLevel(logging.DEBUG)
-        else:
-            t_logger.setLevel(logging.INFO)
+        caplog.clear()
 
-        log_msg = f"the log_enabled_arg is: {log_enabled_arg}"
-        log_ver.add_msg(log_msg=log_msg)
-        t_logger.debug(log_msg)
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-        if log_enabled_arg:
-            log_ver.verify_log_results(log_results)
-        else:
-            with pytest.raises(UnmatchedExpectedMessages):
-                log_ver.verify_log_results(log_results)
+        test_log_ver = TestLogVerification(
+            log_name="diff_levels",
+            capsys_to_use=capsys,
+            caplog_to_use=caplog,
+            log_level=log_level_arg,
+        )
 
-        expected_result = "\n"
-        expected_result += "**********************************\n"
-        expected_result += "* number expected log records: 1 *\n"
+        exp_num_unmatched_patterns = 0
+        exp_num_unmatched_log_msgs = 0
+        exp_num_matched_log_msgs = 0
 
-        if log_enabled_arg:
-            expected_result += "* number expected unmatched  : 0 *\n"
-            expected_result += "* number actual log records  : 1 *\n"
-        else:
-            expected_result += "* number expected unmatched  : 1 *\n"
-            expected_result += "* number actual log records  : 0 *\n"
+        for level, msg in [
+            (logging.DEBUG, "msg1"),
+            (logging.INFO, "msg2"),
+            (logging.WARNING, "msg3"),
+            (logging.ERROR, "msg4"),
+            (logging.CRITICAL, "msg5"),
+        ]:
+            test_log_ver.issue_log_msg(msg, log_level=level)
+            test_log_ver.add_pattern(pattern=msg, log_level=level)
+            if log_level_arg <= level:
+                exp_num_matched_log_msgs += 1
+            else:
+                exp_num_unmatched_patterns += 1
 
-        expected_result += "* number actual unmatched    : 0 *\n"
+        test_log_ver.verify_results(
+            exp_num_unmatched_patterns=exp_num_unmatched_patterns,
+            exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
+            exp_num_matched_log_msgs=exp_num_matched_log_msgs,
+        )
 
-        if log_enabled_arg:
-            expected_result += "* number matched records     : 1 *\n"
-        else:
-            expected_result += "* number matched records     : 0 *\n"
-
-        expected_result += "**********************************\n"
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        if not log_enabled_arg:
-            expected_result += "('no_log', " "10, 'the log_enabled_arg is: False')\n"
-
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-
-        if log_enabled_arg:
-            expected_result += "('no_log', " "10, 'the log_enabled_arg is: True')\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
+        # log_results = test_log_ver.log_ver.get_match_results(caplog)
+        # test_log_ver.log_ver.print_match_results(log_results)
 
 
 ########################################################################

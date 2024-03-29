@@ -856,12 +856,12 @@ class TestEntryTraceCombos:
     ####################################################################
     # test_etrace_combo_signature
     ####################################################################
-    # @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
-    # @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
-    # @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
-    @pytest.mark.parametrize("num_po_arg", [2])
-    @pytest.mark.parametrize("num_pk_arg", [2])
-    @pytest.mark.parametrize("num_ko_arg", [2])
+    @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
+    @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
+    @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
+    # @pytest.mark.parametrize("num_po_arg", [2])
+    # @pytest.mark.parametrize("num_pk_arg", [2])
+    # @pytest.mark.parametrize("num_ko_arg", [2])
     def test_etrace_combo_signature(
         self,
         num_po_arg: int,
@@ -1307,16 +1307,16 @@ class TestEntryTraceCombos:
                 for idx2, arg_spec_ret_res in enumerate(
                     omit_variation.arg_specs_ret_reses
                 ):
-                    arg_spec_log_msg = (
-                        f"##################### " f"{arg_spec_ret_res.arg_spec=}"
-                    )
-                    logger.debug(arg_spec_log_msg)
-                    log_ver.add_msg(
-                        log_level=logging.DEBUG,
-                        log_msg=arg_spec_log_msg,
-                        log_name="test_scottbrian_utils.test_entry_trace",
-                        fullmatch=True,
-                    )
+                    # arg_spec_log_msg = (
+                    #     f"##################### " f"{arg_spec_ret_res.arg_spec=}"
+                    # )
+                    # logger.debug(arg_spec_log_msg)
+                    # log_ver.add_msg(
+                    #     log_level=logging.DEBUG,
+                    #     log_msg=arg_spec_log_msg,
+                    #     log_name="test_scottbrian_utils.test_entry_trace",
+                    #     fullmatch=True,
+                    # )
                     exec(f"f999({arg_spec_ret_res.arg_spec})")
 
                     exp_entry_log_msg = (

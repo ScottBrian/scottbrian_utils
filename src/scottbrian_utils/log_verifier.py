@@ -265,15 +265,15 @@ class UnmatchedActualMessages(LogVerError):
 class MatchResults:
     """Match results returned by get_match_results method."""
 
-    num_patterns: int
-    num_matched_patterns: int
-    num_unmatched_patterns: int
-    num_log_msgs: int
-    num_matched_log_msgs: int
-    num_unmatched_log_msgs: int
-    unmatched_patterns: str
-    unmatched_log_msgs: str
-    matched_log_msgs: str
+    num_patterns: int = 0
+    num_matched_patterns: int = 0
+    num_unmatched_patterns: int = 0
+    num_log_msgs: int = 0
+    num_matched_log_msgs: int = 0
+    num_unmatched_log_msgs: int = 0
+    unmatched_patterns: str = ""
+    unmatched_log_msgs: str = ""
+    matched_log_msgs: str = ""
 
 
 @dataclass
