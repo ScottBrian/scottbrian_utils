@@ -651,88 +651,101 @@ class TestLogVerification:
         # pre-build the matched arrays
         ################################################################
         self.build_match_arrays(patterns_len=patterns_len, log_msgs_len=log_msgs_len)
-        if patterns_len < log_msgs_len:
-            self.match_scenario_found = False
-            for idx, match_perm in enumerate(
-                it.permutations(self.matches_array, patterns_len)
-            ):
-                diag_match_array = np.array(match_perm)
-                num_matched_items = np.trace(diag_match_array)
-                max_matched_msgs = max(max_matched_msgs, num_matched_items)
+        min_desc_len = min(patterns_len, log_msgs_len)
+        max_desc_len = max(patterns_len, log_msgs_len)
+        # if patterns_len < log_msgs_len:
+        self.match_scenario_found = False
+        for idx, match_perm in enumerate(
+            it.permutations(self.matches_array, min_desc_len)
+        ):
+            diag_match_array = np.array(match_perm)
+            num_matched_items = np.trace(diag_match_array)
+            max_matched_msgs = max(max_matched_msgs, num_matched_items)
 
-                if num_matched_items == self.captured_num_matches:
-                    if self.match_scenario_found:
-                        continue
+            if num_matched_items == self.captured_num_matches:
+                if self.match_scenario_found:
+                    continue
 
-                    diag_bits = np.diag(diag_match_array)
-                    log_msg_match_sel = np.zeros(log_msgs_len)
+                if patterns_len < log_msgs_len:
+                    pattern_match_sel = np.diag(diag_match_array)
+                    log_msg_match_sel = np.zeros(max_desc_len)
 
-                    for idx2 in range(patterns_len):
-                        log_msg_match_sel[diag_match_array[idx2, -1]] = diag_bits[idx2]
-
-                    staging_scenario: LogVerScenario = LogVerScenario(
-                        num_matched_patterns=num_matched_items,
-                        num_matched_log_msgs=num_matched_items,
-                        unmatched_patterns=list(
-                            it.compress(self.patterns, np.logical_not(diag_bits))
-                        ),
-                        matched_patterns=list(it.compress(self.patterns, diag_bits)),
-                        unmatched_log_msgs=list(
-                            it.compress(
-                                self.log_msgs, np.logical_not(log_msg_match_sel)
-                            )
-                        ),
-                        matched_log_msgs=list(
-                            it.compress(self.log_msgs, log_msg_match_sel)
-                        ),
-                    )
-
-                    if self.verify_scenario(scenario=staging_scenario):
-                        self.match_scenario_found = True
+                    for idx2 in range(min_desc_len):
+                        log_msg_match_sel[diag_match_array[idx2, -1]] = (
+                            pattern_match_sel[idx2]
+                        )
                 else:
-                    assert num_matched_items <= self.captured_num_matches
+                    log_msg_match_sel = np.diag(diag_match_array)
+                    pattern_match_sel = np.zeros(max_desc_len)
 
-        else:
-            self.match_scenario_found = False
-            for idx, match_perm in enumerate(
-                it.permutations(self.matches_array, log_msgs_len)
-            ):
-                diag_match_array = np.array(match_perm)
-                num_matched_items = np.trace(diag_match_array)
-                max_matched_msgs = max(max_matched_msgs, num_matched_items)
+                    for idx2 in range(min_desc_len):
+                        pattern_match_sel[diag_match_array[idx2, -1]] = (
+                            log_msg_match_sel[idx2]
+                        )
 
-                if num_matched_items == self.captured_num_matches:
-                    if self.match_scenario_found:
-                        continue
+                staging_scenario: LogVerScenario = LogVerScenario(
+                    num_matched_patterns=num_matched_items,
+                    num_matched_log_msgs=num_matched_items,
+                    unmatched_patterns=list(
+                        it.compress(self.patterns, np.logical_not(pattern_match_sel))
+                    ),
+                    matched_patterns=list(
+                        it.compress(self.patterns, pattern_match_sel)
+                    ),
+                    unmatched_log_msgs=list(
+                        it.compress(self.log_msgs, np.logical_not(log_msg_match_sel))
+                    ),
+                    matched_log_msgs=list(
+                        it.compress(self.log_msgs, log_msg_match_sel)
+                    ),
+                )
 
-                    diag_bits = np.diag(diag_match_array)
-                    pattern_match_sel = np.zeros(patterns_len)
+                if self.verify_scenario(scenario=staging_scenario):
+                    self.match_scenario_found = True
+            else:
+                assert num_matched_items <= self.captured_num_matches
 
-                    for idx2 in range(log_msgs_len):
-                        pattern_match_sel[diag_match_array[idx2, -1]] = diag_bits[idx2]
-
-                    staging_scenario: LogVerScenario = LogVerScenario(
-                        num_matched_patterns=num_matched_items,
-                        num_matched_log_msgs=num_matched_items,
-                        unmatched_patterns=list(
-                            it.compress(
-                                self.patterns, np.logical_not(pattern_match_sel)
-                            )
-                        ),
-                        matched_patterns=list(
-                            it.compress(self.patterns, pattern_match_sel)
-                        ),
-                        unmatched_log_msgs=list(
-                            it.compress(self.log_msgs, np.logical_not(diag_bits))
-                        ),
-                        matched_log_msgs=list(it.compress(self.log_msgs, diag_bits)),
-                    )
-
-                    if self.verify_scenario(scenario=staging_scenario):
-                        self.match_scenario_found = True
-
-                else:
-                    assert num_matched_items <= self.captured_num_matches
+        # else:
+        #     self.match_scenario_found = False
+        #     for idx, match_perm in enumerate(
+        #         it.permutations(self.matches_array, min_desc_len)
+        #     ):
+        #         diag_match_array = np.array(match_perm)
+        #         num_matched_items = np.trace(diag_match_array)
+        #         max_matched_msgs = max(max_matched_msgs, num_matched_items)
+        #
+        #         if num_matched_items == self.captured_num_matches:
+        #             if self.match_scenario_found:
+        #                 continue
+        #
+        #             diag_bits = np.diag(diag_match_array)
+        #             pattern_match_sel = np.zeros(max_desc_len)
+        #
+        #             for idx2 in range(min_desc_len):
+        #                 pattern_match_sel[diag_match_array[idx2, -1]] = diag_bits[idx2]
+        #
+        #             staging_scenario: LogVerScenario = LogVerScenario(
+        #                 num_matched_patterns=num_matched_items,
+        #                 num_matched_log_msgs=num_matched_items,
+        #                 unmatched_patterns=list(
+        #                     it.compress(
+        #                         self.patterns, np.logical_not(pattern_match_sel)
+        #                     )
+        #                 ),
+        #                 matched_patterns=list(
+        #                     it.compress(self.patterns, pattern_match_sel)
+        #                 ),
+        #                 unmatched_log_msgs=list(
+        #                     it.compress(self.log_msgs, np.logical_not(diag_bits))
+        #                 ),
+        #                 matched_log_msgs=list(it.compress(self.log_msgs, diag_bits)),
+        #             )
+        #
+        #             if self.verify_scenario(scenario=staging_scenario):
+        #                 self.match_scenario_found = True
+        #
+        #         else:
+        #             assert num_matched_items <= self.captured_num_matches
 
         self.stats["patterns"] = ItemStats(
             num_items=patterns_len,
@@ -2360,10 +2373,10 @@ class TestLogVerBasic:
     )
     pattern_combos_list2 = sorted(set(pattern_combos), key=lambda x: (len(x), x))
 
-    # @pytest.mark.parametrize("msgs_arg", msg_combos_list2)
-    # @pytest.mark.parametrize("patterns_arg", pattern_combos_list2)
-    @pytest.mark.parametrize("msgs_arg", [("msg2", "msg1")])
-    @pytest.mark.parametrize("patterns_arg", [("msg[123]{1}",)])
+    @pytest.mark.parametrize("msgs_arg", msg_combos_list2)
+    @pytest.mark.parametrize("patterns_arg", pattern_combos_list2)
+    # @pytest.mark.parametrize("msgs_arg", [("msg2", "msg1")])
+    # @pytest.mark.parametrize("patterns_arg", [("msg[123]{1}",)])
     def test_log_verifier_contention(
         self,
         msgs_arg: Iterable[tuple[str]],
@@ -2379,6 +2392,7 @@ class TestLogVerBasic:
             caplog: pytest fixture to capture log output
         """
         print(f"\n{msgs_arg=}\n{patterns_arg=}")
+
         matched_msg_array: dict[str, set[str]] = {
             "msg0": {""},
             "msg1": {"msg1"},
@@ -2732,62 +2746,74 @@ class TestLogVerBasic:
         ################################################################
         caplog.clear()
 
-        log_name = "contention_0"
-        t_logger = logging.getLogger(log_name)
-        log_ver = LogVer(log_name=log_name)
+        test_log_ver = TestLogVerification(
+            log_name="contention_0", capsys_to_use=capsys, caplog_to_use=caplog
+        )
+
+        # log_name = "contention_0"
+        # t_logger = logging.getLogger(log_name)
+        # log_ver = LogVer(log_name=log_name)
 
         fullmatch_tf_arg = True
         for pattern in patterns_arg:
-            log_ver.add_msg(log_msg=pattern, fullmatch=fullmatch_tf_arg)
+            # log_ver.add_msg(log_msg=pattern, fullmatch=fullmatch_tf_arg)
+            test_log_ver.add_pattern(pattern=pattern, fullmatch=fullmatch_tf_arg)
 
         for msg in msgs_arg:
-            t_logger.debug(msg)
+            # t_logger.debug(msg)
+            test_log_ver.issue_log_msg(msg)
 
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-
-        expected_result = "\n"
-        expected_result += f"{msgs_arg=}\n"
-        expected_result += f"{patterns_arg=}\n"
-
-        expected_result += "\n"
-        expected_result += "**********************************\n"
-        expected_result += f"* number expected log records: {len(patterns_arg)} *\n"
-        expected_result += (
-            f"* number expected unmatched  : " f"{len(unmatched_patterns2)} *\n"
+        test_log_ver.verify_results(
+            exp_num_unmatched_patterns=len(unmatched_patterns2),
+            exp_num_unmatched_log_msgs=len(unmatched_msgs2),
+            exp_num_matched_log_msgs=len(matched_msgs2),
         )
-        expected_result += f"* number actual log records  : {len(msgs_arg)} *\n"
-        expected_result += f"* number actual unmatched    : {len(unmatched_msgs2)} *\n"
-        expected_result += f"* number matched records     : {len(matched_msgs2)} *\n"
 
-        expected_result += "**********************************\n"
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        for pattern in unmatched_patterns2:
-            expected_result += f"('contention_0', 10, '{pattern}')\n"
-
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        for msg in unmatched_msgs2:
-            expected_result += f"('contention_0', 10, '{msg}')\n"
-
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-
-        for msg in matched_msgs2:
-            expected_result += f"('contention_0', 10, '{msg}')\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
+        # log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
+        #
+        # expected_result = "\n"
+        # expected_result += f"{msgs_arg=}\n"
+        # expected_result += f"{patterns_arg=}\n"
+        #
+        # expected_result += "\n"
+        # expected_result += "**********************************\n"
+        # expected_result += f"* number expected log records: {len(patterns_arg)} *\n"
+        # expected_result += (
+        #     f"* number expected unmatched  : " f"{len(unmatched_patterns2)} *\n"
+        # )
+        # expected_result += f"* number actual log records  : {len(msgs_arg)} *\n"
+        # expected_result += f"* number actual unmatched    : {len(unmatched_msgs2)} *\n"
+        # expected_result += f"* number matched records     : {len(matched_msgs2)} *\n"
+        #
+        # expected_result += "**********************************\n"
+        # expected_result += "\n"
+        # expected_result += "*********************************\n"
+        # expected_result += "* unmatched expected records    *\n"
+        # expected_result += "* (logger name, level, message) *\n"
+        # expected_result += "*********************************\n"
+        # for pattern in unmatched_patterns2:
+        #     expected_result += f"('contention_0', 10, '{pattern}')\n"
+        #
+        # expected_result += "\n"
+        # expected_result += "*********************************\n"
+        # expected_result += "* unmatched actual records      *\n"
+        # expected_result += "* (logger name, level, message) *\n"
+        # expected_result += "*********************************\n"
+        # for msg in unmatched_msgs2:
+        #     expected_result += f"('contention_0', 10, '{msg}')\n"
+        #
+        # expected_result += "\n"
+        # expected_result += "*********************************\n"
+        # expected_result += "* matched records               *\n"
+        # expected_result += "* (logger name, level, message) *\n"
+        # expected_result += "*********************************\n"
+        #
+        # for msg in matched_msgs2:
+        #     expected_result += f"('contention_0', 10, '{msg}')\n"
+        #
+        # captured = capsys.readouterr().out
+        #
+        # assert captured == expected_result
 
     ####################################################################
     # test_log_verifier_time_match
@@ -3832,15 +3858,6 @@ class TestLogVerScratch:
     @pytest.mark.parametrize("num_aaa_msg_arg", [0, 1, 2])
     @pytest.mark.parametrize("num_aaa_pat_arg", [0, 1, 2])
     @pytest.mark.parametrize("num_aaa_fm_pat_arg", [0, 1, 2])
-    # @pytest.mark.parametrize("num_a_msg_arg", [1])
-    # @pytest.mark.parametrize("num_a_pat_arg", [2])
-    # @pytest.mark.parametrize("num_a_fm_pat_arg", [2])
-    # @pytest.mark.parametrize("num_aa_msg_arg", [0])
-    # @pytest.mark.parametrize("num_aa_pat_arg", [2])
-    # @pytest.mark.parametrize("num_aa_fm_pat_arg", [2])
-    # @pytest.mark.parametrize("num_aaa_msg_arg", [0])
-    # @pytest.mark.parametrize("num_aaa_pat_arg", [1])
-    # @pytest.mark.parametrize("num_aaa_fm_pat_arg", [1])
     def test_log_verifier_scratch(
         self,
         num_a_msg_arg: int,
