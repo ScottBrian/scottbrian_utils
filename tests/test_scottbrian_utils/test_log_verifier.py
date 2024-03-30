@@ -5,6 +5,7 @@
 ########################################################################
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from enum import Enum, auto
 import itertools as it
 import more_itertools as mi
 import logging
@@ -54,6 +55,12 @@ class LogFailedVerification(ErrorTstLogVer):
     """Verification of log failed"""
 
     pass
+
+
+class LogVerifyType(Enum):
+    FullVerify = auto()
+    IgnoreUnmatchedLogMsgs = auto()
+    SkipVerFullPrint = auto()
 
 
 @dataclass
@@ -201,12 +208,20 @@ class TestLogVerification:
 
     def verify_results(
         self,
+        print_only: bool = False,
         exp_num_unmatched_patterns: Optional[int] = None,
         exp_num_unmatched_log_msgs: Optional[int] = None,
         exp_num_matched_log_msgs: Optional[int] = None,
     ) -> None:
         """Verify the log records."""
         self.start_time = time.time()
+
+        if print_only:
+            # get log results and print them
+            self.log_results = self.log_ver.get_match_results(self.caplog_to_use)
+            self.log_ver.print_match_results(self.log_results)
+            return
+
         self.build_ver_record()
 
         if exp_num_unmatched_patterns is not None:
@@ -1054,6 +1069,36 @@ class TestLogVerBasic:
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
+        ################################################################
+        # add patterns and issue log msgs
+        ################################################################
+        caplog.clear()
+
+        test_log_ver = TestLogVerification(
+            log_name="print_matched", capsys_to_use=capsys, caplog_to_use=caplog
+        )
+
+        log_msgs: list[str] = []
+        for idx in range(num_msgs_arg):
+            log_msgs.append(f"log_msg_{idx}")
+            test_log_ver.add_pattern(pattern=log_msgs[idx])
+            test_log_ver.issue_log_msg(log_msgs[idx])
+
+        ################################################################
+        # verify results
+        ################################################################
+        exp_num_unmatched_patterns = 0
+        exp_num_unmatched_log_msgs = 0
+        exp_num_matched_log_msgs = len(log_msgs)
+
+        test_log_ver.verify_results(
+            verify_type=LogVerifyType.UnmatchedOnly,
+            exp_num_unmatched_patterns=exp_num_unmatched_patterns,
+            exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
+            exp_num_matched_log_msgs=exp_num_matched_log_msgs,
+        )
+
+        ################################################################
         log_name = "print_matched"
         t_logger = logging.getLogger(log_name)
         log_ver = LogVer(log_name=log_name)
@@ -1370,11 +1415,6 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_same_len_fullmatch
     ####################################################################
-    # @pytest.mark.parametrize("msgs_are_same_arg", [True, False])
-    # @pytest.mark.parametrize("add_pattern1_first_arg", [True, False])
-    # @pytest.mark.parametrize("issue_msg1_first_arg", [True, False])
-    # @pytest.mark.parametrize("pattern1_fullmatch_tf_arg", [True, False])
-    # @pytest.mark.parametrize("pattern2_fullmatch_tf_arg", [True, False])
     @pytest.mark.parametrize("msgs_are_same_arg", [False, True])
     @pytest.mark.parametrize("add_pattern1_first_arg", [False, True])
     @pytest.mark.parametrize("issue_msg1_first_arg", [False, True])
@@ -1507,11 +1547,11 @@ class TestLogVerBasic:
         #     + string.printable[0:num_last_chars_same_arg]
         #     + string.printable[num_per_section:remaining_last_chars]
         # )
-        print(f"\n{msgs_are_same_arg=}")
-        print(f"\n{add_pattern1_first_arg=}")
-        print(f"\n{issue_msg1_first_arg=}")
-        print(f"\n{pattern1_fullmatch_tf_arg=}")
-        print(f"\n{pattern2_fullmatch_tf_arg=}")
+        # print(f"\n{msgs_are_same_arg=}")
+        # print(f"\n{add_pattern1_first_arg=}")
+        # print(f"\n{issue_msg1_first_arg=}")
+        # print(f"\n{pattern1_fullmatch_tf_arg=}")
+        # print(f"\n{pattern2_fullmatch_tf_arg=}")
 
         msg1 = "abc_123"
         if msgs_are_same_arg:
@@ -1525,17 +1565,6 @@ class TestLogVerBasic:
         pattern1 = msg1
 
         pattern2 = "abc_[0-9]{3}"
-
-        exp_error = False
-        if not msgs_are_same_arg:
-            if add_pattern1_first_arg:
-                if issue_msg1_first_arg:
-                    if not pattern1_fullmatch_tf_arg and pattern2_fullmatch_tf_arg:
-                        exp_error = True
-            else:  # pattern2 goes first
-                if issue_msg1_first_arg:
-                    if not pattern1_fullmatch_tf_arg or pattern2_fullmatch_tf_arg:
-                        exp_error = True
 
         ################################################################
         # add patterns and issue log msgs
@@ -1568,23 +1597,19 @@ class TestLogVerBasic:
             test_log_ver.issue_log_msg(msg2)
             test_log_ver.issue_log_msg(msg1)
 
-        if exp_error:
-            exp_num_unmatched_patterns = 1
-            exp_num_unmatched_log_msgs = 1
-            exp_num_matched_log_msgs = 1
-        else:
-            exp_num_unmatched_patterns = 0
-            exp_num_unmatched_log_msgs = 0
-            exp_num_matched_log_msgs = 2
+        ################################################################
+        # verify results
+        ################################################################
+        exp_num_unmatched_patterns = 0
+        exp_num_unmatched_log_msgs = 0
+        exp_num_matched_log_msgs = 2
 
         test_log_ver.verify_results(
+            print_only=False,
             exp_num_unmatched_patterns=exp_num_unmatched_patterns,
             exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
             exp_num_matched_log_msgs=exp_num_matched_log_msgs,
         )
-
-        # log_results = test_log_ver.log_ver.get_match_results(caplog)
-        # test_log_ver.log_ver.print_match_results(log_results)
 
     ####################################################################
     # test_log_verifier_same_len_fullmatch
