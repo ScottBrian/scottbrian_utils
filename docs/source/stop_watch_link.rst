@@ -1,2 +1,2 @@
 .. automodule:: stop_watch
-   :members:
+   :members: StopWatch

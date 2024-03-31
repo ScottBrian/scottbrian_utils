@@ -30,8 +30,8 @@ import pytest
 from scottbrian_utils.diag_msg import get_formatted_call_sequence
 from scottbrian_utils.log_verifier import LogVer
 from scottbrian_utils.log_verifier import MatchResults
-from scottbrian_utils.log_verifier import UnmatchedExpectedMessages
-from scottbrian_utils.log_verifier import UnmatchedActualMessages
+from scottbrian_utils.log_verifier import UnmatchedPatterns
+from scottbrian_utils.log_verifier import UnmatchedLogMessages
 from scottbrian_utils.time_hdr import get_datetime_match_string
 
 logger = logging.getLogger(__name__)
@@ -163,6 +163,8 @@ class TestLogVerification:
 
         self.log_results: MatchResults = MatchResults()
 
+        self.print_matched = True
+
         self.start_time = 0
 
     def issue_log_msg(
@@ -210,18 +212,43 @@ class TestLogVerification:
     def verify_results(
         self,
         print_only: bool = False,
+        print_matched: Optional[bool] = None,
         exp_num_unmatched_patterns: Optional[int] = None,
         exp_num_unmatched_log_msgs: Optional[int] = None,
         exp_num_matched_log_msgs: Optional[int] = None,
     ) -> None:
-        """Verify the log records."""
+        """Verify the log records.
+
+        Args:
+            print_only: specifies to printy the results without
+                performing verification
+            print_matched: specifies whether to print the matched
+                records. If no, the matched records output will be
+                supressed.
+            exp_num_unmatched_patterns: number of unmatched patterns
+                that are expected
+            exp_num_unmatched_log_msgs: number of unmatched log messages
+                that are expected
+            exp_num_matched_log_msgs: number of matched log messages
+                that are expected
+        """
         self.start_time = time.time()
 
         if print_only:
             # get log results and print them
             self.log_results = self.log_ver.get_match_results(self.caplog_to_use)
-            self.log_ver.print_match_results(self.log_results)
+            if print_matched is None:
+                self.log_ver.print_match_results(self.log_results)
+            else:
+                self.log_ver.print_match_results(self.log_results, print_matched=print_matched)
             return
+
+        # if print_matched is None or True, then set self.print_matched
+        # True for verification later, else set False
+        if print_matched is None or print_matched:
+            self.print_matched = True
+        else:
+            self.print_matched = False
 
         self.build_ver_record()
 
@@ -254,13 +281,17 @@ class TestLogVerification:
         assert self.captured_log_msgs_stats_line == log_msgs_stats_line
 
         if self.stats["patterns"].num_unmatched_items:
-            with pytest.raises(UnmatchedExpectedMessages):
-                self.log_ver.verify_log_results(self.log_results)
+            exp_err_msg = (f"There (is|are) {self.stats["patterns"].num_unmatched_items} "
+                           "pattern[s]? that did not match any log messages.")
+            with pytest.raises(UnmatchedPatterns, match=exp_err_msg):
+                self.log_ver.validate_match_results(self.log_results)
         elif self.stats["log_msgs"].num_unmatched_items:
-            with pytest.raises(UnmatchedActualMessages):
-                self.log_ver.verify_log_results(self.log_results)
+            exp_err_msg = (f"There (is|are) {self.stats["log_msgs"].num_unmatched_items} "
+                           "log message[s]? that did not get matched by any patterns.")
+            with pytest.raises(UnmatchedLogMessages, match=exp_err_msg):
+                self.log_ver.validate_match_results(self.log_results)
         else:
-            self.log_ver.verify_log_results(self.log_results)
+            self.log_ver.validate_match_results(self.log_results)
 
         assert self.match_scenario_found
 
@@ -291,6 +322,7 @@ class TestLogVerification:
             matched_items=scenario.matched_log_msgs,
             log_section=self.capsys_sections["matched_log_msgs"],
             matched_section=True,
+            print_matched=self.print_matched,
         ):
             ver_result.matched_log_msgs = True
 
@@ -305,13 +337,14 @@ class TestLogVerification:
             # logger.debug(f"verify_scenario returning False ver_result: \n{ver_result}")
             return False
 
+    @staticmethod
     def verify_lines(
-        self,
         item_text: str,
         unmatched_items: list[LogItemDescriptor],
         matched_items: list[LogItemDescriptor],
         log_section: LogSection,
         matched_section: bool,
+        print_matched: bool,
     ) -> bool:
         exp_records = True
         if matched_section:
@@ -978,11 +1011,22 @@ class TestLogVerBasic:
     ) -> None:
         """Test log_verifier time match."""
         log_ver = LogVer(log_name="deprecation_warning")
+
         with warnings.catch_warnings(record=True) as w:
             # Cause all warnings to always be triggered.
             warnings.simplefilter("always")
             # Trigger a warning.
             log_ver.add_msg(log_msg="bad_msg")
+            # Verify the warning
+            assert len(w) == 1
+            assert issubclass(w[-1].category, DeprecationWarning)
+            assert "deprecated" in str(w[-1].message)
+
+        with warnings.catch_warnings(record=True) as w:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always")
+            # Trigger a warning.
+            log_ver.verify_log_results(match_results=MatchResults())
             # Verify the warning
             assert len(w) == 1
             assert issubclass(w[-1].category, DeprecationWarning)
@@ -1111,7 +1155,7 @@ class TestLogVerBasic:
         exp_num_matched_log_msgs = len(log_msgs)
 
         test_log_ver.verify_results(
-            verify_type=LogVerifyType.UnmatchedOnly,
+            print_matched=print_matched_arg,
             exp_num_unmatched_patterns=exp_num_unmatched_patterns,
             exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
             exp_num_matched_log_msgs=exp_num_matched_log_msgs,

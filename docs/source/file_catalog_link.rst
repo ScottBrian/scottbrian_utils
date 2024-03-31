@@ -1,2 +1,2 @@
 .. automodule:: file_catalog
-   :members:
+   :members: FileCatalog

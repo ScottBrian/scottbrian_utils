@@ -1082,15 +1082,26 @@ class LogVer:
 
         """
         if match_results.num_unmatched_patterns:
+            if match_results.num_unmatched_patterns == 1:
+                is_are = "is"
+                pattern_s = "pattern"
+            else:
+                is_are = "are"
+                pattern_s = "patterns"
+
             raise UnmatchedPatterns(
-                f"There are {match_results.num_unmatched_patterns} "
-                "expected log messages that failed to match actual log "
-                "messages."
+                f"There {is_are} {match_results.num_unmatched_patterns} {pattern_s} that did not "
+                "match any log messages."
             )
 
         if match_results.num_unmatched_log_msgs:
+            if match_results.num_unmatched_log_msgs == 1:
+                is_are = "is"
+                log_msg_s = "log messages"
+            else:
+                is_are = "are"
+                log_msg_s = "log messages"
             raise UnmatchedLogMessages(
-                f"There are {match_results.num_unmatched_log_msgs} "
-                "actual log messages that failed to match expected log "
-                "messages."
+                f"There {is_are} {match_results.num_unmatched_log_msgs} {log_msg_s} that did not "
+                "get matched by any patterns."
             )

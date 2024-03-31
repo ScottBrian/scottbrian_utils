@@ -8,6 +8,7 @@
 
 .. toctree::
    :maxdepth: 2
+   :titlesonly:
    :caption: API Reference:
 
    diag_msg <diag_msg_link>

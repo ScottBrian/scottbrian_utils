@@ -1,2 +1,2 @@
 .. automodule:: timer
-   :members:
+   :members: Timer

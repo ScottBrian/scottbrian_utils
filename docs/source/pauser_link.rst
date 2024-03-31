@@ -1,2 +1,2 @@
 .. automodule:: pauser
-   :members:
+   :members: Pauser, MetricResults
