@@ -1,8 +1,8 @@
 """Module file_catalog.
 
-============
-file_catalog
-============
+===========
+FileCatalog
+===========
 
 With **file_catalog**, you can set up a mapping of file names to their
 paths. An application can then use the catalog to retrieve the paths
@@ -53,6 +53,7 @@ The file_catalog module contains:
        d. IllegalDelAtempt
 
 """
+
 import csv
 from pathlib import Path
 from typing import Dict, List, Optional, Type, TYPE_CHECKING

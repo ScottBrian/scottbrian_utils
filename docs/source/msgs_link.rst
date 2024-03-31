@@ -1,2 +1,2 @@
 .. automodule:: msgs
-   :members:
+   :members: Msgs

@@ -202,17 +202,19 @@ The log_verifier module contains:
 ########################################################################
 # Standard Library
 ########################################################################
-from collections import defaultdict
+# from collections import defaultdict
 from dataclasses import dataclass
-import itertools as it
+
+# import itertools as it
 import logging
-import more_itertools as mi
+
+# import more_itertools as mi
 import pandas as pd
 import pyarrow as pa
 import pytest
 import re
-import time
-from typing import Any, Optional, Type, TYPE_CHECKING, Union
+from typing import Optional, Type, TYPE_CHECKING, Union
+import warnings
 
 ########################################################################
 # Third Party
@@ -257,6 +259,18 @@ class UnmatchedExpectedMessages(LogVerError):
 
 class UnmatchedActualMessages(LogVerError):
     """Unmatched actual messages were found during verify."""
+
+    pass
+
+
+class UnmatchedPatterns(LogVerError):
+    """Unmatched patterns were found during verify."""
+
+    pass
+
+
+class UnmatchedLogMessages(LogVerError):
+    """Unmatched log messages were found during verify."""
 
     pass
 
@@ -393,7 +407,16 @@ class LogVer:
             fullmatch: if True, use regex fullmatch instead of
                 match in method get_match_results
 
+        .. deprecated:: 3.0.0
+           Use method :func:`add_pattern()` instead.
+
         """
+        warnings.warn(
+            message="LogVer.add_msg() is deprecated as of version 3.0.0 and will be "
+            "removed in a future release. Use LogVer.add_pattern() instead",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         self.add_pattern(
             pattern=log_msg,
             log_level=log_level,
@@ -411,7 +434,7 @@ class LogVer:
         log_name: Optional[str] = None,
         fullmatch: bool = False,
     ) -> None:
-        """Add a message to the expected log messages.
+        """Add a pattern to be matched to a log message.
 
         Args:
             pattern: pattern to use to find log_msg in the log
@@ -419,6 +442,9 @@ class LogVer:
             log_name: logger name to use
             fullmatch: if True, use regex fullmatch instead of
                 match in method get_match_results
+
+        .. versionadded:: 3.0.0
+           Method :func:`add_pattern` replaces method :func:`add_msg`.
 
         Example: add two patterns, each at a different level
 
@@ -622,12 +648,6 @@ class LogVer:
             max_potential_matches = max(max_potential_matches, min_potential_matches)
 
             if p_min_potential_matches <= m_min_potential_matches:
-                # logger.debug(
-                #     f"calling search_df 1 {p_min_potential_matches=}, {m_min_potential_matches=}, {min_potential_matches=}, {max_potential_matches=}"
-                # )
-                # logger.debug(f"before avail_pattern_grp: \n{avail_pattern_grp}")
-                # logger.debug(f"before pattern_grp: \n{pattern_grp}")
-                # logger.debug(f"before msg_grp: \n{msg_grp}")
                 self.search_df(
                     avail_df=avail_pattern_grp,
                     search_arg_df=pattern_grp,
@@ -635,9 +655,6 @@ class LogVer:
                     min_potential_matches=min_potential_matches,
                 )
             else:
-                # logger.debug(
-                #     f"calling search_df 2 {p_min_potential_matches=}, {m_min_potential_matches=}, {min_potential_matches=}, {max_potential_matches=}"
-                # )
                 self.search_df(
                     avail_df=avail_msg_grp,
                     search_arg_df=msg_grp,
@@ -1012,13 +1029,25 @@ class LogVer:
             check_actual_unmatched: If True, check that there are no
                 remaining unmatched actual records
 
+        .. deprecated:: 3.0.0
+           Use method :func:`verify_match_results` instead.
+
         Raises:
             UnmatchedExpectedMessages: There are expected log messages
                 that failed to match actual log messages.
             UnmatchedActualMessages: There are actual log messages that
                 failed to match expected log messages.
 
+
+
         """
+        warnings.warn(
+            message="LogVer.verify_log_results() is deprecated as of"
+            " version 3.0.0 and will be removed in a future release. "
+            "Use LogVer.validate_match_results() instead",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
         if match_results.num_unmatched_patterns:
             raise UnmatchedExpectedMessages(
                 f"There are {match_results.num_unmatched_patterns} "
@@ -1033,51 +1062,35 @@ class LogVer:
                 "messages."
             )
 
+    ####################################################################
+    # verify_match_results
+    ####################################################################
+    @staticmethod
+    def validate_match_results(match_results: MatchResults) -> None:
+        """Verify that each log message issued is as expected.
 
-########################################################################
-"""
-***********************************
-* number expected log records: 18 *
-* number expected unmatched  :  0 *
-* number actual log records  : 22 *
-* number actual unmatched    :  4 *
-* number matched records     : 18 *
-***********************************
+        Args:
+            match_results: contains the results to be verified
 
-*********************************
-* unmatched expected records    *
-* (logger name, level, message) *
-*********************************
+        Raises:
+            UnmatchedPatterns: One or more patterns failed to match
+                their intended log messages. The patterns and/or the
+                log messages may have been incorrectly specified.
+            UnmatchedLogMessages: One or more log messages failed to be
+                matched by corresponding patterns. The patterns and/or
+                the log messages may have been incorrectly specified.
 
-*********************************
-* unmatched actual records      *
-* (logger name, level, message) *
-*********************************
-('test_scottbrian_utils.test_entry_trace', 10, "##################### final_plist_combo.plist='po_1, /'")
-('test_scottbrian_utils.test_entry_trace', 10, "##################### final_plist_combo.plist='po_1, /'")
-('test_scottbrian_utils.test_entry_trace', 10, "##################### final_plist_combo.plist='po_1=1, /'")
-('test_scottbrian_utils.test_entry_trace', 10, "##################### final_plist_combo.plist='po_1=1, /'")
+        """
+        if match_results.num_unmatched_patterns:
+            raise UnmatchedPatterns(
+                f"There are {match_results.num_unmatched_patterns} "
+                "expected log messages that failed to match actual log "
+                "messages."
+            )
 
-*********************************
-* matched records               *
-* (logger name, level, message) *
-*********************************
-('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec='10'")
-('scottbrian_utils.entry_trace', 10, '<string>:f1:? entry: po_1=10, caller: <string>:1')
-('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=10, '")
-('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec='10'")
-('scottbrian_utils.entry_trace', 10, "<string>:f1:? entry: po_1='...', caller: <string>:1")
-('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=10, '")
-('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec='10'")
-('scottbrian_utils.entry_trace', 10, '<string>:f1:? entry: po_1=10, caller: <string>:1')
-('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=10, '")
-('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec=''")
-('scottbrian_utils.entry_trace', 10, '<string>:f1:? entry: po_1=1, caller: <string>:1')
-('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=1, '")
-('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec='10'")
-('scottbrian_utils.entry_trace', 10, "<string>:f1:? entry: po_1='...', caller: <string>:1")
-('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=10, '")
-('test_scottbrian_utils.test_entry_trace', 10, "##################### arg_spec_ret_res.arg_spec=''")
-('scottbrian_utils.entry_trace', 10, "<string>:f1:? entry: po_1='...', caller: <string>:1")
-('scottbrian_utils.entry_trace', 10, "<string>:f1:? exit: return_value='po_1=1, '")
-"""
+        if match_results.num_unmatched_log_msgs:
+            raise UnmatchedLogMessages(
+                f"There are {match_results.num_unmatched_log_msgs} "
+                "actual log messages that failed to match expected log "
+                "messages."
+            )

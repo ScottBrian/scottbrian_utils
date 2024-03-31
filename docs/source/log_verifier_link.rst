@@ -1,2 +1,2 @@
 .. automodule:: log_verifier
-   :members:
+   :members: LogVer
