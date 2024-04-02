@@ -64,13 +64,13 @@ class LogVerifyType(Enum):
     SkipVerFullPrint = auto()
 
 
-@dataclass
+@dataclass(order=True)
 class LogItemDescriptor:
+    item: str
     log_name: str
     log_level: int
-    item: str
-    c_pattern: re.Pattern[str] = ""
     fullmatch: bool = False
+    c_pattern: re.Pattern[str] = ""
 
 
 @dataclass
@@ -152,7 +152,7 @@ class TestLogVerification:
 
         self.stats: dict[str, ItemStats] = {}
         self.match_scenario_found: bool = False
-
+        self.matched_scenario: LogVerScenario = LogVerScenario()
         self.capsys_stats_hdr: str = ""
         self.capsys_stats_lines: list[str] = []
         self.capsys_sections: dict[str, LogSection] = {}
@@ -163,6 +163,7 @@ class TestLogVerification:
 
         self.log_results: MatchResults = MatchResults()
 
+        self.print_matched_arg = None
         self.print_matched = True
 
         self.start_time = 0
@@ -200,12 +201,12 @@ class TestLogVerification:
             pattern=pattern, log_level=log_level, log_name=log_name, fullmatch=fullmatch
         )
         ret_pattern = LogItemDescriptor(
-                log_name=log_name,
-                log_level=log_level,
-                item=pattern,
-                c_pattern=re.compile(pattern),
-                fullmatch=fullmatch,
-            )
+            log_name=log_name,
+            log_level=log_level,
+            item=pattern,
+            c_pattern=re.compile(pattern),
+            fullmatch=fullmatch,
+        )
         self.patterns.append(ret_pattern)
 
         return ret_pattern
@@ -249,8 +250,7 @@ class TestLogVerification:
                 )
             return
 
-        # if print_matched is None or True, then set self.print_matched
-        # True for verification later, else set False
+        self.print_matched_arg = print_matched
         if print_matched is None or print_matched:
             self.print_matched = True
         else:
@@ -262,10 +262,21 @@ class TestLogVerification:
             assert (
                 self.stats["patterns"].num_unmatched_items == exp_num_unmatched_patterns
             )
+
+        if exp_unmatched_patterns is not None:
+            assert self.match_scenario_found
+            assert len(self.matched_scenario.unmatched_patterns) == len(
+                exp_unmatched_patterns
+            )
+            assert sorted(exp_unmatched_patterns) == sorted(
+                self.matched_scenario.unmatched_patterns
+            )
+
         if exp_num_unmatched_log_msgs is not None:
             assert (
                 self.stats["log_msgs"].num_unmatched_items == exp_num_unmatched_log_msgs
             )
+
         if exp_num_matched_log_msgs is not None:
             assert self.stats["log_msgs"].num_matched_items == exp_num_matched_log_msgs
 
@@ -482,7 +493,12 @@ class TestLogVerification:
 
         # get log results and print them
         self.log_results = self.log_ver.get_match_results(self.caplog_to_use)
-        self.log_ver.print_match_results(self.log_results)
+        if self.print_matched_arg is None:
+            self.log_ver.print_match_results(self.log_results)
+        else:
+            self.log_ver.print_match_results(
+                self.log_results, print_matched=self.print_matched_arg
+            )
 
         captured_capsys = self.capsys_to_use.readouterr().out
         captured_lines = captured_capsys.split("\n")
@@ -681,6 +697,7 @@ class TestLogVerification:
                 # logger.debug(f"scenario: \n{staging_scenario}")
                 if self.verify_scenario(scenario=staging_scenario):
                     self.match_scenario_found = True
+                    self.matched_scenario = staging_scenario
             else:
                 assert num_matched_items <= self.captured_num_matches
 
@@ -754,36 +771,33 @@ class TestLogVerExamples:
         t_logger = logging.getLogger("example_1")
         log_ver = LogVer(log_name="example_1")
         log_msg = "hello"
-        log_ver.add_msg(log_msg=log_msg)
+        log_ver.add_pattern(pattern=log_msg)
         t_logger.debug(log_msg)
         log_results = log_ver.get_match_results(caplog)
         log_ver.print_match_results(log_results)
-        log_ver.verify_log_results(log_results)
+        log_ver.validate_match_results(log_results)
 
         expected_result = "\n"
-        expected_result += "**********************************\n"
-        expected_result += "* number expected log records: 1 *\n"
-        expected_result += "* number expected unmatched  : 0 *\n"
-        expected_result += "* number actual log records  : 1 *\n"
-        expected_result += "* number actual unmatched    : 0 *\n"
-        expected_result += "* number matched records     : 1 *\n"
-        expected_result += "**********************************\n"
+        expected_result += "************************************************\n"
+        expected_result += "*                summary stats                 *\n"
+        expected_result += "************************************************\n"
+        expected_result += "item_type  num_items  num_matched  num_unmatched\n"
+        expected_result += " patterns          1            1              0\n"
+        expected_result += " log_msgs          1            1              0\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched patterns: *\n"
+        expected_result += "***********************\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched log_msgs: *\n"
+        expected_result += "***********************\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "('example_1', 10, 'hello')\n"
+        expected_result += "***********************\n"
+        expected_result += "*  matched log_msgs:  *\n"
+        expected_result += "***********************\n"
+        expected_result += f" log_name  log_level log_msg  num_records  num_matched\n"
+        expected_result += f"example_1         10   hello            1            1\n"
 
         captured = capsys.readouterr().out
 
@@ -806,40 +820,42 @@ class TestLogVerExamples:
         t_logger = logging.getLogger("example_2")
         log_ver = LogVer(log_name="example_2")
         log_msg1 = "hello"
-        log_ver.add_msg(log_msg=log_msg1)
+        log_ver.add_pattern(pattern=log_msg1)
         log_msg2 = "goodbye"
-        log_ver.add_msg(log_msg=log_msg2)
+        log_ver.add_pattern(pattern=log_msg2)
         t_logger.debug(log_msg1)
         log_results = log_ver.get_match_results(caplog)
         log_ver.print_match_results(log_results)
-        with pytest.raises(UnmatchedExpectedMessages):
-            log_ver.verify_log_results(log_results)
+        with pytest.raises(UnmatchedPatterns):
+            log_ver.validate_match_results(log_results)
 
         expected_result = "\n"
-        expected_result += "**********************************\n"
-        expected_result += "* number expected log records: 2 *\n"
-        expected_result += "* number expected unmatched  : 1 *\n"
-        expected_result += "* number actual log records  : 1 *\n"
-        expected_result += "* number actual unmatched    : 0 *\n"
-        expected_result += "* number matched records     : 1 *\n"
-        expected_result += "**********************************\n"
+        expected_result += "************************************************\n"
+        expected_result += "*                summary stats                 *\n"
+        expected_result += "************************************************\n"
+        expected_result += "item_type  num_items  num_matched  num_unmatched\n"
+        expected_result += " patterns          2            1              1\n"
+        expected_result += " log_msgs          1            1              0\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "('example_2', 10, 'goodbye')\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched patterns: *\n"
+        expected_result += "***********************\n"
+        expected_result += (
+            f" log_name  log_level pattern  fullmatch  num_records  num_matched\n"
+        )
+        expected_result += (
+            f"example_2         10 goodbye      False            1            0\n"
+        )
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched log_msgs: *\n"
+        expected_result += "***********************\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "('example_2', 10, 'hello')\n"
+        expected_result += "***********************\n"
+        expected_result += "*  matched log_msgs:  *\n"
+        expected_result += "***********************\n"
+        expected_result += f" log_name  log_level log_msg  num_records  num_matched\n"
+        expected_result += f"example_2         10   hello            1            1\n"
 
         captured = capsys.readouterr().out
 
@@ -862,39 +878,37 @@ class TestLogVerExamples:
         t_logger = logging.getLogger("example_3")
         log_ver = LogVer(log_name="example_3")
         log_msg1 = "hello"
-        log_ver.add_msg(log_msg=log_msg1)
+        log_ver.add_pattern(pattern=log_msg1)
         log_msg2 = "goodbye"
         t_logger.debug(log_msg1)
         t_logger.debug(log_msg2)
         log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-        with pytest.raises(UnmatchedActualMessages):
-            log_ver.verify_log_results(log_results)
+        with pytest.raises(UnmatchedLogMessages):
+            log_ver.validate_match_results(log_results)
 
         expected_result = "\n"
-        expected_result += "**********************************\n"
-        expected_result += "* number expected log records: 1 *\n"
-        expected_result += "* number expected unmatched  : 0 *\n"
-        expected_result += "* number actual log records  : 2 *\n"
-        expected_result += "* number actual unmatched    : 1 *\n"
-        expected_result += "* number matched records     : 1 *\n"
-        expected_result += "**********************************\n"
+        expected_result += "************************************************\n"
+        expected_result += "*                summary stats                 *\n"
+        expected_result += "************************************************\n"
+        expected_result += "item_type  num_items  num_matched  num_unmatched\n"
+        expected_result += " patterns          1            1              0\n"
+        expected_result += " log_msgs          2            1              1\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched patterns: *\n"
+        expected_result += "***********************\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "('example_3', 10, 'goodbye')\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched log_msgs: *\n"
+        expected_result += "***********************\n"
+        expected_result += f" log_name  log_level log_msg  num_records  num_matched\n"
+        expected_result += f"example_3         10 goodbye            1            0\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "('example_3', 10, 'hello')\n"
+        expected_result += "***********************\n"
+        expected_result += "*  matched log_msgs:  *\n"
+        expected_result += "***********************\n"
+        expected_result += f" log_name  log_level log_msg  num_records  num_matched\n"
+        expected_result += f"example_3         10   hello            1            1\n"
 
         captured = capsys.readouterr().out
 
@@ -918,42 +932,49 @@ class TestLogVerExamples:
         t_logger = logging.getLogger("example_4")
         log_ver = LogVer(log_name="example_4")
         log_msg1 = "hello"
-        log_ver.add_msg(log_msg=log_msg1)
+        log_ver.add_pattern(pattern=log_msg1)
         log_msg2a = "goodbye"
-        log_ver.add_msg(log_msg=log_msg2a)
+        log_ver.add_pattern(pattern=log_msg2a)
         log_msg2b = "see you soon"
         t_logger.debug(log_msg1)
         t_logger.debug(log_msg2b)
         log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-        with pytest.raises(UnmatchedExpectedMessages):
-            log_ver.verify_log_results(log_results)
+        with pytest.raises(UnmatchedPatterns):
+            log_ver.validate_match_results(log_results)
 
         expected_result = "\n"
-        expected_result += "**********************************\n"
-        expected_result += "* number expected log records: 2 *\n"
-        expected_result += "* number expected unmatched  : 1 *\n"
-        expected_result += "* number actual log records  : 2 *\n"
-        expected_result += "* number actual unmatched    : 1 *\n"
-        expected_result += "* number matched records     : 1 *\n"
-        expected_result += "**********************************\n"
+        expected_result += "************************************************\n"
+        expected_result += "*                summary stats                 *\n"
+        expected_result += "************************************************\n"
+        expected_result += "item_type  num_items  num_matched  num_unmatched\n"
+        expected_result += " patterns          2            1              1\n"
+        expected_result += " log_msgs          2            1              1\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "('example_4', 10, 'goodbye')\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched patterns: *\n"
+        expected_result += "***********************\n"
+        expected_result += (
+            f" log_name  log_level pattern  fullmatch  num_records  num_matched\n"
+        )
+        expected_result += (
+            f"example_4         10 goodbye      False            1            0\n"
+        )
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "('example_4', 10, 'see you soon')\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched log_msgs: *\n"
+        expected_result += "***********************\n"
+        expected_result += (
+            f" log_name  log_level      log_msg  num_records  num_matched\n"
+        )
+        expected_result += (
+            f"example_4         10 see you soon            1            0\n"
+        )
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "('example_4', 10, 'hello')\n"
+        expected_result += "***********************\n"
+        expected_result += "*  matched log_msgs:  *\n"
+        expected_result += "***********************\n"
+        expected_result += f" log_name  log_level log_msg  num_records  num_matched\n"
+        expected_result += f"example_4         10   hello            1            1\n"
 
         captured = capsys.readouterr().out
 
@@ -973,12 +994,12 @@ class TestLogVerExamples:
 
         """
         # add two log messages, each different level
-        t_logger = logging.getLogger("add_msg")
-        log_ver = LogVer("add_msg")
+        t_logger = logging.getLogger("example_5")
+        log_ver = LogVer("example_5")
         log_msg1 = "hello"
         log_msg2 = "goodbye"
-        log_ver.add_msg(log_msg=log_msg1)
-        log_ver.add_msg(log_msg=log_msg2, log_level=logging.ERROR)
+        log_ver.add_pattern(pattern=log_msg1)
+        log_ver.add_pattern(pattern=log_msg2, log_level=logging.ERROR)
         t_logger.debug(log_msg1)
         t_logger.error(log_msg2)
         match_results = log_ver.get_match_results(caplog=caplog)
@@ -986,30 +1007,27 @@ class TestLogVerExamples:
         log_ver.verify_log_results(match_results)
 
         expected_result = "\n"
-        expected_result += "**********************************\n"
-        expected_result += "* number expected log records: 2 *\n"
-        expected_result += "* number expected unmatched  : 0 *\n"
-        expected_result += "* number actual log records  : 2 *\n"
-        expected_result += "* number actual unmatched    : 0 *\n"
-        expected_result += "* number matched records     : 2 *\n"
-        expected_result += "**********************************\n"
+        expected_result += "************************************************\n"
+        expected_result += "*                summary stats                 *\n"
+        expected_result += "************************************************\n"
+        expected_result += "item_type  num_items  num_matched  num_unmatched\n"
+        expected_result += " patterns          2            2              0\n"
+        expected_result += " log_msgs          2            2              0\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched patterns: *\n"
+        expected_result += "***********************\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched log_msgs: *\n"
+        expected_result += "***********************\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "('add_msg', 10, 'hello')\n"
-        expected_result += "('add_msg', 40, 'goodbye')\n"
+        expected_result += "***********************\n"
+        expected_result += "*  matched log_msgs:  *\n"
+        expected_result += "***********************\n"
+        expected_result += f" log_name  log_level log_msg  num_records  num_matched\n"
+        expected_result += f"example_5         10   hello            1            1\n"
+        expected_result += f"example_5         40 goodbye            1            1\n"
 
         captured = capsys.readouterr().out
 
@@ -1097,35 +1115,41 @@ class TestLogVerBasic:
         t_logger = logging.getLogger("simple_match")
         log_ver = LogVer(log_name="simple_match")
 
-        log_ver.add_msg(log_msg=simple_str_arg)
+        log_ver.add_pattern(pattern=simple_str_arg)
         t_logger.debug(simple_str_arg)
         log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
         log_ver.verify_log_results(log_results)
 
+        hdr_log_msg = "log_msg"
+        hdr_log_msg_width = max(len(hdr_log_msg), len(simple_str_arg))
+
         expected_result = "\n"
-        expected_result += "**********************************\n"
-        expected_result += "* number expected log records: 1 *\n"
-        expected_result += "* number expected unmatched  : 0 *\n"
-        expected_result += "* number actual log records  : 1 *\n"
-        expected_result += "* number actual unmatched    : 0 *\n"
-        expected_result += "* number matched records     : 1 *\n"
-        expected_result += "**********************************\n"
+        expected_result += "************************************************\n"
+        expected_result += "*                summary stats                 *\n"
+        expected_result += "************************************************\n"
+        expected_result += "item_type  num_items  num_matched  num_unmatched\n"
+        expected_result += " patterns          1            1              0\n"
+        expected_result += " log_msgs          1            1              0\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched patterns: *\n"
+        expected_result += "***********************\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched log_msgs: *\n"
+        expected_result += "***********************\n"
         expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += f"('simple_match', 10, '{simple_str_arg}')\n"
+        expected_result += "***********************\n"
+        expected_result += "*  matched log_msgs:  *\n"
+        expected_result += "***********************\n"
+        expected_result += (
+            f"    log_name  log_level {hdr_log_msg:>{hdr_log_msg_width}} "
+            f" num_records  num_matched\n"
+        )
+        expected_result += (
+            f"simple_match         10 {simple_str_arg:>{hdr_log_msg_width}} "
+            f"           1            1\n"
+        )
 
         captured = capsys.readouterr().out
 
@@ -1180,57 +1204,6 @@ class TestLogVerBasic:
             exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
             exp_num_matched_log_msgs=exp_num_matched_log_msgs,
         )
-
-        ################################################################
-        log_name = "print_matched"
-        t_logger = logging.getLogger(log_name)
-        log_ver = LogVer(log_name=log_name)
-
-        log_msgs: list[str] = []
-        for idx in range(num_msgs_arg):
-            log_msgs.append(f"log_msg_{idx}")
-            log_ver.add_msg(log_msg=log_msgs[idx])
-            t_logger.debug(log_msgs[idx])
-
-        log_results = log_ver.get_match_results(caplog)
-        if print_matched_arg is None:
-            log_ver.print_match_results(log_results)
-        else:
-            log_ver.print_match_results(log_results, print_matched=print_matched_arg)
-        log_ver.verify_log_results(log_results)
-
-        expected_result = "\n"
-        expected_result += "**********************************\n"
-        expected_result += f"* number expected log records: {num_msgs_arg} *\n"
-        expected_result += "* number expected unmatched  : 0 *\n"
-        expected_result += f"* number actual log records  : {num_msgs_arg} *\n"
-        expected_result += "* number actual unmatched    : 0 *\n"
-        expected_result += f"* number matched records     : {num_msgs_arg} *\n"
-        expected_result += "**********************************\n"
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-
-        if print_matched_arg is None or print_matched_arg is True:
-            expected_result += "\n"
-            expected_result += "*********************************\n"
-            expected_result += "* matched records               *\n"
-            expected_result += "* (logger name, level, message) *\n"
-            expected_result += "*********************************\n"
-
-            for log_msg in log_msgs:
-                expected_result += f"('{log_name}', 10, '{log_msg}')\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
 
     ####################################################################
     # test_log_verifier_simple_fullmatch
@@ -1354,7 +1327,7 @@ class TestLogVerBasic:
         )
 
         ################################################################
-        # step 4: use fullmatch and cause unmatched expected failure
+        # step 4: use fullmatch and cause unmatched pattern failure
         ################################################################
         caplog.clear()
 
@@ -1364,10 +1337,10 @@ class TestLogVerBasic:
             log_name="fullmatch_4", capsys_to_use=capsys, caplog_to_use=caplog
         )
 
-        test_log_ver.add_pattern(pattern=double_str_arg[0], fullmatch=True)
-        pattern1 = test_log_ver.add_pattern(pattern=double_str_arg[1], fullmatch=True)
+        pattern_0 = test_log_ver.add_pattern(pattern=double_str_arg[0], fullmatch=True)
+        test_log_ver.add_pattern(pattern=double_str_arg[1], fullmatch=True)
 
-        unmatched_patterns.append(pattern1)
+        unmatched_patterns.append(pattern_0)
 
         test_log_ver.issue_log_msg(double_str_arg[1])
         # test_log_ver.issue_log_msg(double_str_arg[0])
@@ -1378,55 +1351,10 @@ class TestLogVerBasic:
         test_log_ver.verify_results(
             print_only=False,
             exp_num_unmatched_patterns=1,
-            exp_unmmatched_patterns=unmatched_patterns,
+            exp_unmatched_patterns=unmatched_patterns,
             exp_num_unmatched_log_msgs=0,
             exp_num_matched_log_msgs=1,
         )
-
-        log_name = "fullmatch_4"
-        t_logger = logging.getLogger(log_name)
-        log_ver = LogVer(log_name=log_name)
-
-        log_ver.add_msg(log_msg=double_str_arg[0], fullmatch=True)
-        log_ver.add_msg(log_msg=double_str_arg[1], fullmatch=True)
-
-        t_logger.debug(double_str_arg[0])
-        # t_logger.debug(double_str_arg[1])
-
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-
-        with pytest.raises(UnmatchedExpectedMessages):
-            log_ver.verify_log_results(log_results)
-
-        expected_result = "\n"
-        expected_result += "**********************************\n"
-        expected_result += "* number expected log records: 2 *\n"
-        expected_result += "* number expected unmatched  : 1 *\n"
-        expected_result += "* number actual log records  : 1 *\n"
-        expected_result += "* number actual unmatched    : 0 *\n"
-        expected_result += "* number matched records     : 1 *\n"
-        expected_result += "**********************************\n"
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched expected records    *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += f"('fullmatch_4', 10, '{double_str_arg[1]}')\n"
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* unmatched actual records      *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += "\n"
-        expected_result += "*********************************\n"
-        expected_result += "* matched records               *\n"
-        expected_result += "* (logger name, level, message) *\n"
-        expected_result += "*********************************\n"
-        expected_result += f"('fullmatch_4', 10, '{double_str_arg[0]}')\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
 
     ####################################################################
     # test_log_verifier_same_len_fullmatch
@@ -1599,6 +1527,9 @@ class TestLogVerBasic:
         log_ver = LogVer(log_name="call_seq")
 
         log_ver.add_call_seq(name="alpha", seq=simple_str_arg)
+
+        # use deprecated add_msg to verify it still works until we
+        # remove it
         log_ver.add_msg(log_msg=log_ver.get_call_seq("alpha"))
         t_logger.debug(f"{simple_str_arg}:{123}")
         log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
