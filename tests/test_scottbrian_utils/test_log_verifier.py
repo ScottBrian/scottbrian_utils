@@ -1712,11 +1712,11 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += (
             f"log_name  level {hdr_log_msg:>{hdr_log_msg_width}} "
-            f"  records  matched  unmatched\n"
+            f" records  matched  unmatched\n"
         )
         expected_result += (
             f"call_seq     10 {simple_str_arg:>{hdr_log_msg_width-4}}:123 "
-            f"        1        1          0\n"
+            f"       1        1          0\n"
         )
 
         captured = capsys.readouterr().out
@@ -1781,11 +1781,11 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += (
             f" log_name  level {hdr_log_msg:>{hdr_log_msg_width}} "
-            f"  records  matched  unmatched\n"
+            f" records  matched  unmatched\n"
         )
         expected_result += (
             f"call_seq2     10 {my_seq:>{hdr_log_msg_width}} "
-            f"        1        1          0\n"
+            f"       1        1          0\n"
         )
 
         captured = capsys.readouterr().out
@@ -1866,11 +1866,11 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += (
             f" log_name  level {hdr_log_msg:>{hdr_log_msg_width}} "
-            f"  records  matched  unmatched\n"
+            f" records  matched  unmatched\n"
         )
         expected_result += (
             f"call_seq3     10 {log_msg:>{hdr_log_msg_width}} "
-            f"        1        1          0\n"
+            f"       1        1          0\n"
         )
 
         captured = capsys.readouterr().out

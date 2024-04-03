@@ -723,7 +723,7 @@ class LogVer:
         # We stop calling when we determine no additional matches are
         # possible as indicated when all entries have either made a
         # match are have exhausted their potential_matches.
-        # print(f"entered search_df {min_potential_matches=}")
+
         def adjust_potential_matches(
             adj_df: pd.DataFrame,
             idx_adjust_list: list[int],
@@ -761,11 +761,18 @@ class LogVer:
                 for potential_idx in search_item.potential_matches:
                     targ_num_avail = search_targ_df.at[potential_idx, "num_avail"]
                     if targ_num_avail > 0:
+                        num_matched = min(arg_num_avail, targ_num_avail)
+                        search_arg_df.at[search_item.Index, "matched"] += num_matched
+                        search_arg_df.at[search_item.Index, "num_avail"] -= num_matched
+
+                        search_targ_df.at[potential_idx, "matched"] += num_matched
+                        search_targ_df.at[potential_idx, "num_avail"] -= num_matched
+
                         if arg_num_avail == targ_num_avail:
-                            search_arg_df.at[
-                                search_item.Index, "matched"
-                            ] += arg_num_avail
-                            search_arg_df.at[search_item.Index, "num_avail"] = 0
+                            # search_arg_df.at[
+                            #     search_item.Index, "matched"
+                            # ] += arg_num_avail
+                            # search_arg_df.at[search_item.Index, "num_avail"] = 0
 
                             targ_df_idx_adjust_list = (
                                 search_item.potential_matches.copy()
@@ -780,10 +787,10 @@ class LogVer:
                                     min_len=min_potential_matches,
                                 )
 
-                            search_targ_df.at[
-                                potential_idx, "matched"
-                            ] += targ_num_avail
-                            search_targ_df.at[potential_idx, "num_avail"] = 0
+                            # search_targ_df.at[
+                            #     potential_idx, "matched"
+                            # ] += targ_num_avail
+                            # search_targ_df.at[potential_idx, "num_avail"] = 0
                             arg_df_idx_adjust_list = search_targ_df.at[
                                 potential_idx, "potential_matches"
                             ].copy()
@@ -797,11 +804,21 @@ class LogVer:
                                     min_len=min_potential_matches,
                                 )
 
+                            # We entered the search_df with the
+                            # search_arg_df having the minimum
+                            # potential matches. If things have changed
+                            # such that the target df now has a smaller
+                            # min that the arg df, we need to switch
+                            # dfs by returning to mainline
                             if new_targ_min < new_arg_min:
                                 return new_targ_min
+
+                            # if here, the new_arg_min is the same or
+                            # smaller than new_targ_min, and it may be
+                            # smaller than the min_potential_matches
                             min_potential_matches = min(
                                 min_potential_matches,
-                                new_targ_min,
+                                # new_targ_min,
                                 new_arg_min,
                             )
                             # it does not matter whether the new min is
@@ -812,19 +829,20 @@ class LogVer:
                             # just the ones we adjusted).
                             break
                         elif arg_num_avail > targ_num_avail:
-                            search_arg_df.at[
-                                search_item.Index, "matched"
-                            ] += targ_num_avail
+                            # search_arg_df.at[
+                            #     search_item.Index, "matched"
+                            # ] += targ_num_avail
 
                             arg_num_avail -= targ_num_avail
-                            search_arg_df.at[search_item.Index, "num_avail"] = (
-                                arg_num_avail
-                            )
+                            # search_arg_df.at[search_item.Index, "num_avail"] = (
+                            #     arg_num_avail
+                            # )
 
-                            search_targ_df.at[
-                                potential_idx, "matched"
-                            ] += targ_num_avail
-                            search_targ_df.at[potential_idx, "num_avail"] = 0
+                            # search_targ_df.at[
+                            #     potential_idx, "matched"
+                            # ] += targ_num_avail
+                            # search_targ_df.at[potential_idx, "num_avail"] = 0
+
                             arg_df_idx_adjust_list = search_targ_df.at[
                                 potential_idx, "potential_matches"
                             ].copy()
@@ -842,15 +860,15 @@ class LogVer:
                             # min 1 scan then we won't have any addition
                             # potentials to try.
                             if new_arg_min == min_potential_matches:
-                                break
-                            else:
+                                break  # no more for this arg
+                            else:  # we might find more
                                 min_potential_matches = new_arg_min
                         else:  # targ_num_avail > arg_num_avail
-                            search_arg_df.at[
-                                search_item.Index, "matched"
-                            ] += arg_num_avail
+                            # search_arg_df.at[
+                            #     search_item.Index, "matched"
+                            # ] += arg_num_avail
 
-                            search_arg_df.at[search_item.Index, "num_avail"] = 0
+                            # search_arg_df.at[search_item.Index, "num_avail"] = 0
                             targ_df_idx_adjust_list = (
                                 search_item.potential_matches.copy()
                             )
@@ -864,10 +882,10 @@ class LogVer:
                                     min_len=min_potential_matches,
                                 )
 
-                            search_targ_df.at[potential_idx, "matched"] += arg_num_avail
-                            search_targ_df.at[potential_idx, "num_avail"] = (
-                                targ_num_avail - arg_num_avail
-                            )
+                            # search_targ_df.at[potential_idx, "matched"] += arg_num_avail
+                            # search_targ_df.at[potential_idx, "num_avail"] = (
+                            #     targ_num_avail - arg_num_avail
+                            # )
                             if new_targ_min < min_potential_matches:
                                 return new_targ_min
 
