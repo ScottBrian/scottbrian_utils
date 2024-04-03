@@ -38,12 +38,14 @@ parameters as follows:
 
 Expected trace output for Example 1::
 
-    entry_trace.py: trace_wrapper: 145 entry_trace.py:f1:44 entry: args=(), kwargs=(),
-        caller: entry_trace.py:48
-    entry_trace.py: trace_wrapper: 152 entry_trace.py:f1:44 exit: ret_value=None
+    entry_trace.py: trace_wrapper: 145 entry_trace.py:f1:44 entry:
+        args=(), kwargs=(), caller: entry_trace.py:48
+    entry_trace.py: trace_wrapper: 152 entry_trace.py:f1:44 exit:
+        ret_value=None
 
 
 """
+
 ########################################################################
 # Standard Library
 ########################################################################
@@ -51,10 +53,7 @@ from collections.abc import Iterable
 import functools
 import inspect
 import logging
-from os import fspath
-from pathlib import Path
-import sys
-from typing import Any, Callable, cast, Optional, TypeVar, Union
+from typing import Any, Callable, cast, Optional, TYPE_CHECKING, TypeVar, Union
 
 ########################################################################
 # Third Party
@@ -113,7 +112,7 @@ def etrace(
     if type(wrapped).__name__ in ("staticmethod", "classmethod"):
         target_file = inspect.getsourcefile(wrapped.__wrapped__).split("\\")[-1]
     else:
-        target_file = inspect.getsourcefile(wrapped).split("\\")[-1]
+        target_file = inspect.getsourcefile(wrapped).split("\\")[-1]  # type: ignore
 
     qual_name_list = wrapped.__qualname__.split(".")
 
@@ -150,7 +149,7 @@ def etrace(
         target_sig_names.append(parm_name)
 
     @wrapt.decorator(enabled=enable_trace)
-    def trace_wrapper(wrapped, instance, args, kwargs):
+    def trace_wrapper(wrapped: F, instance: Any, args: Any, kwargs: Any) -> Any:
         """Setup the trace."""
         log_sig_array = ""
         target_sig_array_copy = target_sig_array.copy()

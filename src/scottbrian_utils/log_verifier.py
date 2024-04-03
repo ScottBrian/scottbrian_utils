@@ -203,14 +203,14 @@ The log_verifier module contains:
 # Standard Library
 ########################################################################
 # from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # import itertools as it
 import logging
 
 # import more_itertools as mi
-import pandas as pd
-import pyarrow as pa
+import pandas as pd  # type: ignore
+import pyarrow as pa  # type: ignore
 import pytest
 import re
 from typing import Optional, Type, TYPE_CHECKING, Union
@@ -285,9 +285,8 @@ class MatchResults:
     num_log_msgs: int = 0
     num_matched_log_msgs: int = 0
     num_unmatched_log_msgs: int = 0
-    unmatched_patterns: str = ""
-    unmatched_log_msgs: str = ""
-    matched_log_msgs: str = ""
+    pattern_grp: pd.DataFrame = field(default_factory=lambda: pd.DataFrame())
+    log_msg_grp: pd.DataFrame = field(default_factory=lambda: pd.DataFrame())
 
 
 @dataclass
@@ -604,9 +603,6 @@ class LogVer:
         ################################################################
         # settle matches
         ################################################################
-        # logger.debug(f"1 pattern_grp: \n{pattern_grp}")
-        # logger.debug(f"1 msg_grp: \n{msg_grp}")
-
         num_loops = 0
         max_potential_matches = 0
         while True:
@@ -665,79 +661,20 @@ class LogVer:
         ################################################################
         # reconcile pattern matches
         ################################################################
-        # logger.debug(f"2 pattern_grp: \n{pattern_grp}")
-        # logger.debug(f"2 msg_grp: \n{msg_grp}")
         num_patterns = pattern_grp["num_records"].sum()
         num_matched_patterns = pattern_grp.num_matched.sum()
         num_unmatched_patterns = num_patterns - num_matched_patterns
-        unmatched_pattern_print = ""
-        if num_patterns != num_matched_patterns:
-            unmatched_pattern_df = pattern_grp[
-                pattern_grp.num_records != pattern_grp.num_matched
-            ]
-            # if unmatched_pattern_df.empty:
-            #     unmatched_pattern_print = ""
-            # else:
-            unmatched_pattern_print = unmatched_pattern_df.to_string(
-                columns=[
-                    "log_name",
-                    "log_level",
-                    "pattern",
-                    "fullmatch",
-                    "num_records",
-                    "num_matched",
-                ],
-                index=False,
-            )
+        pattern_grp["num_unmatched"] = (
+            pattern_grp["num_records"] - pattern_grp["num_matched"]
+        )
 
         ################################################################
         # reconcile msg matches
         ################################################################
-        # logger.debug(f"msg_grp= \n{msg_grp}")
         num_msgs = msg_grp["num_records"].sum()
         num_matched_msgs = msg_grp.num_matched.sum()
         num_unmatched_msgs = num_msgs - num_matched_msgs
-        if num_msgs > 0 and num_msgs == num_matched_msgs:
-            matched_log_msg_print = msg_grp.to_string(
-                columns=[
-                    "log_name",
-                    "log_level",
-                    "log_msg",
-                    "num_records",
-                    "num_matched",
-                ],
-                index=False,
-            )
-            unmatched_log_msg_print = ""
-        else:
-            matched_actual_df = msg_grp[msg_grp.num_records == msg_grp.num_matched]
-            if matched_actual_df.empty:
-                matched_log_msg_print = ""
-            else:
-                matched_log_msg_print = matched_actual_df.to_string(
-                    columns=[
-                        "log_name",
-                        "log_level",
-                        "log_msg",
-                        "num_records",
-                        "num_matched",
-                    ],
-                    index=False,
-                )
-            unmatched_actual_df = msg_grp[msg_grp.num_records != msg_grp.num_matched]
-            if unmatched_actual_df.empty:
-                unmatched_log_msg_print = ""
-            else:
-                unmatched_log_msg_print = unmatched_actual_df.to_string(
-                    columns=[
-                        "log_name",
-                        "log_level",
-                        "log_msg",
-                        "num_records",
-                        "num_matched",
-                    ],
-                    index=False,
-                )
+        msg_grp["num_unmatched"] = msg_grp["num_records"] - msg_grp["num_matched"]
 
         return MatchResults(
             num_patterns=num_patterns,
@@ -746,9 +683,8 @@ class LogVer:
             num_log_msgs=num_msgs,
             num_matched_log_msgs=num_matched_msgs,
             num_unmatched_log_msgs=num_unmatched_msgs,
-            unmatched_patterns=unmatched_pattern_print,
-            unmatched_log_msgs=unmatched_log_msg_print,
-            matched_log_msgs=matched_log_msg_print,
+            pattern_grp=pattern_grp,
+            log_msg_grp=msg_grp,
         )
 
     ####################################################################
@@ -947,13 +883,6 @@ class LogVer:
                             # targets to try
                             break
 
-                # We either found a match or tried each index and found
-                # that they were all claimed. Either way, we no longer
-                # have a need for potential_matches. Clear it now to
-                # avoid the overhead of trying again to find unclaimed
-                # potential matches when we know that none exist.
-                # search_arg_df.at[search_item.Index, "potential_matches"] = []
-
         return min_potential_matches
 
     ####################################################################
@@ -961,7 +890,7 @@ class LogVer:
     ####################################################################
     @staticmethod
     def print_match_results(
-        match_results: MatchResults, print_matched: bool = True
+        match_results: MatchResults, print_matched: bool = False
     ) -> None:
         """Print the match results.
 
@@ -970,7 +899,13 @@ class LogVer:
             print_matched: if True, print the matched records, otherwise
                 skip printing the matched records
 
+        .. versionchanged:: 3.0.0
+           *print_matched* keyword default changed to False
+
         """
+        ################################################################
+        # print summary stats
+        ################################################################
         summary_stats_df = pd.DataFrame(
             {
                 "item_type": ["patterns", "log_msgs"],
@@ -1002,18 +937,83 @@ class LogVer:
 
         print(print_stats)
 
+        ################################################################
+        # print unmatched patterns
+        ################################################################
         print_flower_box_msg("unmatched patterns:")
-        if match_results.unmatched_patterns:
-            print(match_results.unmatched_patterns)
 
+        unmatched_pattern_df = match_results.pattern_grp[
+            match_results.pattern_grp.num_records
+            != match_results.pattern_grp.num_matched
+        ]
+        if unmatched_pattern_df.empty:
+            print("*** no unmatched patterns found ***")
+        else:
+            unmatched_pattern_print = unmatched_pattern_df.to_string(
+                columns=[
+                    "log_name",
+                    "log_level",
+                    "pattern",
+                    "fullmatch",
+                    "num_records",
+                    "num_matched",
+                    "num_unmatched",
+                ],
+                index=False,
+            )
+            print(unmatched_pattern_print)
+
+        ################################################################
+        # print unmatched log messages
+        ################################################################
         print_flower_box_msg("unmatched log_msgs:")
-        if match_results.unmatched_log_msgs:
-            print(match_results.unmatched_log_msgs)
 
+        unmatched_msg_df = match_results.log_msg_grp[
+            match_results.log_msg_grp.num_records
+            != match_results.log_msg_grp.num_matched
+        ]
+
+        if unmatched_msg_df.empty:
+            print("*** no unmatched log messages found ***")
+        else:
+            unmatched_msg_print = unmatched_msg_df.to_string(
+                columns=[
+                    "log_name",
+                    "log_level",
+                    "log_msg",
+                    "num_records",
+                    "num_matched",
+                    "num_unmatched",
+                ],
+                index=False,
+            )
+            print(unmatched_msg_print)
+
+        ################################################################
+        # print matched log messages
+        ################################################################
         if print_matched:
             print_flower_box_msg(" matched log_msgs: ")
-            if match_results.matched_log_msgs:
-                print(match_results.matched_log_msgs)
+            matched_msg_df = match_results.log_msg_grp[
+                match_results.log_msg_grp.num_records
+                == match_results.log_msg_grp.num_matched
+            ]
+
+            if matched_msg_df.empty:
+                print("*** no matched log messages found ***")
+            else:
+                matched_msg_print = matched_msg_df.to_string(
+                    columns=[
+                        "log_name",
+                        "log_level",
+                        "log_msg",
+                        "num_records",
+                        "num_matched",
+                        "num_unmatched",
+                    ],
+                    index=False,
+                )
+                print(matched_msg_print)
 
     ####################################################################
     # verify log messages
@@ -1090,8 +1090,8 @@ class LogVer:
                 pattern_s = "patterns"
 
             raise UnmatchedPatterns(
-                f"There {is_are} {match_results.num_unmatched_patterns} {pattern_s} that did not "
-                "match any log messages."
+                f"There {is_are} {match_results.num_unmatched_patterns} {pattern_s} "
+                f"that did not match any log messages."
             )
 
         if match_results.num_unmatched_log_msgs:
@@ -1102,6 +1102,6 @@ class LogVer:
                 is_are = "are"
                 log_msg_s = "log messages"
             raise UnmatchedLogMessages(
-                f"There {is_are} {match_results.num_unmatched_log_msgs} {log_msg_s} that did not "
-                "get matched by any patterns."
+                f"There {is_are} {match_results.num_unmatched_log_msgs} {log_msg_s} "
+                f"that did not get matched by any patterns."
             )

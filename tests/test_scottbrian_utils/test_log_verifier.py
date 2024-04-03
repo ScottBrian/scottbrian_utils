@@ -351,10 +351,8 @@ class TestLogVerification:
             and ver_result.unmatched_log_msgs
             and ver_result.matched_log_msgs
         ):
-            # logger.debug(f"verify_scenario returning True")
             return True
         else:
-            # logger.debug(f"verify_scenario returning False ver_result: \n{ver_result}")
             return False
 
     def verify_lines(
@@ -398,16 +396,10 @@ class TestLogVerification:
             for item in matched_items:
                 max_log_name_len = max(max_log_name_len, len(item.log_name))
                 max_log_msg_len = max(max_log_msg_len, len(item.item))
-                # logger.debug(
-                #     f"verify_lines 2: {max_log_msg_len=}, {len(item.item)=}, {item.item=}"
-                # )
         else:
             for item in unmatched_items:
                 max_log_name_len = max(max_log_name_len, len(item.log_name))
                 max_log_msg_len = max(max_log_msg_len, len(item.item))
-                # logger.debug(
-                #     f"verify_lines 1: {max_log_msg_len=}, {len(item.item)=}, {item.item=}"
-                # )
 
         if exp_records:
             if item_text == "pattern":
@@ -415,9 +407,6 @@ class TestLogVerification:
             else:
                 fullmatch_text = ""
 
-            # logger.debug(
-            #     f"verify_lines 3: {max_log_msg_len=}, {len(item_text)=}, {item_text=}"
-            # )
             expected_hdr_line = (
                 " " * (max_log_name_len - len("log_name"))
                 + "log_name"
@@ -431,10 +420,6 @@ class TestLogVerification:
                 + "  num_matched"
             )
             if log_section.hdr_line != expected_hdr_line:
-                # logger.debug(
-                #     f"verify_lines returning False 3 "
-                #     f"\n{log_section.hdr_line=} \n{expected_hdr_line=}"
-                # )
                 return False
 
             for key in log_section.line_items.keys():
@@ -460,19 +445,9 @@ class TestLogVerification:
 
             for key, line_item in log_section.line_items.items():
                 if line_item.num_actual_matches != line_item.num_counted_matched:
-                    # logger.debug(
-                    #     f"verify_lines returning False 4 "
-                    #     f"{line_item.num_actual_matches=} {line_item.num_counted_matched=}"
-                    # )
                     return False
                 if line_item.num_actual_unmatches != line_item.num_counted_unmatched:
-                    # logger.debug(
-                    #     f"verify_lines returning False 5 "
-                    #     f"{line_item.num_actual_unmatches=} {line_item.num_counted_unmatched=}"
-                    # )
                     return False
-
-        # logger.debug(f"verify_lines returning True 6")
         return True
 
     def build_ver_record(self):
@@ -566,9 +541,6 @@ class TestLogVerification:
         assert captured_lines[start_idx + 2] == section_asterisks
 
         if captured_lines[start_idx + 3] == "":
-            # logger.critical(f"get_section return 1:")
-            # for idx in range(start_idx, min(len(captured_lines), start_idx + 10)):
-            #     logger.critical(f"{captured_lines[idx]}")
             return LogSection(
                 hdr_line="",
                 start_idx=start_idx,
@@ -583,9 +555,6 @@ class TestLogVerification:
             line_items={},
         )
 
-        # logger.critical(f"get_section 2:")
-        # for idx in range(start_idx, min(len(captured_lines), start_idx + 10)):
-        #     logger.critical(f"{captured_lines[idx]}")
         for idx in range(start_idx + 4, len(captured_lines)):
             if captured_lines[idx] == "":
                 ret_section.end_idx = idx
@@ -773,9 +742,9 @@ class TestLogVerExamples:
         log_msg = "hello"
         log_ver.add_pattern(pattern=log_msg)
         t_logger.debug(log_msg)
-        log_results = log_ver.get_match_results(caplog)
-        log_ver.print_match_results(log_results)
-        log_ver.validate_match_results(log_results)
+        match_results = log_ver.get_match_results(caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.validate_match_results(match_results)
 
         expected_result = "\n"
         expected_result += "************************************************\n"
@@ -788,16 +757,24 @@ class TestLogVerExamples:
         expected_result += "***********************\n"
         expected_result += "* unmatched patterns: *\n"
         expected_result += "***********************\n"
+        expected_result += "*** no unmatched patterns found ***\n"
         expected_result += "\n"
         expected_result += "***********************\n"
         expected_result += "* unmatched log_msgs: *\n"
         expected_result += "***********************\n"
+        expected_result += "*** no unmatched log messages found ***\n"
         expected_result += "\n"
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += f" log_name  log_level log_msg  num_records  num_matched\n"
-        expected_result += f"example_1         10   hello            1            1\n"
+        expected_result += (
+            f" log_name  log_level log_msg  num_records  num_matched  "
+            f"num_unmatched\n"
+        )
+        expected_result += (
+            f"example_1         10   hello            1            1  "
+            f"            0\n"
+        )
 
         captured = capsys.readouterr().out
 
@@ -824,10 +801,10 @@ class TestLogVerExamples:
         log_msg2 = "goodbye"
         log_ver.add_pattern(pattern=log_msg2)
         t_logger.debug(log_msg1)
-        log_results = log_ver.get_match_results(caplog)
-        log_ver.print_match_results(log_results)
+        match_results = log_ver.get_match_results(caplog)
+        log_ver.print_match_results(match_results)
         with pytest.raises(UnmatchedPatterns):
-            log_ver.validate_match_results(log_results)
+            log_ver.validate_match_results(match_results)
 
         expected_result = "\n"
         expected_result += "************************************************\n"
@@ -882,9 +859,9 @@ class TestLogVerExamples:
         log_msg2 = "goodbye"
         t_logger.debug(log_msg1)
         t_logger.debug(log_msg2)
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
+        log_ver.print_match_results(match_results := log_ver.get_match_results(caplog))
         with pytest.raises(UnmatchedLogMessages):
-            log_ver.validate_match_results(log_results)
+            log_ver.validate_match_results(match_results)
 
         expected_result = "\n"
         expected_result += "************************************************\n"
@@ -938,9 +915,9 @@ class TestLogVerExamples:
         log_msg2b = "see you soon"
         t_logger.debug(log_msg1)
         t_logger.debug(log_msg2b)
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
+        log_ver.print_match_results(match_results := log_ver.get_match_results(caplog))
         with pytest.raises(UnmatchedPatterns):
-            log_ver.validate_match_results(log_results)
+            log_ver.validate_match_results(match_results)
 
         expected_result = "\n"
         expected_result += "************************************************\n"
@@ -1004,7 +981,7 @@ class TestLogVerExamples:
         t_logger.error(log_msg2)
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
         expected_result = "\n"
         expected_result += "************************************************\n"
@@ -1064,7 +1041,7 @@ class TestLogVerBasic:
             # Cause all warnings to always be triggered.
             warnings.simplefilter("always")
             # Trigger a warning.
-            log_ver.verify_log_results(match_results=MatchResults())
+            log_ver.verify_match_results(match_results=MatchResults())
             # Verify the warning
             assert len(w) == 1
             assert issubclass(w[-1].category, DeprecationWarning)
@@ -1117,8 +1094,8 @@ class TestLogVerBasic:
 
         log_ver.add_pattern(pattern=simple_str_arg)
         t_logger.debug(simple_str_arg)
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-        log_ver.verify_log_results(log_results)
+        log_ver.print_match_results(match_results := log_ver.get_match_results(caplog))
+        log_ver.verify_match_results(match_results)
 
         hdr_log_msg = "log_msg"
         hdr_log_msg_width = max(len(hdr_log_msg), len(simple_str_arg))
@@ -1468,8 +1445,8 @@ class TestLogVerBasic:
         act_msg = f"the date and time is: {time_str}"
         log_ver.add_pattern(pattern=exp_msg, log_name="time_match")
         t_logger.debug(act_msg)
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-        log_ver.verify_log_results(log_results)
+        log_ver.print_match_results(match_results := log_ver.get_match_results(caplog))
+        log_ver.verify_match_results(match_results)
 
         hdr_log_msg = "log_msg"
         hdr_log_msg_width = max(len(hdr_log_msg), len(act_msg))
@@ -1532,8 +1509,8 @@ class TestLogVerBasic:
         # remove it
         log_ver.add_msg(log_msg=log_ver.get_call_seq("alpha"))
         t_logger.debug(f"{simple_str_arg}:{123}")
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-        log_ver.verify_log_results(log_results)
+        log_ver.print_match_results(match_results := log_ver.get_match_results(caplog))
+        log_ver.verify_match_results(match_results)
 
         hdr_log_msg = "log_msg"
         hdr_log_msg_width = max(len(hdr_log_msg), (len(simple_str_arg) + 4))
@@ -1597,8 +1574,8 @@ class TestLogVerBasic:
         log_ver.add_pattern(pattern=log_ver.get_call_seq("alpha"))
         my_seq = get_formatted_call_sequence(depth=1)
         t_logger.debug(f"{my_seq}")
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-        log_ver.validate_match_results(log_results)
+        log_ver.print_match_results(match_results := log_ver.get_match_results(caplog))
+        log_ver.validate_match_results(match_results)
 
         hdr_log_msg = "log_msg"
         hdr_log_msg_width = max(len(hdr_log_msg), len(my_seq))
@@ -1678,8 +1655,8 @@ class TestLogVerBasic:
         )
         t_logger.debug(log_msg)
 
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
-        log_ver.verify_log_results(log_results)
+        log_ver.print_match_results(match_results := log_ver.get_match_results(caplog))
+        log_ver.verify_match_results(match_results)
 
         hdr_log_msg = "log_msg"
         hdr_log_msg_width = max(len(hdr_log_msg), len(log_msg))
@@ -2001,16 +1978,16 @@ class TestLogVerCombos:
             for _ in range(num_matched_msgs):
                 matched_msgs.append(the_msg)
 
-        log_ver.print_match_results(log_results := log_ver.get_match_results(caplog))
+        log_ver.print_match_results(match_results := log_ver.get_match_results(caplog))
 
         if total_num_exp_unmatched:
             with pytest.raises(UnmatchedPatterns):
-                log_ver.validate_match_results(log_results)
+                log_ver.validate_match_results(match_results)
         elif total_num_act_unmatched:
             with pytest.raises(UnmatchedLogMessages):
-                log_ver.validate_match_results(log_results)
+                log_ver.validate_match_results(match_results)
         else:
-            log_ver.validate_match_results(log_results)
+            log_ver.validate_match_results(match_results)
 
     ####################################################################
     # test_log_verifier_contention
