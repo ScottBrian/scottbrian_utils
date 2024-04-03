@@ -584,10 +584,10 @@ class TestLogVerification:
                 return ret_section
             else:
                 if section_type == "unmatched_patterns":
-                    rsplit_actual = captured_lines[idx].rsplit(maxsplit=3)
+                    rsplit_actual = captured_lines[idx].rsplit(maxsplit=4)
                     fm_text = rsplit_actual[1]
                 else:
-                    rsplit_actual = captured_lines[idx].rsplit(maxsplit=2)
+                    rsplit_actual = captured_lines[idx].rsplit(maxsplit=3)
                     fm_text = ""
 
                 lsplit_actual = rsplit_actual[0].split(maxsplit=2)
@@ -599,8 +599,8 @@ class TestLogVerification:
 
                 key = item + fm_text
 
-                num_items = int(rsplit_actual[-2])
-                num_matches = int(rsplit_actual[-1])
+                num_items = int(rsplit_actual[-3])
+                num_matches = int(rsplit_actual[-2])
 
                 ret_section.line_items[key] = LogSectionLineItem(
                     log_name=log_name,
@@ -640,7 +640,7 @@ class TestLogVerification:
         self.build_match_arrays(patterns_len=patterns_len, log_msgs_len=log_msgs_len)
         min_desc_len = min(patterns_len, log_msgs_len)
         max_desc_len = max(patterns_len, log_msgs_len)
-        # if patterns_len < log_msgs_len:
+
         self.match_scenario_found = False
         for idx, match_perm in enumerate(
             it.permutations(self.matches_array, min_desc_len)
@@ -1289,11 +1289,11 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += (
             f"    log_name  level {hdr_log_msg:>{hdr_log_msg_width}} "
-            f"  records  matched  unmatched\n"
+            f" records  matched  unmatched\n"
         )
         expected_result += (
             f"simple_match     10 {simple_str_arg:>{hdr_log_msg_width}} "
-            f"        1        1          0\n"
+            f"       1        1          0\n"
         )
 
         captured = capsys.readouterr().out
@@ -1644,11 +1644,11 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += (
             f"  log_name  level {hdr_log_msg:>{hdr_log_msg_width}} "
-            f"  records  matched  unmatched\n"
+            f" records  matched  unmatched\n"
         )
         expected_result += (
             f"time_match     10 {act_msg:>{hdr_log_msg_width}} "
-            f"        1        1          0\n"
+            f"       1        1          0\n"
         )
 
         captured = capsys.readouterr().out
