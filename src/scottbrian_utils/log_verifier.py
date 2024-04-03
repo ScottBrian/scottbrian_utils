@@ -418,7 +418,7 @@ class LogVer:
         )
         self.add_pattern(
             pattern=log_msg,
-            log_level=log_level,
+            level=log_level,
             log_name=log_name,
             fullmatch=fullmatch,
         )
@@ -429,7 +429,7 @@ class LogVer:
     def add_pattern(
         self,
         pattern: str,
-        log_level: int = logging.DEBUG,
+        level: int = logging.DEBUG,
         log_name: Optional[str] = None,
         fullmatch: bool = False,
     ) -> None:
@@ -437,7 +437,7 @@ class LogVer:
 
         Args:
             pattern: pattern to use to find log_msg in the log
-            log_level: logging level to use
+            level: logging level to use
             log_name: logger name to use
             fullmatch: if True, use regex fullmatch instead of
                 match in method get_match_results
@@ -457,7 +457,7 @@ class LogVer:
                 log_msg2 = 'goodbye'
                 log_ver.add_pattern(pattern=log_msg1)
                 log_ver.add_pattern(pattern=log_msg2,
-                                    log_level=logging.ERROR)
+                                    level=logging.ERROR)
                 logger.debug(log_msg1)
                 logger.error(log_msg2)
                 match_results = log_ver.get_match_results()
@@ -502,7 +502,7 @@ class LogVer:
             self.patterns.append(
                 (
                     log_name_to_use,
-                    log_level,
+                    level,
                     pattern,
                     True,
                 )
@@ -511,7 +511,7 @@ class LogVer:
             self.patterns.append(
                 (
                     log_name_to_use,
-                    log_level,
+                    level,
                     pattern,
                     False,
                 )
@@ -535,7 +535,7 @@ class LogVer:
         """
         pattern_col_names = (
             "log_name",
-            "log_level",
+            "level",
             "pattern",
             "fullmatch",
         )
@@ -547,15 +547,15 @@ class LogVer:
         pattern_grp = pattern_df.groupby(
             pattern_df.columns.tolist(), as_index=False
         ).size()
-        pattern_grp.rename(columns={"size": "num_records"}, inplace=True)
+        pattern_grp.rename(columns={"size": "records"}, inplace=True)
         pattern_grp["potential_matches"] = [[] for _ in range(len(pattern_grp))]
-        pattern_grp["num_matched"] = 0
-        pattern_grp["num_avail"] = pattern_grp["num_records"]
+        pattern_grp["matched"] = 0
+        pattern_grp["num_avail"] = pattern_grp["records"]
 
         # make df of actual records
         msg_col_names = (
             "log_name",
-            "log_level",
+            "level",
             "log_msg",
         )
         actual_records = []
@@ -574,10 +574,10 @@ class LogVer:
         )
 
         msg_grp = msg_df.groupby(msg_df.columns.tolist(), as_index=False).size()
-        msg_grp.rename(columns={"size": "num_records"}, inplace=True)
+        msg_grp.rename(columns={"size": "records"}, inplace=True)
         msg_grp["potential_matches"] = [[] for _ in range(len(msg_grp))]
-        msg_grp["num_matched"] = 0
-        msg_grp["num_avail"] = msg_grp["num_records"]
+        msg_grp["matched"] = 0
+        msg_grp["num_avail"] = msg_grp["records"]
 
         ################################################################
         # set potential matches in both data frames
@@ -591,10 +591,7 @@ class LogVer:
                 if (p_row.fullmatch and pattern_regex.fullmatch(m_row.log_msg)) or (
                     not p_row.fullmatch and pattern_regex.match(m_row.log_msg)
                 ):
-                    if (
-                        p_row.log_name == m_row.log_name
-                        and p_row.log_level == m_row.log_level
-                    ):
+                    if p_row.log_name == m_row.log_name and p_row.level == m_row.level:
                         pattern_potentials.append(m_row.Index)
                         msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
 
@@ -661,20 +658,18 @@ class LogVer:
         ################################################################
         # reconcile pattern matches
         ################################################################
-        num_patterns = pattern_grp["num_records"].sum()
-        num_matched_patterns = pattern_grp.num_matched.sum()
+        num_patterns = pattern_grp["records"].sum()
+        num_matched_patterns = pattern_grp.matched.sum()
         num_unmatched_patterns = num_patterns - num_matched_patterns
-        pattern_grp["num_unmatched"] = (
-            pattern_grp["num_records"] - pattern_grp["num_matched"]
-        )
+        pattern_grp["unmatched"] = pattern_grp["records"] - pattern_grp["matched"]
 
         ################################################################
         # reconcile msg matches
         ################################################################
-        num_msgs = msg_grp["num_records"].sum()
-        num_matched_msgs = msg_grp.num_matched.sum()
+        num_msgs = msg_grp["records"].sum()
+        num_matched_msgs = msg_grp.matched.sum()
         num_unmatched_msgs = num_msgs - num_matched_msgs
-        msg_grp["num_unmatched"] = msg_grp["num_records"] - msg_grp["num_matched"]
+        msg_grp["unmatched"] = msg_grp["records"] - msg_grp["matched"]
 
         return MatchResults(
             num_patterns=num_patterns,
@@ -768,7 +763,7 @@ class LogVer:
                     if targ_num_avail > 0:
                         if arg_num_avail == targ_num_avail:
                             search_arg_df.at[
-                                search_item.Index, "num_matched"
+                                search_item.Index, "matched"
                             ] += arg_num_avail
                             search_arg_df.at[search_item.Index, "num_avail"] = 0
 
@@ -786,7 +781,7 @@ class LogVer:
                                 )
 
                             search_targ_df.at[
-                                potential_idx, "num_matched"
+                                potential_idx, "matched"
                             ] += targ_num_avail
                             search_targ_df.at[potential_idx, "num_avail"] = 0
                             arg_df_idx_adjust_list = search_targ_df.at[
@@ -818,7 +813,7 @@ class LogVer:
                             break
                         elif arg_num_avail > targ_num_avail:
                             search_arg_df.at[
-                                search_item.Index, "num_matched"
+                                search_item.Index, "matched"
                             ] += targ_num_avail
 
                             arg_num_avail -= targ_num_avail
@@ -827,7 +822,7 @@ class LogVer:
                             )
 
                             search_targ_df.at[
-                                potential_idx, "num_matched"
+                                potential_idx, "matched"
                             ] += targ_num_avail
                             search_targ_df.at[potential_idx, "num_avail"] = 0
                             arg_df_idx_adjust_list = search_targ_df.at[
@@ -852,7 +847,7 @@ class LogVer:
                                 min_potential_matches = new_arg_min
                         else:  # targ_num_avail > arg_num_avail
                             search_arg_df.at[
-                                search_item.Index, "num_matched"
+                                search_item.Index, "matched"
                             ] += arg_num_avail
 
                             search_arg_df.at[search_item.Index, "num_avail"] = 0
@@ -869,9 +864,7 @@ class LogVer:
                                     min_len=min_potential_matches,
                                 )
 
-                            search_targ_df.at[
-                                potential_idx, "num_matched"
-                            ] += arg_num_avail
+                            search_targ_df.at[potential_idx, "matched"] += arg_num_avail
                             search_targ_df.at[potential_idx, "num_avail"] = (
                                 targ_num_avail - arg_num_avail
                             )
@@ -908,16 +901,16 @@ class LogVer:
         ################################################################
         summary_stats_df = pd.DataFrame(
             {
-                "item_type": ["patterns", "log_msgs"],
-                "num_items": [
+                "type": ["patterns", "log_msgs"],
+                "records": [
                     match_results.num_patterns,
                     match_results.num_log_msgs,
                 ],
-                "num_matched": [
+                "matched": [
                     match_results.num_matched_patterns,
                     match_results.num_matched_log_msgs,
                 ],
-                "num_unmatched": [
+                "unmatched": [
                     match_results.num_unmatched_patterns,
                     match_results.num_unmatched_log_msgs,
                 ],
@@ -927,10 +920,10 @@ class LogVer:
         print_flower_box_msg("               summary stats                ")
         print_stats = summary_stats_df.to_string(
             columns=[
-                "item_type",
-                "num_items",
-                "num_matched",
-                "num_unmatched",
+                "type",
+                "records",
+                "matched",
+                "unmatched",
             ],
             index=False,
         )
@@ -943,8 +936,7 @@ class LogVer:
         print_flower_box_msg("unmatched patterns:")
 
         unmatched_pattern_df = match_results.pattern_grp[
-            match_results.pattern_grp.num_records
-            != match_results.pattern_grp.num_matched
+            match_results.pattern_grp.records != match_results.pattern_grp.matched
         ]
         if unmatched_pattern_df.empty:
             print("*** no unmatched patterns found ***")
@@ -952,12 +944,12 @@ class LogVer:
             unmatched_pattern_print = unmatched_pattern_df.to_string(
                 columns=[
                     "log_name",
-                    "log_level",
+                    "level",
                     "pattern",
                     "fullmatch",
-                    "num_records",
-                    "num_matched",
-                    "num_unmatched",
+                    "records",
+                    "matched",
+                    "unmatched",
                 ],
                 index=False,
             )
@@ -969,8 +961,7 @@ class LogVer:
         print_flower_box_msg("unmatched log_msgs:")
 
         unmatched_msg_df = match_results.log_msg_grp[
-            match_results.log_msg_grp.num_records
-            != match_results.log_msg_grp.num_matched
+            match_results.log_msg_grp.records != match_results.log_msg_grp.matched
         ]
 
         if unmatched_msg_df.empty:
@@ -979,11 +970,11 @@ class LogVer:
             unmatched_msg_print = unmatched_msg_df.to_string(
                 columns=[
                     "log_name",
-                    "log_level",
+                    "level",
                     "log_msg",
-                    "num_records",
-                    "num_matched",
-                    "num_unmatched",
+                    "records",
+                    "matched",
+                    "unmatched",
                 ],
                 index=False,
             )
@@ -995,8 +986,7 @@ class LogVer:
         if print_matched:
             print_flower_box_msg(" matched log_msgs: ")
             matched_msg_df = match_results.log_msg_grp[
-                match_results.log_msg_grp.num_records
-                == match_results.log_msg_grp.num_matched
+                match_results.log_msg_grp.records == match_results.log_msg_grp.matched
             ]
 
             if matched_msg_df.empty:
@@ -1005,11 +995,11 @@ class LogVer:
                 matched_msg_print = matched_msg_df.to_string(
                     columns=[
                         "log_name",
-                        "log_level",
+                        "level",
                         "log_msg",
-                        "num_records",
-                        "num_matched",
-                        "num_unmatched",
+                        "records",
+                        "matched",
+                        "unmatched",
                     ],
                     index=False,
                 )
@@ -1044,7 +1034,7 @@ class LogVer:
         warnings.warn(
             message="LogVer.verify_log_results() is deprecated as of"
             " version 3.0.0 and will be removed in a future release. "
-            "Use LogVer.validate_match_results() instead",
+            "Use LogVer.verify_match_results() instead",
             category=DeprecationWarning,
             stacklevel=2,
         )
@@ -1066,7 +1056,7 @@ class LogVer:
     # verify_match_results
     ####################################################################
     @staticmethod
-    def validate_match_results(match_results: MatchResults) -> None:
+    def verify_match_results(match_results: MatchResults) -> None:
         """Verify that each log message issued is as expected.
 
         Args:
