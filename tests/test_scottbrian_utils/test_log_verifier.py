@@ -1953,13 +1953,13 @@ class TestLogVerCombos:
     @pytest.mark.parametrize("num_aaa_fm_pat_arg", [0, 1, 2])
     # @pytest.mark.parametrize("num_a_msg_arg", [2])
     # @pytest.mark.parametrize("num_a_pat_arg", [2])
-    # @pytest.mark.parametrize("num_a_fm_pat_arg", [2])
-    # @pytest.mark.parametrize("num_aa_msg_arg", [2])
-    # @pytest.mark.parametrize("num_aa_pat_arg", [2])
-    # @pytest.mark.parametrize("num_aa_fm_pat_arg", [2])
-    # @pytest.mark.parametrize("num_aaa_msg_arg", [2])
-    # @pytest.mark.parametrize("num_aaa_pat_arg", [2])
-    # @pytest.mark.parametrize("num_aaa_fm_pat_arg", [2])
+    # @pytest.mark.parametrize("num_a_fm_pat_arg", [1])
+    # @pytest.mark.parametrize("num_aa_msg_arg", [1])
+    # @pytest.mark.parametrize("num_aa_pat_arg", [0])
+    # @pytest.mark.parametrize("num_aa_fm_pat_arg", [0])
+    # @pytest.mark.parametrize("num_aaa_msg_arg", [0])
+    # @pytest.mark.parametrize("num_aaa_pat_arg", [0])
+    # @pytest.mark.parametrize("num_aaa_fm_pat_arg", [0])
     def test_log_verifier_triple_a(
         self,
         num_a_msg_arg: int,
