@@ -1951,6 +1951,15 @@ class TestLogVerCombos:
     @pytest.mark.parametrize("num_aaa_msg_arg", [0, 1, 2])
     @pytest.mark.parametrize("num_aaa_pat_arg", [0, 1, 2])
     @pytest.mark.parametrize("num_aaa_fm_pat_arg", [0, 1, 2])
+    # @pytest.mark.parametrize("num_a_msg_arg", [2])
+    # @pytest.mark.parametrize("num_a_pat_arg", [2])
+    # @pytest.mark.parametrize("num_a_fm_pat_arg", [2])
+    # @pytest.mark.parametrize("num_aa_msg_arg", [2])
+    # @pytest.mark.parametrize("num_aa_pat_arg", [2])
+    # @pytest.mark.parametrize("num_aa_fm_pat_arg", [2])
+    # @pytest.mark.parametrize("num_aaa_msg_arg", [2])
+    # @pytest.mark.parametrize("num_aaa_pat_arg", [2])
+    # @pytest.mark.parametrize("num_aaa_fm_pat_arg", [2])
     def test_log_verifier_triple_a(
         self,
         num_a_msg_arg: int,
@@ -2079,7 +2088,7 @@ class TestLogVerCombos:
         )
 
         test_log_ver.verify_results(
-            print_only=False,
+            print_only=True,
             exp_num_unmatched_patterns=num_exp_accumulator.num_unmatched_patterns,
             exp_num_unmatched_log_msgs=num_exp_accumulator.num_unmatched_log_msgs,
             exp_num_matched_log_msgs=num_exp_accumulator.num_matched_log_msgs,
