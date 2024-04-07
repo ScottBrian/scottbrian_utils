@@ -460,6 +460,21 @@ class TestLogVerification:
         self.build_scenarios()
 
     def get_ver_output_lines(self):
+        results_asterisks = "************************************************"
+        results_line = "*             log verifier results             *"
+        dt_format_1 = get_datetime_match_string(format="%a %b %d %Y %H:%M:%S")
+        # start_pattern = f"Start: {dt_format_1}"
+        start_pattern_regex = re.compile(f"Start: {dt_format_1}")
+        # end_pattern = f"End: {dt_forma_1}"
+        end_pattern_regex = re.compile(f"End: {dt_format_1}")
+        dt_format_2 = get_datetime_match_string(format="%H:%M:%S.%f")
+        # elapsed_time_pattern = f"Elapsed time: {dt_forma_2}"
+        elapsed_time_pattern_regex = re.compile(f"Elapsed time: {dt_format_2}")
+
+        #
+        #         pattern_potentials = []
+        #         for m_row in work_msg_grp.itertuples():
+        #             if (p_row.fullmatch and pattern_regex.fullmatch(m_row.log_msg)) or
 
         stats_asterisks = "************************************************"
         stats_line = "*                summary stats                 *"
@@ -484,19 +499,26 @@ class TestLogVerification:
         captured_lines = captured_capsys.split("\n")
 
         assert captured_lines[0] == ""
-        assert captured_lines[1] == stats_asterisks
-        assert captured_lines[2] == stats_line
-        assert captured_lines[3] == stats_asterisks
-        assert captured_lines[4] == "    type  records  matched  unmatched"
-        assert captured_lines[7] == ""
+        assert captured_lines[1] == results_asterisks
+        assert captured_lines[2] == results_line
+        assert captured_lines[3] == results_asterisks
+        assert start_pattern_regex.match(captured_lines[4])
+        assert end_pattern_regex.match(captured_lines[5])
+        assert elapsed_time_pattern_regex.match(captured_lines[6])
 
-        self.captured_pattern_stats_line = captured_lines[5]
-        self.captured_log_msgs_stats_line = captured_lines[6]
+        assert captured_lines[7] == stats_asterisks
+        assert captured_lines[8] == stats_line
+        assert captured_lines[9] == stats_asterisks
+        assert captured_lines[10] == "    type  records  matched  unmatched"
+        assert captured_lines[13] == ""
+
+        self.captured_pattern_stats_line = captured_lines[11]
+        self.captured_log_msgs_stats_line = captured_lines[12]
         split_log_msgs_stats = self.captured_log_msgs_stats_line.split()
         self.captured_num_matches = int(split_log_msgs_stats[2])
 
         section_item = self.get_section(
-            start_idx=8,
+            start_idx=14,
             captured_lines=captured_lines,
             section_hdr_line=unmatched_patterns_hdr_line,
             section_type="unmatched_patterns",
@@ -2088,6 +2110,105 @@ class TestLogVerCombos:
         )
 
         test_log_ver.verify_results(
+            print_only=False,
+            exp_num_unmatched_patterns=num_exp_accumulator.num_unmatched_patterns,
+            exp_num_unmatched_log_msgs=num_exp_accumulator.num_unmatched_log_msgs,
+            exp_num_matched_log_msgs=num_exp_accumulator.num_matched_log_msgs,
+        )
+
+    ####################################################################
+    # test_log_verifier_10m_x_to_y
+    ####################################################################
+    @pytest.mark.parametrize("num_a_msg_arg", [0, 100, 10000000])
+    @pytest.mark.parametrize("num_a_pat_arg", [0, 100, 10000000])
+    @pytest.mark.parametrize("num_a_fm_pat_arg", [0, 100, 10000000])
+    def test_log_verifier_10m_x_to_y(
+        self,
+        num_a_msg_arg: int,
+        num_a_pat_arg: int,
+        num_a_fm_pat_arg: int,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test log_verifier time match.
+
+        Args:
+            num_a_msg_arg: number of a log msgs to issue
+            num_a_pat_arg: number of a patterns to use
+            num_a_fm_pat_arg: number of a fullmatch patterns to use
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+        """
+        test_log_ver = TestLogVerification(
+            log_name="scratch_1", capsys_to_use=capsys, caplog_to_use=caplog
+        )
+        ################################################################
+        # issue log msgs
+        ################################################################
+        for _ in range(num_a_msg_arg):
+            test_log_ver.issue_log_msg("a")
+
+        ################################################################
+        # add patterns
+        ################################################################
+        for _ in range(num_a_pat_arg):
+            test_log_ver.add_pattern("a")
+
+        for _ in range(num_a_fm_pat_arg):
+            test_log_ver.add_pattern("a", fullmatch=True)
+
+        @dataclass
+        class NumExpectedAccumulator:
+            num_surplus_match_patterns: int = 0
+            num_unmatched_patterns: int = 0
+            num_unmatched_log_msgs: int = 0
+            num_matched_log_msgs: int = 0
+
+        def calc_expected_values(
+            num_exp_accumulator: NumExpectedAccumulator,
+            num_match_patterns: int,
+            num_fullmatch_patterns: int,
+            num_log_msgs,
+        ) -> None:
+            input_surplus_match_patterns = (
+                num_exp_accumulator.num_surplus_match_patterns
+            )
+            num_patterns = (
+                input_surplus_match_patterns
+                + num_match_patterns
+                + num_fullmatch_patterns
+            )
+            num_surplus_both_patterns = max(0, (num_patterns - num_log_msgs))
+            num_surplus_fullmatch_patterns = max(
+                0, (num_fullmatch_patterns - num_log_msgs)
+            )
+            num_surplus_match_patterns = max(
+                0, (num_surplus_both_patterns - num_surplus_fullmatch_patterns)
+            )
+
+            num_exp_accumulator.num_surplus_match_patterns = num_surplus_match_patterns
+            num_exp_accumulator.num_unmatched_patterns = (
+                num_exp_accumulator.num_unmatched_patterns
+                + num_surplus_both_patterns
+                - input_surplus_match_patterns
+            )
+            num_exp_accumulator.num_unmatched_log_msgs += max(
+                0, (num_log_msgs - num_patterns)
+            )
+            num_exp_accumulator.num_matched_log_msgs += min(num_log_msgs, num_patterns)
+
+        ################################################################
+        # calculate expected match numbers
+        ################################################################
+        num_exp_accumulator = NumExpectedAccumulator()
+        calc_expected_values(
+            num_exp_accumulator=num_exp_accumulator,
+            num_match_patterns=num_a_pat_arg,
+            num_fullmatch_patterns=num_a_fm_pat_arg,
+            num_log_msgs=num_a_msg_arg,
+        )
+
+        test_log_ver.verify_results(
             print_only=True,
             exp_num_unmatched_patterns=num_exp_accumulator.num_unmatched_patterns,
             exp_num_unmatched_log_msgs=num_exp_accumulator.num_unmatched_log_msgs,
@@ -2095,7 +2216,7 @@ class TestLogVerCombos:
         )
 
     ####################################################################
-    # test_log_verifier_remaining_time1
+    # test_log_verifier_combos
     ####################################################################
     @pytest.mark.parametrize("num_exp_msgs1_arg", (0, 1, 2, 3))
     @pytest.mark.parametrize("num_exp_msgs2_arg", (0, 1, 2, 3))
