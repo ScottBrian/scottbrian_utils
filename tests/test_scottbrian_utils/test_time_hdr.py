@@ -505,11 +505,11 @@ class TestTimedeltaMatchStr:
     ####################################################################
     # test_get_timedelta_match_str
     ####################################################################
-    @pytest.mark.parametrize("num_days_arg", (0, 1, 2))
+    @pytest.mark.parametrize("num_days_arg", (-2, -1, 0, 1, 2))
     @pytest.mark.parametrize("num_hours_arg", (0, 1, 2, 9, 10, 11, 19, 20, 21, 23))
     @pytest.mark.parametrize("num_mins_arg", (0, 1, 2, 9, 10, 11, 58, 59))
     @pytest.mark.parametrize("num_secs_arg", (0, 1, 2, 9, 10, 11, 58, 59))
-    @pytest.mark.parametrize("num_usecs_arg", (0, 1, 2, 9, 10, 11, 999998, 999999))
+    @pytest.mark.parametrize("num_usecs_arg", (0, 1, 2, 9, 10, 11, 100000, 999999))
     def test_get_timedelta_match_str(
         self,
         num_days_arg: int,
@@ -529,8 +529,6 @@ class TestTimedeltaMatchStr:
             num_usecs_arg: number micro seconds
 
         """
-        caplog.clear()
-
         time_delta = timedelta(
             days=num_days_arg,
             hours=num_hours_arg,
@@ -539,11 +537,16 @@ class TestTimedeltaMatchStr:
             microseconds=num_usecs_arg,
         )
 
+        elapsed_time_format = get_timedelta_match_string()
+        elapsed_time_pattern_regex = re.compile(f"time_delta: {elapsed_time_format}")
+
+        logger.debug(f"time_delta: {time_delta}")
         print(f"time_delta: {time_delta}")
 
         captured = capsys.readouterr().out
+        captured_lines = captured.split("\n")
 
-        assert captured == expected_result
+        assert elapsed_time_pattern_regex.match(captured_lines[0])
 
 
 class TestStartStopHeader:

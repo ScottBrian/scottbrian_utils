@@ -494,7 +494,7 @@ def get_timedelta_match_string() -> str:
         timedelta string
 
     """
-    match_str_D = "-?([1-9]?, |[1-9][0-9]{0,8}, |)"
+    match_str_D = "-?([1-9]? day[s]?, |[1-9][0-9]{0,8} day[s]?, |)"
     match_str_h = "([0-9]|1[0-9]|2[0-3])"
     match_str_M = "[0-5][0-9]"
     match_str_S = "[0-5][0-9]"
