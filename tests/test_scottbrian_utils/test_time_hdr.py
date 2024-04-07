@@ -22,7 +22,10 @@ import pytest
 from scottbrian_utils.time_hdr import StartStopHeader as StartStopHeader
 from scottbrian_utils.time_hdr import time_box as time_box
 from scottbrian_utils.time_hdr import DT_Format as DT_Format
-from scottbrian_utils.time_hdr import get_datetime_match_string, get_timedelta_match_string
+from scottbrian_utils.time_hdr import (
+    get_datetime_match_string,
+    get_timedelta_match_string,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -494,6 +497,53 @@ class TestGetMatchStr:
         print(f"{adjusted_old_dt=}")
 
         assert formatted_new_dt == adjusted_old_dt
+
+
+class TestTimedeltaMatchStr:
+    """Test formatted re string for timedelta."""
+
+    ####################################################################
+    # test_get_timedelta_match_str
+    ####################################################################
+    @pytest.mark.parametrize("num_days_arg", (0, 1, 2))
+    @pytest.mark.parametrize("num_hours_arg", (0, 1, 2, 9, 10, 11, 19, 20, 21, 23))
+    @pytest.mark.parametrize("num_mins_arg", (0, 1, 2, 9, 10, 11, 58, 59))
+    @pytest.mark.parametrize("num_secs_arg", (0, 1, 2, 9, 10, 11, 58, 59))
+    @pytest.mark.parametrize("num_usecs_arg", (0, 1, 2, 9, 10, 11, 999998, 999999))
+    def test_get_timedelta_match_str(
+        self,
+        num_days_arg: int,
+        num_hours_arg: int,
+        num_mins_arg: int,
+        num_secs_arg: int,
+        num_usecs_arg: int,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test the timedelta match string.
+
+        Args:
+            num_days_arg: number days
+            num_hours_arg: number hours
+            num_mins_arg: number minutes
+            num_secs_arg: number seconds
+            num_usecs_arg: number micro seconds
+
+        """
+        caplog.clear()
+
+        time_delta = timedelta(
+            days=num_days_arg,
+            hours=num_hours_arg,
+            minutes=num_mins_arg,
+            seconds=num_secs_arg,
+            microseconds=num_usecs_arg,
+        )
+
+        print(f"time_delta: {time_delta}")
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
 
 
 class TestStartStopHeader:
