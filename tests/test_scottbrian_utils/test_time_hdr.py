@@ -22,7 +22,7 @@ import pytest
 from scottbrian_utils.time_hdr import StartStopHeader as StartStopHeader
 from scottbrian_utils.time_hdr import time_box as time_box
 from scottbrian_utils.time_hdr import DT_Format as DT_Format
-from scottbrian_utils.time_hdr import get_datetime_match_string
+from scottbrian_utils.time_hdr import get_datetime_match_string, get_timedelta_match_string
 
 logger = logging.getLogger(__name__)
 

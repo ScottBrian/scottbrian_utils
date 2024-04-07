@@ -903,9 +903,7 @@ class LogVer:
         print_flower_box_msg("            log verifier results            ")
         print(f"Start: {self.start_DT.strftime('%a %b %d %Y %H:%M:%S')}")
         print(f"End: {self.end_DT.strftime('%a %b %d %Y %H:%M:%S')}")
-        elapsed_time = self.end_DT - self.start_DT
-        # print(f"Elapsed time: {self.end_DT - self.start_DT}")
-        print(f"Elapsed time: {elapsed_time.strftime('%H:%M:%S.f')}")
+        print(f"Elapsed time: {self.end_DT - self.start_DT}")
         ################################################################
         # print summary stats
         ################################################################

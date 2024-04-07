@@ -39,14 +39,14 @@ The time_hdr module contains two items:
 time_box imports functools, sys, datetime, wrapt, and types from typing
 
 """
+
 ########################################################################
 # Standard Library
 ########################################################################
 import functools
 from datetime import datetime
 import re
-from typing import (Any, Callable, cast, NewType, Optional,
-                    TypeVar, Union)
+from typing import Any, Callable, cast, NewType, Optional, TypeVar, Union
 
 from typing import overload
 
@@ -67,7 +67,7 @@ from scottbrian_utils.flower_box import print_flower_box_msg
 ########################################################################
 # NewType
 ########################################################################
-DT_Format = NewType('DT_Format', str)
+DT_Format = NewType("DT_Format", str)
 
 
 ########################################################################
@@ -88,7 +88,8 @@ class StartStopHeader:
     methods, its intended use is by the time_box decorator described
     later in this module.
     """
-    default_dt_format: DT_Format = DT_Format('%a %b %d %Y %H:%M:%S')
+
+    default_dt_format: DT_Format = DT_Format("%a %b %d %Y %H:%M:%S")
 
     def __init__(self, func_name: str) -> None:
         """Store func_name and set the start and end times to None.
@@ -101,8 +102,9 @@ class StartStopHeader:
         self.start_DT: datetime = datetime.max
         self.end_DT: datetime = datetime.min
 
-    def print_end_msg(self, dt_format: DT_Format = default_dt_format,
-                      **kwargs: Any) -> None:
+    def print_end_msg(
+        self, dt_format: DT_Format = default_dt_format, **kwargs: Any
+    ) -> None:
         """Issue end time message in a flower box.
 
         The end message includes the current datetime and elapsed time
@@ -117,13 +119,13 @@ class StartStopHeader:
                       statement, such as *end*, *file*, or *flush*.
         """
         self.end_DT = datetime.now()
-        msg1 = 'Ending ' + self.func_name + ' on ' \
-               + self.end_DT.strftime(dt_format)
-        msg2 = 'Elapsed time: ' + str(self.end_DT - self.start_DT)
+        msg1 = "Ending " + self.func_name + " on " + self.end_DT.strftime(dt_format)
+        msg2 = "Elapsed time: " + str(self.end_DT - self.start_DT)
         print_flower_box_msg([msg1, msg2], **kwargs)
 
-    def print_start_msg(self, dt_format: DT_Format = default_dt_format,
-                        **kwargs: Any) -> None:
+    def print_start_msg(
+        self, dt_format: DT_Format = default_dt_format, **kwargs: Any
+    ) -> None:
         """Issue start time message in a flower box.
 
         The start message includes the current datetime which is also
@@ -161,34 +163,41 @@ class StartStopHeader:
 
         """
         self.start_DT = datetime.now()
-        msg = 'Starting ' + self.func_name + ' on ' \
-              + self.start_DT.strftime(dt_format)
+        msg = "Starting " + self.func_name + " on " + self.start_DT.strftime(dt_format)
         print_flower_box_msg([msg], **kwargs)
 
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 @overload
-def time_box(wrapped: F, *,
-             dt_format: DT_Format = StartStopHeader.default_dt_format,
-             time_box_enabled: Union[bool, Callable[..., bool]] = True,
-             **kwargs: Any) -> F:
+def time_box(
+    wrapped: F,
+    *,
+    dt_format: DT_Format = StartStopHeader.default_dt_format,
+    time_box_enabled: Union[bool, Callable[..., bool]] = True,
+    **kwargs: Any,
+) -> F:
     pass
 
 
 @overload
-def time_box(*,
-             dt_format: DT_Format = StartStopHeader.default_dt_format,
-             time_box_enabled: Union[bool, Callable[..., bool]] = True,
-             **kwargs: Any) -> Callable[[F], F]:
+def time_box(
+    *,
+    dt_format: DT_Format = StartStopHeader.default_dt_format,
+    time_box_enabled: Union[bool, Callable[..., bool]] = True,
+    **kwargs: Any,
+) -> Callable[[F], F]:
     pass
 
 
-def time_box(wrapped: Optional[F] = None, *,
-             dt_format: DT_Format = StartStopHeader.default_dt_format,
-             time_box_enabled: Union[bool, Callable[..., bool]] = True,
-             **kwargs: Any) -> F:
+def time_box(
+    wrapped: Optional[F] = None,
+    *,
+    dt_format: DT_Format = StartStopHeader.default_dt_format,
+    time_box_enabled: Union[bool, Callable[..., bool]] = True,
+    **kwargs: Any,
+) -> F:
     """Decorator to wrap a function in start time and end time messages.
 
     The time_box decorator can be invoked with or without arguments, and
@@ -359,14 +368,23 @@ def time_box(wrapped: Optional[F] = None, *,
     # ==================================================================
 
     if wrapped is None:
-        return cast(F, functools.partial(time_box, dt_format=dt_format,
-                                         time_box_enabled=time_box_enabled,
-                                         **kwargs))
+        return cast(
+            F,
+            functools.partial(
+                time_box,
+                dt_format=dt_format,
+                time_box_enabled=time_box_enabled,
+                **kwargs,
+            ),
+        )
 
     @decorator(enabled=time_box_enabled)  # type: ignore
-    def wrapper(func_to_wrap: F, instance: Optional[Any],
-                args: tuple[Any, ...],
-                kwargs2: dict[str, Any]) -> Any:
+    def wrapper(
+        func_to_wrap: F,
+        instance: Optional[Any],
+        args: tuple[Any, ...],
+        kwargs2: dict[str, Any],
+    ) -> Any:
         header = StartStopHeader(func_to_wrap.__name__)
         header.print_start_msg(dt_format=dt_format, **kwargs)
 
@@ -382,74 +400,104 @@ def time_box(wrapped: Optional[F] = None, *,
 ########################################################################
 # get_datetime_match_string
 ########################################################################
-def get_datetime_match_string(format: str) -> str:
+def get_datetime_match_string(format_str: str) -> str:
     """Return a regex string to match a datetime string.
 
     Args:
-        format: string used to format a datetime that is to be used to
-                  create a match string
+        format_str: string used to format a datetime that is to be used
+            to create a match string
+
+    .. versionchanged:: 3.0.0
+           *format* keyword changed to *format_str*
 
     Returns:
         string that is to be used in a regex expression to match a
         datetime string
 
     """
-    match_str_a = r'(Sun|Mon|Tue|Wed|Thu|Fri|Sat)'
-    match_str_A = r'(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)'
-    match_str_d = r'([0-2][0-9]|3[0-1])'
-    match_str_b = r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
-    match_str_B = (r'(January|February|March|April|May|June|July|August'
-                   r'|September|October|November|December)')
-    match_str_m = r'(0[1-9]|1[0-2])'
-    match_str_w = r'[0-6]'
-    match_str_y = r'[0-9]{2,2}'
-    match_str_Y = r'[1-9][0-9]{3,3}'
+    match_str_a = r"(Sun|Mon|Tue|Wed|Thu|Fri|Sat)"
+    match_str_A = r"(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)"
+    match_str_d = r"([0-2][0-9]|3[0-1])"
+    match_str_b = r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+    match_str_B = (
+        r"(January|February|March|April|May|June|July|August"
+        r"|September|October|November|December)"
+    )
+    match_str_m = r"(0[1-9]|1[0-2])"
+    match_str_w = r"[0-6]"
+    match_str_y = r"[0-9]{2,2}"
+    match_str_Y = r"[1-9][0-9]{3,3}"
 
-    match_str_H = r'([0-1][0-9]|2[0-3])'
-    match_str_I = r'(0[1-9]|1[0-2])'
-    match_str_p = r'(AM|PM)'
-    match_str_M = r'[0-5][0-9]'
-    match_str_S = r'[0-5][0-9]'
-    match_str_f = r'[0-9]{6,6}'
-    match_str_z = r'[+-]' + f'{match_str_H}{match_str_M}'
-    match_str_Z = r'(UTC|GMT)([+-]' + f'({match_str_H}:{match_str_M}))*'
-    match_str_j = r'[0-3][0-9]{2,2}'
-    match_str_U = r'[0-5][0-9]'
-    match_str_W = r'[0-5][0-9]'
-    match_str_c = (f'{match_str_a} {match_str_b} ( [1-9]|[0-2][0-9]|3[0-1]) '
-                   f'{match_str_H}:{match_str_M}:{match_str_S} {match_str_Y}')
+    match_str_H = r"([0-1][0-9]|2[0-3])"
+    match_str_I = r"(0[1-9]|1[0-2])"
+    match_str_p = r"(AM|PM)"
+    match_str_M = r"[0-5][0-9]"
+    match_str_S = r"[0-5][0-9]"
+    match_str_f = r"[0-9]{6,6}"
+    match_str_z = r"[+-]" + f"{match_str_H}{match_str_M}"
+    match_str_Z = r"(UTC|GMT)([+-]" + f"({match_str_H}:{match_str_M}))*"
+    match_str_j = r"[0-3][0-9]{2,2}"
+    match_str_U = r"[0-5][0-9]"
+    match_str_W = r"[0-5][0-9]"
+    match_str_c = (
+        f"{match_str_a} {match_str_b} ( [1-9]|[0-2][0-9]|3[0-1]) "
+        f"{match_str_H}:{match_str_M}:{match_str_S} {match_str_Y}"
+    )
     # match_str_x = f'{match_str_m}/{match_str_d}/{match_str_Y}'
-    match_str_x = f'{match_str_m}/{match_str_d}/{match_str_y}'
-    match_str_X = f'{match_str_H}:{match_str_M}:{match_str_S}'
+    match_str_x = f"{match_str_m}/{match_str_d}/{match_str_y}"
+    match_str_X = f"{match_str_H}:{match_str_M}:{match_str_S}"
     match_str_G = match_str_Y
-    match_str_u = r'[1-7]'
-    match_str_V = r'(0[1-9]|[1-5][0-9])'
+    match_str_u = r"[1-7]"
+    match_str_V = r"(0[1-9]|[1-5][0-9])"
 
-    match_str = re.escape(format)
-    match_str = re.sub('%a', match_str_a, match_str)
-    match_str = re.sub('%A', match_str_A, match_str)
-    match_str = re.sub('%d', match_str_d, match_str)
-    match_str = re.sub('%b', match_str_b, match_str)
-    match_str = re.sub('%B', match_str_B, match_str)
-    match_str = re.sub('%m', match_str_m, match_str)
-    match_str = re.sub('%w', match_str_w, match_str)
-    match_str = re.sub('%y', match_str_y, match_str)
-    match_str = re.sub('%Y', match_str_Y, match_str)
-    match_str = re.sub('%H', match_str_H, match_str)
-    match_str = re.sub('%I', match_str_I, match_str)
-    match_str = re.sub('%p', match_str_p, match_str)
-    match_str = re.sub('%M', match_str_M, match_str)
-    match_str = re.sub('%S', match_str_S, match_str)
-    match_str = re.sub('%f', match_str_f, match_str)
-    match_str = re.sub('%z', match_str_z, match_str)
-    match_str = re.sub('%Z', match_str_Z, match_str)
-    match_str = re.sub('%j', match_str_j, match_str)
-    match_str = re.sub('%U', match_str_U, match_str)
-    match_str = re.sub('%W', match_str_W, match_str)
-    match_str = re.sub('%c', match_str_c, match_str)
-    match_str = re.sub('%x', match_str_x, match_str)
-    match_str = re.sub('%X', match_str_X, match_str)
-    match_str = re.sub('%G', match_str_G, match_str)
-    match_str = re.sub('%u', match_str_u, match_str)
-    match_str = re.sub('%V', match_str_V, match_str)
+    match_str = re.escape(format_str)
+    match_str = re.sub("%a", match_str_a, match_str)
+    match_str = re.sub("%A", match_str_A, match_str)
+    match_str = re.sub("%d", match_str_d, match_str)
+    match_str = re.sub("%b", match_str_b, match_str)
+    match_str = re.sub("%B", match_str_B, match_str)
+    match_str = re.sub("%m", match_str_m, match_str)
+    match_str = re.sub("%w", match_str_w, match_str)
+    match_str = re.sub("%y", match_str_y, match_str)
+    match_str = re.sub("%Y", match_str_Y, match_str)
+    match_str = re.sub("%H", match_str_H, match_str)
+    match_str = re.sub("%I", match_str_I, match_str)
+    match_str = re.sub("%p", match_str_p, match_str)
+    match_str = re.sub("%M", match_str_M, match_str)
+    match_str = re.sub("%S", match_str_S, match_str)
+    match_str = re.sub("%f", match_str_f, match_str)
+    match_str = re.sub("%z", match_str_z, match_str)
+    match_str = re.sub("%Z", match_str_Z, match_str)
+    match_str = re.sub("%j", match_str_j, match_str)
+    match_str = re.sub("%U", match_str_U, match_str)
+    match_str = re.sub("%W", match_str_W, match_str)
+    match_str = re.sub("%c", match_str_c, match_str)
+    match_str = re.sub("%x", match_str_x, match_str)
+    match_str = re.sub("%X", match_str_X, match_str)
+    match_str = re.sub("%G", match_str_G, match_str)
+    match_str = re.sub("%u", match_str_u, match_str)
+    match_str = re.sub("%V", match_str_V, match_str)
     return match_str
+
+
+########################################################################
+# get_datetime_match_string
+########################################################################
+def get_timedelta_match_string() -> str:
+    """Return a regex string to match a timedelta string.
+
+    .. versionadded:: 3.0.0
+           Method :func:`get_timedelta_match_string` added.
+
+    Returns:
+        string that is to be used in a regex expression to match a
+        timedelta string
+
+    """
+    match_str_D = "-?([1-9]?, |[1-9][0-9]{0,8}, |)"
+    match_str_h = "([0-9]|1[0-9]|2[0-3])"
+    match_str_M = "[0-5][0-9]"
+    match_str_S = "[0-5][0-9]"
+    match_str_f = r"(\.[0-9]{6,6}|)"
+
+    return f"{match_str_D}{match_str_h}:{match_str_M}:{match_str_S}{match_str_f}"

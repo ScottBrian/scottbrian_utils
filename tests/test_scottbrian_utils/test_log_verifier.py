@@ -36,7 +36,10 @@ from scottbrian_utils.log_verifier import (
     UnmatchedPatterns,
     UnmatchedLogMessages,
 )
-from scottbrian_utils.time_hdr import get_datetime_match_string
+from scottbrian_utils.time_hdr import (
+    get_datetime_match_string,
+    get_timedelta_match_string,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -462,19 +465,12 @@ class TestLogVerification:
     def get_ver_output_lines(self):
         results_asterisks = "************************************************"
         results_line = "*             log verifier results             *"
-        dt_format_1 = get_datetime_match_string(format="%a %b %d %Y %H:%M:%S")
-        # start_pattern = f"Start: {dt_format_1}"
+        dt_format_1 = get_datetime_match_string(format_str="%a %b %d %Y %H:%M:%S")
         start_pattern_regex = re.compile(f"Start: {dt_format_1}")
-        # end_pattern = f"End: {dt_forma_1}"
         end_pattern_regex = re.compile(f"End: {dt_format_1}")
-        dt_format_2 = get_datetime_match_string(format="%H:%M:%S.%f")
-        # elapsed_time_pattern = f"Elapsed time: {dt_forma_2}"
-        elapsed_time_pattern_regex = re.compile(f"Elapsed time: {dt_format_2}")
 
-        #
-        #         pattern_potentials = []
-        #         for m_row in work_msg_grp.itertuples():
-        #             if (p_row.fullmatch and pattern_regex.fullmatch(m_row.log_msg)) or
+        elapsed_time_format = get_timedelta_match_string()
+        elapsed_time_pattern_regex = re.compile(f"Elapsed time: {elapsed_time_format}")
 
         stats_asterisks = "************************************************"
         stats_line = "*                summary stats                 *"
@@ -506,19 +502,19 @@ class TestLogVerification:
         assert end_pattern_regex.match(captured_lines[5])
         assert elapsed_time_pattern_regex.match(captured_lines[6])
 
-        assert captured_lines[7] == stats_asterisks
-        assert captured_lines[8] == stats_line
-        assert captured_lines[9] == stats_asterisks
-        assert captured_lines[10] == "    type  records  matched  unmatched"
-        assert captured_lines[13] == ""
+        assert captured_lines[7] == ""
+        assert captured_lines[8] == stats_asterisks
+        assert captured_lines[9] == stats_line
+        assert captured_lines[10] == stats_asterisks
+        assert captured_lines[11] == "    type  records  matched  unmatched"
 
-        self.captured_pattern_stats_line = captured_lines[11]
-        self.captured_log_msgs_stats_line = captured_lines[12]
+        self.captured_pattern_stats_line = captured_lines[12]
+        self.captured_log_msgs_stats_line = captured_lines[13]
         split_log_msgs_stats = self.captured_log_msgs_stats_line.split()
         self.captured_num_matches = int(split_log_msgs_stats[2])
 
         section_item = self.get_section(
-            start_idx=14,
+            start_idx=15,
             captured_lines=captured_lines,
             section_hdr_line=unmatched_patterns_hdr_line,
             section_type="unmatched_patterns",
