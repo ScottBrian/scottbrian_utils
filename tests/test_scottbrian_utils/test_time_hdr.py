@@ -521,11 +521,6 @@ class TestTimedeltaMatchStr:
     @pytest.mark.parametrize("num_mins_arg", (0, 1, 2, 9, 10, 58, 59))
     @pytest.mark.parametrize("num_secs_arg", (0, 1, 2, 9, 11, 58, 59))
     @pytest.mark.parametrize("num_usecs_arg", (0, 1, 2, 9, 10, 11, 100000, 999999))
-    # @pytest.mark.parametrize("num_days_arg", (0,))
-    # @pytest.mark.parametrize("num_hours_arg", (0,))
-    # @pytest.mark.parametrize("num_mins_arg", (0,))
-    # @pytest.mark.parametrize("num_secs_arg", (0,))
-    # @pytest.mark.parametrize("num_usecs_arg", (0, 9))
     def test_timedelta_match_str(
         self,
         num_days_arg: int,
@@ -560,6 +555,7 @@ class TestTimedeltaMatchStr:
         captured_lines = captured.split("\n")
 
         assert elapsed_time_pattern_regex.match(captured_lines[0])
+        assert elapsed_time_pattern_regex.fullmatch(captured_lines[0])
 
     ####################################################################
     # test_timedelta_fail_match_str
@@ -582,24 +578,6 @@ class TestTimedeltaMatchStr:
         "num_usecs_arg",
         ("skip", ".424242", ".3", "11:11", ".9999999", ",123456", "usecs"),
     )
-    # @pytest.mark.parametrize(
-    #     "num_days_arg",
-    #     (
-    #         "skip",
-    #         # "1 day, ",
-    #         # "1 days, ",
-    #         # "-9999999999 days, ",
-    #         # "=2 days, ",
-    #         # "9999999999 days, ",
-    #     ),
-    # )
-    # @pytest.mark.parametrize("num_hours_arg", ("22:",))  #  "01", "111:", "24:", "hh:"))
-    # @pytest.mark.parametrize("num_mins_arg", ("59:",))  # "33", "55:55:", "63", "mm:"))
-    # @pytest.mark.parametrize("num_secs_arg", ("42",))  # "333", "11:11", "99", "ss"))
-    # @pytest.mark.parametrize(
-    #     "num_usecs_arg",
-    #     ("skip",),  # ".424242", ".3", "11:11", ".9999999", ",123456", "usecs"),
-    # )
     def test_timedelta_fail_match_str(
         self,
         num_days_arg: int,
@@ -648,8 +626,9 @@ class TestTimedeltaMatchStr:
 
         if good_time:
             assert elapsed_time_pattern_regex.match(captured_lines[0])
+            assert elapsed_time_pattern_regex.fullmatch(captured_lines[0])
         else:
-            assert not elapsed_time_pattern_regex.match(captured_lines[0])
+            assert not elapsed_time_pattern_regex.fullmatch(captured_lines[0])
 
 
 class TestStartStopHeader:

@@ -143,8 +143,12 @@ Release History
     * support python 3.12
     * drop support python < 3.12
 
-* 3.1.0
-    * added check_actual_unmatched parm to verify_log_results
+* 4.0.0
+    * added timedelta_match_string to time_hdr.py
+    * restructured log_verifier:
+        * performance improvements
+        * changes to clarify that regex patterns are used
+        * changed report format to a compact form
 
 
 Meta

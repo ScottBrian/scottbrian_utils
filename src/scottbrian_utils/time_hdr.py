@@ -69,33 +69,18 @@ from scottbrian_utils.flower_box import print_flower_box_msg
 ########################################################################
 DT_Format = NewType("DT_Format", str)
 
-# timedelta_match_string = (
-#     "-?([1-9]? day[s]?, |[1-9][0-9]{0,8} day[s]?, |)"
-#     "([0-9]|1[0-9]|2[0-3]):"
-#     "[0-5][0-9]:"
-#     "[0-5][0-9]"
-#     r"(\.[0-9]{6,6}|)"
-# )
 
-# timedelta_match_string = (
-#     "-?([1-9]? day[s]?, |[1-9][0-9]{0,8} day[s]?, |)"
-#     "([0-9]|1[0-9]|2[0-3]):"
-#     "[0-5][0-9]:"
-#     "[0-5][0-9]"
-#     "([.]?[0-9]{0,6})"
-# )
-match_a = "([0-9]|1[0-9]|2[0-3])"
-match_b = "-?1 day, ([0-9]|1[0-9]|2[0-3])"
-match_c = "-?[2-9] days, ([0-9]|1[0-9]|2[0-3])"
-match_d = "-?[1-9][0-9]{1,8} days, ([0-9]|1[0-9]|2[0-3])"
-
+########################################################################
+# timedelta regex match string
+########################################################################
+match_str_days = "(-?1 day, |-?[2-9] days, |-?[1-9][0-9]{1,8} days, |)"
 match_str_hours = "([0-9]|1[0-9]|2[0-3])"
 match_str_mins = "[0-5][0-9]"
 match_str_secs = "[0-5][0-9]"
-match_str_usecs = r"(\.[0-9]{6,6}|)"
+match_str_usecs = r"(\.[0-9]{6}|)"
 
 timedelta_match_string = (
-    f"({match_a}|{match_b}|{match_c}|{match_d}):"
+    f"{match_str_days}"
     f"{match_str_hours}:"
     f"{match_str_mins}:"
     f"{match_str_secs}"
