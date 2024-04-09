@@ -505,105 +505,28 @@ class TestTimedeltaMatchStr:
     ####################################################################
     # test_timedelta_match_str
     ####################################################################
+    @pytest.mark.parametrize("num_days_arg", (-999999999, -1, 0, 1, 999999999))
     @pytest.mark.parametrize(
-        "num_days_arg",
-        (-9999999999, -999999999, -1, 0, 1, 999999999, 9999999999),
+        "num_hours_arg",
+        (
+            0,
+            1,
+            2,
+            11,
+            20,
+            21,
+            23,
+        ),
     )
-    @pytest.mark.parametrize("num_hours_arg", (0, 1, 2, 11, 20, 21, 23, 24, 25))
-    @pytest.mark.parametrize("num_mins_arg", (0, 1, 2, 9, 10, 58, 59, 60))
-    @pytest.mark.parametrize("num_secs_arg", (0, 1, 2, 9, 11, 58, 59, 61))
-    @pytest.mark.parametrize(
-        "num_usecs_arg", (0, 1, 2, 9, 10, 11, 100000, 999999, 9999999)
-    )
-    # @pytest.mark.parametrize("num_days_arg", (0,))
-    # @pytest.mark.parametrize("num_hours_arg", (0,))
-    # @pytest.mark.parametrize("num_mins_arg", (0,))
-    # @pytest.mark.parametrize("num_secs_arg", (0,))
-    # @pytest.mark.parametrize("num_usecs_arg", (0, 9))
-    def test_timedelta_match_str(
-        self,
-        num_days_arg: int,
-        num_hours_arg: int,
-        num_mins_arg: int,
-        num_secs_arg: int,
-        num_usecs_arg: int,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Test the timedelta match string.
-
-        Args:
-            num_days_arg: number days
-            num_hours_arg: number hours
-            num_mins_arg: number minutes
-            num_secs_arg: number seconds
-            num_usecs_arg: number micro seconds
-
-        """
-        good_time_delta = True
-        try:
-            time_delta = timedelta(
-                days=num_days_arg,
-                hours=num_hours_arg,
-                minutes=num_mins_arg,
-                seconds=num_secs_arg,
-                microseconds=num_usecs_arg,
-            )
-            logger.debug(f"time_delta: {time_delta}")
-            elapsed_time_pattern_regex = re.compile(
-                f"time_delta: {timedelta_match_string}"
-            )
-            print(f"time_delta: {time_delta}")
-        except OverflowError:
-            good_time_delta = False
-            if num_days_arg != 0:
-                if num_days_arg in (-1, 1):
-                    day_s_str = "day"
-                else:
-                    day_s_str = "days"
-                num_days_str = f"{num_days_arg} {day_s_str}, "
-            else:
-                num_days_str = ""
-
-            if num_usecs_arg != 0:
-                usec_str = f".{num_usecs_arg:0>6}"
-            else:
-                usec_str = ""
-
-            time_delta = (
-                f"time_delta: {num_days_str}{num_hours_arg}:{num_mins_arg}:"
-                f"{num_secs_arg}{usec_str}"
-            )
-            logger.debug(f"bad time_delta: {time_delta}")
-            elapsed_time_pattern_regex = re.compile(
-                f"bad time_delta: {timedelta_match_string}"
-            )
-            print(f"bad time_delta: {time_delta}")
-
-        captured = capsys.readouterr().out
-        captured_lines = captured.split("\n")
-
-        if good_time_delta:
-            assert elapsed_time_pattern_regex.match(captured_lines[0])
-        else:
-            assert not elapsed_time_pattern_regex.match(captured_lines[0])
-
-    ####################################################################
-    # test_timedelta_fail_match_str
-    ####################################################################
-    @pytest.mark.parametrize(
-        "num_days_arg",
-        (-999999999, -999999999, -2, -1, 0, 1, 2, 999999999, 999999999),
-    )
-    @pytest.mark.parametrize("num_hours_arg", (0, 1, 2, 9, 10, 11, 19, 20, 21, 23))
-    @pytest.mark.parametrize("num_mins_arg", (0, 1, 2, 9, 10, 11, 58, 59))
-    @pytest.mark.parametrize("num_secs_arg", (0, 1, 2, 9, 10, 11, 58, 59))
+    @pytest.mark.parametrize("num_mins_arg", (0, 1, 2, 9, 10, 58, 59))
+    @pytest.mark.parametrize("num_secs_arg", (0, 1, 2, 9, 11, 58, 59))
     @pytest.mark.parametrize("num_usecs_arg", (0, 1, 2, 9, 10, 11, 100000, 999999))
     # @pytest.mark.parametrize("num_days_arg", (0,))
     # @pytest.mark.parametrize("num_hours_arg", (0,))
     # @pytest.mark.parametrize("num_mins_arg", (0,))
     # @pytest.mark.parametrize("num_secs_arg", (0,))
     # @pytest.mark.parametrize("num_usecs_arg", (0, 9))
-    def test_timedelta_fail_match_str(
+    def test_timedelta_match_str(
         self,
         num_days_arg: int,
         num_hours_arg: int,
@@ -629,16 +552,104 @@ class TestTimedeltaMatchStr:
             seconds=num_secs_arg,
             microseconds=num_usecs_arg,
         )
-
-        elapsed_time_pattern_regex = re.compile(f"time_delta: {timedelta_match_string}")
-
         logger.debug(f"time_delta: {time_delta}")
+        elapsed_time_pattern_regex = re.compile(f"time_delta: {timedelta_match_string}")
         print(f"time_delta: {time_delta}")
 
         captured = capsys.readouterr().out
         captured_lines = captured.split("\n")
 
         assert elapsed_time_pattern_regex.match(captured_lines[0])
+
+    ####################################################################
+    # test_timedelta_fail_match_str
+    ####################################################################
+    @pytest.mark.parametrize(
+        "num_days_arg",
+        (
+            "skip",
+            "1 day, ",
+            "1 days, ",
+            "-9999999999 days, ",
+            "=2 days, ",
+            "9999999999 days, ",
+        ),
+    )
+    @pytest.mark.parametrize("num_hours_arg", ("22:", "01", "111:", "24:", "hh:"))
+    @pytest.mark.parametrize("num_mins_arg", ("59:", "33", "55:55:", "63", "mm:"))
+    @pytest.mark.parametrize("num_secs_arg", ("42", "333", "11:11", "99", "ss"))
+    @pytest.mark.parametrize(
+        "num_usecs_arg",
+        ("skip", ".424242", ".3", "11:11", ".9999999", ",123456", "usecs"),
+    )
+    # @pytest.mark.parametrize(
+    #     "num_days_arg",
+    #     (
+    #         "skip",
+    #         # "1 day, ",
+    #         # "1 days, ",
+    #         # "-9999999999 days, ",
+    #         # "=2 days, ",
+    #         # "9999999999 days, ",
+    #     ),
+    # )
+    # @pytest.mark.parametrize("num_hours_arg", ("22:",))  #  "01", "111:", "24:", "hh:"))
+    # @pytest.mark.parametrize("num_mins_arg", ("59:",))  # "33", "55:55:", "63", "mm:"))
+    # @pytest.mark.parametrize("num_secs_arg", ("42",))  # "333", "11:11", "99", "ss"))
+    # @pytest.mark.parametrize(
+    #     "num_usecs_arg",
+    #     ("skip",),  # ".424242", ".3", "11:11", ".9999999", ",123456", "usecs"),
+    # )
+    def test_timedelta_fail_match_str(
+        self,
+        num_days_arg: int,
+        num_hours_arg: int,
+        num_mins_arg: int,
+        num_secs_arg: int,
+        num_usecs_arg: int,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test the timedelta match string.
+
+        Args:
+            num_days_arg: number days
+            num_hours_arg: number hours
+            num_mins_arg: number minutes
+            num_secs_arg: number seconds
+            num_usecs_arg: number micro seconds
+
+        """
+        good_time = False
+        if (
+            num_days_arg in ("skip", "1 day, ")
+            and num_hours_arg == "22:"
+            and num_mins_arg == "59:"
+            and num_secs_arg == "42"
+            and num_usecs_arg in ("skip", ".424242")
+        ):
+            good_time = True
+
+        elapsed_time_pattern_regex = re.compile(f"time_delta: {timedelta_match_string}")
+        time_delta = "time_delta: "
+        if num_days_arg != "skip":
+            time_delta = f"{time_delta}{num_days_arg}"
+
+        time_delta = f"{time_delta}{num_hours_arg}{num_mins_arg}{num_secs_arg}"
+
+        if num_usecs_arg != "skip":
+            time_delta = f"{time_delta}{num_usecs_arg}"
+
+        logger.debug(f"{good_time=}, {time_delta}")
+
+        print(f"{time_delta}")
+
+        captured = capsys.readouterr().out
+        captured_lines = captured.split("\n")
+
+        if good_time:
+            assert elapsed_time_pattern_regex.match(captured_lines[0])
+        else:
+            assert not elapsed_time_pattern_regex.match(captured_lines[0])
 
 
 class TestStartStopHeader:
