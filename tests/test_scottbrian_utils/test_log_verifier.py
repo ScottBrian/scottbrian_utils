@@ -10,7 +10,6 @@ import itertools as it
 import more_itertools as mi
 import logging
 import numpy as np
-import pandas as pd
 import datetime
 import re
 
@@ -38,7 +37,7 @@ from scottbrian_utils.log_verifier import (
 )
 from scottbrian_utils.time_hdr import (
     get_datetime_match_string,
-    get_timedelta_match_string,
+    timedelta_match_string,
 )
 
 logger = logging.getLogger(__name__)
@@ -164,6 +163,7 @@ class TestLogVerification:
         self.capsys_stats_lines: list[str] = []
         self.capsys_sections: dict[str, LogSection] = {}
 
+        self.captured_elapsed_time_lines: list[str] = []
         self.captured_pattern_stats_line: str = ""
         self.captured_log_msgs_stats_line: str = ""
         self.captured_num_matches: int = 0
@@ -217,6 +217,40 @@ class TestLogVerification:
         self.patterns.append(ret_pattern)
 
         return ret_pattern
+
+    def verify_captured(self, expected_result: str):
+        """Verify the captured match results.
+
+        Args:
+            expected_result: the string of expected results
+
+        """
+        captured_capsys = self.capsys_to_use.readouterr().out
+        captured_lines = captured_capsys.split("\n")
+        expected_lines = expected_result.split("\n")
+
+        dt_format_1 = get_datetime_match_string(format_str="%a %b %d %Y %H:%M:%S")
+        start_pattern_regex = re.compile(f"Start: {dt_format_1}")
+        end_pattern_regex = re.compile(f"End: {dt_format_1}")
+
+        elapsed_time_pattern_regex = re.compile(
+            f"Elapsed time: {timedelta_match_string}"
+        )
+
+        assert len(captured_lines) == len(expected_lines)
+        assert len(captured_lines) > 6
+
+        for idx in range(4):
+            assert expected_lines[idx] == captured_lines[idx]
+
+        assert start_pattern_regex.fullmatch(expected_lines[4])
+        print(f"{start_pattern_regex}")
+        print(f"{captured_lines[4]}")
+        assert end_pattern_regex.fullmatch(expected_lines[5])
+        assert elapsed_time_pattern_regex.fullmatch(expected_lines[6])
+
+        for idx in range(7, len(captured_lines)):
+            assert expected_lines[idx] == captured_lines[idx]
 
     def verify_results(
         self,
@@ -322,6 +356,9 @@ class TestLogVerification:
             self.log_ver.verify_match_results(self.log_results)
 
         assert self.match_scenario_found
+
+        for line in self.captured_elapsed_time_lines:
+            print(line)
 
     def verify_scenario(self, scenario: LogVerScenario) -> bool:
         ver_result = VerResult()
@@ -469,8 +506,9 @@ class TestLogVerification:
         start_pattern_regex = re.compile(f"Start: {dt_format_1}")
         end_pattern_regex = re.compile(f"End: {dt_format_1}")
 
-        elapsed_time_format = get_timedelta_match_string()
-        elapsed_time_pattern_regex = re.compile(f"Elapsed time: {elapsed_time_format}")
+        elapsed_time_pattern_regex = re.compile(
+            f"Elapsed time: {timedelta_match_string}"
+        )
 
         stats_asterisks = "************************************************"
         stats_line = "*                summary stats                 *"
@@ -498,15 +536,17 @@ class TestLogVerification:
         assert captured_lines[1] == results_asterisks
         assert captured_lines[2] == results_line
         assert captured_lines[3] == results_asterisks
-        assert start_pattern_regex.match(captured_lines[4])
-        assert end_pattern_regex.match(captured_lines[5])
-        assert elapsed_time_pattern_regex.match(captured_lines[6])
+        assert start_pattern_regex.fullmatch(captured_lines[4])
+        assert end_pattern_regex.fullmatch(captured_lines[5])
+        assert elapsed_time_pattern_regex.fullmatch(captured_lines[6])
 
         assert captured_lines[7] == ""
         assert captured_lines[8] == stats_asterisks
         assert captured_lines[9] == stats_line
         assert captured_lines[10] == stats_asterisks
         assert captured_lines[11] == "    type  records  matched  unmatched"
+
+        self.captured_elapsed_time_lines = captured_lines[0:7]
 
         self.captured_pattern_stats_line = captured_lines[12]
         self.captured_log_msgs_stats_line = captured_lines[13]
@@ -788,6 +828,13 @@ class TestLogVerExamples:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -810,9 +857,11 @@ class TestLogVerExamples:
         expected_result += f" log_name  level log_msg  records  matched  unmatched\n"
         expected_result += f"example_1     10   hello        1        1          0\n"
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="example_1", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_example2
@@ -842,6 +891,13 @@ class TestLogVerExamples:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -869,9 +925,11 @@ class TestLogVerExamples:
         expected_result += f" log_name  level log_msg  records  matched  unmatched\n"
         expected_result += f"example_2     10   hello        1        1          0\n"
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="example_2", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_example3
@@ -902,6 +960,13 @@ class TestLogVerExamples:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -925,9 +990,11 @@ class TestLogVerExamples:
         expected_result += f" log_name  level log_msg  records  matched  unmatched\n"
         expected_result += f"example_3     10   hello        1        1          0\n"
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="example_3", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_example4
@@ -961,6 +1028,13 @@ class TestLogVerExamples:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -993,9 +1067,11 @@ class TestLogVerExamples:
         expected_result += f" log_name  level log_msg  records  matched  unmatched\n"
         expected_result += f"example_4     10   hello        1        1          0\n"
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="example_4", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_example5
@@ -1025,6 +1101,13 @@ class TestLogVerExamples:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -1048,9 +1131,11 @@ class TestLogVerExamples:
         expected_result += f"example_5     10   hello        1        1          0\n"
         expected_result += f"example_5     40 goodbye        1        1          0\n"
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="example_5", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
 
 ########################################################################
@@ -1160,6 +1245,13 @@ class TestLogVerBasic:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -1204,9 +1296,11 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += "*** no matched log messages found ***\n"
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="no_match1", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_no_match2
@@ -1248,6 +1342,7 @@ class TestLogVerBasic:
         exp_num_matched_log_msgs = 0
 
         test_log_ver.verify_results(
+            print_only=True,
             print_matched=False,
             exp_num_unmatched_patterns=exp_num_unmatched_patterns,
             exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
@@ -1286,6 +1381,13 @@ class TestLogVerBasic:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -1314,9 +1416,11 @@ class TestLogVerBasic:
             f"       1        1          0\n"
         )
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="simple_match", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_print_matched
@@ -1641,6 +1745,13 @@ class TestLogVerBasic:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -1669,9 +1780,11 @@ class TestLogVerBasic:
             f"       1        1          0\n"
         )
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="time_match", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_add_call_seq
@@ -1709,6 +1822,13 @@ class TestLogVerBasic:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -1737,9 +1857,11 @@ class TestLogVerBasic:
             f"       1        1          0\n"
         )
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="call_seq", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_add_call_seq2
@@ -1778,6 +1900,13 @@ class TestLogVerBasic:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -1806,9 +1935,11 @@ class TestLogVerBasic:
             f"       1        1          0\n"
         )
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="call_seq2", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_add_call_seq3
@@ -1863,6 +1994,13 @@ class TestLogVerBasic:
 
         expected_result = "\n"
         expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
         expected_result += "*                summary stats                 *\n"
         expected_result += "************************************************\n"
         expected_result += "    type  records  matched  unmatched\n"
@@ -1891,9 +2029,11 @@ class TestLogVerBasic:
             f"       1        1          0\n"
         )
 
-        captured = capsys.readouterr().out
+        test_log_ver = TestLogVerification(
+            log_name="call_seq3", capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        assert captured == expected_result
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_no_log
@@ -1969,15 +2109,6 @@ class TestLogVerCombos:
     @pytest.mark.parametrize("num_aaa_msg_arg", [0, 1, 2])
     @pytest.mark.parametrize("num_aaa_pat_arg", [0, 1, 2])
     @pytest.mark.parametrize("num_aaa_fm_pat_arg", [0, 1, 2])
-    # @pytest.mark.parametrize("num_a_msg_arg", [2])
-    # @pytest.mark.parametrize("num_a_pat_arg", [2])
-    # @pytest.mark.parametrize("num_a_fm_pat_arg", [1])
-    # @pytest.mark.parametrize("num_aa_msg_arg", [1])
-    # @pytest.mark.parametrize("num_aa_pat_arg", [0])
-    # @pytest.mark.parametrize("num_aa_fm_pat_arg", [0])
-    # @pytest.mark.parametrize("num_aaa_msg_arg", [0])
-    # @pytest.mark.parametrize("num_aaa_pat_arg", [0])
-    # @pytest.mark.parametrize("num_aaa_fm_pat_arg", [0])
     def test_log_verifier_triple_a(
         self,
         num_a_msg_arg: int,
@@ -2115,10 +2246,79 @@ class TestLogVerCombos:
     ####################################################################
     # test_log_verifier_10m_x_to_y
     ####################################################################
+    @pytest.mark.parametrize("num_a_msg_arg", [0, 3000000])
+    @pytest.mark.parametrize("num_a_pat_arg", [0, 3000000])
+    @pytest.mark.parametrize("num_a_fm_pat_arg", [0, 3000000])
+    @pytest.mark.parametrize("num_diff_msg_arg", [0, 1, 2])
+    @pytest.mark.parametrize("num_diff_a_pat_arg", [0, 1, 2])
+    @pytest.mark.parametrize("num_diff_a_fm_pat_arg", [0, 1, 2])
+    # @pytest.mark.parametrize("num_a_msg_arg", [400000])
+    # @pytest.mark.parametrize("num_a_pat_arg", [400000])
+    # @pytest.mark.parametrize("num_a_fm_pat_arg", [0])
+    # @pytest.mark.parametrize("num_diff_msg_arg", [1])
+    # @pytest.mark.parametrize("num_diff_a_pat_arg", [0])
+    # @pytest.mark.parametrize("num_diff_a_fm_pat_arg", [0])
+    def test_log_verifier_10m_x_to_y(
+        self,
+        num_a_msg_arg: int,
+        num_a_pat_arg: int,
+        num_a_fm_pat_arg: int,
+        num_diff_msg_arg: int,
+        num_diff_a_pat_arg: int,
+        num_diff_a_fm_pat_arg: int,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test log_verifier time match.
+
+        Args:
+            num_a_msg_arg: number of a log msgs to issue
+            num_a_pat_arg: number of a patterns to use
+            num_a_fm_pat_arg: number of a fullmatch patterns to use
+            num_diff_msg_arg: pct of message that are different
+            num_diff_a_pat_arg: pct of pattern is different
+            num_diff_a_fm_pat_arg: pct of fullmatch pattern is different
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+        """
+        test_log_ver = TestLogVerification(
+            log_name="large_1", capsys_to_use=capsys, caplog_to_use=caplog
+        )
+        ################################################################
+        # issue log msgs
+        ################################################################
+        for idx in range(num_a_msg_arg):
+            if (num_diff_msg_arg == 0) or (num_diff_msg_arg == 1 and idx % 2 == 0):
+                test_log_ver.issue_log_msg("a")
+            else:
+                test_log_ver.issue_log_msg(f"a{idx}")
+
+        ################################################################
+        # add patterns
+        ################################################################
+        for idx in range(num_a_pat_arg):
+            if (num_diff_a_pat_arg == 0) or (num_diff_a_pat_arg == 1 and idx % 2 == 0):
+                test_log_ver.add_pattern("a")
+            else:
+                test_log_ver.add_pattern(f"a{idx}")
+
+        for idx in range(num_a_fm_pat_arg):
+            if (num_diff_a_fm_pat_arg == 0) or (
+                num_diff_a_fm_pat_arg == 1 and idx % 2 == 0
+            ):
+                test_log_ver.add_pattern("a", fullmatch=True)
+            else:
+                test_log_ver.add_pattern(f"a{idx}", fullmatch=True)
+
+        test_log_ver.verify_results(print_only=True)
+
+    ####################################################################
+    # test_log_verifier_10m_x_to_y_diff
+    ####################################################################
     @pytest.mark.parametrize("num_a_msg_arg", [0, 100, 10000000])
     @pytest.mark.parametrize("num_a_pat_arg", [0, 100, 10000000])
     @pytest.mark.parametrize("num_a_fm_pat_arg", [0, 100, 10000000])
-    def test_log_verifier_10m_x_to_y(
+    def test_log_verifier_10m_x_to_y_diff(
         self,
         num_a_msg_arg: int,
         num_a_pat_arg: int,
@@ -2141,8 +2341,8 @@ class TestLogVerCombos:
         ################################################################
         # issue log msgs
         ################################################################
-        for _ in range(num_a_msg_arg):
-            test_log_ver.issue_log_msg("a")
+        for idx in range(num_a_msg_arg):
+            test_log_ver.issue_log_msg(f"a{idx}")
 
         ################################################################
         # add patterns
