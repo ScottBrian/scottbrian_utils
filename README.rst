@@ -145,10 +145,13 @@ Release History
 
 * 4.0.0
     * added timedelta_match_string to time_hdr.py
+    * added entry_trace.py
     * restructured log_verifier:
         * performance improvements
         * changes to clarify that regex patterns are used
-        * changed report format to a compact form
+        * changed report format
+        * method add_pattern replaces deprecated method add_msg
+        * method verify_match_results replaces deprecated verify_log_results
 
 
 Meta

@@ -7,19 +7,14 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 import functools as ft
-import datetime
+
 import inspect
 import itertools as it
 import logging
 import more_itertools as mi
 import re
-import threading
-from typing import Any, cast, Optional, Union
 
-# from ast import *
-# from types import *
-import ast
-import types
+from typing import Any, cast, Optional, Union
 
 ########################################################################
 # Third Party
@@ -29,12 +24,8 @@ import pytest
 ########################################################################
 # Local
 ########################################################################
-from scottbrian_utils.diag_msg import get_formatted_call_sequence
 from scottbrian_utils.entry_trace import etrace
 from scottbrian_utils.log_verifier import LogVer
-from scottbrian_utils.log_verifier import UnmatchedExpectedMessages
-from scottbrian_utils.log_verifier import UnmatchedActualMessages
-from scottbrian_utils.time_hdr import get_datetime_match_string
 
 logger = logging.getLogger(__name__)
 
@@ -215,18 +206,18 @@ class TestEntryTraceExamples:
             "test_etrace_example1:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
 
         exp_exit_log_msg = f"test_entry_trace.py:f1:{f1_line_num} exit: ret_value=None"
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -235,7 +226,7 @@ class TestEntryTraceExamples:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_example2

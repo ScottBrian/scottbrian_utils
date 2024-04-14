@@ -5,8 +5,11 @@ LogVer
 ======
 
 The LogVer class is intended to be used during testing to allow a
-test case to specify expected log messages and then verify that they
-have been issued.
+pytest test case to verify that the code under test issued log messages
+as expected. This is done by providing a collection of regex patterns
+that the LogVer will match up to the issued log messages. A report is
+printed to the syslog to show any patterns or messages that failed to
+match, and optionally the log messages that did match.
 
 :Example1: pytest test case logs a message and verifies
 
@@ -15,84 +18,99 @@ have been issued.
     from scottbrian_utils.log_verifier import LogVer
     import logging
     def test_example1(caplog: pytest.LogCaptureFixture) -> None:
-        logger = logging.getLogger('example_1')
-        log_ver = LogVer('example_1')
-        log_msg = 'hello'
-        log_ver.add_msg(log_msg=log_msg)
-        logger.debug(log_msg)
-        match_results = log_ver.get_match_results(caplog=caplog)
-        log_ver.print_match_results(match_results)
-        log_ver.verify_log_results(match_results)
+        t_logger = logging.getLogger("example_1")
+        log_ver = LogVer(log_name="example_1")
+        log_msg = "hello"
+        log_ver.add_pattern(pattern=log_msg)
+        t_logger.debug(log_msg)
+        match_results = log_ver.get_match_results(caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
 
 The output from ``LogVer.print_match_results()`` for test_example1::
 
-    **********************************
-    * number expected log records: 1 *
-    * number expected unmatched  : 0 *
-    * number actual log records  : 1 *
-    * number actual unmatched    : 0 *
-    * number of matched records  : 1 *
-    **********************************
+        ************************************************
+        *             log verifier results             *
+        ************************************************
+        Start: Thu Apr 11 2024 19:24:28
+        End: Thu Apr 11 2024 19:24:28
+        Elapsed time: 0:00:00.006002
 
-    *********************************
-    * unmatched expected records    *
-    * (logger name, level, message) *
-    *********************************
+        ************************************************
+        *                summary stats                 *
+        ************************************************
+            type  records  matched  unmatched
+        patterns        1        1          0
+        log_msgs        1        1          0
 
-    *********************************
-    * unmatched actual records      *
-    * (logger name, level, message) *
-    *********************************
+        ***********************
+        * unmatched patterns: *
+        ***********************
+        *** no unmatched patterns found ***
 
-    *********************************
-    * matched records               *
-    * (logger name, level, message) *
-    *********************************
-    ('example_1', 10, 'hello')
+        ***********************
+        * unmatched log_msgs: *
+        ***********************
+        *** no unmatched log messages found ***
 
-:Example2: pytest test case expects two log records, only one was issued
+        ***********************
+        *  matched log_msgs:  *
+        ***********************
+         log_name  level log_msg  records  matched  unmatched
+        example_1     10   hello        1        1          0
+
+:Example2: pytest test case expects two log records, only one is issued
 
 .. code-block:: python
 
     from scottbrian_utils.log_verifier import LogVer
     import logging
+
     def test_example2(caplog: pytest.LogCaptureFixture) -> None:
-        logger = logging.getLogger('example_2')
-        log_ver = LogVer('example_2')
-        log_msg1 = 'hello'
-        log_ver.add_msg(log_msg=log_msg1)
-        log_msg2 = 'goodbye'
-        log_ver.add_msg(log_msg=log_msg2)
-        logger.debug(log_msg1)
-        log_ver.get_match_results()
-        log_ver.print_match_results()
+        t_logger = logging.getLogger("example_2")
+        log_ver = LogVer(log_name="example_2")
+        log_msg1 = "hello"
+        log_ver.add_pattern(pattern=log_msg1)
+        log_msg2 = "goodbye"
+        log_ver.add_pattern(pattern=log_msg2)
+        t_logger.debug(log_msg1)
+        match_results = log_ver.get_match_results(caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        with pytest.raises(UnmatchedPatterns):
+            log_ver.verify_match_results(match_results)
 
 The output from ``LogVer.print_match_results()`` for test_example2::
 
-    **********************************
-    * number expected log records: 2 *
-    * number expected unmatched  : 1 *
-    * number actual log records  : 1 *
-    * number actual unmatched    : 0 *
-    * number of matched records  : 1 *
-    **********************************
+        ************************************************
+        *             log verifier results             *
+        ************************************************
+        Start: Thu Apr 11 2024 19:24:28
+        End: Thu Apr 11 2024 19:24:28
+        Elapsed time: 0:00:00.006002
 
-    *********************************
-    * unmatched expected records    *
-    * (logger name, level, message) *
-    *********************************
-    ('example_2', 10, 'goodbye')
+        ************************************************
+        *                summary stats                 *
+        ************************************************
+            type  records  matched  unmatched
+        patterns        2        1          1
+        log_msgs        1        1          0
 
-    *********************************
-    * unmatched actual records      *
-    * (logger name, level, message) *
-    *********************************
+        ***********************
+        * unmatched patterns: *
+        ***********************
+         log_name  level pattern  fullmatch  records  matched  unmatched
+        example_2     10 goodbye      False        1        0          1
 
-    *********************************
-    * matched records               *
-    * (logger name, level, message) *
-    *********************************
-    ('example_2', 10, 'hello')
+        ***********************
+        * unmatched log_msgs: *
+        ***********************
+        *** no unmatched log messages found ***
+
+        ***********************
+        *  matched log_msgs:  *
+        ***********************
+         log_name  level log_msg  records  matched  unmatched
+        example_2     10   hello        1        1          0
 
 :Example3: pytest test case expects one log record, two were issued
 
@@ -101,42 +119,51 @@ The output from ``LogVer.print_match_results()`` for test_example2::
     from scottbrian_utils.log_verifier import LogVer
     import logging
     def test_example3(caplog: pytest.LogCaptureFixture) -> None:
-        logger = logging.getLogger('example_3')
-        log_ver = LogVer('example_3')
-        log_msg1 = 'hello'
-        log_ver.add_msg(log_msg=log_msg1)
-        log_msg2 = 'goodbye'
-        logger.debug(log_msg1)
-        logger.debug(log_msg2)
-        log_ver.get_match_results()
-        log_ver.print_match_results()
+        t_logger = logging.getLogger("example_3")
+        log_ver = LogVer(log_name="example_3")
+        log_msg1 = "hello"
+        log_ver.add_pattern(pattern=log_msg1)
+        log_msg2 = "goodbye"
+        t_logger.debug(log_msg1)
+        t_logger.debug(log_msg2)
+        log_ver.print_match_results(
+            match_results := log_ver.get_match_results(caplog), print_matched=True
+        )
+        with pytest.raises(UnmatchedLogMessages):
+            log_ver.verify_match_results(match_results)
 
 The output from ``LogVer.print_match_results()`` for test_example3::
 
-    **********************************
-    * number expected log records: 1 *
-    * number expected unmatched  : 0 *
-    * number actual log records  : 2 *
-    * number actual unmatched    : 1 *
-    * number of matched records  : 1 *
-    **********************************
+        ************************************************
+        *             log verifier results             *
+        ************************************************
+        Start: Thu Apr 11 2024 19:24:28
+        End: Thu Apr 11 2024 19:24:28
+        Elapsed time: 0:00:00.006002
 
-    *********************************
-    * unmatched expected records    *
-    * (logger name, level, message) *
-    *********************************
+        ************************************************
+        *                summary stats                 *
+        ************************************************
+            type  records  matched  unmatched
+        patterns        1        1          0
+        log_msgs        2        1          1
 
-    *********************************
-    * unmatched actual records      *
-    * (logger name, level, message) *
-    *********************************
-    ('example_3', 10, 'goodbye')
+        ***********************
+        * unmatched patterns: *
+        ***********************
+        *** no unmatched patterns found ***
 
-    *********************************
-    * matched records               *
-    * (logger name, level, message) *
-    *********************************
-    ('example_3', 10, 'hello')
+        ***********************
+        * unmatched log_msgs: *
+        ***********************
+         log_name  level log_msg  records  matched  unmatched
+        example_3     10 goodbye        1        0          1
+
+        ***********************
+        *  matched log_msgs:  *
+        ***********************
+         log_name  level log_msg  records  matched  unmatched
+        example_3     10   hello        1        1          0
 
 :Example4: pytest test case expect two log records, two were issued,
            one different
@@ -146,45 +173,54 @@ The output from ``LogVer.print_match_results()`` for test_example3::
     from scottbrian_utils.log_verifier import LogVer
     import logging
     def test_example4(caplog: pytest.LogCaptureFixture) -> None:
-        logger = logging.getLogger('example_4')
-        log_ver = LogVer('example_4')
-        log_msg1 = 'hello'
-        log_ver.add_msg(log_msg=log_msg1)
-        log_msg2a = 'goodbye'
-        log_ver.add_msg(log_msg=log_msg2a)
-        log_msg2b = 'see you soon'
-        logger.debug(log_msg1)
-        logger.debug(log_msg2b)
-        log_ver.get_match_results()
-        log_ver.print_match_results()
+        t_logger = logging.getLogger("example_4")
+        log_ver = LogVer(log_name="example_4")
+        log_msg1 = "hello"
+        log_ver.add_pattern(pattern=log_msg1)
+        log_msg2a = "goodbye"
+        log_ver.add_pattern(pattern=log_msg2a)
+        log_msg2b = "see you soon"
+        t_logger.debug(log_msg1)
+        t_logger.debug(log_msg2b)
+        log_ver.print_match_results(
+            match_results := log_ver.get_match_results(caplog), print_matched=True
+        )
+        with pytest.raises(UnmatchedPatterns):
+            log_ver.verify_match_results(match_results)
 
 The output from ``LogVer.print_match_results()`` for test_example4::
 
-    **********************************
-    * number expected log records: 2 *
-    * number expected unmatched  : 1 *
-    * number actual log records  : 2 *
-    * number actual unmatched    : 1 *
-    * number of matched records  : 1 *
-    **********************************
+        ************************************************
+        *             log verifier results             *
+        ************************************************
+        Start: Thu Apr 11 2024 19:24:28
+        End: Thu Apr 11 2024 19:24:28
+        Elapsed time: 0:00:00.006002
 
-    *********************************
-    * unmatched expected records    *
-    * (logger name, level, message) *
-    *********************************
-    ('example_4', 10, 'goodbye')
+        ************************************************
+        *                summary stats                 *
+        ************************************************
+            type  records  matched  unmatched
+        patterns        2        1          1
+        log_msgs        2        1          1
 
-    *********************************
-    * unmatched actual records      *
-    * (logger name, level, message) *
-    *********************************
-    ('example_4', 10, 'see you soon')
+        ***********************
+        * unmatched patterns: *
+        ***********************
+         log_name  level pattern  fullmatch  records  matched  unmatched
+        example_4     10 goodbye      False        1        0          1
 
-    *********************************
-    * matched records               *
-    * (logger name, level, message) *
-    *********************************
-    ('example_4', 10, 'hello')
+        ***********************
+        * unmatched log_msgs: *
+        ***********************
+         log_name  level      log_msg  records  matched  unmatched
+        example_4     10 see you soon        1        0          1
+
+        ***********************
+        *  matched log_msgs:  *
+        ***********************
+         log_name  level log_msg  records  matched  unmatched
+        example_4     10   hello        1        1          0
 
 The log_verifier module contains:
 
@@ -192,24 +228,21 @@ The log_verifier module contains:
 
        a. add_call_seq
        b. get_call_seq
-       c. add_msg
+       c. add_pattern
        d. get_match_results
        e. print_match_results
-       f. verify_log_results
+       f. verify_match_results
 
 """
 
 ########################################################################
 # Standard Library
 ########################################################################
-# from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 
-# import itertools as it
 import logging
 
-# import more_itertools as mi
 import pandas as pd  # type: ignore
 import pyarrow as pa  # type: ignore
 import pytest
@@ -453,48 +486,52 @@ class LogVer:
 
         .. code-block:: python
 
-            def test_example(caplog: pytest.LogCaptureFixture
-                            ) -> None:
-                logger = logging.getLogger('add_msg')
-                log_ver = LogVer('add_msg')
-                log_msg1 = 'hello'
-                log_msg2 = 'goodbye'
+            def test_example(caplog: pytest.LogCaptureFixture) -> None:
+                t_logger = logging.getLogger("example_5")
+                log_ver = LogVer("example_5")
+                log_msg1 = "hello"
+                log_msg2 = "goodbye"
                 log_ver.add_pattern(pattern=log_msg1)
-                log_ver.add_pattern(pattern=log_msg2,
-                                    level=logging.ERROR)
-                logger.debug(log_msg1)
-                logger.error(log_msg2)
-                match_results = log_ver.get_match_results()
-                log_ver.print_match_results(match_results)
-                log_ver.verify_log_results(match_results)
+                log_ver.add_pattern(pattern=log_msg2, level=logging.ERROR)
+                t_logger.debug(log_msg1)
+                t_logger.error(log_msg2)
+                match_results = log_ver.get_match_results(caplog=caplog)
+                log_ver.print_match_results(match_results, print_matched=True)
+                log_ver.verify_match_results(match_results)
 
         The output from ``LogVer.print_match_results()`` for
         test_example::
 
-            **********************************
-            * number expected log records: 2 *
-            * number expected unmatched  : 1 *
-            * number actual log records  : 1 *
-            * number actual unmatched    : 0 *
-            * number of matched records  : 1 *
-            **********************************
+        ************************************************
+        *             log verifier results             *
+        ************************************************
+        Start: Thu Apr 11 2024 19:24:28
+        End: Thu Apr 11 2024 19:24:28
+        Elapsed time: 0:00:00.006002
 
-            *********************************
-            * unmatched expected records    *
-            * (logger name, level, message) *
-            *********************************
+        ************************************************
+        *                summary stats                 *
+        ************************************************
+            type  records  matched  unmatched
+        patterns        2        2          0
+        log_msgs        2        2          0
 
-            *********************************
-            * unmatched actual records      *
-            * (logger name, level, message) *
-            *********************************
+        ***********************
+        * unmatched patterns: *
+        ***********************
+        *** no unmatched patterns found ***
 
-            *********************************
-            * matched records               *
-            * (logger name, level, message) *
-            *********************************
-            ('add_msg', 10, 'hello')
-            ('add_msg', 40, 'goodbye')
+        ***********************
+        * unmatched log_msgs: *
+        ***********************
+        *** no unmatched log messages found ***
+
+        ***********************
+        *  matched log_msgs:  *
+        ***********************
+         log_name  level log_msg  records  matched  unmatched
+        example_5     10   hello        1        1          0
+        example_5     40 goodbye        1        1          0
 
         """
         if log_name:
@@ -550,9 +587,7 @@ class LogVer:
         pattern_grp.rename(columns={"size": "records"}, inplace=True)
 
         work_pattern_grp = pattern_grp.copy()
-        # work_pattern_grp["potential_matches"] = [
-        #     [] for _ in range(len(work_pattern_grp))
-        # ]
+
         work_pattern_grp["potential_matches"] = [
             set() for _ in range(len(work_pattern_grp))
         ]
@@ -570,7 +605,7 @@ class LogVer:
         msg_grp.rename(columns={"size": "records"}, inplace=True)
 
         work_msg_grp = msg_grp.copy()
-        # work_msg_grp["potential_matches"] = [[] for _ in range(len(work_msg_grp))]
+
         work_msg_grp["potential_matches"] = [set() for _ in range(len(work_msg_grp))]
         work_msg_grp["num_potential_matches"] = 0
         work_msg_grp.rename(columns={"records": "num_avail"}, inplace=True)
@@ -732,15 +767,6 @@ class LogVer:
         Returns:
             min_potential_matches, which is either the same or lower
         """
-        # print(
-        #     f"\n**************************************** "
-        #     f"\nsearch_df entry: {min_potential_matches=} "
-        #     f"\n**************************************** "
-        #     f"\navail_df: \n{avail_df}"
-        #     f"\ntarg_work_grp: \n{targ_work_grp}"
-        #     f"\nsearch_arg_df: \n{search_arg_df}"
-        #     f"\nsearch_targ_df: \n{search_targ_df}"
-        # )
         # This method is called for each of the two data frames, the
         # first call having the pattern_df acting as the search_arg_df
         # and the msg_df as the search_targ_df, and the second call with
@@ -846,16 +872,13 @@ class LogVer:
                         ].copy()
 
                         # clear list - we have no more avail
-                        # targ_work_grp.at[potential_idx, "potential_matches"] = []
                         targ_work_grp.at[potential_idx, "potential_matches"] = set()
                         targ_work_grp.at[potential_idx, "num_potential_matches"] = 0
 
                         # no need to adjust the arg list since we
                         # will remove the entire list below
-                        # arg_df_idx_adjust_list.remove(search_item.Index)
                         arg_df_idx_adjust_list -= {search_item.Index}
 
-                        # new_arg_min = min_potential_matches
                         if arg_df_idx_adjust_list:
                             new_arg_min = adjust_potential_matches(
                                 adj_df=avail_df,
@@ -863,35 +886,9 @@ class LogVer:
                                 remove_idx=potential_idx,
                                 min_len=min_potential_matches,
                             )
-                            # min_potential_matches = min(
-                            #     min_potential_matches, new_arg_min
-                            # )
                             min_arg_potential_matches = min(
                                 min_arg_potential_matches, new_arg_min
                             )
-                        # if arg_df_idx_adjust_list:
-                        #     new_arg_min = min_potential_matches
-                        #     for idx_adjust in arg_df_idx_adjust_list:
-                        #         if (
-                        #             potential_idx
-                        #             in avail_df.at[idx_adjust, "potential_matches"]
-                        #         ):
-                        #             avail_df.at[idx_adjust, "potential_matches"] -= {
-                        #                 potential_idx
-                        #             }
-                        #             avail_df.at[
-                        #                 idx_adjust, "num_potential_matches"
-                        #             ] -= 1
-                        #             new_len = avail_df.at[
-                        #                 idx_adjust, "num_potential_matches"
-                        #             ]
-                        #             new_arg_min = min(
-                        #                 new_arg_min, new_len
-                        #             )  # could be zero
-                        #
-                        #     min_arg_potential_matches = min(
-                        #         min_arg_potential_matches, new_arg_min
-                        #     )
                     if arg_num_avail == 0:
                         break
 
@@ -900,13 +897,9 @@ class LogVer:
                 # Remove the potential list, set the num_avail to zero,
                 # and tell all potential targets to remove this arg
                 # from their potential lists
-                # avail_df.at[search_item.Index, "potential_matches"] = []
                 avail_df.at[search_item.Index, "potential_matches"] = set()
                 avail_df.at[search_item.Index, "num_potential_matches"] = 0
 
-                # targ_df_idx_adjust_list = search_item.potential_matches.copy()
-                # new_targ_min = min_potential_matches
-                # if targ_df_idx_adjust_list:
                 if target_adj_potential_matches:
                     new_targ_min = adjust_potential_matches(
                         adj_df=targ_work_grp,
@@ -918,31 +911,12 @@ class LogVer:
                     min_targ_potential_matches = min(
                         min_targ_potential_matches, new_targ_min
                     )
-                # if target_adj_potential_matches:
-                #     new_targ_min = min_potential_matches
-                #     for idx_adjust in target_adj_potential_matches:
-                #         if (
-                #             search_item.Index
-                #             in targ_work_grp.at[idx_adjust, "potential_matches"]
-                #         ):
-                #             targ_work_grp.at[idx_adjust, "potential_matches"] -= {
-                #                 search_item.Index
-                #             }
-                #             targ_work_grp.at[idx_adjust, "num_potential_matches"] -= 1
-                #             new_len = targ_work_grp.at[
-                #                 idx_adjust, "num_potential_matches"
-                #             ]
-                #             new_targ_min = min(new_targ_min, new_len)  # could be zero
-                #     min_targ_potential_matches = min(
-                #         min_targ_potential_matches, new_targ_min
-                #     )
 
                 if min_targ_potential_matches < min_arg_potential_matches:
                     return
-                # min_potential_matches = min(min_arg_potential_matches, new_targ_min)
+
                 min_potential_matches = min_arg_potential_matches
-                # if min_potential_matches < entry_min_potential_matches:
-                #     return
+
         return
 
     ####################################################################
@@ -966,21 +940,11 @@ class LogVer:
         ################################################################
         # print report header
         ################################################################
-        # start_msg = f"Start: {self.start_DT.strftime('%a %b %d %Y %H:%M:%S')}"
-        # end_msg = f"End: {self.end_DT.strftime('%a %b %d %Y %H:%M:%S')}"
-        # elapsed_time_msg = f"Elapsed time: {self.end_DT - self.start_DT}"
-        # print_flower_box_msg(
-        #     [
-        #         "            log verifier results            ",
-        #         start_msg,
-        #         end_msg,
-        #         elapsed_time_msg,
-        #     ]
-        # )
         print_flower_box_msg("            log verifier results            ")
         print(f"Start: {self.start_DT.strftime('%a %b %d %Y %H:%M:%S')}")
         print(f"End: {self.end_DT.strftime('%a %b %d %Y %H:%M:%S')}")
         print(f"Elapsed time: {self.end_DT - self.start_DT}")
+
         ################################################################
         # print summary stats
         ################################################################
@@ -1090,21 +1054,15 @@ class LogVer:
                 )
                 print(matched_msg_print)
 
-        # print(f"print report complete: time: {time.time() - self.start_time}")
-
     ####################################################################
     # verify log messages
     ####################################################################
     @staticmethod
-    def verify_log_results(
-        match_results: MatchResults, check_actual_unmatched: bool = True
-    ) -> None:
+    def verify_log_results(match_results: MatchResults) -> None:
         """Verify that each log message issued is as expected.
 
         Args:
             match_results: contains the results to be verified
-            check_actual_unmatched: If True, check that there are no
-                remaining unmatched actual records
 
         .. deprecated:: 3.0.0
            Use method :func:`verify_match_results` instead.

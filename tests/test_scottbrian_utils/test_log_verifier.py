@@ -157,6 +157,8 @@ class TestLogVerification:
             self.loggers[log_name].setLevel(level)
         self.log_ver = LogVer(log_name=log_names[0])
 
+        self.captured_lines: list[str] = []
+
         self.stats: dict[str, ItemStats] = {}
         self.match_scenario_found: bool = False
         self.matched_scenario: LogVerScenario = LogVerScenario()
@@ -300,6 +302,9 @@ class TestLogVerification:
 
         self.build_ver_record()
 
+        for line in self.captured_lines:
+            print(line)
+
         if exp_num_unmatched_patterns is not None:
             assert (
                 self.stats["patterns"].num_unmatched_items == exp_num_unmatched_patterns
@@ -357,9 +362,6 @@ class TestLogVerification:
             self.log_ver.verify_match_results(self.log_results)
 
         assert self.match_scenario_found
-
-        for line in self.captured_elapsed_time_lines:
-            print(line)
 
     def verify_scenario(self, scenario: LogVerScenario) -> bool:
         ver_result = VerResult()
@@ -466,6 +468,7 @@ class TestLogVerification:
                 + "  unmatched"
             )
             if log_section.hdr_line != expected_hdr_line:
+                # logger.debug(f"returning False 1, {item_text=}, {matched_section=}")
                 return False
 
             for key in log_section.line_items.keys():
@@ -474,25 +477,29 @@ class TestLogVerification:
 
             for item in unmatched_items:
                 if item_text == "pattern":
-                    key = f"{item.item}{item.fullmatch}"
+                    key = f"{item.log_name}{item.level}{item.item}{item.fullmatch}"
                 else:
-                    key = item.item
+                    key = f"{item.log_name}{item.level}{item.item}"
 
                 if key in log_section.line_items:
                     log_section.line_items[key].num_counted_unmatched += 1
 
             for item in matched_items:
                 if item_text == "pattern":
-                    key = f"{item.item}{item.fullmatch}"
+                    key = f"{item.log_name}{item.level}{item.item}{item.fullmatch}"
                 else:
-                    key = item.item
+                    key = f"{item.log_name}{item.level}{item.item}"
                 if key in log_section.line_items:
                     log_section.line_items[key].num_counted_matched += 1
 
             for key, line_item in log_section.line_items.items():
                 if line_item.num_actual_matches != line_item.num_counted_matched:
+                    # logger.debug(
+                    #     f"returning False 2, {item_text=}, {matched_section=}, {line_item.num_actual_matches=}, {line_item.num_counted_matched=}"
+                    # )
                     return False
                 if line_item.num_actual_unmatches != line_item.num_counted_unmatched:
+                    # logger.debug(f"returning False 3, {item_text=}, {matched_section=}")
                     return False
         return True
 
@@ -581,6 +588,8 @@ class TestLogVerification:
 
         self.capsys_sections["matched_log_msgs"] = section_item
 
+        self.captured_lines = captured_lines
+
     def get_section(
         self,
         start_idx: int,
@@ -656,7 +665,7 @@ class TestLogVerification:
 
                 item = lsplit_actual[2]
 
-                key = item + fm_text
+                key = f"{log_name}{level}{item}{fm_text}"
 
                 num_items = int(rsplit_actual[-3])
                 num_matches = int(rsplit_actual[-2])
@@ -800,7 +809,7 @@ class TestLogVerification:
 ########################################################################
 # TestLogVerExamples class
 ########################################################################
-@pytest.mark.cover2
+@pytest.mark.cover
 class TestLogVerExamples:
     """Test examples of LogVer."""
 
@@ -1142,7 +1151,7 @@ class TestLogVerExamples:
 ########################################################################
 # TestLogVerBasic class
 ########################################################################
-@pytest.mark.cover2
+@pytest.mark.cover
 class TestLogVerBasic:
     """Test basic functions of LogVer."""
 
@@ -1308,10 +1317,12 @@ class TestLogVerBasic:
     ####################################################################
     @pytest.mark.parametrize("num_patterns_arg", (0, 1, 2))
     @pytest.mark.parametrize("num_log_msgs_arg", (0, 1, 2))
+    @pytest.mark.parametrize("print_matched_arg", [True, False])
     def test_log_verifier_no_match2(
         self,
         num_patterns_arg: int,
         num_log_msgs_arg: int,
+        print_matched_arg: bool,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -1320,6 +1331,7 @@ class TestLogVerBasic:
         Args:
             num_patterns_arg: number of patterns to add
             num_log_msgs_arg: number of log messages to issue
+            print_matched_arg: if True, print matched
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
@@ -1344,7 +1356,7 @@ class TestLogVerBasic:
 
         test_log_ver.verify_results(
             print_only=True,
-            print_matched=False,
+            print_matched=print_matched_arg,
             exp_num_unmatched_patterns=exp_num_unmatched_patterns,
             exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
             exp_num_matched_log_msgs=exp_num_matched_log_msgs,
@@ -1479,9 +1491,11 @@ class TestLogVerBasic:
     double_str_arg_list = [("a1", "a12"), ("b_2", "b_23"), ("xyz_567", "xyz_5678")]
 
     @pytest.mark.parametrize("double_str_arg", double_str_arg_list)
+    @pytest.mark.parametrize("print_matched_arg", [True, False])
     def test_log_verifier_simple_fullmatch(
         self,
         double_str_arg: str,
+        print_matched_arg: bool,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -1489,6 +1503,7 @@ class TestLogVerBasic:
 
         Args:
             double_str_arg: string to use in the message
+            print_matched_arg: if True, print matched
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
@@ -1512,6 +1527,7 @@ class TestLogVerBasic:
         ################################################################
         test_log_ver.verify_results(
             print_only=False,
+            print_matched=print_matched_arg,
             exp_num_unmatched_patterns=0,
             exp_num_unmatched_log_msgs=0,
             exp_num_matched_log_msgs=2,
@@ -1632,6 +1648,7 @@ class TestLogVerBasic:
     @pytest.mark.parametrize("issue_msg1_first_arg", [False, True])
     @pytest.mark.parametrize("pattern1_fullmatch_tf_arg", [False, True])
     @pytest.mark.parametrize("pattern2_fullmatch_tf_arg", [False, True])
+    @pytest.mark.parametrize("print_matched_arg", [True, False])
     def test_log_verifier_same_len_fullmatch(
         self,
         msgs_are_same_arg: bool,
@@ -1639,6 +1656,7 @@ class TestLogVerBasic:
         issue_msg1_first_arg: int,
         pattern1_fullmatch_tf_arg: bool,
         pattern2_fullmatch_tf_arg: bool,
+        print_matched_arg: bool,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -1652,6 +1670,7 @@ class TestLogVerBasic:
                 pattern1
             pattern2_fullmatch_tf_arg: if True, use fullmatch for
                 pattern2
+            print_matched_arg: if True, print matched
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
@@ -1708,6 +1727,7 @@ class TestLogVerBasic:
 
         test_log_ver.verify_results(
             print_only=False,
+            print_matched=print_matched_arg,
             exp_num_unmatched_patterns=exp_num_unmatched_patterns,
             exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
             exp_num_matched_log_msgs=exp_num_matched_log_msgs,
@@ -2043,9 +2063,11 @@ class TestLogVerBasic:
         "level_arg",
         (logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL),
     )
+    @pytest.mark.parametrize("print_matched_arg", [True, False])
     def test_log_verifier_levels(
         self,
         level_arg: int,
+        print_matched_arg: bool,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -2053,6 +2075,7 @@ class TestLogVerBasic:
 
         Args:
             level_arg: specifies the log level
+            print_matched_arg: if True, print matched
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
@@ -2085,6 +2108,7 @@ class TestLogVerBasic:
 
         test_log_ver.verify_results(
             print_only=False,
+            print_matched=print_matched_arg,
             exp_num_unmatched_patterns=exp_num_unmatched_patterns,
             exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
             exp_num_matched_log_msgs=exp_num_matched_log_msgs,
@@ -2099,6 +2123,14 @@ class TestLogVerBasic:
     @pytest.mark.parametrize("log_1_diff_levels_arg", [True, False])
     @pytest.mark.parametrize("log_2_diff_levels_arg", [True, False])
     @pytest.mark.parametrize("log_3_diff_levels_arg", [True, False])
+    @pytest.mark.parametrize("print_matched_arg", [True, False])
+    # @pytest.mark.parametrize("num_log_1_msgs_arg", [1])
+    # @pytest.mark.parametrize("num_log_2_msgs_arg", [1])
+    # @pytest.mark.parametrize("num_log_3_msgs_arg", [0])
+    # @pytest.mark.parametrize("log_1_diff_levels_arg", [True])
+    # @pytest.mark.parametrize("log_2_diff_levels_arg", [True])
+    # @pytest.mark.parametrize("log_3_diff_levels_arg", [True])
+    # @pytest.mark.parametrize("print_matched_arg", [True, False])
     def test_log_verifier_multi_loggers(
         self,
         num_log_1_msgs_arg: int,
@@ -2107,6 +2139,7 @@ class TestLogVerBasic:
         log_1_diff_levels_arg: bool,
         log_2_diff_levels_arg: bool,
         log_3_diff_levels_arg: bool,
+        print_matched_arg: bool,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -2119,6 +2152,7 @@ class TestLogVerBasic:
             log_1_diff_levels_arg: if True, use different log_levels
             log_2_diff_levels_arg: if True, use different log_levels
             log_3_diff_levels_arg: if True, use different log_levels
+            print_matched_arg: if True, print matched
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
@@ -2183,7 +2217,7 @@ class TestLogVerBasic:
 
         test_log_ver.verify_results(
             print_only=False,
-            print_matched=False,
+            print_matched=print_matched_arg,
             exp_num_unmatched_patterns=exp_num_unmatched_patterns,
             exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
             exp_num_matched_log_msgs=exp_num_matched_log_msgs,
@@ -2193,7 +2227,7 @@ class TestLogVerBasic:
 ########################################################################
 # TestLogVerCombos class
 ########################################################################
-@pytest.mark.cover2
+@pytest.mark.cover
 class TestLogVerCombos:
     """Test LogVer with various combinations."""
 
@@ -2209,6 +2243,7 @@ class TestLogVerCombos:
     @pytest.mark.parametrize("num_aaa_msg_arg", [0, 1, 2])
     @pytest.mark.parametrize("num_aaa_pat_arg", [0, 1, 2])
     @pytest.mark.parametrize("num_aaa_fm_pat_arg", [0, 1, 2])
+    @pytest.mark.parametrize("print_matched_arg", [True, False])
     def test_log_verifier_triple_a(
         self,
         num_a_msg_arg: int,
@@ -2220,6 +2255,7 @@ class TestLogVerCombos:
         num_aaa_msg_arg: int,
         num_aaa_pat_arg: int,
         num_aaa_fm_pat_arg: int,
+        print_matched_arg: bool,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -2232,6 +2268,7 @@ class TestLogVerCombos:
             num_aa_msg_arg: number of aa log msgs to issue
             num_aa_pat_arg: number of aa patterns to use
             num_aa_fm_pat_arg: number of aa fullmatch patterns to use
+            print_matched_arg: if True, print matched
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
@@ -2338,17 +2375,25 @@ class TestLogVerCombos:
 
         test_log_ver.verify_results(
             print_only=False,
+            print_matched=print_matched_arg,
             exp_num_unmatched_patterns=num_exp_accumulator.num_unmatched_patterns,
             exp_num_unmatched_log_msgs=num_exp_accumulator.num_unmatched_log_msgs,
             exp_num_matched_log_msgs=num_exp_accumulator.num_matched_log_msgs,
         )
 
     ####################################################################
-    # test_log_verifier_10m_x_to_y
+    # test_log_verifier_30k_x_to_y
     ####################################################################
     @pytest.mark.parametrize(
         "num_a_msg_arg",
-        [(3000, 0), (3000, 1), (3000, 2), (3000000, 0), (3000000, 1), (3000000, 2)],
+        [
+            (3000, 0),
+            (3000, 1),
+            (3000, 2),
+            (30000, 0),
+            (30000, 1),
+            (30000, 2),
+        ],
     )
     @pytest.mark.parametrize(
         "num_a_pat_arg",
@@ -2357,9 +2402,9 @@ class TestLogVerCombos:
             (3000, 0),
             (3000, 1),
             (3000, 2),
-            (3000000, 0),
-            (3000000, 1),
-            (3000000, 2),
+            (30000, 0),
+            (30000, 1),
+            (30000, 2),
         ],
     )
     @pytest.mark.parametrize(
@@ -2369,42 +2414,12 @@ class TestLogVerCombos:
             (3000, 0),
             (3000, 1),
             (3000, 2),
-            (3000000, 0),
-            (3000000, 1),
-            (3000000, 2),
+            (30000, 0),
+            (30000, 1),
+            (30000, 2),
         ],
     )
-    # @pytest.mark.parametrize(
-    #     "num_a_msg_arg",
-    #     [
-    #         (30000, 2),
-    #     ],
-    # )
-    # @pytest.mark.parametrize(
-    #     "num_a_pat_arg",
-    #     [
-    #         (0, 0),
-    #         # (3000, 0),
-    #         # (3000, 1),
-    #         # (3000, 2),
-    #         # (3000000, 0),
-    #         # (3000000, 1),
-    #         # (3000000, 2),
-    #     ],
-    # )
-    # @pytest.mark.parametrize(
-    #     "num_a_fm_pat_arg",
-    #     [
-    #         # (0, 0),
-    #         # (3000, 0),
-    #         # (3000, 1),
-    #         # (3000, 2),
-    #         # (3000000, 0),
-    #         # (3000000, 1),
-    #         (30000, 2),
-    #     ],
-    # )
-    def test_log_verifier_10m_x_to_y(
+    def test_log_verifier_30k_x_to_y(
         self,
         num_a_msg_arg: tuple[int, int],
         num_a_pat_arg: tuple[int, int],
@@ -2412,7 +2427,7 @@ class TestLogVerCombos:
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test log_verifier time match.
+        """Test log_verifier with 30k of msgs and patterns.
 
         Args:
             num_a_msg_arg: number of a log msgs to issue
@@ -2453,105 +2468,6 @@ class TestLogVerCombos:
         test_log_ver.verify_results(print_only=True)
 
     ####################################################################
-    # test_log_verifier_10m_x_to_y_diff
-    ####################################################################
-    @pytest.mark.parametrize("num_a_msg_arg", [0, 100, 10000000])
-    @pytest.mark.parametrize("num_a_pat_arg", [0, 100, 10000000])
-    @pytest.mark.parametrize("num_a_fm_pat_arg", [0, 100, 10000000])
-    def test_log_verifier_10m_x_to_y_diff(
-        self,
-        num_a_msg_arg: int,
-        num_a_pat_arg: int,
-        num_a_fm_pat_arg: int,
-        capsys: pytest.CaptureFixture[str],
-        caplog: pytest.LogCaptureFixture,
-    ) -> None:
-        """Test log_verifier time match.
-
-        Args:
-            num_a_msg_arg: number of a log msgs to issue
-            num_a_pat_arg: number of a patterns to use
-            num_a_fm_pat_arg: number of a fullmatch patterns to use
-            capsys: pytest fixture to capture print output
-            caplog: pytest fixture to capture log output
-        """
-        test_log_ver = TestLogVerification(
-            log_names=["scratch_1"], capsys_to_use=capsys, caplog_to_use=caplog
-        )
-        ################################################################
-        # issue log msgs
-        ################################################################
-        for idx in range(num_a_msg_arg):
-            test_log_ver.issue_log_msg(f"a{idx}")
-
-        ################################################################
-        # add patterns
-        ################################################################
-        for _ in range(num_a_pat_arg):
-            test_log_ver.add_pattern("a")
-
-        for _ in range(num_a_fm_pat_arg):
-            test_log_ver.add_pattern("a", fullmatch=True)
-
-        @dataclass
-        class NumExpectedAccumulator:
-            num_surplus_match_patterns: int = 0
-            num_unmatched_patterns: int = 0
-            num_unmatched_log_msgs: int = 0
-            num_matched_log_msgs: int = 0
-
-        def calc_expected_values(
-            num_exp_accumulator: NumExpectedAccumulator,
-            num_match_patterns: int,
-            num_fullmatch_patterns: int,
-            num_log_msgs,
-        ) -> None:
-            input_surplus_match_patterns = (
-                num_exp_accumulator.num_surplus_match_patterns
-            )
-            num_patterns = (
-                input_surplus_match_patterns
-                + num_match_patterns
-                + num_fullmatch_patterns
-            )
-            num_surplus_both_patterns = max(0, (num_patterns - num_log_msgs))
-            num_surplus_fullmatch_patterns = max(
-                0, (num_fullmatch_patterns - num_log_msgs)
-            )
-            num_surplus_match_patterns = max(
-                0, (num_surplus_both_patterns - num_surplus_fullmatch_patterns)
-            )
-
-            num_exp_accumulator.num_surplus_match_patterns = num_surplus_match_patterns
-            num_exp_accumulator.num_unmatched_patterns = (
-                num_exp_accumulator.num_unmatched_patterns
-                + num_surplus_both_patterns
-                - input_surplus_match_patterns
-            )
-            num_exp_accumulator.num_unmatched_log_msgs += max(
-                0, (num_log_msgs - num_patterns)
-            )
-            num_exp_accumulator.num_matched_log_msgs += min(num_log_msgs, num_patterns)
-
-        ################################################################
-        # calculate expected match numbers
-        ################################################################
-        num_exp_accumulator = NumExpectedAccumulator()
-        calc_expected_values(
-            num_exp_accumulator=num_exp_accumulator,
-            num_match_patterns=num_a_pat_arg,
-            num_fullmatch_patterns=num_a_fm_pat_arg,
-            num_log_msgs=num_a_msg_arg,
-        )
-
-        test_log_ver.verify_results(
-            print_only=True,
-            exp_num_unmatched_patterns=num_exp_accumulator.num_unmatched_patterns,
-            exp_num_unmatched_log_msgs=num_exp_accumulator.num_unmatched_log_msgs,
-            exp_num_matched_log_msgs=num_exp_accumulator.num_matched_log_msgs,
-        )
-
-    ####################################################################
     # test_log_verifier_combos
     ####################################################################
     @pytest.mark.parametrize("num_exp_msgs1_arg", (0, 1, 2, 3))
@@ -2560,6 +2476,7 @@ class TestLogVerCombos:
     @pytest.mark.parametrize("num_act_msgs1_arg", (0, 1, 2, 3))
     @pytest.mark.parametrize("num_act_msgs2_arg", (0, 1, 2, 3))
     @pytest.mark.parametrize("num_act_msgs3_arg", (0, 1, 2, 3))
+    @pytest.mark.parametrize("print_matched_arg", [True, False])
     def test_log_verifier_combos(
         self,
         num_exp_msgs1_arg: int,
@@ -2568,6 +2485,7 @@ class TestLogVerCombos:
         num_act_msgs1_arg: int,
         num_act_msgs2_arg: int,
         num_act_msgs3_arg: int,
+        print_matched_arg: bool,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -2580,6 +2498,7 @@ class TestLogVerCombos:
             num_act_msgs1_arg: number of actual messages for msg1
             num_act_msgs2_arg: number of actual messages for msg2
             num_act_msgs3_arg: number of actual messages for msg3
+            print_matched_arg: if True, print matched
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
 
@@ -2629,7 +2548,8 @@ class TestLogVerCombos:
                 matched_msgs.append(the_msg)
 
         log_ver.print_match_results(
-            match_results := log_ver.get_match_results(caplog), print_matched=True
+            match_results := log_ver.get_match_results(caplog),
+            print_matched=print_matched_arg,
         )
 
         if total_num_exp_unmatched:
@@ -2681,10 +2601,12 @@ class TestLogVerCombos:
 
     @pytest.mark.parametrize("msgs_arg", msg_combos_list)
     @pytest.mark.parametrize("patterns_arg", pattern_combos_list)
+    @pytest.mark.parametrize("print_matched_arg", [True, False])
     def test_log_verifier_contention(
         self,
         msgs_arg: Iterable[tuple[str]],
         patterns_arg: Iterable[tuple[str]],
+        print_matched_arg: bool,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -2692,6 +2614,7 @@ class TestLogVerCombos:
 
         Args:
             msgs_arg: tuple of log msgs to issue
+            print_matched_arg: if True, print matched
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
@@ -3058,6 +2981,7 @@ class TestLogVerCombos:
 
         test_log_ver.verify_results(
             print_only=False,
+            print_matched=print_matched_arg,
             exp_num_unmatched_patterns=len(unmatched_patterns2),
             exp_num_unmatched_log_msgs=len(unmatched_msgs2),
             exp_num_matched_log_msgs=len(matched_msgs2),

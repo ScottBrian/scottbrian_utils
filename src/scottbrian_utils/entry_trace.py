@@ -5,11 +5,10 @@ entry_trace
 ===========
 
 The etrace decorator can be used on a function or method to add a
-debug log item upon entry and exit. The log item will include the
-filename, function or method name, and the line number where it is
-defined. The entry trace will include the specified args and kwargs and
-the caller filename, function or method name, and the line number where
-it is defined. The exit trace will include the return value.
+debug log item upon entry and exit. The entry trace log item will
+include the filename, function or method name, the line number where it
+is defined, and the specified args and/or kwargs. The exit trace will
+include the return value.
 
 The decorator can be statically enabled or disabled via a set of
 parameters as follows:
@@ -165,7 +164,7 @@ def etrace(
                 target_sig_array_copy[key] = "..."
             else:
                 raise ValueError(
-                    f"{key} specified in omit_parms " f"is not the name of a parameter"
+                    f"{key} specified in omit_parms is not the name of a parameter"
                 )
 
         for key, item in target_sig_array_copy.items():
