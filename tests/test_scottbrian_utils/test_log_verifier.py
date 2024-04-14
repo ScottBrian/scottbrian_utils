@@ -127,7 +127,7 @@ class TestLogVerification:
 
     def __init__(
         self,
-        log_name: str,
+        log_names: list[str],
         capsys_to_use: pytest.CaptureFixture[str],
         caplog_to_use: pytest.LogCaptureFixture,
         level: int = logging.DEBUG,
@@ -135,13 +135,14 @@ class TestLogVerification:
         """Initialize the test log verification.
 
         Args:
-            log_name: log name to use
+            log_names: log names to use
             capsys_to_use: pytest CaptureFixture for syslog
             caplog_to_use: pytest LogCaptureFixture for log messages
             level: specifies the log level
 
         """
-        self.log_name: str = log_name
+        self.log_name: str = log_names[0]
+        self.log_names: list[str] = log_names
         self.capsys_to_use = capsys_to_use
         self.caplog_to_use = caplog_to_use
         self.level = level
@@ -151,10 +152,10 @@ class TestLogVerification:
 
         self.matches_array: list[np.array] = []
 
-        self.loggers[log_name] = logging.getLogger(log_name)
-        self.loggers[log_name].setLevel(level)
-
-        self.log_ver = LogVer(log_name=log_name)
+        for log_name in log_names:
+            self.loggers[log_name] = logging.getLogger(log_name)
+            self.loggers[log_name].setLevel(level)
+        self.log_ver = LogVer(log_name=log_names[0])
 
         self.stats: dict[str, ItemStats] = {}
         self.match_scenario_found: bool = False
@@ -858,7 +859,7 @@ class TestLogVerExamples:
         expected_result += f"example_1     10   hello        1        1          0\n"
 
         test_log_ver = TestLogVerification(
-            log_name="example_1", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["example_1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
@@ -926,7 +927,7 @@ class TestLogVerExamples:
         expected_result += f"example_2     10   hello        1        1          0\n"
 
         test_log_ver = TestLogVerification(
-            log_name="example_2", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["example_2"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
@@ -991,7 +992,7 @@ class TestLogVerExamples:
         expected_result += f"example_3     10   hello        1        1          0\n"
 
         test_log_ver = TestLogVerification(
-            log_name="example_3", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["example_3"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
@@ -1068,7 +1069,7 @@ class TestLogVerExamples:
         expected_result += f"example_4     10   hello        1        1          0\n"
 
         test_log_ver = TestLogVerification(
-            log_name="example_4", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["example_4"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
@@ -1132,7 +1133,7 @@ class TestLogVerExamples:
         expected_result += f"example_5     40 goodbye        1        1          0\n"
 
         test_log_ver = TestLogVerification(
-            log_name="example_5", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["example_5"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
@@ -1297,7 +1298,7 @@ class TestLogVerBasic:
         expected_result += "*** no matched log messages found ***\n"
 
         test_log_ver = TestLogVerification(
-            log_name="no_match1", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["no_match1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
@@ -1325,7 +1326,7 @@ class TestLogVerBasic:
         caplog.clear()
 
         test_log_ver = TestLogVerification(
-            log_name="no_match2", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["no_match2"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         for idx in range(num_patterns_arg):
@@ -1417,7 +1418,7 @@ class TestLogVerBasic:
         )
 
         test_log_ver = TestLogVerification(
-            log_name="simple_match", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["simple_match"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
@@ -1449,7 +1450,7 @@ class TestLogVerBasic:
         caplog.clear()
 
         test_log_ver = TestLogVerification(
-            log_name="print_matched", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["print_matched"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         log_msgs: list[str] = []
@@ -1497,7 +1498,7 @@ class TestLogVerBasic:
         caplog.clear()
 
         test_log_ver = TestLogVerification(
-            log_name="fullmatch_0", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["fullmatch_0"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.add_pattern(pattern=double_str_arg[0])
@@ -1524,7 +1525,7 @@ class TestLogVerBasic:
         caplog.clear()
 
         test_log_ver = TestLogVerification(
-            log_name="fullmatch_1", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["fullmatch_1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.add_pattern(pattern=double_str_arg[0])
@@ -1549,7 +1550,7 @@ class TestLogVerBasic:
         caplog.clear()
 
         test_log_ver = TestLogVerification(
-            log_name="fullmatch_2", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["fullmatch_2"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.add_pattern(pattern=double_str_arg[0], fullmatch=True)
@@ -1574,7 +1575,7 @@ class TestLogVerBasic:
         caplog.clear()
 
         test_log_ver = TestLogVerification(
-            log_name="fullmatch_3", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["fullmatch_3"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.add_pattern(pattern=double_str_arg[0], fullmatch=True)
@@ -1601,7 +1602,7 @@ class TestLogVerBasic:
         unmatched_patterns: list[LogItemDescriptor] = []
 
         test_log_ver = TestLogVerification(
-            log_name="fullmatch_4", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["fullmatch_4"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         pattern_0 = test_log_ver.add_pattern(pattern=double_str_arg[0], fullmatch=True)
@@ -1673,7 +1674,7 @@ class TestLogVerBasic:
         caplog.clear()
 
         test_log_ver = TestLogVerification(
-            log_name="fullmatch_0", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["fullmatch_0"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         if add_pattern1_first_arg:
@@ -1781,7 +1782,7 @@ class TestLogVerBasic:
         )
 
         test_log_ver = TestLogVerification(
-            log_name="time_match", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["time_match"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
@@ -1858,7 +1859,7 @@ class TestLogVerBasic:
         )
 
         test_log_ver = TestLogVerification(
-            log_name="call_seq", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["call_seq"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
@@ -1936,7 +1937,7 @@ class TestLogVerBasic:
         )
 
         test_log_ver = TestLogVerification(
-            log_name="call_seq2", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["call_seq2"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
@@ -2030,13 +2031,13 @@ class TestLogVerBasic:
         )
 
         test_log_ver = TestLogVerification(
-            log_name="call_seq3", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["call_seq3"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
-    # test_log_verifier_no_log
+    # test_log_verifier_levels
     ####################################################################
     @pytest.mark.parametrize(
         "level_arg",
@@ -2058,7 +2059,7 @@ class TestLogVerBasic:
         caplog.clear()
 
         test_log_ver = TestLogVerification(
-            log_name="diff_levels",
+            log_names=["diff_levels"],
             capsys_to_use=capsys,
             caplog_to_use=caplog,
             level=level_arg,
@@ -2084,6 +2085,105 @@ class TestLogVerBasic:
 
         test_log_ver.verify_results(
             print_only=False,
+            exp_num_unmatched_patterns=exp_num_unmatched_patterns,
+            exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
+            exp_num_matched_log_msgs=exp_num_matched_log_msgs,
+        )
+
+    ####################################################################
+    # test_log_verifier_multi_loggers
+    ####################################################################
+    @pytest.mark.parametrize("num_log_1_msgs_arg", [0, 1, 2])
+    @pytest.mark.parametrize("num_log_2_msgs_arg", [0, 1, 2])
+    @pytest.mark.parametrize("num_log_3_msgs_arg", [0, 1, 2])
+    @pytest.mark.parametrize("log_1_diff_levels_arg", [True, False])
+    @pytest.mark.parametrize("log_2_diff_levels_arg", [True, False])
+    @pytest.mark.parametrize("log_3_diff_levels_arg", [True, False])
+    def test_log_verifier_multi_loggers(
+        self,
+        num_log_1_msgs_arg: int,
+        num_log_2_msgs_arg: int,
+        num_log_3_msgs_arg: int,
+        log_1_diff_levels_arg: bool,
+        log_2_diff_levels_arg: bool,
+        log_3_diff_levels_arg: bool,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test log_verifier with logging disabled and enabled.
+
+        Args:
+            num_log_1_msgs_arg: number of messages for log 1
+            num_log_2_msgs_arg: number of messages for log 2
+            num_log_3_msgs_arg: number of messages for log 3
+            log_1_diff_levels_arg: if True, use different log_levels
+            log_2_diff_levels_arg: if True, use different log_levels
+            log_3_diff_levels_arg: if True, use different log_levels
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+        """
+        caplog.clear()
+
+        test_log_ver = TestLogVerification(
+            log_names=[
+                "multi_log_1",
+                "multi_log_2",
+                "multi_log_3",
+            ],
+            capsys_to_use=capsys,
+            caplog_to_use=caplog,
+        )
+
+        exp_num_unmatched_patterns = 0
+        exp_num_unmatched_log_msgs = 0
+        exp_num_matched_log_msgs = (
+            num_log_1_msgs_arg + num_log_2_msgs_arg + num_log_3_msgs_arg
+        )
+
+        idx_to_level: dict[int, int] = {
+            0: logging.DEBUG,
+            1: logging.INFO,
+            2: logging.WARNING,
+            3: logging.ERROR,
+            4: logging.CRITICAL,
+        }
+
+        for idx in range(num_log_1_msgs_arg):
+            msg = f"msg{idx}"
+            if log_1_diff_levels_arg:
+                log_level = idx_to_level[idx]
+            else:
+                log_level = logging.DEBUG
+            test_log_ver.issue_log_msg(msg, level=log_level, log_name="multi_log_1")
+            test_log_ver.add_pattern(
+                pattern=msg, level=log_level, log_name="multi_log_1"
+            )
+
+        for idx in range(num_log_2_msgs_arg):
+            msg = f"msg{idx}"
+            if log_2_diff_levels_arg:
+                log_level = idx_to_level[idx]
+            else:
+                log_level = logging.DEBUG
+            test_log_ver.issue_log_msg(msg, level=log_level, log_name="multi_log_2")
+            test_log_ver.add_pattern(
+                pattern=msg, level=log_level, log_name="multi_log_2"
+            )
+
+        for idx in range(num_log_3_msgs_arg):
+            msg = f"msg{idx}"
+            if log_3_diff_levels_arg:
+                log_level = idx_to_level[idx]
+            else:
+                log_level = logging.DEBUG
+            test_log_ver.issue_log_msg(msg, level=log_level, log_name="multi_log_3")
+            test_log_ver.add_pattern(
+                pattern=msg, level=log_level, log_name="multi_log_3"
+            )
+
+        test_log_ver.verify_results(
+            print_only=False,
+            print_matched=False,
             exp_num_unmatched_patterns=exp_num_unmatched_patterns,
             exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
             exp_num_matched_log_msgs=exp_num_matched_log_msgs,
@@ -2136,7 +2236,7 @@ class TestLogVerCombos:
             caplog: pytest fixture to capture log output
         """
         test_log_ver = TestLogVerification(
-            log_name="scratch_1", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["scratch_1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
         ################################################################
         # issue log msgs
@@ -2246,26 +2346,69 @@ class TestLogVerCombos:
     ####################################################################
     # test_log_verifier_10m_x_to_y
     ####################################################################
-    @pytest.mark.parametrize("num_a_msg_arg", [0, 3000000])
-    @pytest.mark.parametrize("num_a_pat_arg", [0, 3000000])
-    @pytest.mark.parametrize("num_a_fm_pat_arg", [0, 3000000])
-    @pytest.mark.parametrize("num_diff_msg_arg", [0, 1, 2])
-    @pytest.mark.parametrize("num_diff_a_pat_arg", [0, 1, 2])
-    @pytest.mark.parametrize("num_diff_a_fm_pat_arg", [0, 1, 2])
-    # @pytest.mark.parametrize("num_a_msg_arg", [400000])
-    # @pytest.mark.parametrize("num_a_pat_arg", [400000])
-    # @pytest.mark.parametrize("num_a_fm_pat_arg", [0])
-    # @pytest.mark.parametrize("num_diff_msg_arg", [1])
-    # @pytest.mark.parametrize("num_diff_a_pat_arg", [0])
-    # @pytest.mark.parametrize("num_diff_a_fm_pat_arg", [0])
+    @pytest.mark.parametrize(
+        "num_a_msg_arg",
+        [(3000, 0), (3000, 1), (3000, 2), (3000000, 0), (3000000, 1), (3000000, 2)],
+    )
+    @pytest.mark.parametrize(
+        "num_a_pat_arg",
+        [
+            (0, 0),
+            (3000, 0),
+            (3000, 1),
+            (3000, 2),
+            (3000000, 0),
+            (3000000, 1),
+            (3000000, 2),
+        ],
+    )
+    @pytest.mark.parametrize(
+        "num_a_fm_pat_arg",
+        [
+            (0, 0),
+            (3000, 0),
+            (3000, 1),
+            (3000, 2),
+            (3000000, 0),
+            (3000000, 1),
+            (3000000, 2),
+        ],
+    )
+    # @pytest.mark.parametrize(
+    #     "num_a_msg_arg",
+    #     [
+    #         (30000, 2),
+    #     ],
+    # )
+    # @pytest.mark.parametrize(
+    #     "num_a_pat_arg",
+    #     [
+    #         (0, 0),
+    #         # (3000, 0),
+    #         # (3000, 1),
+    #         # (3000, 2),
+    #         # (3000000, 0),
+    #         # (3000000, 1),
+    #         # (3000000, 2),
+    #     ],
+    # )
+    # @pytest.mark.parametrize(
+    #     "num_a_fm_pat_arg",
+    #     [
+    #         # (0, 0),
+    #         # (3000, 0),
+    #         # (3000, 1),
+    #         # (3000, 2),
+    #         # (3000000, 0),
+    #         # (3000000, 1),
+    #         (30000, 2),
+    #     ],
+    # )
     def test_log_verifier_10m_x_to_y(
         self,
-        num_a_msg_arg: int,
-        num_a_pat_arg: int,
-        num_a_fm_pat_arg: int,
-        num_diff_msg_arg: int,
-        num_diff_a_pat_arg: int,
-        num_diff_a_fm_pat_arg: int,
+        num_a_msg_arg: tuple[int, int],
+        num_a_pat_arg: tuple[int, int],
+        num_a_fm_pat_arg: tuple[int, int],
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -2275,20 +2418,17 @@ class TestLogVerCombos:
             num_a_msg_arg: number of a log msgs to issue
             num_a_pat_arg: number of a patterns to use
             num_a_fm_pat_arg: number of a fullmatch patterns to use
-            num_diff_msg_arg: pct of message that are different
-            num_diff_a_pat_arg: pct of pattern is different
-            num_diff_a_fm_pat_arg: pct of fullmatch pattern is different
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
         test_log_ver = TestLogVerification(
-            log_name="large_1", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["large_1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
         ################################################################
         # issue log msgs
         ################################################################
-        for idx in range(num_a_msg_arg):
-            if (num_diff_msg_arg == 0) or (num_diff_msg_arg == 1 and idx % 2 == 0):
+        for idx in range(num_a_msg_arg[0]):
+            if (num_a_msg_arg[1] == 0) or (num_a_msg_arg[1] == 1 and idx % 2 == 0):
                 test_log_ver.issue_log_msg("a")
             else:
                 test_log_ver.issue_log_msg(f"a{idx}")
@@ -2296,15 +2436,15 @@ class TestLogVerCombos:
         ################################################################
         # add patterns
         ################################################################
-        for idx in range(num_a_pat_arg):
-            if (num_diff_a_pat_arg == 0) or (num_diff_a_pat_arg == 1 and idx % 2 == 0):
+        for idx in range(num_a_pat_arg[0]):
+            if (num_a_pat_arg[1] == 0) or (num_a_pat_arg[1] == 1 and idx % 2 == 0):
                 test_log_ver.add_pattern("a")
             else:
                 test_log_ver.add_pattern(f"a{idx}")
 
-        for idx in range(num_a_fm_pat_arg):
-            if (num_diff_a_fm_pat_arg == 0) or (
-                num_diff_a_fm_pat_arg == 1 and idx % 2 == 0
+        for idx in range(num_a_fm_pat_arg[0]):
+            if (num_a_fm_pat_arg[1] == 0) or (
+                num_a_fm_pat_arg[1] == 1 and idx % 2 == 0
             ):
                 test_log_ver.add_pattern("a", fullmatch=True)
             else:
@@ -2336,7 +2476,7 @@ class TestLogVerCombos:
             caplog: pytest fixture to capture log output
         """
         test_log_ver = TestLogVerification(
-            log_name="scratch_1", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["scratch_1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
         ################################################################
         # issue log msgs
@@ -2906,7 +3046,7 @@ class TestLogVerCombos:
         caplog.clear()
 
         test_log_ver = TestLogVerification(
-            log_name="contention_0", capsys_to_use=capsys, caplog_to_use=caplog
+            log_names=["contention_0"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         fullmatch_tf_arg = True
