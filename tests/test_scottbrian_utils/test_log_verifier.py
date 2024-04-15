@@ -468,7 +468,6 @@ class TestLogVerification:
                 + "  unmatched"
             )
             if log_section.hdr_line != expected_hdr_line:
-                # logger.debug(f"returning False 1, {item_text=}, {matched_section=}")
                 return False
 
             for key in log_section.line_items.keys():
@@ -494,12 +493,8 @@ class TestLogVerification:
 
             for key, line_item in log_section.line_items.items():
                 if line_item.num_actual_matches != line_item.num_counted_matched:
-                    # logger.debug(
-                    #     f"returning False 2, {item_text=}, {matched_section=}, {line_item.num_actual_matches=}, {line_item.num_counted_matched=}"
-                    # )
                     return False
                 if line_item.num_actual_unmatches != line_item.num_counted_unmatched:
-                    # logger.debug(f"returning False 3, {item_text=}, {matched_section=}")
                     return False
         return True
 
@@ -648,7 +643,6 @@ class TestLogVerification:
         for idx in range(start_idx + 4, len(captured_lines)):
             if captured_lines[idx] == "":
                 ret_section.end_idx = idx
-                # logger.critical(f"get_section 3: \n{captured_lines[idx-1:idx+2]}")
                 return ret_section
             else:
                 if section_type == "unmatched_patterns":
@@ -864,8 +858,8 @@ class TestLogVerExamples:
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += f" log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += f"example_1     10   hello        1        1          0\n"
+        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
+        expected_result += "example_1     10   hello        1        1          0\n"
 
         test_log_ver = TestLogVerification(
             log_names=["example_1"], capsys_to_use=capsys, caplog_to_use=caplog
@@ -918,10 +912,10 @@ class TestLogVerExamples:
         expected_result += "* unmatched patterns: *\n"
         expected_result += "***********************\n"
         expected_result += (
-            f" log_name  level pattern  fullmatch  records  matched  unmatched\n"
+            " log_name  level pattern  fullmatch  records  matched  unmatched\n"
         )
         expected_result += (
-            f"example_2     10 goodbye      False        1        0          1\n"
+            "example_2     10 goodbye      False        1        0          1\n"
         )
         expected_result += "\n"
         expected_result += "***********************\n"
@@ -932,8 +926,8 @@ class TestLogVerExamples:
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += f" log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += f"example_2     10   hello        1        1          0\n"
+        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
+        expected_result += "example_2     10   hello        1        1          0\n"
 
         test_log_ver = TestLogVerification(
             log_names=["example_2"], capsys_to_use=capsys, caplog_to_use=caplog
@@ -991,14 +985,14 @@ class TestLogVerExamples:
         expected_result += "***********************\n"
         expected_result += "* unmatched log_msgs: *\n"
         expected_result += "***********************\n"
-        expected_result += f" log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += f"example_3     10 goodbye        1        0          1\n"
+        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
+        expected_result += "example_3     10 goodbye        1        0          1\n"
         expected_result += "\n"
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += f" log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += f"example_3     10   hello        1        1          0\n"
+        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
+        expected_result += "example_3     10   hello        1        1          0\n"
 
         test_log_ver = TestLogVerification(
             log_names=["example_3"], capsys_to_use=capsys, caplog_to_use=caplog
@@ -1055,27 +1049,27 @@ class TestLogVerExamples:
         expected_result += "* unmatched patterns: *\n"
         expected_result += "***********************\n"
         expected_result += (
-            f" log_name  level pattern  fullmatch  records  matched  unmatched\n"
+            " log_name  level pattern  fullmatch  records  matched  unmatched\n"
         )
         expected_result += (
-            f"example_4     10 goodbye      False        1        0          1\n"
+            "example_4     10 goodbye      False        1        0          1\n"
         )
         expected_result += "\n"
         expected_result += "***********************\n"
         expected_result += "* unmatched log_msgs: *\n"
         expected_result += "***********************\n"
         expected_result += (
-            f" log_name  level      log_msg  records  matched  unmatched\n"
+            " log_name  level      log_msg  records  matched  unmatched\n"
         )
         expected_result += (
-            f"example_4     10 see you soon        1        0          1\n"
+            "example_4     10 see you soon        1        0          1\n"
         )
         expected_result += "\n"
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += f" log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += f"example_4     10   hello        1        1          0\n"
+        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
+        expected_result += "example_4     10   hello        1        1          0\n"
 
         test_log_ver = TestLogVerification(
             log_names=["example_4"], capsys_to_use=capsys, caplog_to_use=caplog
@@ -1137,9 +1131,9 @@ class TestLogVerExamples:
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += f" log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += f"example_5     10   hello        1        1          0\n"
-        expected_result += f"example_5     40 goodbye        1        1          0\n"
+        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
+        expected_result += "example_5     10   hello        1        1          0\n"
+        expected_result += "example_5     40 goodbye        1        1          0\n"
 
         test_log_ver = TestLogVerification(
             log_names=["example_5"], capsys_to_use=capsys, caplog_to_use=caplog
@@ -1277,7 +1271,7 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         if num_patterns_arg:
             expected_result += (
-                f" log_name  level pattern  fullmatch  records  matched  unmatched\n"
+                " log_name  level pattern  fullmatch  records  matched  unmatched\n"
             )
             expected_result += (
                 f"no_match1     10       a      False {num_patterns_arg:>8} {0:>8} "
@@ -1291,9 +1285,7 @@ class TestLogVerBasic:
         expected_result += "* unmatched log_msgs: *\n"
         expected_result += "***********************\n"
         if num_log_msgs_arg:
-            expected_result += (
-                f" log_name  level log_msg  records  matched  unmatched\n"
-            )
+            expected_result += " log_name  level log_msg  records  matched  unmatched\n"
             expected_result += (
                 f"no_match1     10       b {num_log_msgs_arg:>8} {0:>8} "
                 f"{num_log_msgs_arg:>10}\n"
@@ -1874,7 +1866,7 @@ class TestLogVerBasic:
             f" records  matched  unmatched\n"
         )
         expected_result += (
-            f"call_seq     10 {simple_str_arg:>{hdr_log_msg_width-4}}:123 "
+            f"call_seq     10 {simple_str_arg:>{hdr_log_msg_width - 4}}:123 "
             f"       1        1          0\n"
         )
 
@@ -2819,7 +2811,6 @@ class TestLogVerCombos:
                 for perm_idx in it.permutations(range(len(item_array))):
                     item_combo_lists = []
                     for idx in perm_idx:
-                        # if len(item_array["potential_finds2"].iloc[idx]) > 0:
                         if len(item_array[idx].potential_matches2) > 0:
                             c_items = []
                             for potential_find_item in item_array[

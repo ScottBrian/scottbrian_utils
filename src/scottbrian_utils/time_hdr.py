@@ -496,33 +496,3 @@ def get_datetime_match_string(format_str: str) -> str:
     match_str = re.sub("%u", match_str_u, match_str)
     match_str = re.sub("%V", match_str_V, match_str)
     return match_str
-
-
-########################################################################
-# get_datetime_match_string
-########################################################################
-# def get_timedelta_match_string() -> str:
-#     """Return a regex string to match a timedelta string.
-#
-#     .. versionadded:: 3.0.0
-#            Method :func:`get_timedelta_match_string` added.
-#
-#     Returns:
-#         string that is to be used in a regex expression to match a
-#         timedelta string
-#
-#     """
-#     match_str_D = "-?([1-9]? day[s]?, |[1-9][0-9]{0,8} day[s]?, |)"
-#     match_str_h = "([0-9]|1[0-9]|2[0-3])"
-#     match_str_M = "[0-5][0-9]"
-#     match_str_S = "[0-5][0-9]"
-#     match_str_f = r"(\.[0-9]{6,6}|)"
-#     time_delta_match_string = (
-#         "-?([1-9]? day[s]?, |[1-9][0-9]{0,8} day[s]?, |)"
-#         "([0-9]|1[0-9]|2[0-3]):"
-#         "[0-5][0-9]:"
-#         "[0-5][0-9]"
-#         r"(\.[0-9]{6,6}|)"
-#     )
-#
-#     return f"{match_str_D}{match_str_h}:{match_str_M}:{match_str_S}{match_str_f}"

@@ -127,7 +127,8 @@ The output from ``LogVer.print_match_results()`` for test_example2::
         t_logger.debug(log_msg1)
         t_logger.debug(log_msg2)
         log_ver.print_match_results(
-            match_results := log_ver.get_match_results(caplog), print_matched=True
+            match_results := log_ver.get_match_results(caplog),
+            print_matched=True
         )
         with pytest.raises(UnmatchedLogMessages):
             log_ver.verify_match_results(match_results)
@@ -183,7 +184,8 @@ The output from ``LogVer.print_match_results()`` for test_example3::
         t_logger.debug(log_msg1)
         t_logger.debug(log_msg2b)
         log_ver.print_match_results(
-            match_results := log_ver.get_match_results(caplog), print_matched=True
+            match_results := log_ver.get_match_results(caplog),
+            print_matched=True
         )
         with pytest.raises(UnmatchedPatterns):
             log_ver.verify_match_results(match_results)
@@ -244,10 +246,8 @@ from datetime import datetime
 import logging
 
 import pandas as pd  # type: ignore
-import pyarrow as pa  # type: ignore
 import pytest
 
-import time
 from typing import Optional, Type, TYPE_CHECKING, Union
 import warnings
 
@@ -492,11 +492,13 @@ class LogVer:
                 log_msg1 = "hello"
                 log_msg2 = "goodbye"
                 log_ver.add_pattern(pattern=log_msg1)
-                log_ver.add_pattern(pattern=log_msg2, level=logging.ERROR)
+                log_ver.add_pattern(pattern=log_msg2,
+                                    level=logging.ERROR)
                 t_logger.debug(log_msg1)
                 t_logger.error(log_msg2)
                 match_results = log_ver.get_match_results(caplog=caplog)
-                log_ver.print_match_results(match_results, print_matched=True)
+                log_ver.print_match_results(match_results,
+                                            print_matched=True)
                 log_ver.verify_match_results(match_results)
 
         The output from ``LogVer.print_match_results()`` for
@@ -562,16 +564,16 @@ class LogVer:
     # get_match_results
     ####################################################################
     def get_match_results(self, caplog: pytest.LogCaptureFixture) -> MatchResults:
-        """Match the expected to actual log records.
+        """Match the patterns to log records.
 
         Args:
             caplog: pytest fixture that captures log messages
 
         Returns:
-            Number of expected records, number of actual records,
-              number of matching records, list of unmatched expected
-              records, list of unmatched actual records, and list
-              or matching records
+            MatchResults object, which contain the results of the
+            matching operation. This will include a summary for the
+            patterns and messages, and the data frames containing the
+            patterns and messaged used to print and verify the results.
 
         """
         self.start_DT = datetime.now()
@@ -615,7 +617,6 @@ class LogVer:
         ################################################################
         # set potential matches in both data frames
         ################################################################
-        # print(f"starting potential matches: {datetime.now() - self.start_DT}")
         for p_row in work_pattern_grp.itertuples():
             # pattern_potentials = []
             pattern_potentials = set()
@@ -644,7 +645,6 @@ class LogVer:
                 # no need to update num_avail for work_pattern_grp - the
                 # entry will get filtered out later in the main loop
                 # because num_potential_matches will be zero
-
                 continue
 
             if len(match_grp) == 0:
@@ -654,9 +654,7 @@ class LogVer:
                 continue
 
             for m_row in match_grp.itertuples():
-                # pattern_potentials.append(m_row.Index)
                 pattern_potentials |= {m_row.Index}
-                # work_msg_grp.at[m_row.Index, "potential_matches"].append(p_row.Index)
                 work_msg_grp.at[m_row.Index, "potential_matches"] |= {p_row.Index}
                 work_msg_grp.at[m_row.Index, "num_potential_matches"] += 1
 
@@ -668,13 +666,10 @@ class LogVer:
         ################################################################
         # settle matches
         ################################################################
-        # print(f"starting main loop: time: {datetime.now() - self.start_DT}")
         num_loops = 0
         while True:
             num_loops += 1
-            # if num_loops > 10:
-            #     print(f"num_loop hit 10, loop time: {time.time() - self.start_time}")
-            #     break
+
             work_pattern_grp = work_pattern_grp[
                 work_pattern_grp["num_potential_matches"] > 0
             ]
@@ -709,10 +704,6 @@ class LogVer:
                     min_potential_matches=min_potential_matches,
                 )
 
-        # print(
-        #     f"\nstarting reconciliation: {num_loops=}, "
-        #     f"time: {datetime.now() - self.start_DT}"
-        # )
         ################################################################
         # reconcile pattern matches
         ################################################################
@@ -744,16 +735,15 @@ class LogVer:
     ####################################################################
     # search_df for matches
     ####################################################################
-    # @staticmethod
+    @staticmethod
     def search_df(
-        self,
         avail_df: pd.DataFrame,
         search_arg_df: pd.DataFrame,
         search_targ_df: pd.DataFrame,
         targ_work_grp: pd.DataFrame,
         min_potential_matches: int,
     ) -> None:
-        """Print the match results.
+        """Search the data frames for matches.
 
         Args:
             avail_df: data frame of available entries
@@ -764,13 +754,9 @@ class LogVer:
             min_potential_matches: the currently known minimum number of
                 non-zero potential matches that need to be processed
 
-        Returns:
-            min_potential_matches, which is either the same or lower
         """
-        # This method is called for each of the two data frames, the
-        # first call having the pattern_df acting as the search_arg_df
-        # and the msg_df as the search_targ_df, and the second call with
-        # the two data frames in reversed roles.
+        # This method is called to choose the best pairing of potential
+        # matches between the pattern and log messages.
         # We iterate ove the search_arg_df, selecting only entries whose
         # number of potential_matches is equal to min_potential_matches.
         # The idea is to make sure we give entries with few choices a
@@ -810,54 +796,34 @@ class LogVer:
             ret_min_len = min_len
             for idx_adjust in idx_adjust_list:
                 if remove_idx in adj_df.at[idx_adjust, "potential_matches"]:
-                    # adj_df.at[idx_adjust, "potential_matches"].remove(remove_idx)
                     adj_df.at[idx_adjust, "potential_matches"] -= {remove_idx}
                     adj_df.at[idx_adjust, "num_potential_matches"] -= 1
                     new_len = adj_df.at[idx_adjust, "num_potential_matches"]
                     ret_min_len = min(ret_min_len, new_len)  # could be zero
-                    # if new_len:
-                    #     ret_min_len = min(ret_min_len, new_len)
 
             return ret_min_len
 
-        # entry_min_potential_matches = min_potential_matches
         min_arg_potential_matches = min_potential_matches
         min_targ_potential_matches = min_potential_matches
-        # scan_df = avail_df[avail_df["num_potential_matches"] == min_potential_matches]
-        # print(f"scan_df: \n{scan_df}")
+
         for search_item in avail_df.itertuples():
-            # if (
-            #     avail_df.at[search_item.Index, "num_potential_matches"]
-            #     == min_potential_matches
-            # ):
-            # if search_item.Index % 100000 == 0:
-            #     print(f"{search_item.Index=}, {datetime.now() - self.start_DT}")
             if search_item.num_potential_matches == min_potential_matches:
-                # arg_num_avail = avail_df.at[search_item.Index, "num_avail"]
                 arg_num_avail = search_item.num_avail
-                # target_adj_potential_matches = list(search_item.potential_matches)
                 target_adj_potential_matches = search_item.potential_matches.copy()
                 for potential_idx in search_item.potential_matches:
                     num_matched = min(
                         arg_num_avail, targ_work_grp.at[potential_idx, "num_avail"]
                     )
-                    # targ_num_avail = targ_work_grp.at[potential_idx, "num_avail"]
-                    # if targ_num_avail > 0:
-                    # num_matched = min(arg_num_avail, targ_num_avail)
+
                     search_arg_df.at[search_item.Index, "matched"] += num_matched
-                    # avail_df.at[search_item.Index, "num_avail"] -= num_matched
 
                     arg_num_avail -= num_matched
 
                     search_targ_df.at[potential_idx, "matched"] += num_matched
                     targ_work_grp.at[potential_idx, "num_avail"] -= num_matched
 
-                    # target_adj_potential_matches.remove(potential_idx)
                     target_adj_potential_matches -= {potential_idx}
                     if targ_work_grp.at[potential_idx, "num_avail"] != 0:
-                        # targ_work_grp.at[potential_idx, "potential_matches"].remove(
-                        #     search_item.Index
-                        # )
                         targ_work_grp.at[potential_idx, "potential_matches"] -= {
                             search_item.Index
                         }
@@ -903,7 +869,6 @@ class LogVer:
                 if target_adj_potential_matches:
                     new_targ_min = adjust_potential_matches(
                         adj_df=targ_work_grp,
-                        # idx_adjust_list=targ_df_idx_adjust_list,
                         idx_adjust_list=target_adj_potential_matches,
                         remove_idx=search_item.Index,
                         min_len=min_potential_matches,
@@ -1090,7 +1055,7 @@ class LogVer:
                 "messages."
             )
 
-        if check_actual_unmatched and match_results.num_unmatched_log_msgs:
+        if match_results.num_unmatched_log_msgs:
             raise UnmatchedActualMessages(
                 f"There are {match_results.num_unmatched_log_msgs} "
                 "actual log messages that failed to match expected log "

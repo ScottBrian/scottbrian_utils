@@ -930,7 +930,7 @@ class TestEntryTraceCombos:
             )
             omit_parms: list[str] = field(default_factory=list)
 
-            def __add__(self, other: "OmitVariations"):
+            def __add__(self, other: "OmitVariation"):
                 combo_ret_reses = list(
                     it.product(self.arg_specs_ret_reses, other.arg_specs_ret_reses)
                 )
@@ -1060,24 +1060,6 @@ class TestEntryTraceCombos:
                 specs = [spec_item[0] + spec_item[1] for spec_item in pre_raw_arg_specs]
 
                 return specs
-
-            # def build_arg_specs(self):
-            #     po_raw_arg_spec = [list(map(self.set_po_args, self.raw_po_parms))]
-            #
-            #     pk_raw_arg_specs = self.build_pk_arg_specs(num_pk=self.num_pk)
-            #
-            #     ko_raw_arg_spec = [list(map(self.set_ko_args, self.raw_ko_parms))]
-            #
-            #     pre_raw_arg_specs = list(
-            #         it.product(po_raw_arg_spec, pk_raw_arg_specs, ko_raw_arg_spec)
-            #     )
-            #
-            #     specs = [
-            #         spec_item[0] + spec_item[1] + spec_item[2]
-            #         for spec_item in pre_raw_arg_specs
-            #     ]
-            #
-            #     return specs
 
             def build_pk_arg_specs(self, num_pk: int):
                 arg_spec = [[]]
@@ -1285,7 +1267,8 @@ class TestEntryTraceCombos:
                     f"\nf999=f1"
                 )
 
-                # plist_spec_log_msg = f"##################### {final_plist_combo.plist=}"
+                # plist_spec_log_msg = f"##################### "
+                #                      "{final_plist_combo.plist=}"
                 # logger.debug(plist_spec_log_msg)
                 # log_ver.add_msg(
                 #     log_level=logging.DEBUG,
@@ -1299,13 +1282,15 @@ class TestEntryTraceCombos:
                     omit_variation.arg_specs_ret_reses
                 ):
                     # arg_spec_log_msg = (
-                    #     f"##################### " f"{arg_spec_ret_res.arg_spec=}"
+                    #     f"##################### "
+                    #     "{arg_spec_ret_res.arg_spec=}"
                     # )
                     # logger.debug(arg_spec_log_msg)
                     # log_ver.add_msg(
                     #     log_level=logging.DEBUG,
                     #     log_msg=arg_spec_log_msg,
-                    #     log_name="test_scottbrian_utils.test_entry_trace",
+                    #     log_name=(
+                    #         "test_scottbrian_utils.test_entry_trace"),
                     #     fullmatch=True,
                     # )
                     exec(f"f999({arg_spec_ret_res.arg_spec})")

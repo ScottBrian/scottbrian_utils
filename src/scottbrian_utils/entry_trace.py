@@ -52,7 +52,7 @@ from collections.abc import Iterable
 import functools
 import inspect
 import logging
-from typing import Any, Callable, cast, Optional, TYPE_CHECKING, TypeVar, Union
+from typing import Any, Callable, cast, Never, Optional, TypeVar, Union
 
 ########################################################################
 # Third Party
@@ -89,7 +89,7 @@ def etrace(
             the exit trace entry.
 
     Returns:
-        decorated function
+        funtools partial (when wrapped is None) or decorated function
 
     Notes:
 
@@ -99,17 +99,22 @@ def etrace(
 
     """
     if wrapped is None:
-        return functools.partial(
-            etrace,
-            enable_trace=enable_trace,
-            omit_parms=omit_parms,
-            omit_return_value=omit_return_value,
+        return cast(
+            F,
+            functools.partial(
+                etrace,
+                enable_trace=enable_trace,
+                omit_parms=omit_parms,
+                omit_return_value=omit_return_value,
+            ),
         )
 
     omit_parms = set({omit_parms} if isinstance(omit_parms, str) else omit_parms or "")
 
     if type(wrapped).__name__ in ("staticmethod", "classmethod"):
-        target_file = inspect.getsourcefile(wrapped.__wrapped__).split("\\")[-1]
+        target_file = inspect.getsourcefile(wrapped.__wrapped__).split(  # type: ignore
+            "\\"
+        )[-1]
     else:
         target_file = inspect.getsourcefile(wrapped).split("\\")[-1]  # type: ignore
 
@@ -123,14 +128,14 @@ def etrace(
         target_name = f":{qual_name_list[-2]}.{qual_name_list[-1]}"
 
     try:
-        target_line_num = inspect.getsourcelines(wrapped)[1]
+        target_line_num: Union[int, str] = inspect.getsourcelines(wrapped)[1]
     except OSError:
         target_line_num = "?"
 
     target = f"{target_file}:{target_name}:{target_line_num}"
 
     if type(wrapped).__name__ == "classmethod":
-        target_sig = inspect.signature(wrapped.__func__)
+        target_sig = inspect.signature(wrapped.__func__)  # type: ignore
     else:
         target_sig = inspect.signature(wrapped)
 
@@ -147,7 +152,7 @@ def etrace(
             target_sig_array[parm_name] = def_val
         target_sig_names.append(parm_name)
 
-    @wrapt.decorator(enabled=enable_trace)
+    @wrapt.decorator(enabled=enable_trace)  # type: ignore
     def trace_wrapper(wrapped: F, instance: Any, args: Any, kwargs: Any) -> Any:
         """Setup the trace."""
         log_sig_array = ""
