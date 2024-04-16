@@ -413,24 +413,25 @@ class TestEntryTraceBasic:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(\), "
-            "kwargs={}, "
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
             "test_etrace_on_function:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
 
-        exp_exit_log_msg = f"test_entry_trace.py:f1:{f1_line_num} exit: ret_value=None"
+        exp_exit_log_msg = (
+            f"test_entry_trace.py:f1:{f1_line_num} exit: return_value=None"
+        )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -439,7 +440,7 @@ class TestEntryTraceBasic:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_on_method
@@ -463,40 +464,29 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
         Test1().f1()
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: args=\(\), "
-            "kwargs={}, "
+            rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
             "test_etrace_on_method:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
-            f"test_entry_trace.py::Test1.f1:{f1_line_num} exit: ret_value=None"
+            f"test_entry_trace.py::Test1.f1:{f1_line_num} exit: return_value=None"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
         ################################################################
         # check log results
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_on_static_method
@@ -526,26 +516,25 @@ class TestEntryTraceBasic:
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: args=\(\), "
-            "kwargs={}, "
+            rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
             "test_etrace_on_static_method:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
 
         exp_exit_log_msg = (
-            f"test_entry_trace.py::Test1.f1:{f1_line_num} exit: ret_value=None"
+            f"test_entry_trace.py::Test1.f1:{f1_line_num} exit: return_value=None"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -554,7 +543,7 @@ class TestEntryTraceBasic:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_on_static_method
@@ -579,40 +568,29 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
         Test1.f1()
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: args=\(\), "
-            "kwargs={}, "
+            rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
             "test_etrace_on_class_method:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
-            f"test_entry_trace.py::Test1.f1:{f1_line_num} exit: ret_value=None"
+            f"test_entry_trace.py::Test1.f1:{f1_line_num} exit: return_value=None"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
         ################################################################
         # check log results
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_on_static_method
@@ -640,40 +618,29 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
         Test1(42)
 
         f1_line_num = inspect.getsourcelines(Test1.__init__)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py::Test1.__init__:{f1_line_num} entry: args=\(42,\), "
-            "kwargs={}, "
+            rf"test_entry_trace.py::Test1.__init__:{f1_line_num} entry: v1=42, "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
             "test_etrace_on_class_init_method:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
-            f"test_entry_trace.py::Test1.__init__:{f1_line_num} exit: ret_value=None"
+            f"test_entry_trace.py::Test1.__init__:{f1_line_num} exit: return_value=None"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
         ################################################################
         # check log results
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
 
 ########################################################################
@@ -1131,9 +1098,9 @@ class TestEntryTraceCombos:
                 # plist_spec_log_msg = f"##################### "
                 #                      "{final_plist_combo.plist=}"
                 # logger.debug(plist_spec_log_msg)
-                # log_ver.add_msg(
-                #     log_level=logging.DEBUG,
-                #     log_msg=re.escape(plist_spec_log_msg),
+                # log_ver.add_pattern(
+                #     level=logging.DEBUG,
+                #     pattern=re.escape(plist_spec_log_msg),
                 #     log_name="test_scottbrian_utils.test_entry_trace",
                 #     fullmatch=True,
                 # )
@@ -1147,9 +1114,9 @@ class TestEntryTraceCombos:
                     #     "{arg_spec_ret_res.arg_spec=}"
                     # )
                     # logger.debug(arg_spec_log_msg)
-                    # log_ver.add_msg(
-                    #     log_level=logging.DEBUG,
-                    #     log_msg=arg_spec_log_msg,
+                    # log_ver.add_pattern(
+                    #     level=logging.DEBUG,
+                    #     pattern=arg_spec_log_msg,
                     #     log_name=(
                     #         "test_scottbrian_utils.test_entry_trace"),
                     #     fullmatch=True,
@@ -1161,9 +1128,9 @@ class TestEntryTraceCombos:
                         "caller: <string>:1"
                     )
 
-                    log_ver.add_msg(
-                        log_level=logging.DEBUG,
-                        log_msg=exp_entry_log_msg,
+                    log_ver.add_pattern(
+                        level=logging.DEBUG,
+                        pattern=exp_entry_log_msg,
                         log_name="scottbrian_utils.entry_trace",
                         fullmatch=True,
                     )
@@ -1173,9 +1140,9 @@ class TestEntryTraceCombos:
                         rf"{arg_spec_ret_res.ret_result}'"
                     )
 
-                    log_ver.add_msg(
-                        log_level=logging.DEBUG,
-                        log_msg=exp_exit_log_msg,
+                    log_ver.add_pattern(
+                        level=logging.DEBUG,
+                        pattern=exp_exit_log_msg,
                         log_name="scottbrian_utils.entry_trace",
                         fullmatch=True,
                     )
@@ -1188,7 +1155,7 @@ class TestEntryTraceCombos:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_combo_env
@@ -1311,25 +1278,24 @@ class TestEntryTraceCombos:
             caller_qual_name = "Caller.__init__"
 
         exp_entry_log_msg = (
-            rf"{file_name}{target_qual_name}:{target_line_num} entry: args=\(\), "
-            "kwargs={}, "
+            rf"{file_name}{target_qual_name}:{target_line_num} entry: "
             f"caller: {file_name}::{caller_qual_name}:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
 
         exp_exit_log_msg = (
-            f"{file_name}{target_qual_name}:{target_line_num} exit: ret_value=None"
+            f"{file_name}{target_qual_name}:{target_line_num} exit: return_value=None"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -1338,7 +1304,7 @@ class TestEntryTraceCombos:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_combo_parms
@@ -1489,20 +1455,20 @@ class TestEntryTraceCombos:
             f"caller: {file_name}::{caller_qual_name}:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
 
         exp_exit_log_msg = (
-            f"{file_name}{target_qual_name}:{target_line_num} exit: ret_value=None"
+            f"{file_name}{target_qual_name}:{target_line_num} exit: return_value=None"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -1511,7 +1477,7 @@ class TestEntryTraceCombos:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_combo_omits
@@ -1723,9 +1689,9 @@ class TestEntryTraceCombos:
             f"caller: {file_name}::{caller_qual_name}:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -1741,9 +1707,9 @@ class TestEntryTraceCombos:
             f"{file_name}{target_qual_name}:{target_line_num} exit: {ret_value}"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -1752,7 +1718,7 @@ class TestEntryTraceCombos:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_combo_omits
@@ -2010,9 +1976,9 @@ class TestEntryTraceCombos:
             f"caller: {file_name}::{caller_qual_name}:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -2033,9 +1999,9 @@ class TestEntryTraceCombos:
             f"{file_name}{target_qual_name}:{target_line_num} exit: {ret_value}"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -2044,4 +2010,4 @@ class TestEntryTraceCombos:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)

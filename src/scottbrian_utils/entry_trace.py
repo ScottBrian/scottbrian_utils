@@ -120,12 +120,14 @@ def etrace(
 
     qual_name_list = wrapped.__qualname__.split(".")
 
+    start_idx = 0
     if len(qual_name_list) == 1 or qual_name_list[-2] == "<locals>":
         # set target_name to function name
         target_name = qual_name_list[-1]
     else:
         # set target_name to class name and method name
         target_name = f":{qual_name_list[-2]}.{qual_name_list[-1]}"
+        start_idx = 1
 
     try:
         target_line_num: Union[int, str] = inspect.getsourcelines(wrapped)[1]
@@ -136,13 +138,17 @@ def etrace(
 
     if type(wrapped).__name__ == "classmethod":
         target_sig = inspect.signature(wrapped.__func__)  # type: ignore
+        start_idx = 1
     else:
         target_sig = inspect.signature(wrapped)
 
     target_sig_array = {}
     target_sig_names = []
 
-    for parm in target_sig.parameters:
+    for pidx, parm in enumerate(target_sig.parameters):
+        if pidx == 0 and start_idx == 1:
+            continue
+
         parm_name = target_sig.parameters[parm].name
         def_val = target_sig.parameters[parm].default
 
@@ -158,7 +164,7 @@ def etrace(
         log_sig_array = ""
         target_sig_array_copy = target_sig_array.copy()
 
-        for idx, arg in enumerate(args):
+        for idx, arg in enumerate(args[start_idx:]):
             target_sig_array_copy[target_sig_names[idx]] = arg
 
         for key, item in kwargs.items():
