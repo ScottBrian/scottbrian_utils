@@ -145,7 +145,7 @@ def etrace(
     for parm in target_sig.parameters:
         parm_name = target_sig.parameters[parm].name
         def_val = target_sig.parameters[parm].default
-        # if def_val is inspect._empty:
+
         if def_val is inspect.Parameter.empty:
             target_sig_array[parm_name] = "?"
         else:
@@ -164,12 +164,13 @@ def etrace(
         for key, item in kwargs.items():
             target_sig_array_copy[key] = item
 
-        for key in omit_parms:
-            if key in target_sig_array_copy:
-                target_sig_array_copy[key] = "..."
+        for omit_parm_name in omit_parms:
+            if omit_parm_name in target_sig_array_copy:
+                target_sig_array_copy[omit_parm_name] = "..."
             else:
                 raise ValueError(
-                    f"{key} specified in omit_parms is not the name of a parameter"
+                    f"{omit_parm_name} specified in omit_parms is not the name of a "
+                    f"parameter"
                 )
 
         for key, item in target_sig_array_copy.items():

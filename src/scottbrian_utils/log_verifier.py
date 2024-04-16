@@ -468,7 +468,7 @@ class LogVer:
         pattern: str,
         level: int = logging.DEBUG,
         log_name: Optional[str] = None,
-        fullmatch: bool = False,
+        fullmatch: bool = True,
     ) -> None:
         """Add a pattern to be matched to a log message.
 
@@ -476,8 +476,8 @@ class LogVer:
             pattern: pattern to use to find log_msg in the log
             level: logging level to use
             log_name: logger name to use
-            fullmatch: if True, use regex fullmatch instead of
-                match in method get_match_results
+            fullmatch: if True, use regex fullmatch in method
+                get_match_results, otherwise use regex match
 
         .. versionadded:: 3.0.0
            Method :func:`add_pattern` replaces method :func:`add_msg`.

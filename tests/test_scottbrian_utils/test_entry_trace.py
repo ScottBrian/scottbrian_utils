@@ -48,128 +48,6 @@ class ErrorTstEntryTrace(Exception):
 
 
 ########################################################################
-# log_enabled_arg
-########################################################################
-log_enabled_arg_list = [True, False]
-
-
-@pytest.fixture(params=log_enabled_arg_list)
-def log_enabled_arg(request: Any) -> bool:
-    """Using enabled and disabled logging.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(bool, request.param)
-
-
-########################################################################
-# simple_str_arg
-########################################################################
-simple_str_arg_list = ["a", "ab", "a1", "xyz123"]
-
-
-@pytest.fixture(params=simple_str_arg_list)
-def simple_str_arg(request: Any) -> str:
-    """Using different string messages.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(str, request.param)
-
-
-########################################################################
-# number of log messages arg fixtures
-########################################################################
-num_msgs_arg_list = [0, 1, 2, 3]
-
-
-@pytest.fixture(params=num_msgs_arg_list)
-def num_exp_msgs1(request: Any) -> int:
-    """Using different number of messages.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(int, request.param)
-
-
-@pytest.fixture(params=num_msgs_arg_list)
-def num_exp_msgs2(request: Any) -> int:
-    """Using different number of messages.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(int, request.param)
-
-
-@pytest.fixture(params=num_msgs_arg_list)
-def num_exp_msgs3(request: Any) -> int:
-    """Using different number of messages.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(int, request.param)
-
-
-@pytest.fixture(params=num_msgs_arg_list)
-def num_act_msgs1(request: Any) -> int:
-    """Using different number of messages.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(int, request.param)
-
-
-@pytest.fixture(params=num_msgs_arg_list)
-def num_act_msgs2(request: Any) -> int:
-    """Using different number of messages.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(int, request.param)
-
-
-@pytest.fixture(params=num_msgs_arg_list)
-def num_act_msgs3(request: Any) -> int:
-    """Using different number of messages.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(int, request.param)
-
-
-########################################################################
 # TestEntryTraceExamples class
 ########################################################################
 # @pytest.mark.cover2
@@ -200,8 +78,7 @@ class TestEntryTraceExamples:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(\), "
-            "kwargs={}, "
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example1:[0-9]+"
         )
@@ -213,7 +90,9 @@ class TestEntryTraceExamples:
             fullmatch=True,
         )
 
-        exp_exit_log_msg = f"test_entry_trace.py:f1:{f1_line_num} exit: ret_value=None"
+        exp_exit_log_msg = (
+            f"test_entry_trace.py:f1:{f1_line_num} exit: " f"return_value=None"
+        )
 
         log_ver.add_pattern(
             level=logging.DEBUG,
@@ -252,28 +131,28 @@ class TestEntryTraceExamples:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(42,\), "
-            "kwargs={'kw1': 'forty two'}, "
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1=42, "
+            "kw1='forty two', "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example2:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
         kw_value = "forty two"
         quote = "'"
         exp_exit_log_msg = (
-            f'test_entry_trace.py:f1:{f1_line_num} exit: ret_value="a1=42, '
+            f'test_entry_trace.py:f1:{f1_line_num} exit: return_value="a1=42, '
             f'kw1={quote}{kw_value}{quote}"'
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -282,7 +161,7 @@ class TestEntryTraceExamples:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_example3
@@ -316,29 +195,30 @@ class TestEntryTraceExamples:
         f2(24, kw1="twenty four")
 
         f1_line_num = inspect.getsourcelines(f1)[1]
+
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(42,\), "
-            "kwargs={'kw1': 'forty two'}, "
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1=42, "
+            "kw1='forty two', "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example3:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
         kw_value = "forty two"
         quote = "'"
         exp_exit_log_msg = (
-            f'test_entry_trace.py:f1:{f1_line_num} exit: ret_value="a1=42, '
+            f'test_entry_trace.py:f1:{f1_line_num} exit: return_value="a1=42, '
             f'kw1={quote}{kw_value}{quote}"'
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -347,7 +227,7 @@ class TestEntryTraceExamples:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_example4
@@ -361,7 +241,7 @@ class TestEntryTraceExamples:
         """
         from scottbrian_utils.entry_trace import etrace
 
-        @etrace(omit_args=True)
+        @etrace(omit_parms=["a1"])
         def f1(a1: int, kw1: str = "42"):
             return f"{a1=}, {kw1=}"
 
@@ -373,28 +253,28 @@ class TestEntryTraceExamples:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: "
-            "omit_args=True, kwargs={'kw1': 'forty two'}, "
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1='...', "
+            "kw1='forty two', "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example4:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
         kw_value = "forty two"
         quote = "'"
         exp_exit_log_msg = (
-            f'test_entry_trace.py:f1:{f1_line_num} exit: ret_value="a1=42, '
+            f'test_entry_trace.py:f1:{f1_line_num} exit: return_value="a1=42, '
             f'kw1={quote}{kw_value}{quote}"'
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
             log_name="scottbrian_utils.entry_trace",
             fullmatch=True,
         )
@@ -403,7 +283,7 @@ class TestEntryTraceExamples:
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_example5
@@ -417,49 +297,40 @@ class TestEntryTraceExamples:
         """
         from scottbrian_utils.entry_trace import etrace
 
-        @etrace(omit_kwargs="kw1")
+        @etrace(omit_parms="kw1")
         def f1(a1: int, kw1: str = "42", kw2: int = 24):
             return f"{a1=}, {kw1=}, {kw2=}"
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
         f1(42, kw1="forty two", kw2=84)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
+
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(42,\), "
-            "kwargs={'kw2': 84}, omit_kwargs={'kw1'}, "
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1=42, "
+            "kw1='...', kw2=84, "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example5:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
         kw_value = "forty two"
         quote = "'"
         exp_exit_log_msg = (
-            f'test_entry_trace.py:f1:{f1_line_num} exit: ret_value="a1=42, '
+            f'test_entry_trace.py:f1:{f1_line_num} exit: return_value="a1=42, '
             f'kw1={quote}{kw_value}{quote}, kw2=84"'
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
         ################################################################
         # check log results
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_etrace_example6
@@ -480,43 +351,33 @@ class TestEntryTraceExamples:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
 
         f1(42, kw1="forty two", kw2=84)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=\(42,\), "
-            "kwargs={'kw1': 'forty two', 'kw2': 84}, "
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1=42, "
+            "kw1='forty two', kw2=84, "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example6:[0-9]+"
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
         kw_value = "forty two"
         quote = "'"
         exp_exit_log_msg = (
-            f'test_entry_trace.py:f1:{f1_line_num} exit: ret_value="a1=42, '
+            f'test_entry_trace.py:f1:{f1_line_num} exit: return_value="a1=42, '
             f'kw1={quote}{kw_value}{quote}, kw2=84"'
         )
 
-        log_ver.add_msg(
-            log_level=logging.DEBUG,
-            log_msg=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
         ################################################################
         # check log results
         ################################################################
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_log_results(match_results)
+        log_ver.verify_match_results(match_results)
 
 
 ########################################################################
@@ -1955,19 +1816,19 @@ class TestEntryTraceCombos:
             return [a1, a2, a3, kw1, kw2, kw3]
 
         class Caller:
-            def __init__(self):
+            def __init__(self) -> None:
                 if caller_type_arg == FunctionType.InitMethod:
                     target_rtn(*target_args, **target_kwargs)
 
-            def caller(self):
+            def caller(self) -> None:
                 target_rtn(*target_args, **target_kwargs)
 
             @staticmethod
-            def static_caller():
+            def static_caller() -> None:
                 target_rtn(*target_args, **target_kwargs)
 
             @classmethod
-            def class_caller(cls):
+            def class_caller(cls) -> None:
                 target_rtn(*target_args, **target_kwargs)
 
         class Target:
@@ -2043,7 +1904,7 @@ class TestEntryTraceCombos:
                 kw1: int = 1,
                 kw2: float = 2.2,
                 kw3: str = "three",
-            ) -> list[int, float, str, int, float, str]:
+            ) -> list[int | float | str]:
                 return [a1, a2, a3, kw1, kw2, kw3]
 
         ################################################################
@@ -2093,14 +1954,20 @@ class TestEntryTraceCombos:
         ################################################################
         # setup the kwargs
         ################################################################
-        target_kwargs = (
+        target_kwargs_t: tuple[tuple[str, Union[int, float, str]], ...] = (
             ("kw1", 11),
             ("kw2", 22.22),
             ("kw3", "thrace"),
         )
-        target_kwargs = dict(target_kwargs[0:num_kwargs_arg])
+        target_kwargs: dict[str, int | float | str] = dict(
+            target_kwargs_t[0:num_kwargs_arg]
+        )
 
-        log_target_kwargs = {"kw1": 1, "kw2": 2.2, "kw3": "three"}
+        log_target_kwargs: dict[str, int | float | str] = {
+            "kw1": 1,
+            "kw2": 2.2,
+            "kw3": "three",
+        }
         if num_kwargs_arg in [1, 2, 3] and omit_kwargs_arg in [0, 1, 2, 3]:
             log_target_kwargs["kw1"] = target_kwargs["kw1"]
         if num_kwargs_arg in [2, 3] and omit_kwargs_arg in [0, 1, 4, 5]:
