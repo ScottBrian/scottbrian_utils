@@ -388,9 +388,9 @@ class TestEntryTraceBasic:
     """Test basic functions of EntryTrace."""
 
     ####################################################################
-    # test_etrace_on_function
+    # test_etrace_on_function_no_parm
     ####################################################################
-    def test_etrace_on_function(
+    def test_etrace_on_function_no_parm(
         self,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -408,33 +408,23 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
         f1()
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
             rf"test_entry_trace.py:f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
-            "test_etrace_on_function:[0-9]+"
+            "test_etrace_on_function_no_parm:[0-9]+"
         )
 
-        log_ver.add_pattern(
-            level=logging.DEBUG,
-            pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
             f"test_entry_trace.py:f1:{f1_line_num} exit: return_value=None"
         )
 
-        log_ver.add_pattern(
-            level=logging.DEBUG,
-            pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
         ################################################################
         # check log results
         ################################################################
@@ -443,9 +433,100 @@ class TestEntryTraceBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
-    # test_etrace_on_method
+    # test_etrace_on_function_one_parm
     ####################################################################
-    def test_etrace_on_method(
+    def test_etrace_on_function_one_parm(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        @etrace
+        def f1(a1: int):
+            return a1
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        f1(42)
+
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1=42, "
+            "caller: test_entry_trace.py::TestEntryTraceBasic."
+            "test_etrace_on_function_one_parm:[0-9]+"
+        )
+
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
+
+        exp_exit_log_msg = f"test_entry_trace.py:f1:{f1_line_num} exit: return_value=42"
+
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_function_args
+    ####################################################################
+    def test_etrace_on_function_args(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        @etrace
+        def f1(*args):
+            ret_str = ""
+            for arg in args:
+                ret_str = f"{ret_str}{arg} "
+            return ret_str
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        f1(42, "forty_two", 83)
+
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: args=(42, 'forty_two'), "
+            "caller: test_entry_trace.py::TestEntryTraceBasic."
+            "test_etrace_on_function_args:[0-9]+"
+        )
+
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
+
+        exp_exit_log_msg = (
+            f"test_entry_trace.py:f1:{f1_line_num} exit: " f"return_value=42 forty_two"
+        )
+
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_method_no_parm
+    ####################################################################
+    def test_etrace_on_method_no_parm(
         self,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -471,7 +552,7 @@ class TestEntryTraceBasic:
         exp_entry_log_msg = (
             rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
-            "test_etrace_on_method:[0-9]+"
+            "test_etrace_on_method_no_parm:[0-9]+"
         )
 
         log_ver.add_pattern(pattern=exp_entry_log_msg)
@@ -489,9 +570,55 @@ class TestEntryTraceBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
-    # test_etrace_on_static_method
+    # test_etrace_on_method_one_parm
     ####################################################################
-    def test_etrace_on_static_method(
+    def test_etrace_on_method_one_parm(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a method.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        class Test1:
+            @etrace
+            def f1(self, a1: int):
+                pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        Test1().f1(42)
+
+        f1_line_num = inspect.getsourcelines(Test1.f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: a1=42, "
+            "caller: test_entry_trace.py::TestEntryTraceBasic."
+            "test_etrace_on_method_one_parm:[0-9]+"
+        )
+
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
+
+        exp_exit_log_msg = (
+            f"test_entry_trace.py::Test1.f1:{f1_line_num} exit: return_value=None"
+        )
+
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_static_method_no_parm
+    ####################################################################
+    def test_etrace_on_static_method_no_parm(
         self,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -511,33 +638,23 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
         Test1().f1()
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
         exp_entry_log_msg = (
             rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
-            "test_etrace_on_static_method:[0-9]+"
+            "test_etrace_on_static_method_no_parm:[0-9]+"
         )
 
-        log_ver.add_pattern(
-            level=logging.DEBUG,
-            pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
             f"test_entry_trace.py::Test1.f1:{f1_line_num} exit: return_value=None"
         )
 
-        log_ver.add_pattern(
-            level=logging.DEBUG,
-            pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
         ################################################################
         # check log results
         ################################################################
@@ -546,9 +663,56 @@ class TestEntryTraceBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
-    # test_etrace_on_static_method
+    # test_etrace_on_static_method_one_parm
     ####################################################################
-    def test_etrace_on_class_method(
+    def test_etrace_on_static_method_one_parm(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a static method.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        class Test1:
+            @etrace
+            @staticmethod
+            def f1(a1: str):
+                pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        Test1().f1("42")
+
+        f1_line_num = inspect.getsourcelines(Test1.f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: a1='42', "
+            "caller: test_entry_trace.py::TestEntryTraceBasic."
+            "test_etrace_on_static_method_one_parm:[0-9]+"
+        )
+
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
+
+        exp_exit_log_msg = (
+            f"test_entry_trace.py::Test1.f1:{f1_line_num} exit: return_value=None"
+        )
+
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_class_method_no_parm
+    ####################################################################
+    def test_etrace_on_class_method_no_parm(
         self,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -575,7 +739,7 @@ class TestEntryTraceBasic:
         exp_entry_log_msg = (
             rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
-            "test_etrace_on_class_method:[0-9]+"
+            "test_etrace_on_class_method_no_parm:[0-9]+"
         )
 
         log_ver.add_pattern(pattern=exp_entry_log_msg)
@@ -593,9 +757,106 @@ class TestEntryTraceBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
-    # test_etrace_on_static_method
+    # test_etrace_on_class_method_one_parm
     ####################################################################
-    def test_etrace_on_class_init_method(
+    def test_etrace_on_class_method_one_parm(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a class method.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        class Test1:
+            @etrace
+            @classmethod
+            def f1(cls, v1: float):
+                pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        Test1.f1(1.1)
+
+        f1_line_num = inspect.getsourcelines(Test1.f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py::Test1.f1:{f1_line_num} entry: v1=1.1, "
+            "caller: test_entry_trace.py::TestEntryTraceBasic."
+            "test_etrace_on_class_method_one_parm:[0-9]+"
+        )
+
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
+
+        exp_exit_log_msg = (
+            f"test_entry_trace.py::Test1.f1:{f1_line_num} exit: return_value=None"
+        )
+
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_class_init_method_no_parm
+    ####################################################################
+    def test_etrace_on_class_init_method_no_parm(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a class method.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        class Test1:
+            @etrace
+            def __init__(self):
+                self.v1 = 1
+
+            @classmethod
+            def f1(cls):
+                pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        Test1()
+
+        f1_line_num = inspect.getsourcelines(Test1.__init__)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py::Test1.__init__:{f1_line_num} entry: "
+            "caller: test_entry_trace.py::TestEntryTraceBasic."
+            "test_etrace_on_class_init_method_no_parm:[0-9]+"
+        )
+
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
+
+        exp_exit_log_msg = (
+            f"test_entry_trace.py::Test1.__init__:{f1_line_num} exit: return_value=None"
+        )
+
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_class_init_method_one_parm
+    ####################################################################
+    def test_etrace_on_class_init_method_one_parm(
         self,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -625,7 +886,7 @@ class TestEntryTraceBasic:
         exp_entry_log_msg = (
             rf"test_entry_trace.py::Test1.__init__:{f1_line_num} entry: v1=42, "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
-            "test_etrace_on_class_init_method:[0-9]+"
+            "test_etrace_on_class_init_method_one_parm:[0-9]+"
         )
 
         log_ver.add_pattern(pattern=exp_entry_log_msg)

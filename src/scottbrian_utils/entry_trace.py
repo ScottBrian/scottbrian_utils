@@ -120,14 +120,15 @@ def etrace(
 
     qual_name_list = wrapped.__qualname__.split(".")
 
-    start_idx = 0
+    skip_self_cls = False
     if len(qual_name_list) == 1 or qual_name_list[-2] == "<locals>":
         # set target_name to function name
         target_name = qual_name_list[-1]
     else:
         # set target_name to class name and method name
         target_name = f":{qual_name_list[-2]}.{qual_name_list[-1]}"
-        start_idx = 1
+        if type(wrapped).__name__ != "staticmethod":
+            skip_self_cls = True
 
     try:
         target_line_num: Union[int, str] = inspect.getsourcelines(wrapped)[1]
@@ -138,18 +139,21 @@ def etrace(
 
     if type(wrapped).__name__ == "classmethod":
         target_sig = inspect.signature(wrapped.__func__)  # type: ignore
-        start_idx = 1
+        skip_self_cls = True
     else:
         target_sig = inspect.signature(wrapped)
 
     target_sig_array = {}
     target_sig_names = []
 
+    print(f"\n*** in etrace 1: {target_sig.parameters=}")
     for pidx, parm in enumerate(target_sig.parameters):
-        if pidx == 0 and start_idx == 1:
+        print(f"\n*** in etrace 1: {pidx=}, {parm=}")
+        if pidx == 0 and skip_self_cls:
             continue
 
         parm_name = target_sig.parameters[parm].name
+        print(f"\n*** in etrace 2: {pidx=}, {parm_name=}")
         def_val = target_sig.parameters[parm].default
 
         if def_val is inspect.Parameter.empty:
@@ -164,7 +168,9 @@ def etrace(
         log_sig_array = ""
         target_sig_array_copy = target_sig_array.copy()
 
-        for idx, arg in enumerate(args[start_idx:]):
+        print(f"\n*** in etrace 3: {args=}")
+        for idx, arg in enumerate(args):
+            print(f"\n*** in etrace 4: {idx=}, {arg=}")
             target_sig_array_copy[target_sig_names[idx]] = arg
 
         for key, item in kwargs.items():
@@ -175,8 +181,7 @@ def etrace(
                 target_sig_array_copy[omit_parm_name] = "..."
             else:
                 raise ValueError(
-                    f"{omit_parm_name} specified in omit_parms is not the name of a "
-                    f"parameter"
+                    f"{omit_parm_name} specified in omit_parms is not a known parameter"
                 )
 
         for key, item in target_sig_array_copy.items():
