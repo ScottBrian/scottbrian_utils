@@ -526,6 +526,56 @@ class TestEntryTraceBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
+    # test_etrace_on_function_args
+    ####################################################################
+    def test_etrace_on_function_kwargs(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        @etrace
+        def f1(**kwargs):
+            ret_str = ""
+            for arg_name, arg_value in kwargs.items():
+                ret_str = f"{ret_str}{arg_name}={arg_value} "
+            return ret_str
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        f1(kw1=42, kw2="forty_two", kw3=83)
+
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py:f1:{f1_line_num} entry: "
+            "kw1=42, kw2='forty_two', kw3=83, "
+            "caller: test_entry_trace.py::TestEntryTraceBasic."
+            "test_etrace_on_function_kwargs:[0-9]+"
+        )
+
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
+
+        exp_exit_log_msg = (
+            f"test_entry_trace.py:f1:{f1_line_num} exit: return_value='kw1=42 "
+            f"kw2=forty_two kw3=83 '"
+        )
+
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
     # test_etrace_on_function_args2
     ####################################################################
     def test_etrace_on_function_args2(
@@ -1971,9 +2021,13 @@ class TestEntryTraceCombos:
             Caller()
             caller_qual_name = "Caller.__init__"
 
+        if target_args:
+            args_str = f"args={re.escape(str(target_args))}"
+        else:
+            args_str = ""
+
         exp_entry_log_msg = (
-            rf"{file_name}{target_qual_name}:{target_line_num} entry: "
-            rf"args={re.escape(str(target_args))}, "
+            rf"{file_name}{target_qual_name}:{target_line_num} entry: {args_str}, "
             f"kwargs={re.escape(str(target_kwargs))}, "
             f"caller: {file_name}::{caller_qual_name}:[0-9]+"
         )

@@ -151,8 +151,15 @@ def etrace(
         if pidx == 0 and skip_self_cls:
             continue
 
+        # VAR_KORD (e.g., **kwargs) is not needed in the
+        # target_sig_array - there are no defaults for kwargs, and the
+        # code below in trace_wrapper will simply add instead of
+        # updating the target_sig_array as it encounters any kwargs
+        if target_sig.parameters[parm].kind == inspect.Parameter.VAR_KEYWORD:
+            continue
+
         parm_name = target_sig.parameters[parm].name
-        print(f"\n*** in etrace 2: {pidx=}, {parm_name=}")
+
         def_val = target_sig.parameters[parm].default
 
         if def_val is inspect.Parameter.empty:
