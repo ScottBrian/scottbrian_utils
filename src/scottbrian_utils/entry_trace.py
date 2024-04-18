@@ -145,10 +145,9 @@ def etrace(
 
     target_sig_array = {}
     target_sig_names = []
+    target_sig_kind = []
 
-    print(f"\n*** in etrace 1: {target_sig.parameters=}")
     for pidx, parm in enumerate(target_sig.parameters):
-        print(f"\n*** in etrace 1: {pidx=}, {parm=}")
         if pidx == 0 and skip_self_cls:
             continue
 
@@ -161,6 +160,7 @@ def etrace(
         else:
             target_sig_array[parm_name] = def_val
         target_sig_names.append(parm_name)
+        target_sig_kind.append(target_sig.parameters[parm].kind)
 
     @wrapt.decorator(enabled=enable_trace)  # type: ignore
     def trace_wrapper(wrapped: F, instance: Any, args: Any, kwargs: Any) -> Any:
@@ -168,9 +168,18 @@ def etrace(
         log_sig_array = ""
         target_sig_array_copy = target_sig_array.copy()
 
-        print(f"\n*** in etrace 3: {args=}")
+        # for VAR_POSITIONAL, we can have a signature of f(*args), or
+        # we can have, for example, f(a1, *args). So, we keep track of
+        # the index of the *args keyword and use it here to load the
+        # trace values appropriately. Note that we can't have
+        # f(*args, a1), so once we determine we are now at a
+        # VAR_POSITIONAL index we simply load the remainder of the
+        # positional args into a tuple and place that into the array,
+        # and then break out of the loop.
         for idx, arg in enumerate(args):
-            print(f"\n*** in etrace 4: {idx=}, {arg=}")
+            if target_sig_kind[idx] == inspect.Parameter.VAR_POSITIONAL:
+                target_sig_array_copy[target_sig_names[idx]] = tuple(args[idx:])
+                break
             target_sig_array_copy[target_sig_names[idx]] = arg
 
         for key, item in kwargs.items():
