@@ -2022,13 +2022,22 @@ class TestEntryTraceCombos:
             caller_qual_name = "Caller.__init__"
 
         if target_args:
-            args_str = f"args={re.escape(str(target_args))}"
+            args_str = f" args={re.escape(str(target_args))},"
         else:
             args_str = ""
 
+        kwargs_str = " "
+        for key, val in target_kwargs.items():
+            if isinstance(val, str):
+                kwargs_str += f"{key}='{val}', "
+            else:
+                kwargs_str += f"{key}={val}, "
+
+        kwargs_str = re.escape(kwargs_str)
+
         exp_entry_log_msg = (
-            rf"{file_name}{target_qual_name}:{target_line_num} entry: {args_str}, "
-            f"kwargs={re.escape(str(target_kwargs))}, "
+            rf"{file_name}{target_qual_name}:{target_line_num} entry:{args_str}"
+            f"{kwargs_str}"
             f"caller: {file_name}::{caller_qual_name}:[0-9]+"
         )
 
@@ -2092,22 +2101,24 @@ class TestEntryTraceCombos:
         else:
             trace_enabled = False
 
-        kwargs_to_omit: list[str] = []
+        omit_parms_list: list[str] = []
         if omit_kwargs_arg in [1, 3, 5, 7]:
-            kwargs_to_omit.append("v3")
+            omit_parms_list.append("v3")
         if omit_kwargs_arg in [4, 5, 6, 7]:
-            kwargs_to_omit.append("v1")
+            omit_parms_list.append("v1")
         if omit_kwargs_arg in [2, 3, 6, 7]:
-            kwargs_to_omit.append("v2")
+            omit_parms_list.append("v2")
 
         if num_kwargs_arg in [2, 3] and target_type_arg != FunctionType.InitMethod:
             ret_v2 = True
         else:
             ret_v2 = False
 
+        if omit_args_arg:
+            omit_parms_list = ["args"] + omit_parms_list
+
         @etrace(
-            omit_args=omit_args_arg,
-            omit_kwargs=kwargs_to_omit,
+            omit_parms=omit_parms_list,
             omit_return_value=omit_ret_val_arg,
         )
         def f1(*args, **kwargs):
@@ -2133,16 +2144,14 @@ class TestEntryTraceCombos:
         class Target:
             @etrace(
                 enable_trace=trace_enabled,
-                omit_args=omit_args_arg,
-                omit_kwargs=kwargs_to_omit,
+                omit_parms=omit_parms_list,
                 omit_return_value=omit_ret_val_arg,
             )
             def __init__(self, *args, **kwargs):
                 pass
 
             @etrace(
-                omit_args=omit_args_arg,
-                omit_kwargs=kwargs_to_omit,
+                omit_parms=omit_parms_list,
                 omit_return_value=omit_ret_val_arg,
             )
             def target(self, *args, **kwargs):
@@ -2150,8 +2159,7 @@ class TestEntryTraceCombos:
                     return kwargs["v2"]
 
             @etrace(
-                omit_args=omit_args_arg,
-                omit_kwargs=kwargs_to_omit,
+                omit_parms=omit_parms_list,
                 omit_return_value=omit_ret_val_arg,
             )
             @staticmethod
@@ -2160,8 +2168,7 @@ class TestEntryTraceCombos:
                     return kwargs["v2"]
 
             @etrace(
-                omit_args=omit_args_arg,
-                omit_kwargs=kwargs_to_omit,
+                omit_parms=omit_parms_list,
                 omit_return_value=omit_ret_val_arg,
             )
             @classmethod
@@ -2172,7 +2179,7 @@ class TestEntryTraceCombos:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
 
         file_name = "test_entry_trace.py"
 
@@ -2209,10 +2216,6 @@ class TestEntryTraceCombos:
         ################################################################
         target_args = (1, 2.2, "three", [4, 4.4, "four", (4,)])
 
-        if omit_args_arg:
-            log_target_args = "omit_args=True"
-        else:
-            log_target_args = f"args={re.escape(str(target_args))}"
         ################################################################
         # setup the kwargs
         ################################################################
@@ -2224,17 +2227,21 @@ class TestEntryTraceCombos:
         target_kwargs = dict(target_kwargs[0:num_kwargs_arg])
 
         log_target_kwargs = {}
-        if num_kwargs_arg in [1, 2, 3] and omit_kwargs_arg in [0, 1, 2, 3]:
-            log_target_kwargs["v1"] = target_kwargs["v1"]
-        if num_kwargs_arg in [2, 3] and omit_kwargs_arg in [0, 1, 4, 5]:
-            log_target_kwargs["v2"] = target_kwargs["v2"]
-        if num_kwargs_arg == 3 and omit_kwargs_arg in [0, 2, 4, 6]:
-            log_target_kwargs["v3"] = target_kwargs["v3"]
-
-        if kwargs_to_omit:
-            log_omit_kwargs = f" omit_kwargs={set(kwargs_to_omit)},"
-        else:
-            log_omit_kwargs = ""
+        if num_kwargs_arg in [1, 2, 3]:
+            if omit_kwargs_arg in [0, 1, 2, 3]:
+                log_target_kwargs["v1"] = target_kwargs["v1"]
+            else:
+                log_target_kwargs["v1"] = "..."
+        if num_kwargs_arg in [2, 3]:
+            if omit_kwargs_arg in [0, 1, 4, 5]:
+                log_target_kwargs["v2"] = target_kwargs["v2"]
+            else:
+                log_target_kwargs["v2"] = "..."
+        if num_kwargs_arg == 3:
+            if omit_kwargs_arg in [0, 2, 4, 6]:
+                log_target_kwargs["v3"] = target_kwargs["v3"]
+            else:
+                log_target_kwargs["v3"] = "..."
 
         ################################################################
         # call the function or method
@@ -2259,19 +2266,27 @@ class TestEntryTraceCombos:
             Caller()
             caller_qual_name = "Caller.__init__"
 
+        if omit_args_arg:
+            args_str = " args='...',"
+        else:
+            args_str = f" args={re.escape(str(target_args))},"
+
+        kwargs_str = " "
+        for key, val in log_target_kwargs.items():
+            if isinstance(val, str):
+                kwargs_str += f"{key}='{val}', "
+            else:
+                kwargs_str += f"{key}={val}, "
+
+        kwargs_str = re.escape(kwargs_str)
+
         exp_entry_log_msg = (
-            rf"{file_name}{target_qual_name}:{target_line_num} entry: "
-            rf"{log_target_args}, "
-            f"kwargs={re.escape(str(log_target_kwargs))},{log_omit_kwargs} "
+            rf"{file_name}{target_qual_name}:{target_line_num} entry:{args_str}"
+            f"{kwargs_str}"
             f"caller: {file_name}::{caller_qual_name}:[0-9]+"
         )
 
-        log_ver.add_pattern(
-            level=logging.DEBUG,
-            pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         if omit_ret_val_arg:
             ret_value = "return value omitted"
@@ -2284,12 +2299,7 @@ class TestEntryTraceCombos:
             f"{file_name}{target_qual_name}:{target_line_num} exit: {ret_value}"
         )
 
-        log_ver.add_pattern(
-            level=logging.DEBUG,
-            pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
         ################################################################
         # check log results
         ################################################################
@@ -2333,17 +2343,16 @@ class TestEntryTraceCombos:
         else:
             trace_enabled = False
 
-        kwargs_to_omit: list[str] = []
+        omit_parms_list: list[str] = []
         if omit_kwargs_arg in [1, 3, 5, 7]:
-            kwargs_to_omit.append("kw3")
+            omit_parms_list.append("kw3")
         if omit_kwargs_arg in [4, 5, 6, 7]:
-            kwargs_to_omit.append("kw1")
+            omit_parms_list.append("kw1")
         if omit_kwargs_arg in [2, 3, 6, 7]:
-            kwargs_to_omit.append("kw2")
+            omit_parms_list.append("kw2")
 
         @etrace(
-            omit_args=omit_args_arg,
-            omit_kwargs=kwargs_to_omit,
+            omit_parms=omit_parms_list,
             omit_return_value=omit_ret_val_arg,
         )
         def f1(
@@ -2377,8 +2386,7 @@ class TestEntryTraceCombos:
         class Target:
             @etrace(
                 enable_trace=trace_enabled,
-                omit_args=omit_args_arg,
-                omit_kwargs=kwargs_to_omit,
+                omit_parms=omit_parms_list,
                 omit_return_value=omit_ret_val_arg,
             )
             def __init__(
@@ -2399,8 +2407,7 @@ class TestEntryTraceCombos:
                 self.kw3 = kw3
 
             @etrace(
-                omit_args=omit_args_arg,
-                omit_kwargs=kwargs_to_omit,
+                omit_parms=omit_parms_list,
                 omit_return_value=omit_ret_val_arg,
             )
             def target(
@@ -2416,8 +2423,7 @@ class TestEntryTraceCombos:
                 return [a1, a2, a3, kw1, kw2, kw3]
 
             @etrace(
-                omit_args=omit_args_arg,
-                omit_kwargs=kwargs_to_omit,
+                omit_parms=omit_parms_list,
                 omit_return_value=omit_ret_val_arg,
             )
             @staticmethod
@@ -2433,8 +2439,7 @@ class TestEntryTraceCombos:
                 return [a1, a2, a3, kw1, kw2, kw3]
 
             @etrace(
-                omit_args=omit_args_arg,
-                omit_kwargs=kwargs_to_omit,
+                omit_parms=omit_parms_list,
                 omit_return_value=omit_ret_val_arg,
             )
             @classmethod
@@ -2518,8 +2523,8 @@ class TestEntryTraceCombos:
         if num_kwargs_arg == 3 and omit_kwargs_arg in [0, 2, 4, 6]:
             log_target_kwargs["kw3"] = target_kwargs["kw3"]
 
-        if kwargs_to_omit:
-            log_omit_kwargs = f" omit_kwargs={set(kwargs_to_omit)},"
+        if omit_parms_list:
+            log_omit_kwargs = f" omit_kwargs={set(omit_parms_list)},"
         else:
             log_omit_kwargs = ""
 

@@ -146,6 +146,7 @@ def etrace(
     target_sig_array = {}
     target_sig_names = []
     target_sig_kind = []
+    var_pos_idx = -1
 
     for pidx, parm in enumerate(target_sig.parameters):
         if pidx == 0 and skip_self_cls:
@@ -168,6 +169,8 @@ def etrace(
             target_sig_array[parm_name] = def_val
         target_sig_names.append(parm_name)
         target_sig_kind.append(target_sig.parameters[parm].kind)
+        if target_sig.parameters[parm].kind == inspect.Parameter.VAR_POSITIONAL:
+            var_pos_idx = len(target_sig_kind) - 1
 
     @wrapt.decorator(enabled=enable_trace)  # type: ignore
     def trace_wrapper(wrapped: F, instance: Any, args: Any, kwargs: Any) -> Any:
@@ -183,6 +186,7 @@ def etrace(
         # VAR_POSITIONAL index we simply load the remainder of the
         # positional args into a tuple and place that into the array,
         # and then break out of the loop.
+
         for idx, arg in enumerate(args):
             if target_sig_kind[idx] == inspect.Parameter.VAR_POSITIONAL:
                 target_sig_array_copy[target_sig_names[idx]] = tuple(args[idx:])
@@ -199,6 +203,12 @@ def etrace(
                 raise ValueError(
                     f"{omit_parm_name} specified in omit_parms is not a known parameter"
                 )
+
+        if (
+            var_pos_idx >= 0
+            and target_sig_array_copy[target_sig_names[var_pos_idx]] == "?"
+        ):
+            del target_sig_array_copy[target_sig_names[var_pos_idx]]
 
         for key, item in target_sig_array_copy.items():
             if isinstance(item, str) and item != "?":
