@@ -2065,34 +2065,38 @@ class TestEntryTraceCombos:
     ####################################################################
     # test_etrace_combo_omits
     ####################################################################
-    args_to_use = map(
-        lambda n: (1, 2.2, "three", [4, 4.4, "four", (4,)])[0:n], range(5)
+    args_to_use = map(lambda n: args_list[0:n], range(len(args_list) + 1))
+    kwargs_to_use = map(lambda n: dict(kwargs_list[0:n]), range(len(kwargs_list) + 1))
+
+    kwargs_and_omits = it.chain.from_iterable(
+        map(
+            lambda kwdict: it.product([kwdict], mi.powerset(kwdict.keys())),
+            kwargs_to_use,
+        )
     )
 
-    arg_omits = map(lambda n: n[0], args_to_use)
-    kwargs_to_use = map(
-        lambda n: dict(
-            (("v1", 1), ("v2", 2.2), ("v3", "three"), ("v4", [4, 4.4, "four", (4,)]))[
-                0:n
-            ]
-        ),
-        range(4),
-    )
+    # args_to_use_list = list(args_to_use)
+    # kwargs_and_omits_list = list(kwargs_and_omits)
 
     @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
     @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
-    # @pytest.mark.parametrize("num_args_arg", (0, 1, 2, 3, 4))
+    @pytest.mark.parametrize("args_arg", args_to_use)
     @pytest.mark.parametrize("omit_args_arg", (True, False))
-    @pytest.mark.parametrize("num_kwargs_arg", (0, 1, 2, 3))
-    @pytest.mark.parametrize("omit_kwargs_arg", (0, 1, 2, 3, 4, 5, 6, 7))
+    @pytest.mark.parametrize("kwargs_and_omits_arg", kwargs_and_omits)
     @pytest.mark.parametrize("omit_ret_val_arg", (True, False))
+    # @pytest.mark.parametrize("caller_type_arg", [FunctionType.Function])
+    # @pytest.mark.parametrize("target_type_arg", [FunctionType.InitMethod])
+    # @pytest.mark.parametrize("args_arg", [args_to_use_list[0]])
+    # @pytest.mark.parametrize("omit_args_arg", (True,))
+    # @pytest.mark.parametrize("kwargs_and_omits_arg", [kwargs_and_omits_list[3]])
+    # @pytest.mark.parametrize("omit_ret_val_arg", (False,))
     def test_etrace_combo_omits(
         self,
         caller_type_arg: FunctionType,
         target_type_arg: FunctionType,
+        args_arg: tuple[Any],
         omit_args_arg: bool,
-        num_kwargs_arg: int,
-        omit_kwargs_arg: int,
+        kwargs_and_omits_arg: list[dict[str, Any], tuple[str]],
         omit_ret_val_arg: bool,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -2101,9 +2105,9 @@ class TestEntryTraceCombos:
         Args:
             caller_type_arg: type of function that makes the call
             target_type_arg: type of function to be called
+            args_arg: tuple of args to use on the calls that are traced
             omit_args_arg: if true bool, don't trace args
-            num_kwargs_arg: number of keywords args to build
-            omit_kwargs_arg: int for binary mask
+            kwargs_and_omits_arg: dict and list of omits
             omit_ret_val_arg: if True, omit ret value fro exit trace
             caplog: pytest fixture to capture log output
 
@@ -2113,21 +2117,17 @@ class TestEntryTraceCombos:
         else:
             trace_enabled = False
 
-        omit_parms_list: list[str] = []
-        if omit_kwargs_arg in [1, 3, 5, 7]:
-            omit_parms_list.append("v3")
-        if omit_kwargs_arg in [4, 5, 6, 7]:
-            omit_parms_list.append("v1")
-        if omit_kwargs_arg in [2, 3, 6, 7]:
-            omit_parms_list.append("v2")
+        kwargs_arg = kwargs_and_omits_arg[0]
+        omit_kwargs_arg = list(kwargs_and_omits_arg[1])
 
-        if num_kwargs_arg in [2, 3] and target_type_arg != FunctionType.InitMethod:
+        omit_parms_list: list[str] = omit_kwargs_arg.copy()
+        if omit_args_arg:
+            omit_parms_list.append("args")
+
+        if "v2" in kwargs_arg and target_type_arg != FunctionType.InitMethod:
             ret_v2 = True
         else:
             ret_v2 = False
-
-        if omit_args_arg:
-            omit_parms_list = ["args"] + omit_parms_list
 
         @etrace(
             omit_parms=omit_parms_list,
@@ -2140,18 +2140,18 @@ class TestEntryTraceCombos:
         class Caller:
             def __init__(self):
                 if caller_type_arg == FunctionType.InitMethod:
-                    target_rtn(*target_args, **target_kwargs)
+                    target_rtn(*args_arg, **kwargs_arg)
 
             def caller(self):
-                target_rtn(*target_args, **target_kwargs)
+                target_rtn(*args_arg, **kwargs_arg)
 
             @staticmethod
             def static_caller():
-                target_rtn(*target_args, **target_kwargs)
+                target_rtn(*args_arg, **kwargs_arg)
 
             @classmethod
             def class_caller(cls):
-                target_rtn(*target_args, **target_kwargs)
+                target_rtn(*args_arg, **kwargs_arg)
 
         class Target:
             @etrace(
@@ -2224,42 +2224,10 @@ class TestEntryTraceCombos:
             target_qual_name = "::Target.__init__"
 
         ################################################################
-        # setup the args
-        ################################################################
-        target_args = (1, 2.2, "three", [4, 4.4, "four", (4,)])
-
-        ################################################################
-        # setup the kwargs
-        ################################################################
-        target_kwargs = (
-            ("v1", 1),
-            ("v2", 2.2),
-            ("v3", "three"),
-        )
-        target_kwargs = dict(target_kwargs[0:num_kwargs_arg])
-
-        log_target_kwargs = {}
-        if num_kwargs_arg in [1, 2, 3]:
-            if omit_kwargs_arg in [0, 1, 2, 3]:
-                log_target_kwargs["v1"] = target_kwargs["v1"]
-            else:
-                log_target_kwargs["v1"] = "..."
-        if num_kwargs_arg in [2, 3]:
-            if omit_kwargs_arg in [0, 1, 4, 5]:
-                log_target_kwargs["v2"] = target_kwargs["v2"]
-            else:
-                log_target_kwargs["v2"] = "..."
-        if num_kwargs_arg == 3:
-            if omit_kwargs_arg in [0, 2, 4, 6]:
-                log_target_kwargs["v3"] = target_kwargs["v3"]
-            else:
-                log_target_kwargs["v3"] = "..."
-
-        ################################################################
         # call the function or method
         ################################################################
         if caller_type_arg == FunctionType.Function:
-            target_rtn(*target_args, **target_kwargs)
+            target_rtn(*args_arg, **kwargs_arg)
             caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_omits"
 
         elif caller_type_arg == FunctionType.Method:
@@ -2281,10 +2249,15 @@ class TestEntryTraceCombos:
         if omit_args_arg:
             args_str = " args='...',"
         else:
-            args_str = f" args={re.escape(str(target_args))},"
+            if args_arg:
+                args_str = f" args={re.escape(str(args_arg))},"
+            else:
+                args_str = ""
 
         kwargs_str = " "
-        for key, val in log_target_kwargs.items():
+        for key, val in kwargs_arg.items():
+            if key in omit_kwargs_arg:
+                val = "..."
             if isinstance(val, str):
                 kwargs_str += f"{key}='{val}', "
             else:
