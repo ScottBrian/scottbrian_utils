@@ -1241,6 +1241,15 @@ FunctionTypeList = [
 ########################################################################
 # TestEntryTraceBasic class
 ########################################################################
+args_list = (1, 2.2, "three", [4, 4.4, "four", (4,)])
+kwargs_list = (
+    ("v1", 1),
+    ("v2", 2.2),
+    ("v3", "three"),
+    ("v4", [4, 4.4, "four", (4,)]),
+)
+
+
 @pytest.mark.cover2
 class TestEntryTraceCombos:
     """Test EntryTrace with various combinations."""
@@ -1882,22 +1891,28 @@ class TestEntryTraceCombos:
     ####################################################################
     # test_etrace_combo_parms
     ####################################################################
+    args_to_use = map(lambda n: args_list[0:n], range(len(args_list) + 1))
+    kwargs_to_use = map(lambda n: dict(kwargs_list[0:n]), range(len(kwargs_list) + 1))
+
     @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
     @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
-    @pytest.mark.parametrize("num_args_arg", (0, 1, 2, 3, 4))
-    @pytest.mark.parametrize("num_kwargs_arg", (0, 1, 2, 3, 4))
+    @pytest.mark.parametrize("args_arg", args_to_use)
+    @pytest.mark.parametrize("kwargs_arg", kwargs_to_use)
     def test_etrace_combo_parms(
         self,
         caller_type_arg: FunctionType,
         target_type_arg: FunctionType,
-        num_args_arg: int,
-        num_kwargs_arg: int,
+        args_arg: list[Any],
+        kwargs_arg: dict[str, Any],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test etrace on a function.
 
         Args:
             caller_type_arg: type of function that makes the call
+            target_type_arg: type of function that is called
+            args_arg: list of args to use on calls being traced
+            kwargs_arg: dict of kwargs to use on calls being traced
             caplog: pytest fixture to capture log output
 
         """
@@ -1913,18 +1928,18 @@ class TestEntryTraceCombos:
         class Caller:
             def __init__(self):
                 if caller_type_arg == FunctionType.InitMethod:
-                    target_rtn(*target_args, **target_kwargs)
+                    target_rtn(*args_arg, **kwargs_arg)
 
             def caller(self):
-                target_rtn(*target_args, **target_kwargs)
+                target_rtn(*args_arg, **kwargs_arg)
 
             @staticmethod
             def static_caller():
-                target_rtn(*target_args, **target_kwargs)
+                target_rtn(*args_arg, **kwargs_arg)
 
             @classmethod
             def class_caller(cls):
-                target_rtn(*target_args, **target_kwargs)
+                target_rtn(*args_arg, **kwargs_arg)
 
         class Target:
             @etrace(enable_trace=trace_enabled)
@@ -1981,28 +1996,10 @@ class TestEntryTraceCombos:
             target_qual_name = "::Target.__init__"
 
         ################################################################
-        # setup the args
-        ################################################################
-        target_args = (1, 2.2, "three", [4, 4.4, "four", (4,)])
-        target_args = target_args[0:num_args_arg]
-        print(f"1 {target_args=}")
-
-        ################################################################
-        # setup the kwargs
-        ################################################################
-        target_kwargs = (
-            ("v1", 1),
-            ("v2", 2.2),
-            ("v3", "three"),
-            ("v4", [4, 4.4, "four", (4,)]),
-        )
-        target_kwargs = dict(target_kwargs[0:num_kwargs_arg])
-
-        ################################################################
         # call the function or method
         ################################################################
         if caller_type_arg == FunctionType.Function:
-            target_rtn(*target_args, **target_kwargs)
+            target_rtn(*args_arg, **kwargs_arg)
             caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_parms"
 
         elif caller_type_arg == FunctionType.Method:
@@ -2021,13 +2018,13 @@ class TestEntryTraceCombos:
             Caller()
             caller_qual_name = "Caller.__init__"
 
-        if target_args:
-            args_str = f" args={re.escape(str(target_args))},"
+        if args_arg:
+            args_str = f" args={re.escape(str(args_arg))},"
         else:
             args_str = ""
 
         kwargs_str = " "
-        for key, val in target_kwargs.items():
+        for key, val in kwargs_arg.items():
             if isinstance(val, str):
                 kwargs_str += f"{key}='{val}', "
             else:
@@ -2068,8 +2065,23 @@ class TestEntryTraceCombos:
     ####################################################################
     # test_etrace_combo_omits
     ####################################################################
+    args_to_use = map(
+        lambda n: (1, 2.2, "three", [4, 4.4, "four", (4,)])[0:n], range(5)
+    )
+
+    arg_omits = map(lambda n: n[0], args_to_use)
+    kwargs_to_use = map(
+        lambda n: dict(
+            (("v1", 1), ("v2", 2.2), ("v3", "three"), ("v4", [4, 4.4, "four", (4,)]))[
+                0:n
+            ]
+        ),
+        range(4),
+    )
+
     @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
     @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
+    # @pytest.mark.parametrize("num_args_arg", (0, 1, 2, 3, 4))
     @pytest.mark.parametrize("omit_args_arg", (True, False))
     @pytest.mark.parametrize("num_kwargs_arg", (0, 1, 2, 3))
     @pytest.mark.parametrize("omit_kwargs_arg", (0, 1, 2, 3, 4, 5, 6, 7))
