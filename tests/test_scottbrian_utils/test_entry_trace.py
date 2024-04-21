@@ -1242,11 +1242,19 @@ FunctionTypeList = [
 # TestEntryTraceBasic class
 ########################################################################
 args_list = (1, 2.2, "three", [4, 4.4, "four", (4,)])
+
+p_args_list = (
+    ("po1", "one"),
+    ("po2", 222),
+    ("po3", "thrace"),
+    ("po4", ["four", "for", 44.44, ("426",)]),
+)
+
 kwargs_list = (
-    ("v1", 1),
-    ("v2", 2.2),
-    ("v3", "three"),
-    ("v4", [4, 4.4, "four", (4,)]),
+    ("kw1", 1),
+    ("kw2", 2.2),
+    ("kw3", "three"),
+    ("kw4", [4, 4.4, "four", (4,)]),
 )
 
 
@@ -2124,18 +2132,18 @@ class TestEntryTraceCombos:
         if omit_args_arg:
             omit_parms_list.append("args")
 
-        if "v2" in kwargs_arg and target_type_arg != FunctionType.InitMethod:
-            ret_v2 = True
+        if "kw2" in kwargs_arg and target_type_arg != FunctionType.InitMethod:
+            ret_kw2 = True
         else:
-            ret_v2 = False
+            ret_kw2 = False
 
         @etrace(
             omit_parms=omit_parms_list,
             omit_return_value=omit_ret_val_arg,
         )
         def f1(*args, **kwargs):
-            if ret_v2:
-                return kwargs["v2"]
+            if ret_kw2:
+                return kwargs["kw2"]
 
         class Caller:
             def __init__(self):
@@ -2167,8 +2175,8 @@ class TestEntryTraceCombos:
                 omit_return_value=omit_ret_val_arg,
             )
             def target(self, *args, **kwargs):
-                if ret_v2:
-                    return kwargs["v2"]
+                if ret_kw2:
+                    return kwargs["kw2"]
 
             @etrace(
                 omit_parms=omit_parms_list,
@@ -2176,8 +2184,8 @@ class TestEntryTraceCombos:
             )
             @staticmethod
             def static_target(*args, **kwargs):
-                if ret_v2:
-                    return kwargs["v2"]
+                if ret_kw2:
+                    return kwargs["kw2"]
 
             @etrace(
                 omit_parms=omit_parms_list,
@@ -2185,8 +2193,8 @@ class TestEntryTraceCombos:
             )
             @classmethod
             def class_target(cls, *args, **kwargs):
-                if ret_v2:
-                    return kwargs["v2"]
+                if ret_kw2:
+                    return kwargs["kw2"]
 
         ################################################################
         # mainline
@@ -2275,7 +2283,7 @@ class TestEntryTraceCombos:
 
         if omit_ret_val_arg:
             ret_value = "return value omitted"
-        elif ret_v2:
+        elif ret_kw2:
             ret_value = "return_value=2.2"
         else:
             ret_value = "return_value=None"
@@ -2295,32 +2303,45 @@ class TestEntryTraceCombos:
     ####################################################################
     # test_etrace_combo_omits
     ####################################################################
+    p_args_to_use = map(lambda n: dict(p_args_list[0:n]), range(len(p_args_list) + 1))
+    kwargs_to_use = map(lambda n: dict(kwargs_list[0:n]), range(len(kwargs_list) + 1))
+
+    p_args_and_omits = it.chain.from_iterable(
+        map(
+            lambda kwdict: it.product([kwdict], mi.powerset(kwdict.keys())),
+            p_args_to_use,
+        )
+    )
+
+    kwargs_and_omits = it.chain.from_iterable(
+        map(
+            lambda kwdict: it.product([kwdict], mi.powerset(kwdict.keys())),
+            kwargs_to_use,
+        )
+    )
+
     @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
     @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
-    @pytest.mark.parametrize("omit_args_arg", (True, False))
-    @pytest.mark.parametrize("num_kwargs_arg", (0, 1, 2, 3))
-    @pytest.mark.parametrize("omit_kwargs_arg", (0, 1, 2, 3, 4, 5, 6, 7))
+    @pytest.mark.parametrize("p_args_and_omits_arg", p_args_and_omits)
+    @pytest.mark.parametrize("kwargs_and_omits_arg", kwargs_and_omits)
     @pytest.mark.parametrize("omit_ret_val_arg", (True, False))
-    def test_etrace_combo_omits_2(
+    def test_etrace_combo_omits2(
         self,
         caller_type_arg: FunctionType,
         target_type_arg: FunctionType,
-        omit_args_arg: bool,
-        num_kwargs_arg: int,
-        omit_kwargs_arg: int,
+        p_args_and_omits_arg: list[dict[str, Any], tuple[str]],
+        kwargs_and_omits_arg: list[dict[str, Any], tuple[str]],
         omit_ret_val_arg: bool,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test etrace on a function.
 
-        Args:
-            caller_type_arg: type of function that makes the call
-            target_type_arg: type of function to be called
-            omit_args_arg: if true bool, don't trace args
-            num_kwargs_arg: number of keywords args to build
-            omit_kwargs_arg: int for binary mask
-            omit_ret_val_arg: if True, omit ret value fro exit trace
-            caplog: pytest fixture to capture log output
+        caller_type_arg: type of function that makes the call
+        target_type_arg: type of function to be called
+        p_args_and_omits_arg: positional args and list of omits
+        kwargs_and_omits_arg: dict and list of omits
+        omit_ret_val_arg: if True, omit ret value fro exit trace
+        caplog: pytest fixture to capture log output
 
         """
         if target_type_arg == FunctionType.InitMethod:
@@ -2328,45 +2349,48 @@ class TestEntryTraceCombos:
         else:
             trace_enabled = False
 
-        omit_parms_list: list[str] = []
-        if omit_kwargs_arg in [1, 3, 5, 7]:
-            omit_parms_list.append("kw3")
-        if omit_kwargs_arg in [4, 5, 6, 7]:
-            omit_parms_list.append("kw1")
-        if omit_kwargs_arg in [2, 3, 6, 7]:
-            omit_parms_list.append("kw2")
+        p_args_dict = p_args_and_omits_arg[0]
+        p_args_arg = p_args_dict.values()
+        omit_p_args_arg = list(p_args_and_omits_arg[1])
+
+        kwargs_arg = kwargs_and_omits_arg[0]
+        omit_kwargs_arg = list(kwargs_and_omits_arg[1])
+
+        omit_parms_list: list[str] = omit_p_args_arg.copy() + omit_kwargs_arg.copy()
 
         @etrace(
             omit_parms=omit_parms_list,
             omit_return_value=omit_ret_val_arg,
         )
         def f1(
-            a1: int,
-            a2: float,
+            a1: str = None,
+            a2: int = None,
             /,
-            a3: str,
+            a3: str = None,
+            a4: list[Any] = None,
             *,
-            kw1: int,
-            kw2: float = 2.2,
-            kw3: str = "three",
-        ) -> list[int, float, str, int, float, str]:
-            return [a1, a2, a3, kw1, kw2, kw3]
+            kw1: int = 111,
+            kw2: float = 22.22,
+            kw3: str = "threes_company",
+            kw4: list[Any] = None,
+        ) -> list[str | int | list[Any] | float]:
+            return [a1, a2, a3, a4, kw1, kw2, kw3, kw4]
 
         class Caller:
             def __init__(self) -> None:
                 if caller_type_arg == FunctionType.InitMethod:
-                    target_rtn(*target_args, **target_kwargs)
+                    target_rtn(*p_args_arg, **kwargs_arg)
 
             def caller(self) -> None:
-                target_rtn(*target_args, **target_kwargs)
+                target_rtn(*p_args_arg, **kwargs_arg)
 
             @staticmethod
             def static_caller() -> None:
-                target_rtn(*target_args, **target_kwargs)
+                target_rtn(*p_args_arg, **kwargs_arg)
 
             @classmethod
             def class_caller(cls) -> None:
-                target_rtn(*target_args, **target_kwargs)
+                target_rtn(*p_args_arg, **kwargs_arg)
 
         class Target:
             @etrace(
@@ -2376,20 +2400,24 @@ class TestEntryTraceCombos:
             )
             def __init__(
                 self,
-                a1: int,
-                a2: float,
-                a3: str,
+                a1: str = None,
+                a2: int = None,
+                a3: str = None,
+                a4: list[Any] = None,
                 *,
-                kw1: int = 1,
-                kw2: float = 2.2,
-                kw3: str = "three",
+                kw1: int = 111,
+                kw2: float = 22.22,
+                kw3: str = "threes_company",
+                kw4: list[Any] = None,
             ) -> None:
                 self.a1 = a1
                 self.a2 = a2
                 self.a3 = a3
+                self.a4 = a4
                 self.kw1 = kw1
                 self.kw2 = kw2
                 self.kw3 = kw3
+                self.kw4 = kw4
 
             @etrace(
                 omit_parms=omit_parms_list,
@@ -2397,15 +2425,17 @@ class TestEntryTraceCombos:
             )
             def target(
                 self,
-                a1: int,
-                a2: float,
-                a3: str,
+                a1: str = None,
+                a2: int = None,
+                a3: str = None,
+                a4: list[Any] = None,
                 *,
-                kw1: int = 1,
-                kw2: float = 2.2,
-                kw3: str = "three",
-            ) -> list[int, float, str, int, float, str]:
-                return [a1, a2, a3, kw1, kw2, kw3]
+                kw1: int = 111,
+                kw2: float = 22.22,
+                kw3: str = "threes_company",
+                kw4: list[Any] = None,
+            ) -> list[str | int | list[Any] | float]:
+                return [a1, a2, a3, a4, kw1, kw2, kw3, kw4]
 
             @etrace(
                 omit_parms=omit_parms_list,
@@ -2413,15 +2443,17 @@ class TestEntryTraceCombos:
             )
             @staticmethod
             def static_target(
-                a1: int,
-                a2: float,
-                a3: str,
+                a1: str = None,
+                a2: int = None,
+                a3: str = None,
+                a4: list[Any] = None,
                 *,
-                kw1: int = 1,
-                kw2: float = 2.2,
-                kw3: str = "three",
-            ) -> list[int, float, str, int, float, str]:
-                return [a1, a2, a3, kw1, kw2, kw3]
+                kw1: int = 111,
+                kw2: float = 22.22,
+                kw3: str = "threes_company",
+                kw4: list[Any] = None,
+            ) -> list[str | int | list[Any] | float]:
+                return [a1, a2, a3, a4, kw1, kw2, kw3, kw4]
 
             @etrace(
                 omit_parms=omit_parms_list,
@@ -2430,20 +2462,22 @@ class TestEntryTraceCombos:
             @classmethod
             def class_target(
                 cls,
-                a1: int,
-                a2: float,
-                a3: str,
+                a1: str = None,
+                a2: int = None,
+                a3: str = None,
+                a4: list[Any] = None,
                 *,
-                kw1: int = 1,
-                kw2: float = 2.2,
-                kw3: str = "three",
-            ) -> list[int | float | str]:
-                return [a1, a2, a3, kw1, kw2, kw3]
+                kw1: int = 111,
+                kw2: float = 22.22,
+                kw3: str = "threes_company",
+                kw4: list[Any] = None,
+            ) -> list[str | int | list[Any] | float]:
+                return [a1, a2, a3, a4, kw1, kw2, kw3, kw4]
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
 
         file_name = "test_entry_trace.py"
 
@@ -2475,50 +2509,42 @@ class TestEntryTraceCombos:
             target_line_num = inspect.getsourcelines(Target.__init__)[1]
             target_qual_name = "::Target.__init__"
 
-        ################################################################
-        # setup the args
-        ################################################################
-        target_args = (1, 2.2, "three")
-
-        if omit_args_arg:
-            log_target_args = "omit_args=True"
-        else:
-            log_target_args = f"args={re.escape(str(target_args))}"
-        ################################################################
-        # setup the kwargs
-        ################################################################
-        target_kwargs_t: tuple[tuple[str, Union[int, float, str]], ...] = (
-            ("kw1", 11),
-            ("kw2", 22.22),
-            ("kw3", "thrace"),
-        )
-        target_kwargs: dict[str, int | float | str] = dict(
-            target_kwargs_t[0:num_kwargs_arg]
-        )
-
-        log_target_kwargs: dict[str, int | float | str] = {
-            "kw1": 1,
-            "kw2": 2.2,
-            "kw3": "three",
+        log_args = {
+            "a1": None,
+            "a2": None,
+            "a3": None,
+            "a4": None,
+            "kw1": 111,
+            "kw2": 22.22,
+            "kw3": "threes_company",
+            "kw4": None,
         }
-        if num_kwargs_arg in [1, 2, 3] and omit_kwargs_arg in [0, 1, 2, 3]:
-            log_target_kwargs["kw1"] = target_kwargs["kw1"]
-        if num_kwargs_arg in [2, 3] and omit_kwargs_arg in [0, 1, 4, 5]:
-            log_target_kwargs["kw2"] = target_kwargs["kw2"]
-        if num_kwargs_arg == 3 and omit_kwargs_arg in [0, 2, 4, 6]:
-            log_target_kwargs["kw3"] = target_kwargs["kw3"]
 
-        if omit_parms_list:
-            log_omit_kwargs = f" omit_kwargs={set(omit_parms_list)},"
-        else:
-            log_omit_kwargs = ""
+        for key, val in p_args_dict.items():
+            if key in omit_p_args_arg:
+                val = "..."
+            log_args[key] = val
+
+        for key, val in kwargs_arg.items():
+            if key in omit_kwargs_arg:
+                val = "..."
+            log_args[key] = val
+
+        args_str = ""
+        for key, val in log_args.items():
+            if isinstance(val, str):
+                args_str += f"{key}='{val}', "
+            else:
+                args_str += f"{key}={val}, "
+
+        args_str = re.escape(args_str)
 
         ################################################################
         # call the function or method
         ################################################################
         if caller_type_arg == FunctionType.Function:
-            target_rtn(*target_args, **target_kwargs)
-            caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_omits_2"
+            target_rtn(*p_args_arg, **kwargs_arg)
+            caller_qual_name = "TestEntryTraceCombos.test_etrace_combo_omits2"
 
         elif caller_type_arg == FunctionType.Method:
             Caller().caller()
@@ -2536,42 +2562,25 @@ class TestEntryTraceCombos:
             Caller()
             caller_qual_name = "Caller.__init__"
 
-        exp_entry_log_msg = (
-            rf"{file_name}{target_qual_name}:{target_line_num} entry: "
-            rf"{log_target_args}, "
-            f"kwargs={re.escape(str(log_target_kwargs))},{log_omit_kwargs} "
-            f"caller: {file_name}::{caller_qual_name}:[0-9]+"
-        )
-
-        log_ver.add_pattern(
-            level=logging.DEBUG,
-            pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
-
         if omit_ret_val_arg:
             ret_value = "return value omitted"
         elif target_type_arg == FunctionType.InitMethod:
             ret_value = "return_value=None"
         else:
-            ret_value = (
-                f"return_value=[1, 2.2, 'three', "
-                f"{log_target_kwargs['kw1']}, "
-                f"{log_target_kwargs['kw2']}, "
-                f"{log_target_kwargs['kw3']}]"
-            )
+            ret_value = f"return_value={list(log_args.values())}"
+
+        exp_entry_log_msg = (
+            rf"{file_name}{target_qual_name}:{target_line_num} entry: {args_str}"
+            f"caller: {file_name}::{caller_qual_name}:[0-9]+"
+        )
+
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
             f"{file_name}{target_qual_name}:{target_line_num} exit: {ret_value}"
         )
 
-        log_ver.add_pattern(
-            level=logging.DEBUG,
-            pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
-            fullmatch=True,
-        )
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
         ################################################################
         # check log results
         ################################################################
