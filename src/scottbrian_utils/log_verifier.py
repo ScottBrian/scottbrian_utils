@@ -504,36 +504,36 @@ class LogVer:
         The output from ``LogVer.print_match_results()`` for
         test_example::
 
-        ************************************************
-        *             log verifier results             *
-        ************************************************
-        Start: Thu Apr 11 2024 19:24:28
-        End: Thu Apr 11 2024 19:24:28
-        Elapsed time: 0:00:00.006002
+            ************************************************
+            *             log verifier results             *
+            ************************************************
+            Start: Thu Apr 11 2024 19:24:28
+            End: Thu Apr 11 2024 19:24:28
+            Elapsed time: 0:00:00.006002
 
-        ************************************************
-        *                summary stats                 *
-        ************************************************
-            type  records  matched  unmatched
-        patterns        2        2          0
-        log_msgs        2        2          0
+            ************************************************
+            *                summary stats                 *
+            ************************************************
+                type  records  matched  unmatched
+            patterns        2        2          0
+            log_msgs        2        2          0
 
-        ***********************
-        * unmatched patterns: *
-        ***********************
-        *** no unmatched patterns found ***
+            ***********************
+            * unmatched patterns: *
+            ***********************
+            *** no unmatched patterns found ***
 
-        ***********************
-        * unmatched log_msgs: *
-        ***********************
-        *** no unmatched log messages found ***
+            ***********************
+            * unmatched log_msgs: *
+            ***********************
+            *** no unmatched log messages found ***
 
-        ***********************
-        *  matched log_msgs:  *
-        ***********************
-         log_name  level log_msg  records  matched  unmatched
-        example_5     10   hello        1        1          0
-        example_5     40 goodbye        1        1          0
+            ***********************
+            *  matched log_msgs:  *
+            ***********************
+             log_name  level log_msg  records  matched  unmatched
+            example_5     10   hello        1        1          0
+            example_5     40 goodbye        1        1          0
 
         """
         if log_name:

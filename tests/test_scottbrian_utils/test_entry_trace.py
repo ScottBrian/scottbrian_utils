@@ -14,7 +14,7 @@ import logging
 import more_itertools as mi
 import re
 
-from typing import Any, cast, Optional, Union
+from typing import Any, Optional, Union
 
 ########################################################################
 # Third Party
@@ -344,7 +344,7 @@ class TestEntryTraceExamples:
         """
         from scottbrian_utils.entry_trace import etrace
 
-        @etrace
+        @etrace(omit_return_value=True)
         def f1(a1: int, kw1: str = "42", kw2: int = 24):
             return f"{a1=}, {kw1=}, {kw2=}"
 
@@ -364,11 +364,9 @@ class TestEntryTraceExamples:
         )
 
         log_ver.add_pattern(pattern=exp_entry_log_msg)
-        kw_value = "forty two"
-        quote = "'"
+
         exp_exit_log_msg = (
-            f'test_entry_trace.py:f1:{f1_line_num} exit: return_value="a1=42, '
-            f'kw1={quote}{kw_value}{quote}, kw2=84"'
+            f"test_entry_trace.py:f1:{f1_line_num} exit: return value omitted"
         )
 
         log_ver.add_pattern(pattern=exp_exit_log_msg)
@@ -1244,10 +1242,10 @@ FunctionTypeList = [
 args_list = (1, 2.2, "three", [4, 4.4, "four", (4,)])
 
 p_args_list = (
-    ("po1", "one"),
-    ("po2", 222),
-    ("po3", "thrace"),
-    ("po4", ["four", "for", 44.44, ("426",)]),
+    ("a1", "one"),
+    ("a2", 222),
+    ("a3", "thrace"),
+    ("a4", ["four", "for", 44.44, ("426",)]),
 )
 
 kwargs_list = (
@@ -1268,9 +1266,6 @@ class TestEntryTraceCombos:
     @pytest.mark.parametrize("num_po_arg", [0, 1, 2, 3])
     @pytest.mark.parametrize("num_pk_arg", [0, 1, 2, 3])
     @pytest.mark.parametrize("num_ko_arg", [0, 1, 2, 3])
-    # @pytest.mark.parametrize("num_po_arg", [3])
-    # @pytest.mark.parametrize("num_pk_arg", [3])
-    # @pytest.mark.parametrize("num_ko_arg", [3])
     def test_etrace_combo_signature(
         self,
         num_po_arg: int,
@@ -1442,12 +1437,6 @@ class TestEntryTraceCombos:
                 self.po_pk_raw_arg_specs = self.build_po_pk_arg_specs(num_pk=num_pk)
 
                 self.ko_raw_arg_specs = [list(map(self.set_ko_args, self.raw_ko_parms))]
-
-                # self.raw_arg_specs = self.build_arg_specs()
-
-                # self.num_po_pk = num_po + num_pk
-                # self.po_pk_def_array: list[int] = [0]
-                # self.po_pk_sections: list[PlistSection] = []
 
                 self.po_pk_sections = self.build_plist_section(
                     plist_parms=self.raw_po_parms + self.raw_pk_parms,
@@ -1667,16 +1656,11 @@ class TestEntryTraceCombos:
         plist_spec = PlistSpec(num_po=num_po_arg, num_pk=num_pk_arg, num_ko=num_ko_arg)
 
         for idx1, final_plist_combo in enumerate(plist_spec.final_plist_combos):
-            # if idx1 == 32:
-            #     break
             for omit_variation in final_plist_combo.omit_variations:
                 if omit_variation.omit_parms:
                     omit_parms_str = f",omit_parms={omit_variation.omit_parms}"
                 else:
                     omit_parms_str = ""
-                    # if idx1 == 1:
-                    #     omit_parms_str = ",omit_return_value=True"
-
                 code = (
                     f"global f999"
                     f"\ndef f1({final_plist_combo.plist}): "
@@ -1685,32 +1669,11 @@ class TestEntryTraceCombos:
                     f"\nf999=f1"
                 )
 
-                # plist_spec_log_msg = f"##################### "
-                #                      "{final_plist_combo.plist=}"
-                # logger.debug(plist_spec_log_msg)
-                # log_ver.add_pattern(
-                #     level=logging.DEBUG,
-                #     pattern=re.escape(plist_spec_log_msg),
-                #     log_name="test_scottbrian_utils.test_entry_trace",
-                #     fullmatch=True,
-                # )
                 exec(code)
 
                 for idx2, arg_spec_ret_res in enumerate(
                     omit_variation.arg_specs_ret_reses
                 ):
-                    # arg_spec_log_msg = (
-                    #     f"##################### "
-                    #     "{arg_spec_ret_res.arg_spec=}"
-                    # )
-                    # logger.debug(arg_spec_log_msg)
-                    # log_ver.add_pattern(
-                    #     level=logging.DEBUG,
-                    #     pattern=arg_spec_log_msg,
-                    #     log_name=(
-                    #         "test_scottbrian_utils.test_entry_trace"),
-                    #     fullmatch=True,
-                    # )
                     exec(f"f999({arg_spec_ret_res.arg_spec})")
 
                     exp_entry_log_msg = (
@@ -1736,10 +1699,6 @@ class TestEntryTraceCombos:
                         log_name="scottbrian_utils.entry_trace",
                         fullmatch=True,
                     )
-
-        #         print(f"\n{idx2=}")
-        # print(f"{idx1=}")
-        # print(f"{(idx1*idx2)=}")
         ################################################################
         # check log results
         ################################################################
@@ -2083,21 +2042,12 @@ class TestEntryTraceCombos:
         )
     )
 
-    # args_to_use_list = list(args_to_use)
-    # kwargs_and_omits_list = list(kwargs_and_omits)
-
     @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
     @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
     @pytest.mark.parametrize("args_arg", args_to_use)
     @pytest.mark.parametrize("omit_args_arg", (True, False))
     @pytest.mark.parametrize("kwargs_and_omits_arg", kwargs_and_omits)
     @pytest.mark.parametrize("omit_ret_val_arg", (True, False))
-    # @pytest.mark.parametrize("caller_type_arg", [FunctionType.Function])
-    # @pytest.mark.parametrize("target_type_arg", [FunctionType.InitMethod])
-    # @pytest.mark.parametrize("args_arg", [args_to_use_list[0]])
-    # @pytest.mark.parametrize("omit_args_arg", (True,))
-    # @pytest.mark.parametrize("kwargs_and_omits_arg", [kwargs_and_omits_list[3]])
-    # @pytest.mark.parametrize("omit_ret_val_arg", (False,))
     def test_etrace_combo_omits(
         self,
         caller_type_arg: FunctionType,
@@ -2520,12 +2470,25 @@ class TestEntryTraceCombos:
             "kw4": None,
         }
 
+        log_return = {
+            "a1": None,
+            "a2": None,
+            "a3": None,
+            "a4": None,
+            "kw1": 111,
+            "kw2": 22.22,
+            "kw3": "threes_company",
+            "kw4": None,
+        }
+
         for key, val in p_args_dict.items():
+            log_return[key] = val
             if key in omit_p_args_arg:
                 val = "..."
             log_args[key] = val
 
         for key, val in kwargs_arg.items():
+            log_return[key] = val
             if key in omit_kwargs_arg:
                 val = "..."
             log_args[key] = val
@@ -2567,7 +2530,7 @@ class TestEntryTraceCombos:
         elif target_type_arg == FunctionType.InitMethod:
             ret_value = "return_value=None"
         else:
-            ret_value = f"return_value={list(log_args.values())}"
+            ret_value = re.escape(f"return_value={list(log_return.values())}")
 
         exp_entry_log_msg = (
             rf"{file_name}{target_qual_name}:{target_line_num} entry: {args_str}"

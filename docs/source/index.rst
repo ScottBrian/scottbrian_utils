@@ -15,6 +15,8 @@
 
    doc_checker <doc_checker_link>
 
+   entry_trace <entry_trace_link>
+
    file_catalog <file_catalog_link>
 
    flower_box <flower_box_link>

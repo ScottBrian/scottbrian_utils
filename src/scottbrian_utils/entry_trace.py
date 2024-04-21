@@ -10,19 +10,18 @@ include the filename, function or method name, the line number where it
 is defined, and the specified args and/or kwargs. The exit trace will
 include the return value.
 
-The decorator can be statically enabled or disabled via a set of
-parameters as follows:
+The decorator can be controlled via the following parameters:
 
     1) enable_trace: boolean value that when True will enable the trace.
        The default is True.
     2) omit_parms: list of parameter names whose argument values should
        appear in the trace as ellipses. This can help reduce the size
        of the trace entry for large arguments. The default is None.
-    4) omit_return_value: if True, do not trace the return value in the
+    3) omit_return_value: if True, do not trace the return value in the
        exit trace entry. The default is False.
 
 
-:Example 1: Decorate a function that has no args and no kwargs.
+:Example 1: Decorate a function with no args nor kwargs.
 
 .. code-block:: python
 
@@ -37,13 +36,115 @@ parameters as follows:
 
 Expected trace output for Example 1::
 
-    entry_trace.py: trace_wrapper: 145 entry_trace.py:f1:44 entry:
-        args=(), kwargs=(), caller: entry_trace.py:48
-    entry_trace.py: trace_wrapper: 152 entry_trace.py:f1:44 exit:
-        ret_value=None
+    test_entry_trace.py:f1:69 entry: caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example1:77
+    test_entry_trace.py:f1:69 exit: return_value=None
+
+
+:Example 2: Decorate a function that has 1 positional arg and 1 keyword
+            arg.
+
+.. code-block:: python
+
+    from scottbrian_utils.entry_trace import etrace
+
+    @etrace
+    def f1(a1: int, kw1: str = "42"):
+        return f"{a1=}, {kw1=}"
+
+    f1(42, kw1="forty two")
+
+
+Expected trace output for Example 2::
+
+    test_entry_trace.py:f1:122 entry: a1=42, kw1='forty two', caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example2:130
+    test_entry_trace.py:f1:122 exit: return_value="a1=42, kw1='forty two'"
+
+
+:Example 3: Decorate two functions, the first with etrace enabled and
+            the second with etrace disabled.
+
+.. code-block:: python
+
+    from scottbrian_utils.entry_trace import etrace
+
+    do_trace: bool = True
+
+    @etrace(enable_trace=do_trace)
+    def f1(a1: int, kw1: str = "42"):
+        return f"{a1=}, {kw1=}"
+
+    do_trace: bool = False
+
+    @etrace(enable_trace=do_trace)
+    def f2(a1: int, kw1: str = "42"):
+        return f"{a1=}, {kw1=}"
+
+    f1(42, kw1="forty two")
+    f2(24, kw1="twenty four")
+
+Expected trace output for Example 3::
+
+    test_entry_trace.py:f1:180 entry: a1=42, kw1='forty two', caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example3:194
+    test_entry_trace.py:f1:180 exit: return_value="a1=42, kw1='forty two'"
+
+
+:Example 4: Decorate a function with the positional arg omitted.
+
+.. code-block:: python
+
+    from scottbrian_utils.entry_trace import etrace
+
+    @etrace(omit_parms=["a1"])
+    def f1(a1: int, kw1: str = "42"):
+        return f"{a1=}, {kw1=}"
+
+    f1(42, kw1="forty two")
+
+Expected trace output for Example 4::
+
+    test_entry_trace.py:f1:244 entry: a1='...', kw1='forty two', caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example4:252
+    test_entry_trace.py:f1:244 exit: return_value="a1=42, kw1='forty two'"
+
+
+:Example 5: Decorate a function with the first keyword arg omitted.
+
+.. code-block:: python
+
+    from scottbrian_utils.entry_trace import etrace
+
+    @etrace(omit_parms="kw1")
+    def f1(a1: int, kw1: str = "42", kw2: int = 24):
+        return f"{a1=}, {kw1=}, {kw2=}"
+
+    f1(42, kw1="forty two", kw2=84)
+
+Expected trace output for Example 5::
+
+    test_entry_trace.py:f1:300 entry: a1=42, kw1='...', kw2=84, caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example5:308
+    test_entry_trace.py:f1:300 exit: return_value="a1=42, kw1='forty two', kw2=84"
+
+
+:Example 6: Decorate a function with the return value omitted.
+
+.. code-block:: python
+
+    from scottbrian_utils.entry_trace import etrace
+
+    @etrace(omit_return_value=True)
+    def f1(a1: int, kw1: str = "42", kw2: int = 24):
+        return f"{a1=}, {kw1=}, {kw2=}"
+
+    f1(42, kw1="forty two", kw2=84)
+
+Expected trace output for Example 6::
+
+    test_entry_trace.py:f1:347 entry: a1=42, kw1='forty two', kw2=84, caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example6:356
+    test_entry_trace.py:f1:347 exit: return value omitted
 
 
 """
+
+# noqa: E501, W505
 
 ########################################################################
 # Standard Library
@@ -52,7 +153,7 @@ from collections.abc import Iterable
 import functools
 import inspect
 import logging
-from typing import Any, Callable, cast, Never, Optional, TypeVar, Union
+from typing import Any, Callable, cast, Optional, TypeVar, Union
 
 ########################################################################
 # Third Party
@@ -95,7 +196,15 @@ def etrace(
 
         1) In both the entry and exit trace, the line number following
            the decorated function or method will be the line number of
-           the etrace decorator.
+           the etrace decorator. The trace message itself, however, will
+           include the name of the traced function or method along with
+           the line number where it is defined.
+        2) The positional and keyword arguments (if any) will appear
+           after "entry:".
+        3) The caller of the traced function or method will appear after
+           "caller:" and will include the line number of the call.
+        4) The exit trace will include the return value unless
+           *omit_return_value* specifies True.
 
     """
     if wrapped is None:

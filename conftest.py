@@ -68,9 +68,9 @@ class SbtDocCheckerOutputChecker(DocCheckerOutputChecker):
 
             # match_str = "<.+?>"
             if self.mod_name == "diag_msg":
-                match_str = "diag_msg.py\[0\]>"
+                match_str = r"diag_msg.py\[0\]>"
             else:
-                match_str = "README.rst\[0\]>"
+                match_str = r"README.rst\[0\]>"
             replacement = "<input>"
             got = re.sub(match_str, replacement, got)
 
