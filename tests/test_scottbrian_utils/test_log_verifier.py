@@ -122,7 +122,7 @@ class VerResult:
     matched_log_msgs: bool = False
 
 
-class TestLogVerification:
+class LogVerifier:
     """Verify the log output."""
 
     def __init__(
@@ -861,7 +861,7 @@ class TestLogVerExamples:
         expected_result += " log_name  level log_msg  records  matched  unmatched\n"
         expected_result += "example_1     10   hello        1        1          0\n"
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["example_1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -915,7 +915,7 @@ class TestLogVerExamples:
             " log_name  level pattern  fullmatch  records  matched  unmatched\n"
         )
         expected_result += (
-            "example_2     10 goodbye      False        1        0          1\n"
+            "example_2     10 goodbye       True        1        0          1\n"
         )
         expected_result += "\n"
         expected_result += "***********************\n"
@@ -929,7 +929,7 @@ class TestLogVerExamples:
         expected_result += " log_name  level log_msg  records  matched  unmatched\n"
         expected_result += "example_2     10   hello        1        1          0\n"
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["example_2"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -994,7 +994,7 @@ class TestLogVerExamples:
         expected_result += " log_name  level log_msg  records  matched  unmatched\n"
         expected_result += "example_3     10   hello        1        1          0\n"
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["example_3"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1052,7 +1052,7 @@ class TestLogVerExamples:
             " log_name  level pattern  fullmatch  records  matched  unmatched\n"
         )
         expected_result += (
-            "example_4     10 goodbye      False        1        0          1\n"
+            "example_4     10 goodbye       True        1        0          1\n"
         )
         expected_result += "\n"
         expected_result += "***********************\n"
@@ -1071,7 +1071,7 @@ class TestLogVerExamples:
         expected_result += " log_name  level log_msg  records  matched  unmatched\n"
         expected_result += "example_4     10   hello        1        1          0\n"
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["example_4"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1135,7 +1135,7 @@ class TestLogVerExamples:
         expected_result += "example_5     10   hello        1        1          0\n"
         expected_result += "example_5     40 goodbye        1        1          0\n"
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["example_5"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1208,6 +1208,7 @@ class TestLogVerBasic:
     ####################################################################
     @pytest.mark.parametrize("num_patterns_arg", (0, 1, 2))
     @pytest.mark.parametrize("num_log_msgs_arg", (0, 1, 2))
+    @pytest.mark.filterwarnings(r"ignore:LogVer.verify_log_results\(\)")
     def test_log_verifier_no_match1(
         self,
         num_patterns_arg: int,
@@ -1274,7 +1275,7 @@ class TestLogVerBasic:
                 " log_name  level pattern  fullmatch  records  matched  unmatched\n"
             )
             expected_result += (
-                f"no_match1     10       a      False {num_patterns_arg:>8} {0:>8} "
+                f"no_match1     10       a       True {num_patterns_arg:>8} {0:>8} "
                 f"{num_patterns_arg:>10}\n"
             )
         else:
@@ -1298,7 +1299,7 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += "*** no matched log messages found ***\n"
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["no_match1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1329,7 +1330,7 @@ class TestLogVerBasic:
         """
         caplog.clear()
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["no_match2"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1421,7 +1422,7 @@ class TestLogVerBasic:
             f"       1        1          0\n"
         )
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["simple_match"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1453,7 +1454,7 @@ class TestLogVerBasic:
         ################################################################
         caplog.clear()
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["print_matched"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1504,7 +1505,7 @@ class TestLogVerBasic:
         ################################################################
         caplog.clear()
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["fullmatch_0"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1532,7 +1533,7 @@ class TestLogVerBasic:
         ################################################################
         caplog.clear()
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["fullmatch_1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1557,7 +1558,7 @@ class TestLogVerBasic:
         ################################################################
         caplog.clear()
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["fullmatch_2"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1582,7 +1583,7 @@ class TestLogVerBasic:
         ################################################################
         caplog.clear()
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["fullmatch_3"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1609,7 +1610,7 @@ class TestLogVerBasic:
 
         unmatched_patterns: list[LogItemDescriptor] = []
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["fullmatch_4"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1684,7 +1685,7 @@ class TestLogVerBasic:
         ################################################################
         caplog.clear()
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["fullmatch_0"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1793,7 +1794,7 @@ class TestLogVerBasic:
             f"       1        1          0\n"
         )
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["time_match"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1803,6 +1804,7 @@ class TestLogVerBasic:
     # test_log_verifier_add_call_seq
     ####################################################################
     @pytest.mark.parametrize("simple_str_arg", ("a", "ab", "a1", "xyz123"))
+    @pytest.mark.filterwarnings(r"ignore:LogVer.add_msg\(\)")
     def test_log_verifier_add_call_seq(
         self,
         simple_str_arg: str,
@@ -1870,7 +1872,7 @@ class TestLogVerBasic:
             f"       1        1          0\n"
         )
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["call_seq"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -1948,7 +1950,7 @@ class TestLogVerBasic:
             f"       1        1          0\n"
         )
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["call_seq2"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -2042,7 +2044,7 @@ class TestLogVerBasic:
             f"       1        1          0\n"
         )
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["call_seq3"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
@@ -2073,7 +2075,7 @@ class TestLogVerBasic:
         """
         caplog.clear()
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["diff_levels"],
             capsys_to_use=capsys,
             caplog_to_use=caplog,
@@ -2150,7 +2152,7 @@ class TestLogVerBasic:
         """
         caplog.clear()
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=[
                 "multi_log_1",
                 "multi_log_2",
@@ -2264,7 +2266,7 @@ class TestLogVerCombos:
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["scratch_1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
         ################################################################
@@ -2428,7 +2430,7 @@ class TestLogVerCombos:
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["large_1"], capsys_to_use=capsys, caplog_to_use=caplog
         )
         ################################################################
@@ -2959,7 +2961,7 @@ class TestLogVerCombos:
         ################################################################
         caplog.clear()
 
-        test_log_ver = TestLogVerification(
+        test_log_ver = LogVerifier(
             log_names=["contention_0"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 

@@ -141,10 +141,9 @@ Expected trace output for Example 6::
     test_entry_trace.py:f1:347 entry: a1=42, kw1='forty two', kw2=84, caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example6:356
     test_entry_trace.py:f1:347 exit: return value omitted
 
+  .. # noqa: E501, W505
 
 """
-
-# noqa: E501, W505
 
 ########################################################################
 # Standard Library
@@ -252,7 +251,7 @@ def etrace(
     else:
         target_sig = inspect.signature(wrapped)
 
-    target_sig_array = {}
+    target_sig_array: dict[str, Any] = {}
     target_sig_names = []
     target_sig_kind = []
     var_pos_idx = -1
@@ -282,7 +281,12 @@ def etrace(
             var_pos_idx = len(target_sig_kind) - 1
 
     @wrapt.decorator(enabled=enable_trace)  # type: ignore
-    def trace_wrapper(wrapped: F, instance: Any, args: Any, kwargs: Any) -> Any:
+    def trace_wrapper(
+        wrapped: F,
+        instance: Optional[Any],
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> Any:
         """Setup the trace."""
         log_sig_array = ""
         target_sig_array_copy = target_sig_array.copy()

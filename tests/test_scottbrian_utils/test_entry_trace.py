@@ -488,7 +488,7 @@ class TestEntryTraceBasic:
         """
 
         @etrace
-        def f1(*args):
+        def f1(*args: tuple[Any]) -> str:
             ret_str = ""
             for arg in args:
                 ret_str = f"{ret_str}{arg} "
@@ -538,7 +538,7 @@ class TestEntryTraceBasic:
         """
 
         @etrace
-        def f1(**kwargs):
+        def f1(**kwargs: dict[str, Any]) -> str:
             ret_str = ""
             for arg_name, arg_value in kwargs.items():
                 ret_str = f"{ret_str}{arg_name}={arg_value} "
@@ -588,7 +588,7 @@ class TestEntryTraceBasic:
         """
 
         @etrace
-        def f1(a1, *args):
+        def f1(a1: int, *args: tuple[Any]) -> str:
             ret_str = f"{a1} "
             for arg in args:
                 ret_str = f"{ret_str}{arg} "
@@ -731,7 +731,7 @@ class TestEntryTraceBasic:
 
         class Test1:
             @etrace
-            def f1(self, *args):
+            def f1(self, *args: tuple[Any]) -> str:
                 ret_str = ""
                 for arg in args:
                     ret_str = f"{ret_str}{arg} "
@@ -877,7 +877,7 @@ class TestEntryTraceBasic:
         class Test1:
             @etrace
             @staticmethod
-            def f1(*args):
+            def f1(*args: tuple[Any]) -> str:
                 ret_str = ""
                 for arg in args:
                     ret_str = f"{ret_str}{arg} "
@@ -1023,7 +1023,7 @@ class TestEntryTraceBasic:
         class Test1:
             @etrace
             @classmethod
-            def f1(cls, *args):
+            def f1(cls, *args: tuple[Any]) -> str:
                 ret_str = ""
                 for arg in args:
                     ret_str = f"{ret_str}{arg} "
@@ -1174,7 +1174,7 @@ class TestEntryTraceBasic:
 
         class Test1:
             @etrace
-            def __init__(self, *args):
+            def __init__(self, *args: tuple[Any]) -> None:
                 self.args_str = ""
                 for arg in args:
                     self.args_str = f"{self.args_str}{arg} "
@@ -1889,7 +1889,7 @@ class TestEntryTraceCombos:
             trace_enabled = False
 
         @etrace
-        def f1(*args, **kwargs):
+        def f1(*args: tuple[Any], **kwargs: dict[str, Any]) -> None:
             pass
 
         class Caller:
@@ -1910,21 +1910,21 @@ class TestEntryTraceCombos:
 
         class Target:
             @etrace(enable_trace=trace_enabled)
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: tuple[Any], **kwargs: dict[str, Any]) -> None:
                 pass
 
             @etrace
-            def target(self, *args, **kwargs):
+            def target(self, *args: tuple[Any], **kwargs: dict[str, Any]) -> None:
                 pass
 
             @etrace
             @staticmethod
-            def static_target(*args, **kwargs):
+            def static_target(*args: tuple[Any], **kwargs: dict[str, Any]) -> None:
                 pass
 
             @etrace
             @classmethod
-            def class_target(cls, *args, **kwargs):
+            def class_target(cls, *args: tuple[Any], **kwargs: dict[str, Any]) -> None:
                 pass
 
         ################################################################
@@ -2091,7 +2091,7 @@ class TestEntryTraceCombos:
             omit_parms=omit_parms_list,
             omit_return_value=omit_ret_val_arg,
         )
-        def f1(*args, **kwargs):
+        def f1(*args: tuple[Any], **kwargs: dict[str, Any]) -> Any:
             if ret_kw2:
                 return kwargs["kw2"]
 
@@ -2117,14 +2117,14 @@ class TestEntryTraceCombos:
                 omit_parms=omit_parms_list,
                 omit_return_value=omit_ret_val_arg,
             )
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args: tuple[Any], **kwargs: dict[str, Any]) -> None:
                 pass
 
             @etrace(
                 omit_parms=omit_parms_list,
                 omit_return_value=omit_ret_val_arg,
             )
-            def target(self, *args, **kwargs):
+            def target(self, *args: tuple[Any], **kwargs: dict[str, Any]) -> Any:
                 if ret_kw2:
                     return kwargs["kw2"]
 
@@ -2133,7 +2133,7 @@ class TestEntryTraceCombos:
                 omit_return_value=omit_ret_val_arg,
             )
             @staticmethod
-            def static_target(*args, **kwargs):
+            def static_target(*args: tuple[Any], **kwargs: dict[str, Any]) -> Any:
                 if ret_kw2:
                     return kwargs["kw2"]
 
@@ -2142,7 +2142,7 @@ class TestEntryTraceCombos:
                 omit_return_value=omit_ret_val_arg,
             )
             @classmethod
-            def class_target(cls, *args, **kwargs):
+            def class_target(cls, *args: tuple[Any], **kwargs: dict[str, Any]) -> Any:
                 if ret_kw2:
                     return kwargs["kw2"]
 
@@ -2279,8 +2279,8 @@ class TestEntryTraceCombos:
         self,
         caller_type_arg: FunctionType,
         target_type_arg: FunctionType,
-        p_args_and_omits_arg: list[dict[str, Any], tuple[str]],
-        kwargs_and_omits_arg: list[dict[str, Any], tuple[str]],
+        p_args_and_omits_arg: list[tuple[dict[str, Any], tuple[str]]],
+        kwargs_and_omits_arg: list[tuple[dict[str, Any], tuple[str]]],
         omit_ret_val_arg: bool,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -2313,17 +2313,17 @@ class TestEntryTraceCombos:
             omit_return_value=omit_ret_val_arg,
         )
         def f1(
-            a1: str = None,
-            a2: int = None,
+            a1: Optional[str] = None,
+            a2: Optional[int] = None,
             /,
-            a3: str = None,
-            a4: list[Any] = None,
+            a3: Optional[str] = None,
+            a4: Optional[list[Any]] = None,
             *,
             kw1: int = 111,
             kw2: float = 22.22,
             kw3: str = "threes_company",
-            kw4: list[Any] = None,
-        ) -> list[str | int | list[Any] | float]:
+            kw4: Optional[list[Any]] = None,
+        ) -> list[str | int | list[Any] | float | None]:
             return [a1, a2, a3, a4, kw1, kw2, kw3, kw4]
 
         class Caller:
@@ -2350,15 +2350,15 @@ class TestEntryTraceCombos:
             )
             def __init__(
                 self,
-                a1: str = None,
-                a2: int = None,
-                a3: str = None,
-                a4: list[Any] = None,
+                a1: Optional[str] = None,
+                a2: Optional[int] = None,
+                a3: Optional[str] = None,
+                a4: Optional[list[Any]] = None,
                 *,
                 kw1: int = 111,
                 kw2: float = 22.22,
                 kw3: str = "threes_company",
-                kw4: list[Any] = None,
+                kw4: Optional[list[Any]] = None,
             ) -> None:
                 self.a1 = a1
                 self.a2 = a2
@@ -2375,16 +2375,16 @@ class TestEntryTraceCombos:
             )
             def target(
                 self,
-                a1: str = None,
-                a2: int = None,
-                a3: str = None,
-                a4: list[Any] = None,
+                a1: Optional[str] = None,
+                a2: Optional[int] = None,
+                a3: Optional[str] = None,
+                a4: Optional[list[Any]] = None,
                 *,
                 kw1: int = 111,
                 kw2: float = 22.22,
                 kw3: str = "threes_company",
-                kw4: list[Any] = None,
-            ) -> list[str | int | list[Any] | float]:
+                kw4: Optional[list[Any]] = None,
+            ) -> list[str | int | list[Any] | float | None]:
                 return [a1, a2, a3, a4, kw1, kw2, kw3, kw4]
 
             @etrace(
@@ -2393,16 +2393,16 @@ class TestEntryTraceCombos:
             )
             @staticmethod
             def static_target(
-                a1: str = None,
-                a2: int = None,
-                a3: str = None,
-                a4: list[Any] = None,
+                a1: Optional[str] = None,
+                a2: Optional[int] = None,
+                a3: Optional[str] = None,
+                a4: Optional[list[Any]] = None,
                 *,
                 kw1: int = 111,
                 kw2: float = 22.22,
                 kw3: str = "threes_company",
-                kw4: list[Any] = None,
-            ) -> list[str | int | list[Any] | float]:
+                kw4: Optional[list[Any]] = None,
+            ) -> list[str | int | list[Any] | float | None]:
                 return [a1, a2, a3, a4, kw1, kw2, kw3, kw4]
 
             @etrace(
@@ -2412,16 +2412,16 @@ class TestEntryTraceCombos:
             @classmethod
             def class_target(
                 cls,
-                a1: str = None,
-                a2: int = None,
-                a3: str = None,
-                a4: list[Any] = None,
+                a1: Optional[str] = None,
+                a2: Optional[int] = None,
+                a3: Optional[str] = None,
+                a4: Optional[list[Any]] = None,
                 *,
                 kw1: int = 111,
                 kw2: float = 22.22,
                 kw3: str = "threes_company",
-                kw4: list[Any] = None,
-            ) -> list[str | int | list[Any] | float]:
+                kw4: Optional[list[Any]] = None,
+            ) -> list[str | int | list[Any] | float | None]:
                 return [a1, a2, a3, a4, kw1, kw2, kw3, kw4]
 
         ################################################################

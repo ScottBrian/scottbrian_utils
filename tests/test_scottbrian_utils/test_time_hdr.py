@@ -580,11 +580,11 @@ class TestTimedeltaMatchStr:
     )
     def test_timedelta_fail_match_str(
         self,
-        num_days_arg: int,
-        num_hours_arg: int,
-        num_mins_arg: int,
-        num_secs_arg: int,
-        num_usecs_arg: int,
+        num_days_arg: str,
+        num_hours_arg: str,
+        num_mins_arg: str,
+        num_secs_arg: str,
+        num_usecs_arg: str,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test the timedelta match string.

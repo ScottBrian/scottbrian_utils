@@ -99,7 +99,7 @@ The output from ``LogVer.print_match_results()`` for test_example2::
         * unmatched patterns: *
         ***********************
          log_name  level pattern  fullmatch  records  matched  unmatched
-        example_2     10 goodbye      False        1        0          1
+        example_2     10 goodbye       True        1        0          1
 
         ***********************
         * unmatched log_msgs: *
@@ -210,7 +210,7 @@ The output from ``LogVer.print_match_results()`` for test_example4::
         * unmatched patterns: *
         ***********************
          log_name  level pattern  fullmatch  records  matched  unmatched
-        example_4     10 goodbye      False        1        0          1
+        example_4     10 goodbye       True        1        0          1
 
         ***********************
         * unmatched log_msgs: *
