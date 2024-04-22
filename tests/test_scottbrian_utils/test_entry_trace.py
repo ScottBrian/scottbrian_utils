@@ -14,7 +14,7 @@ import logging
 import more_itertools as mi
 import re
 
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 ########################################################################
 # Third Party
@@ -67,7 +67,7 @@ class TestEntryTraceExamples:
         from scottbrian_utils.entry_trace import etrace
 
         @etrace
-        def f1():
+        def f1() -> None:
             pass
 
         ################################################################
@@ -120,7 +120,7 @@ class TestEntryTraceExamples:
         from scottbrian_utils.entry_trace import etrace
 
         @etrace
-        def f1(a1: int, kw1: str = "42"):
+        def f1(a1: int, kw1: str = "42") -> str:
             return f"{a1=}, {kw1=}"
 
         ################################################################
@@ -178,13 +178,13 @@ class TestEntryTraceExamples:
         do_trace: bool = True
 
         @etrace(enable_trace=do_trace)
-        def f1(a1: int, kw1: str = "42"):
+        def f1(a1: int, kw1: str = "42") -> str:
             return f"{a1=}, {kw1=}"
 
         do_trace: bool = False
 
         @etrace(enable_trace=do_trace)
-        def f2(a1: int, kw1: str = "42"):
+        def f2(a1: int, kw1: str = "42") -> str:
             return f"{a1=}, {kw1=}"
 
         ################################################################
@@ -242,7 +242,7 @@ class TestEntryTraceExamples:
         from scottbrian_utils.entry_trace import etrace
 
         @etrace(omit_parms=["a1"])
-        def f1(a1: int, kw1: str = "42"):
+        def f1(a1: int, kw1: str = "42") -> str:
             return f"{a1=}, {kw1=}"
 
         ################################################################
@@ -298,7 +298,7 @@ class TestEntryTraceExamples:
         from scottbrian_utils.entry_trace import etrace
 
         @etrace(omit_parms="kw1")
-        def f1(a1: int, kw1: str = "42", kw2: int = 24):
+        def f1(a1: int, kw1: str = "42", kw2: int = 24) -> str:
             return f"{a1=}, {kw1=}, {kw2=}"
 
         ################################################################
@@ -345,7 +345,7 @@ class TestEntryTraceExamples:
         from scottbrian_utils.entry_trace import etrace
 
         @etrace(omit_return_value=True)
-        def f1(a1: int, kw1: str = "42", kw2: int = 24):
+        def f1(a1: int, kw1: str = "42", kw2: int = 24) -> str:
             return f"{a1=}, {kw1=}, {kw2=}"
 
         ################################################################
@@ -400,7 +400,7 @@ class TestEntryTraceBasic:
         """
 
         @etrace
-        def f1():
+        def f1() -> None:
             pass
 
         ################################################################
@@ -445,7 +445,7 @@ class TestEntryTraceBasic:
         """
 
         @etrace
-        def f1(a1: int):
+        def f1(a1: int) -> None:
             return a1
 
         ################################################################
@@ -639,7 +639,7 @@ class TestEntryTraceBasic:
 
         class Test1:
             @etrace
-            def f1(self):
+            def f1(self) -> None:
                 pass
 
         ################################################################
@@ -685,7 +685,7 @@ class TestEntryTraceBasic:
 
         class Test1:
             @etrace
-            def f1(self, a1: int):
+            def f1(self, a1: int) -> None:
                 pass
 
         ################################################################
@@ -783,7 +783,7 @@ class TestEntryTraceBasic:
         class Test1:
             @etrace
             @staticmethod
-            def f1():
+            def f1() -> None:
                 pass
 
         ################################################################
@@ -830,7 +830,7 @@ class TestEntryTraceBasic:
         class Test1:
             @etrace
             @staticmethod
-            def f1(a1: str):
+            def f1(a1: str) -> None:
                 pass
 
         ################################################################
@@ -929,7 +929,7 @@ class TestEntryTraceBasic:
         class Test1:
             @etrace
             @classmethod
-            def f1(cls):
+            def f1(cls) -> None:
                 pass
 
         ################################################################
@@ -976,7 +976,7 @@ class TestEntryTraceBasic:
         class Test1:
             @etrace
             @classmethod
-            def f1(cls, v1: float):
+            def f1(cls, v1: float) -> None:
                 pass
 
         ################################################################
@@ -1074,11 +1074,11 @@ class TestEntryTraceBasic:
 
         class Test1:
             @etrace
-            def __init__(self):
+            def __init__(self) -> None:
                 self.v1 = 1
 
             @classmethod
-            def f1(cls):
+            def f1(cls) -> None:
                 pass
 
         ################################################################
@@ -1124,11 +1124,11 @@ class TestEntryTraceBasic:
 
         class Test1:
             @etrace
-            def __init__(self, v1: int):
+            def __init__(self, v1: int) -> None:
                 self.v1 = v1
 
             @classmethod
-            def f1(cls):
+            def f1(cls) -> None:
                 pass
 
         ################################################################
@@ -1591,7 +1591,7 @@ class TestEntryTraceCombos:
 
                 log_result = "".join(ret_res_parts)
 
-                def get_perms(raw_arg_spec: list[str]):
+                def get_perms(raw_arg_spec: list[str]) -> list[str]:
                     arg_spec_parts = list(
                         it.starmap(self.set_arg_spec, zip(raw_arg_spec, arg_spec_array))
                     )
@@ -1603,13 +1603,13 @@ class TestEntryTraceCombos:
                         lambda x: "=" in x, after_args
                     )
 
-                    if len(mid_args := list(mid_args)) > 1:
+                    if len(mid_args_list := list(mid_args)) > 1:
                         return list(
                             map(
                                 lambda x: "".join(
                                     list(left_args2) + list(x) + list(right_args2)
                                 ),
-                                it.permutations(mid_args),
+                                it.permutations(mid_args_list),
                             )
                         )
                     else:
@@ -1625,31 +1625,31 @@ class TestEntryTraceCombos:
                 )
 
             @staticmethod
-            def set_arg_spec(parm, selector):
+            def set_arg_spec(parm: str, selector: int) -> str:
                 return ("", parm)[selector]
 
             @staticmethod
-            def set_defaults(parm, selector):
+            def set_defaults(parm: str, selector: int) -> str:
                 return parm + ("", ", ", f"={parm[-1]}, ")[selector]
 
             @staticmethod
-            def set_po_args(parm):
+            def set_po_args(parm: str) -> str:
                 return f"{parm[-1]}0, "
 
             @staticmethod
-            def set_pk_args(parm, selector):
+            def set_pk_args(parm: str, selector: int) -> str:
                 return (f"{parm[-1]}0, ", f"{parm}={parm[-1]}0, ")[selector]
 
             @staticmethod
-            def set_ko_args(parm):
+            def set_ko_args(parm: str) -> str:
                 return f"{parm}={parm[-1]}0, "
 
             @staticmethod
-            def set_ret_result(parm, selector):
+            def set_ret_result(parm: str, selector: int) -> str:
                 return (f"{parm}={parm[-1]}, ", f"{parm}={parm[-1]}0, ")[selector]
 
             @staticmethod
-            def set_ret_stmt(parm):
+            def set_ret_stmt(parm: str) -> str:
                 p_str = f"{parm}="
                 return "{" + p_str + "}, "
 
@@ -1730,42 +1730,42 @@ class TestEntryTraceCombos:
             trace_enabled = False
 
         @etrace
-        def f1():
+        def f1() -> None:
             pass
 
         class Caller:
-            def __init__(self):
+            def __init__(self) -> None:
                 if caller_type_arg == FunctionType.InitMethod:
                     target_rtn()
 
-            def caller(self):
+            def caller(self) -> None:
                 target_rtn()
 
             @staticmethod
-            def static_caller():
+            def static_caller() -> None:
                 target_rtn()
 
             @classmethod
-            def class_caller(cls):
+            def class_caller(cls) -> None:
                 target_rtn()
 
         class Target:
             @etrace(enable_trace=trace_enabled)
-            def __init__(self):
+            def __init__(self) -> None:
                 pass
 
             @etrace
-            def target(self):
+            def target(self) -> None:
                 pass
 
             @etrace
             @staticmethod
-            def static_target():
+            def static_target() -> None:
                 pass
 
             @etrace
             @classmethod
-            def class_target(cls):
+            def class_target(cls) -> None:
                 pass
 
         ################################################################
@@ -1778,6 +1778,7 @@ class TestEntryTraceCombos:
         ################################################################
         # choose the target function or method
         ################################################################
+        target_rtn: Callable[[], None]
         if target_type_arg == FunctionType.Function:
             target_rtn = f1
             target_line_num = inspect.getsourcelines(f1)[1]
@@ -1893,19 +1894,19 @@ class TestEntryTraceCombos:
             pass
 
         class Caller:
-            def __init__(self):
+            def __init__(self) -> None:
                 if caller_type_arg == FunctionType.InitMethod:
                     target_rtn(*args_arg, **kwargs_arg)
 
-            def caller(self):
+            def caller(self) -> None:
                 target_rtn(*args_arg, **kwargs_arg)
 
             @staticmethod
-            def static_caller():
+            def static_caller() -> None:
                 target_rtn(*args_arg, **kwargs_arg)
 
             @classmethod
-            def class_caller(cls):
+            def class_caller(cls) -> None:
                 target_rtn(*args_arg, **kwargs_arg)
 
         class Target:
@@ -2054,7 +2055,7 @@ class TestEntryTraceCombos:
         target_type_arg: FunctionType,
         args_arg: tuple[Any],
         omit_args_arg: bool,
-        kwargs_and_omits_arg: list[dict[str, Any], tuple[str]],
+        kwargs_and_omits_arg: tuple[dict[str, Any], tuple[str]],
         omit_ret_val_arg: bool,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -2096,19 +2097,19 @@ class TestEntryTraceCombos:
                 return kwargs["kw2"]
 
         class Caller:
-            def __init__(self):
+            def __init__(self) -> None:
                 if caller_type_arg == FunctionType.InitMethod:
                     target_rtn(*args_arg, **kwargs_arg)
 
-            def caller(self):
+            def caller(self) -> None:
                 target_rtn(*args_arg, **kwargs_arg)
 
             @staticmethod
-            def static_caller():
+            def static_caller() -> None:
                 target_rtn(*args_arg, **kwargs_arg)
 
             @classmethod
-            def class_caller(cls):
+            def class_caller(cls) -> None:
                 target_rtn(*args_arg, **kwargs_arg)
 
         class Target:
@@ -2279,8 +2280,8 @@ class TestEntryTraceCombos:
         self,
         caller_type_arg: FunctionType,
         target_type_arg: FunctionType,
-        p_args_and_omits_arg: list[tuple[dict[str, Any], tuple[str]]],
-        kwargs_and_omits_arg: list[tuple[dict[str, Any], tuple[str]]],
+        p_args_and_omits_arg: tuple[dict[str, Any], tuple[str]],
+        kwargs_and_omits_arg: tuple[dict[str, Any], tuple[str]],
         omit_ret_val_arg: bool,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -2299,12 +2300,12 @@ class TestEntryTraceCombos:
         else:
             trace_enabled = False
 
-        p_args_dict = p_args_and_omits_arg[0]
+        p_args_dict: dict[str, Any] = p_args_and_omits_arg[0]
         p_args_arg = p_args_dict.values()
-        omit_p_args_arg = list(p_args_and_omits_arg[1])
+        omit_p_args_arg: list[str] = list(p_args_and_omits_arg[1])
 
-        kwargs_arg = kwargs_and_omits_arg[0]
-        omit_kwargs_arg = list(kwargs_and_omits_arg[1])
+        kwargs_arg: dict[str, Any] = kwargs_and_omits_arg[0]
+        omit_kwargs_arg: list[str] = list(kwargs_and_omits_arg[1])
 
         omit_parms_list: list[str] = omit_p_args_arg.copy() + omit_kwargs_arg.copy()
 

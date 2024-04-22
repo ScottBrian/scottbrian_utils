@@ -48,7 +48,7 @@ Expected trace output for Example 1::
     from scottbrian_utils.entry_trace import etrace
 
     @etrace
-    def f1(a1: int, kw1: str = "42"):
+    def f1(a1: int, kw1: str = "42") -> str:
         return f"{a1=}, {kw1=}"
 
     f1(42, kw1="forty two")
@@ -70,7 +70,7 @@ Expected trace output for Example 2::
     do_trace: bool = True
 
     @etrace(enable_trace=do_trace)
-    def f1(a1: int, kw1: str = "42"):
+    def f1(a1: int, kw1: str = "42") -> str:
         return f"{a1=}, {kw1=}"
 
     do_trace: bool = False
@@ -95,7 +95,7 @@ Expected trace output for Example 3::
     from scottbrian_utils.entry_trace import etrace
 
     @etrace(omit_parms=["a1"])
-    def f1(a1: int, kw1: str = "42"):
+    def f1(a1: int, kw1: str = "42") -> str:
         return f"{a1=}, {kw1=}"
 
     f1(42, kw1="forty two")
@@ -113,7 +113,7 @@ Expected trace output for Example 4::
     from scottbrian_utils.entry_trace import etrace
 
     @etrace(omit_parms="kw1")
-    def f1(a1: int, kw1: str = "42", kw2: int = 24):
+    def f1(a1: int, kw1: str = "42", kw2: int = 24) -> str:
         return f"{a1=}, {kw1=}, {kw2=}"
 
     f1(42, kw1="forty two", kw2=84)
@@ -131,7 +131,7 @@ Expected trace output for Example 5::
     from scottbrian_utils.entry_trace import etrace
 
     @etrace(omit_return_value=True)
-    def f1(a1: int, kw1: str = "42", kw2: int = 24):
+    def f1(a1: int, kw1: str = "42", kw2: int = 24) -> str:
         return f"{a1=}, {kw1=}, {kw2=}"
 
     f1(42, kw1="forty two", kw2=84)
