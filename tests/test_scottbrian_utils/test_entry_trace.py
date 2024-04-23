@@ -14,7 +14,7 @@ import logging
 import more_itertools as mi
 import re
 
-from typing import Any, Callable, Iterator, Optional, Union
+from typing import Any, Callable, DefaultNamedArg, Iterator, Optional, Union
 
 ########################################################################
 # Third Party
@@ -181,7 +181,7 @@ class TestEntryTraceExamples:
         def f1(a1: int, kw1: str = "42") -> str:
             return f"{a1=}, {kw1=}"
 
-        do_trace: bool = False
+        do_trace = False
 
         @etrace(enable_trace=do_trace)
         def f2(a1: int, kw1: str = "42") -> str:
@@ -445,7 +445,7 @@ class TestEntryTraceBasic:
         """
 
         @etrace
-        def f1(a1: int) -> None:
+        def f1(a1: int) -> int:
             return a1
 
         ################################################################
@@ -488,7 +488,7 @@ class TestEntryTraceBasic:
         """
 
         @etrace
-        def f1(*args: tuple[Any]) -> str:
+        def f1(*args: Any) -> str:
             ret_str = ""
             for arg in args:
                 ret_str = f"{ret_str}{arg} "
@@ -538,7 +538,7 @@ class TestEntryTraceBasic:
         """
 
         @etrace
-        def f1(**kwargs: dict[str, Any]) -> str:
+        def f1(**kwargs: Any) -> str:
             ret_str = ""
             for arg_name, arg_value in kwargs.items():
                 ret_str = f"{ret_str}{arg_name}={arg_value} "
@@ -588,7 +588,7 @@ class TestEntryTraceBasic:
         """
 
         @etrace
-        def f1(a1: int, *args: tuple[Any]) -> str:
+        def f1(a1: int, *args: Any) -> str:
             ret_str = f"{a1} "
             for arg in args:
                 ret_str = f"{ret_str}{arg} "
@@ -731,7 +731,7 @@ class TestEntryTraceBasic:
 
         class Test1:
             @etrace
-            def f1(self, *args: tuple[Any]) -> str:
+            def f1(self, *args: Any) -> str:
                 ret_str = ""
                 for arg in args:
                     ret_str = f"{ret_str}{arg} "
@@ -877,7 +877,7 @@ class TestEntryTraceBasic:
         class Test1:
             @etrace
             @staticmethod
-            def f1(*args: tuple[Any]) -> str:
+            def f1(*args: Any) -> str:
                 ret_str = ""
                 for arg in args:
                     ret_str = f"{ret_str}{arg} "
@@ -1023,7 +1023,7 @@ class TestEntryTraceBasic:
         class Test1:
             @etrace
             @classmethod
-            def f1(cls, *args: tuple) -> str:
+            def f1(cls, *args: Any) -> str:
                 ret_str = ""
                 for arg in args:
                     ret_str = f"{ret_str}{arg} "
@@ -1174,7 +1174,7 @@ class TestEntryTraceBasic:
 
         class Test1:
             @etrace
-            def __init__(self, *args: tuple[Any, ...]) -> None:
+            def __init__(self, *args: Any) -> None:
                 self.args_str = ""
                 for arg in args:
                     self.args_str = f"{self.args_str}{arg} "
@@ -1798,7 +1798,7 @@ class TestEntryTraceCombos:
         ################################################################
         # choose the target function or method
         ################################################################
-        target_rtn: Callable[[], None]
+        target_rtn: Callable[[], None] | type[Target]
         if target_type_arg == FunctionType.Function:
             target_rtn = f1
             target_line_num = inspect.getsourcelines(f1)[1]
@@ -1958,6 +1958,7 @@ class TestEntryTraceCombos:
         ################################################################
         # choose the target function or method
         ################################################################
+        target_rtn: Callable[[], None] | type[Target]
         if target_type_arg == FunctionType.Function:
             target_rtn = f1
             target_line_num = inspect.getsourcelines(f1)[1]
@@ -2336,7 +2337,6 @@ class TestEntryTraceCombos:
         def f1(
             a1: Optional[str] = None,
             a2: Optional[int] = None,
-            /,
             a3: Optional[str] = None,
             a4: Optional[list[Any]] = None,
             *,
@@ -2455,6 +2455,19 @@ class TestEntryTraceCombos:
         ################################################################
         # choose the target function or method
         ################################################################
+        target_rtn: Callable[
+            [
+                str | None,
+                int | None,
+                str | None,
+                list[Any] | None,
+                DefaultNamedArg(int, "kw1"),
+                DefaultNamedArg(float, "kw2"),
+                DefaultNamedArg(str, "kw3"),
+                DefaultNamedArg(list[Any] | None, "kw4"),
+            ],
+            list[str | int | list[Any] | float | None],
+        ]
         if target_type_arg == FunctionType.Function:
             target_rtn = f1
             target_line_num = inspect.getsourcelines(f1)[1]

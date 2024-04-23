@@ -152,7 +152,7 @@ from collections.abc import Iterable
 import functools
 import inspect
 import logging
-from typing import Any, Callable, cast, Optional, TypeVar, Union
+from typing import Any, Callable, cast, Optional, overload, TypeVar, Union
 
 ########################################################################
 # Third Party
@@ -167,6 +167,27 @@ logger = logging.getLogger(__name__)
 # etrace decorator
 ####################################################################
 F = TypeVar("F", bound=Callable[..., Any])
+
+
+@overload
+def etrace(
+    wrapped: F,
+    *,
+    enable_trace: Union[bool, Callable[..., bool]] = True,
+    omit_parms: Optional[Iterable[str]] = None,
+    omit_return_value: bool = False,
+) -> F:
+    pass
+
+
+@overload
+def etrace(
+    *,
+    enable_trace: Union[bool, Callable[..., bool]] = True,
+    omit_parms: Optional[Iterable[str]] = None,
+    omit_return_value: bool = False,
+) -> Callable[[F], F]:
+    pass
 
 
 def etrace(

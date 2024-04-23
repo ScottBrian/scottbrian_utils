@@ -9,18 +9,20 @@ from enum import Enum, auto
 import itertools as it
 import more_itertools as mi
 import logging
-import numpy as np
+
 import datetime
 import re
 
 import threading
 import time
-from typing import Optional, Union
+from typing import Any, cast, Optional, Union
 import warnings
 
 ########################################################################
 # Third Party
 ########################################################################
+import numpy as np
+import numpy.typing as npt
 import pytest
 
 ########################################################################
@@ -76,7 +78,7 @@ class LogItemDescriptor:
     log_name: str
     level: int
     fullmatch: bool = False
-    c_pattern: re.Pattern[str] = ""
+    c_pattern: re.Pattern[str] = cast(re.Pattern[str], "")
 
 
 @dataclass
@@ -150,7 +152,7 @@ class LogVerifier:
         self.patterns: list[LogItemDescriptor] = []
         self.log_msgs: list[LogItemDescriptor] = []
 
-        self.matches_array: list[np.array] = []
+        self.matches_array: list[Any] = []
 
         for log_name in log_names:
             self.loggers[log_name] = logging.getLogger(log_name)
@@ -173,17 +175,17 @@ class LogVerifier:
 
         self.log_results: MatchResults = MatchResults()
 
-        self.print_matched_arg = None
+        self.print_matched_arg: bool | None = None
         self.print_matched = True
 
-        self.start_time = 0
+        self.start_time = 0.0
 
     def issue_log_msg(
         self,
         log_msg: str,
         level: int = logging.DEBUG,
         log_name: Optional[str] = None,
-    ):
+    ) -> None:
         if log_name is None:
             log_name = self.log_name
         self.loggers[log_name].log(level, log_msg)
@@ -221,7 +223,7 @@ class LogVerifier:
 
         return ret_pattern
 
-    def verify_captured(self, expected_result: str):
+    def verify_captured(self, expected_result: str) -> None:
         """Verify the captured match results.
 
         Args:
@@ -498,11 +500,11 @@ class LogVerifier:
                     return False
         return True
 
-    def build_ver_record(self):
+    def build_ver_record(self) -> None:
         self.get_ver_output_lines()
         self.build_scenarios()
 
-    def get_ver_output_lines(self):
+    def get_ver_output_lines(self) -> None:
         results_asterisks = "************************************************"
         results_line = "*             log verifier results             *"
         dt_format_1 = get_datetime_match_string(format_str="%a %b %d %Y %H:%M:%S")
@@ -643,7 +645,8 @@ class LogVerifier:
         for idx in range(start_idx + 4, len(captured_lines)):
             if captured_lines[idx] == "":
                 ret_section.end_idx = idx
-                return ret_section
+                break
+                # return ret_section
             else:
                 if section_type == "unmatched_patterns":
                     rsplit_actual = captured_lines[idx].rsplit(maxsplit=4)
@@ -675,8 +678,9 @@ class LogVerifier:
                     num_counted_unmatched=0,
                     num_counted_matched=0,
                 )
+        return ret_section
 
-    def build_scenarios(self):
+    def build_scenarios(self) -> None:
 
         patterns_len = len(self.patterns)
         log_msgs_len = len(self.log_msgs)
@@ -707,7 +711,8 @@ class LogVerifier:
         for idx, match_perm in enumerate(
             it.permutations(self.matches_array, min_desc_len)
         ):
-            diag_match_array = np.array(match_perm)
+            # diag_match_array: npt.ArrayLike = np.array(match_perm)
+            diag_match_array: Any = np.array(match_perm)
             num_matched_items = np.trace(diag_match_array)
             max_matched_msgs = max(max_matched_msgs, num_matched_items)
 
@@ -2313,7 +2318,7 @@ class TestLogVerCombos:
             num_exp_accumulator: NumExpectedAccumulator,
             num_match_patterns: int,
             num_fullmatch_patterns: int,
-            num_log_msgs,
+            num_log_msgs: int,
         ) -> None:
             input_surplus_match_patterns = (
                 num_exp_accumulator.num_surplus_match_patterns
@@ -2598,8 +2603,8 @@ class TestLogVerCombos:
     @pytest.mark.parametrize("print_matched_arg", [True, False])
     def test_log_verifier_contention(
         self,
-        msgs_arg: Iterable[tuple[str]],
-        patterns_arg: Iterable[tuple[str]],
+        msgs_arg: list[str],
+        patterns_arg: list[str],
         print_matched_arg: bool,
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
@@ -2643,8 +2648,8 @@ class TestLogVerCombos:
 
         def build_search_array(
             search_array: dict[int, ItemTracker],
-            search_args: Iterable[tuple[str]],
-            target_args: Iterable[tuple[str]],
+            search_args: list[str],
+            target_args: list[str],
             matched_array: dict[str, set[str]],
         ) -> None:
             for idx in range(len(search_args)):
@@ -2781,10 +2786,12 @@ class TestLogVerCombos:
         sort_x_y_x_msg = find_x_y_x(msgs_arg_list)
         sort_x_y_x_pattern = find_x_y_x(patterns_arg_list)
 
-        def sort_items(items: list[str], ref_list: list[str], sort_x_y_item: str):
+        def sort_items(
+            items: list[str], ref_list: list[str], sort_x_y_item: str
+        ) -> list[str]:
             x_y_z_item_found = False
 
-            def sort_rtn(item):
+            def sort_rtn(item: str) -> int:
                 nonlocal x_y_z_item_found
                 if item == sort_x_y_item:
                     if x_y_z_item_found:
@@ -2796,10 +2803,10 @@ class TestLogVerCombos:
             items.sort(key=sort_rtn)
             return items
 
-        test_matched_found_msgs_list = []
-        test_unmatched_found_msgs_list = []
-        test_matched_found_patterns_list = []
-        test_unmatched_found_patterns_list = []
+        test_matched_found_msgs_list: list[list[str]] = []
+        test_unmatched_found_msgs_list: list[list[str]] = []
+        test_matched_found_patterns_list: list[list[str]] = []
+        test_unmatched_found_patterns_list: list[list[str]] = []
 
         if patterns_arg and msgs_arg:
 
@@ -2809,7 +2816,7 @@ class TestLogVerCombos:
                 test_matched_found_items_list: list[list[str]],
                 test_unmatched_found_items_list: list[list[str]],
                 sort_x_y_x_item: str,
-            ):
+            ) -> None:
                 for perm_idx in it.permutations(range(len(item_array))):
                     item_combo_lists = []
                     for idx in perm_idx:
@@ -2822,23 +2829,32 @@ class TestLogVerCombos:
                             item_combo_lists.append(c_items)
                         else:
                             item_combo_lists.append(["none"])
-                    item_prods = ""
+
+                    item_prods: Iterable[tuple[str, ...]]
                     if len(item_combo_lists) == 1:
-                        item_prods = it.product(
-                            item_combo_lists[0],
+                        item_prods = list(
+                            it.product(
+                                item_combo_lists[0],
+                            )
                         )
                     elif len(item_combo_lists) == 2:
-                        item_prods = it.product(
-                            item_combo_lists[0],
-                            item_combo_lists[1],
+                        item_prods = list(
+                            it.product(
+                                item_combo_lists[0],
+                                item_combo_lists[1],
+                            )
                         )
                     elif len(item_combo_lists) == 3:
-                        item_prods = it.product(
-                            item_combo_lists[0],
-                            item_combo_lists[1],
-                            item_combo_lists[2],
+                        item_prods = list(
+                            it.product(
+                                item_combo_lists[0],
+                                item_combo_lists[1],
+                                item_combo_lists[2],
+                            )
                         )
-                    item_prods = list(item_prods)
+                    else:
+                        item_prods = [tuple("")]
+
                     for item_prod in item_prods:
                         test_found_items = []
                         items_arg_copy = items_arg_list.copy()
@@ -2892,7 +2908,7 @@ class TestLogVerCombos:
             matched_items: list[str],
             unmatched_items: list[str],
             items_arg_list: list[str],
-        ):
+        ) -> tuple[int, int, int, int]:
             num_matched_items_agreed = 0
             num_matched_items_not_agreed = 0
             num_unmatched_items_agreed = 0
