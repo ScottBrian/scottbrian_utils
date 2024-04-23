@@ -14,7 +14,7 @@ import logging
 import more_itertools as mi
 import re
 
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Iterator, Optional, Union
 
 ########################################################################
 # Third Party
@@ -1023,7 +1023,7 @@ class TestEntryTraceBasic:
         class Test1:
             @etrace
             @classmethod
-            def f1(cls, *args: tuple[Any]) -> str:
+            def f1(cls, *args: tuple) -> str:
                 ret_str = ""
                 for arg in args:
                     ret_str = f"{ret_str}{arg} "
@@ -1174,13 +1174,13 @@ class TestEntryTraceBasic:
 
         class Test1:
             @etrace
-            def __init__(self, *args: tuple[Any]) -> None:
+            def __init__(self, *args: tuple[Any, ...]) -> None:
                 self.args_str = ""
                 for arg in args:
                     self.args_str = f"{self.args_str}{arg} "
 
             @classmethod
-            def f1(cls):
+            def f1(cls) -> None:
                 pass
 
         ################################################################
@@ -1325,7 +1325,7 @@ class TestEntryTraceCombos:
             log_result: str = ""
             ret_result: str = ""
 
-            def __add__(self, other: "ArgSpecRetRes"):
+            def __add__(self, other: "ArgSpecRetRes") -> "ArgSpecRetRes":
                 new_arg_spec = (self.arg_spec + other.arg_spec)[0:-2]
                 new_log_result = self.log_result + other.log_result
                 new_ret_result = self.ret_result + other.ret_result
@@ -1343,7 +1343,7 @@ class TestEntryTraceCombos:
             )
             omit_parms: list[str] = field(default_factory=list)
 
-            def __add__(self, other: "OmitVariation"):
+            def __add__(self, other: "OmitVariation") -> "OmitVariation":
                 combo_ret_reses = list(
                     it.product(self.arg_specs_ret_reses, other.arg_specs_ret_reses)
                 )
@@ -1375,7 +1375,7 @@ class TestEntryTraceCombos:
             )
             plist: str = ""
 
-            def __add__(self, other: "PlistSection"):
+            def __add__(self, other: "PlistSection") -> "PlistSection":
                 combo_omit_variations = list(
                     it.product(self.omit_variations, other.omit_variations)
                 )
@@ -1416,16 +1416,22 @@ class TestEntryTraceCombos:
                 num_po: int = 0,
                 num_pk: int = 0,
                 num_ko: int = 0,
-            ):
+            ) -> None:
                 self.num_po = num_po
                 self.num_pk = num_pk
                 self.num_ko = num_ko
 
-                self.raw_po_parms = list(self.raw_parms[PlistType.Po][0:num_po])
-                self.raw_pk_parms = list(self.raw_parms[PlistType.Pk][0:num_pk])
-                self.raw_ko_parms = list(self.raw_parms[PlistType.Ko][0:num_ko])
+                self.raw_po_parms: list[str] = list(
+                    self.raw_parms[PlistType.Po][0:num_po]
+                )
+                self.raw_pk_parms: list[str] = list(
+                    self.raw_parms[PlistType.Pk][0:num_pk]
+                )
+                self.raw_ko_parms: list[str] = list(
+                    self.raw_parms[PlistType.Ko][0:num_ko]
+                )
 
-                self.ret_stmt = "".join(
+                self.ret_stmt: str = "".join(
                     list(
                         map(
                             self.set_ret_stmt,
@@ -1457,21 +1463,31 @@ class TestEntryTraceCombos:
                     it.product(self.po_pk_sections, self.ko_sections),
                 )
 
-            def build_po_pk_arg_specs(self, num_pk: int):
-                po_raw_arg_spec = [list(map(self.set_po_args, self.raw_po_parms))]
+            def build_po_pk_arg_specs(self, num_pk: int) -> list[list[str]]:
+                po_raw_arg_spec: list[list[str]] = [
+                    list(map(self.set_po_args, self.raw_po_parms))
+                ]
 
-                pk_raw_arg_specs = self.build_pk_arg_specs(num_pk=num_pk)
+                pk_raw_arg_specs: list[list[str]] | Iterator[list[str]] = (
+                    self.build_pk_arg_specs(num_pk=num_pk)
+                )
 
-                pre_raw_arg_specs = list(it.product(po_raw_arg_spec, pk_raw_arg_specs))
+                pre_raw_arg_specs: list[tuple[list[str], list[str]]] = list(
+                    it.product(po_raw_arg_spec, pk_raw_arg_specs)
+                )
 
-                specs = [spec_item[0] + spec_item[1] for spec_item in pre_raw_arg_specs]
+                specs: list[list[str]] = [
+                    spec_item[0] + spec_item[1] for spec_item in pre_raw_arg_specs
+                ]
 
                 return specs
 
-            def build_pk_arg_specs(self, num_pk: int):
-                arg_spec = [[]]
+            def build_pk_arg_specs(
+                self, num_pk: int
+            ) -> list[list[str]] | Iterator[list[str]]:
+                arg_spec: list[list[str]] | Iterator[list[str]] = [[]]
                 if num_pk:
-                    p_or_k_array = [0] * num_pk + [1] * num_pk
+                    p_or_k_array: list[int] = [0] * num_pk + [1] * num_pk
 
                     arg_spec = map(
                         self.do_pk_args, mi.sliding_window(p_or_k_array, num_pk)
@@ -1479,7 +1495,11 @@ class TestEntryTraceCombos:
                 return arg_spec
 
             def build_plist_section(
-                self, plist_parms, raw_arg_specs, prefix_idx, suffix_idx
+                self,
+                plist_parms: list[str],
+                raw_arg_specs: list[list[str]],
+                prefix_idx: int,
+                suffix_idx: int,
             ) -> Iterable[PlistSection]:
                 if plist_parms:
                     def_array = [1] * len(plist_parms) + [2] * len(plist_parms)
@@ -1495,7 +1515,7 @@ class TestEntryTraceCombos:
                 )
                 return map(do_star2, mi.sliding_window(def_array, len(plist_parms)))
 
-            def do_pk_args(self, p_or_k_array):
+            def do_pk_args(self, p_or_k_array: tuple[int, ...]) -> list[str]:
                 return list(
                     it.starmap(self.set_pk_args, zip(self.raw_pk_parms, p_or_k_array))
                 )
@@ -1553,14 +1573,14 @@ class TestEntryTraceCombos:
                         raw_arg_specs=raw_arg_specs,
                     )
 
-                    arg_specs_ret_reses = list(
+                    arg_specs_ret_reses: list[Iterable[ArgSpecRetRes]] = list(
                         map(
                             do_star_arg_spec2,
                             mi.sliding_window(arg_spec_array, len(def_list)),
                         )
                     )
 
-                    final_arg_specs = []
+                    final_arg_specs: list[ArgSpecRetRes] = []
                     for item in arg_specs_ret_reses:
                         final_arg_specs += item
 
