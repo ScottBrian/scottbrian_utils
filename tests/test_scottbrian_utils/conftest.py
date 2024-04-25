@@ -91,7 +91,7 @@ def thread_exc(monkeypatch: Any) -> Generator[ExcHook, None, None]:
         a thread exception handler
 
     """
-    logger.debug(f"hook before: {threading.excepthook}")
+    # logger.debug(f"hook before: {threading.excepthook}")
     exc_hook = ExcHook()
 
     def mock_threading_excepthook(args: Any) -> None:
@@ -115,17 +115,27 @@ def thread_exc(monkeypatch: Any) -> Generator[ExcHook, None, None]:
         traceback.print_tb(args.exc_traceback)
         logger.debug(exc_err_msg)
         current_thread = threading.current_thread()
+        logging.exception(f"exception caught for {current_thread}")
         logger.debug(f"excepthook current thread is {current_thread}")
         # ExcHook.exc_err_msg1 = exc_err_msg
         exc_hook.exc_err_msg1 = exc_err_msg
         raise Exception(f"Test case thread test error: {exc_err_msg}")
 
     monkeypatch.setattr(threading, "excepthook", mock_threading_excepthook)
-    logger.debug(f"hook after: {threading.excepthook}")
+    # logger.debug(f"hook after: {threading.excepthook}")
     new_hook = threading.excepthook
 
     yield exc_hook
+
+    # surface any remote thread uncaught exceptions
     exc_hook.raise_exc_if_one()
+
+    # the following check ensures that the test case waited via join for
+    # any started threads to come home
+    if threading.active_count() > 1:
+        for thread in threading.enumerate():
+            print(f"conftest thread: {thread}")
+    assert threading.active_count() == 1
 
     # the following assert ensures -p no:threadexception was specified
     assert threading.excepthook == new_hook

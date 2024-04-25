@@ -14,7 +14,8 @@ import logging
 import more_itertools as mi
 import re
 
-from typing import Any, Callable, DefaultNamedArg, Iterator, Optional, Union
+from typing import Any, Callable, Iterator, Optional, Union
+from typing_extensions import Protocol
 
 ########################################################################
 # Third Party
@@ -2330,6 +2331,20 @@ class TestEntryTraceCombos:
 
         omit_parms_list: list[str] = omit_p_args_arg.copy() + omit_kwargs_arg.copy()
 
+        class CallTarget(Protocol):
+            def __call__(  # noqa E704
+                self,
+                a1: Optional[str] = None,
+                a2: Optional[int] = None,
+                a3: Optional[str] = None,
+                a4: Optional[list[Any]] = None,
+                *,
+                kw1: int = 111,
+                kw2: float = 22.22,
+                kw3: str = "threes_company",
+                kw4: Optional[list[Any]] = None,
+            ) -> Any: ...
+
         @etrace(
             omit_parms=omit_parms_list,
             omit_return_value=omit_ret_val_arg,
@@ -2455,19 +2470,7 @@ class TestEntryTraceCombos:
         ################################################################
         # choose the target function or method
         ################################################################
-        target_rtn: Callable[
-            [
-                str | None,
-                int | None,
-                str | None,
-                list[Any] | None,
-                DefaultNamedArg(int, "kw1"),
-                DefaultNamedArg(float, "kw2"),
-                DefaultNamedArg(str, "kw3"),
-                DefaultNamedArg(list[Any] | None, "kw4"),
-            ],
-            list[str | int | list[Any] | float | None],
-        ]
+        target_rtn: CallTarget | Callable[[str | int | list[Any] | float | None], Any]
         if target_type_arg == FunctionType.Function:
             target_rtn = f1
             target_line_num = inspect.getsourcelines(f1)[1]
