@@ -945,6 +945,46 @@ class LogVer:
         print(print_stats)
 
         ################################################################
+        # df_print_spec
+        ################################################################
+        @dataclass
+        class df_print_spec:
+            columns: list[str]
+            header: list[str]
+            formatters: dict[str, str]
+
+        def get_print_spec(
+            df: pd.DataFrame,
+            all_cols: list[str],
+            left_justify_cols: list[str],
+        ) -> df_print_spec:
+            def left_justify(len):
+                def format(v):
+                    return f"{str(v):<{len}}"
+
+                return format
+
+            ret_cols: list[str] = []
+            formatters: dict[str, str] = {}
+            header: list[str] = []
+
+            for col_name in all_cols:
+                ret_cols.append(col_name)
+                if col_name in left_justify_cols:
+                    maxlen = df[col_name].astype(str).str.len().max()
+                    maxlen = max(maxlen, len(col_name))
+                    formatters[col_name] = left_justify(maxlen)
+                    header.append(col_name.ljust(maxlen))
+                else:
+                    header.append(col_name)
+
+            return df_print_spec(
+                columns=ret_cols,
+                header=header,
+                formatters=formatters,
+            )
+
+        ################################################################
         # print unmatched patterns
         ################################################################
         print_flower_box_msg("unmatched patterns:")
@@ -955,8 +995,9 @@ class LogVer:
         if unmatched_pattern_df.empty:
             print("*** no unmatched patterns found ***")
         else:
-            unmatched_pattern_print = unmatched_pattern_df.to_string(
-                columns=[
+            print_spec = get_print_spec(
+                df=unmatched_pattern_df,
+                all_cols=[
                     "log_name",
                     "level",
                     "pattern",
@@ -965,6 +1006,16 @@ class LogVer:
                     "matched",
                     "unmatched",
                 ],
+                left_justify_cols=[
+                    "log_name",
+                    "pattern",
+                    "fullmatch",
+                ],
+            )
+            unmatched_pattern_print = unmatched_pattern_df.to_string(
+                formatters=print_spec.formatters,
+                columns=print_spec.columns,
+                header=print_spec.header,
                 index=False,
             )
             print(unmatched_pattern_print)

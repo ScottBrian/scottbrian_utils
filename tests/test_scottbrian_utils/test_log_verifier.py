@@ -1145,6 +1145,72 @@ class TestLogVerExamples:
 
         test_log_ver.verify_captured(expected_result=expected_result)
 
+    ####################################################################
+    # test_log_verifier_example6
+    ####################################################################
+    def test_log_verifier_example6(
+        self, capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test log_verifier example5 for add_pattern.
+
+        Args:
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+
+        """
+        # add two log messages, each different level
+        t_logger = logging.getLogger("example_6")
+        log_ver = LogVer("example_6")
+        log_msg0 = "a"
+        log_msg1 = "hello world for the best day ever"
+        log_msg2 = "good"
+        log_ver.add_pattern(pattern=log_msg0)
+        log_ver.add_pattern(pattern=log_msg1, fullmatch=False)
+        log_ver.add_pattern(pattern=log_msg2)
+        # t_logger.debug(log_msg1)
+        # t_logger.error(log_msg2)
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        # log_ver.verify_match_results(match_results)
+
+        expected_result = "\n"
+        expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
+        expected_result += "*                summary stats                 *\n"
+        expected_result += "************************************************\n"
+        expected_result += "    type  records  matched  unmatched\n"
+        expected_result += "patterns        2        2          0\n"
+        expected_result += "log_msgs        2        2          0\n"
+        expected_result += "\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched patterns: *\n"
+        expected_result += "***********************\n"
+        expected_result += "*** no unmatched patterns found ***\n"
+        expected_result += "\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched log_msgs: *\n"
+        expected_result += "***********************\n"
+        expected_result += "*** no unmatched log messages found ***\n"
+        expected_result += "\n"
+        expected_result += "***********************\n"
+        expected_result += "*  matched log_msgs:  *\n"
+        expected_result += "***********************\n"
+        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
+        expected_result += "example_5     10   hello        1        1          0\n"
+        expected_result += "example_5     40 goodbye        1        1          0\n"
+
+        # test_log_ver = LogVerifier(
+        #     log_names=["example_5"], capsys_to_use=capsys, caplog_to_use=caplog
+        # )
+        #
+        # test_log_ver.verify_captured(expected_result=expected_result)
+
 
 ########################################################################
 # TestLogVerBasic class
