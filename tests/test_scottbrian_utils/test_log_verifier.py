@@ -401,6 +401,7 @@ class LogVerifier:
         ):
             return True
         else:
+            print(f"returning False: {ver_result=}")
             return False
 
     def verify_lines(
@@ -438,8 +439,8 @@ class LogVerifier:
             else:
                 assert len(log_section.line_items) > 0
 
-        max_log_name_len = 0
-        max_log_msg_len = 0
+        max_log_name_len = len("log_name")  # prime with hdr len
+        max_log_msg_len = len(item_text)  # prime with hdr len
         if matched_section:
             for item in matched_items:
                 max_log_name_len = max(max_log_name_len, len(item.log_name))
@@ -451,24 +452,27 @@ class LogVerifier:
 
         if exp_records:
             if item_text == "pattern":
-                fullmatch_text = "  fullmatch"
+                fullmatch_text = " fullmatch"
             else:
                 fullmatch_text = ""
 
             expected_hdr_line = (
-                " " * (max_log_name_len - len("log_name"))
-                + "log_name"
-                + " "
+                "log_name"
+                + " " * (max_log_name_len - len("log_name"))
                 + " level"
                 + " "
-                + " " * (max_log_msg_len - len(item_text))
                 + item_text
+                + " " * (max_log_msg_len - len(item_text))
                 + fullmatch_text
-                + "  records"
-                + "  matched"
-                + "  unmatched"
+                + " records"
+                + " matched"
+                + " unmatched"
             )
             if log_section.hdr_line != expected_hdr_line:
+                print(
+                    f"verify_lines returning False 1: "
+                    f"\n{log_section.hdr_line=} \n{expected_hdr_line=}"
+                )
                 return False
 
             for key in log_section.line_items.keys():
@@ -494,8 +498,18 @@ class LogVerifier:
 
             for key, line_item in log_section.line_items.items():
                 if line_item.num_actual_matches != line_item.num_counted_matched:
+                    print(
+                        f"verify_lines returning False 2: "
+                        f"\n{line_item.num_actual_matches=} "
+                        f"\n{line_item.num_counted_matched=}"
+                    )
                     return False
                 if line_item.num_actual_unmatches != line_item.num_counted_unmatched:
+                    print(
+                        f"verify_lines returning False 3 "
+                        f"\n{line_item.num_actual_unmatches=} "
+                        f"\n{line_item.num_counted_unmatched=}"
+                    )
                     return False
         return True
 
@@ -1278,81 +1292,90 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_alignment
     ####################################################################
-    @pytest.mark.parametrize("unmatched_pattern_1_arg", (True, False))
-    @pytest.mark.parametrize("unmatched_pattern_2_arg", (True, False))
-    @pytest.mark.parametrize("unmatched_pattern_6_arg", (True, False))
-    @pytest.mark.parametrize("unmatched_pattern_7_arg", (True, False))
-    @pytest.mark.parametrize("unmatched_pattern_8_arg", (True, False))
-    @pytest.mark.parametrize("unmatched_pattern_9_arg", (True, False))
-    @pytest.mark.parametrize("unmatched_pattern_10_arg", (True, False))
+    msgs = ["a", "ba", "edcba", "fedcba", "gfedcba", "hgfedcba", "ihgfedcba"]
+
+    msg_combos = mi.collapse(
+        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(8)),
+        base_type=tuple,
+    )
+
+    pattern_combos = mi.collapse(
+        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(8)),
+        base_type=tuple,
+    )
+
+    @pytest.mark.parametrize("msgs_arg", msg_combos)
+    @pytest.mark.parametrize("patterns_arg", pattern_combos)
+    @pytest.mark.parametrize("fullmatch_arg", [0, 1, 2])
+    # @pytest.mark.parametrize(
+    #     "log_name_arg",
+    #     ["l", "l2", "lo3456", "log4567", "log45678", "log456789", "log4567890"],
+    # )
+    @pytest.mark.parametrize(
+        "log_name_arg",
+        ["l"],
+    )
     def test_log_verifier_alignment(
-        self, capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture
+        self,
+        msgs_arg: tuple[str, ...],
+        patterns_arg: tuple[str, ...],
+        fullmatch_arg: int,
+        log_name_arg: str,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test log_verifier example5 for add_pattern.
 
         Args:
+            msgs_arg: msgs to issue to log
+            patterns_arg: patterns to try
+            log_name_arg: log name to use
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
 
         """
-        # add two log messages, each different level
-        t_logger = logging.getLogger("example_6")
-        log_ver = LogVer("example_6")
-        log_msg0 = "a"
-        log_msg1 = "hello world for the best day ever"
-        log_msg2 = "good"
-        log_msg3 = "this is not to be found"
-        log_msg4 = "oh oh"
-        log_msg5 = "yes yes"
-        log_ver.add_pattern(pattern=log_msg0)
-        log_ver.add_pattern(pattern=log_msg1, fullmatch=False)
-        log_ver.add_pattern(pattern=log_msg2)
-        log_ver.add_pattern(pattern=log_msg5)
-        t_logger.debug(log_msg1)
-        t_logger.debug(log_msg3)
-        t_logger.debug(log_msg4)
-        t_logger.debug(log_msg5)
-        match_results = log_ver.get_match_results(caplog=caplog)
-        log_ver.print_match_results(match_results, print_matched=True)
-        # log_ver.verify_match_results(match_results)
+        caplog.clear()
 
-        expected_result = "\n"
-        expected_result += "************************************************\n"
-        expected_result += "*             log verifier results             *\n"
-        expected_result += "************************************************\n"
-        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
-        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
-        expected_result += "Elapsed time: 0:00:00.006002\n"
-        expected_result += "\n"
-        expected_result += "************************************************\n"
-        expected_result += "*                summary stats                 *\n"
-        expected_result += "************************************************\n"
-        expected_result += "    type  records  matched  unmatched\n"
-        expected_result += "patterns        2        2          0\n"
-        expected_result += "log_msgs        2        2          0\n"
-        expected_result += "\n"
-        expected_result += "***********************\n"
-        expected_result += "* unmatched patterns: *\n"
-        expected_result += "***********************\n"
-        expected_result += "*** no unmatched patterns found ***\n"
-        expected_result += "\n"
-        expected_result += "***********************\n"
-        expected_result += "* unmatched log_msgs: *\n"
-        expected_result += "***********************\n"
-        expected_result += "*** no unmatched log messages found ***\n"
-        expected_result += "\n"
-        expected_result += "***********************\n"
-        expected_result += "*  matched log_msgs:  *\n"
-        expected_result += "***********************\n"
-        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += "example_5     10   hello        1        1          0\n"
-        expected_result += "example_5     40 goodbye        1        1          0\n"
+        test_log_ver = LogVerifier(
+            log_names=[log_name_arg], capsys_to_use=capsys, caplog_to_use=caplog
+        )
 
-        # test_log_ver = LogVerifier(
-        #     log_names=["example_5"], capsys_to_use=capsys, caplog_to_use=caplog
-        # )
-        #
-        # test_log_ver.verify_captured(expected_result=expected_result)
+        exp_num_unmatched_patterns = 0
+        exp_num_unmatched_log_msgs = 0
+        exp_num_matched_log_msgs = 0
+
+        for msg in msgs_arg:
+            test_log_ver.issue_log_msg(msg)
+            if msg in patterns_arg:
+                exp_num_matched_log_msgs += 1
+            else:
+                exp_num_unmatched_log_msgs += 1
+
+        for idx, pattern in enumerate(patterns_arg):
+            if pattern not in msgs_arg:
+                exp_num_unmatched_patterns += 1
+
+            if fullmatch_arg == 0:
+                test_log_ver.add_pattern(pattern=pattern)
+            elif fullmatch_arg == 1:
+                if idx % 2 == 0:
+                    test_log_ver.add_pattern(pattern=pattern, fullmatch=True)
+                else:
+                    test_log_ver.add_pattern(pattern=pattern)
+            else:  # fullmatch == 2
+                test_log_ver.add_pattern(pattern=pattern, fullmatch=True)
+
+        ################################################################
+        # verify results
+        ################################################################
+
+        test_log_ver.verify_results(
+            print_only=False,
+            print_matched=True,
+            exp_num_unmatched_patterns=exp_num_unmatched_patterns,
+            exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
+            exp_num_matched_log_msgs=exp_num_matched_log_msgs,
+        )
 
     ####################################################################
     # test_log_verifier_no_match1
