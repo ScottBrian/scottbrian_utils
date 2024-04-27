@@ -245,7 +245,7 @@ class LogVerifier:
         assert len(captured_lines) > 6
 
         for idx in range(4):
-            assert expected_lines[idx] == captured_lines[idx]
+            assert captured_lines[idx] == expected_lines[idx]
 
         assert start_pattern_regex.fullmatch(expected_lines[4])
         print(f"{start_pattern_regex}")
@@ -254,7 +254,7 @@ class LogVerifier:
         assert elapsed_time_pattern_regex.fullmatch(expected_lines[6])
 
         for idx in range(7, len(captured_lines)):
-            assert expected_lines[idx] == captured_lines[idx]
+            assert captured_lines[idx] == expected_lines[idx]
 
     def verify_results(
         self,
@@ -862,8 +862,8 @@ class TestLogVerExamples:
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += "example_1     10   hello        1        1          0\n"
+        expected_result += "log_name  level log_msg records matched unmatched\n"
+        expected_result += "example_1    10 hello         1       1         0\n"
 
         test_log_ver = LogVerifier(
             log_names=["example_1"], capsys_to_use=capsys, caplog_to_use=caplog
@@ -916,10 +916,10 @@ class TestLogVerExamples:
         expected_result += "* unmatched patterns: *\n"
         expected_result += "***********************\n"
         expected_result += (
-            " log_name  level pattern  fullmatch  records  matched  unmatched\n"
+            "log_name  level pattern fullmatch records matched unmatched\n"
         )
         expected_result += (
-            "example_2     10 goodbye       True        1        0          1\n"
+            "example_2    10 goodbye True            1       0         1\n"
         )
         expected_result += "\n"
         expected_result += "***********************\n"
@@ -930,8 +930,8 @@ class TestLogVerExamples:
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += "example_2     10   hello        1        1          0\n"
+        expected_result += "log_name  level log_msg records matched unmatched\n"
+        expected_result += "example_2    10 hello         1       1         0\n"
 
         test_log_ver = LogVerifier(
             log_names=["example_2"], capsys_to_use=capsys, caplog_to_use=caplog
@@ -989,14 +989,14 @@ class TestLogVerExamples:
         expected_result += "***********************\n"
         expected_result += "* unmatched log_msgs: *\n"
         expected_result += "***********************\n"
-        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += "example_3     10 goodbye        1        0          1\n"
+        expected_result += "log_name  level log_msg records matched unmatched\n"
+        expected_result += "example_3    10 goodbye       1       0         1\n"
         expected_result += "\n"
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += "example_3     10   hello        1        1          0\n"
+        expected_result += "log_name  level log_msg records matched unmatched\n"
+        expected_result += "example_3    10 hello         1       1         0\n"
 
         test_log_ver = LogVerifier(
             log_names=["example_3"], capsys_to_use=capsys, caplog_to_use=caplog
@@ -1053,27 +1053,23 @@ class TestLogVerExamples:
         expected_result += "* unmatched patterns: *\n"
         expected_result += "***********************\n"
         expected_result += (
-            " log_name  level pattern  fullmatch  records  matched  unmatched\n"
+            "log_name  level pattern fullmatch records matched unmatched\n"
         )
         expected_result += (
-            "example_4     10 goodbye       True        1        0          1\n"
+            "example_4    10 goodbye True            1       0         1\n"
         )
         expected_result += "\n"
         expected_result += "***********************\n"
         expected_result += "* unmatched log_msgs: *\n"
         expected_result += "***********************\n"
-        expected_result += (
-            " log_name  level      log_msg  records  matched  unmatched\n"
-        )
-        expected_result += (
-            "example_4     10 see you soon        1        0          1\n"
-        )
+        expected_result += "log_name  level log_msg      records matched unmatched\n"
+        expected_result += "example_4    10 see you soon       1       0         1\n"
         expected_result += "\n"
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += "example_4     10   hello        1        1          0\n"
+        expected_result += "log_name  level log_msg records matched unmatched\n"
+        expected_result += "example_4    10 hello         1       1         0\n"
 
         test_log_ver = LogVerifier(
             log_names=["example_4"], capsys_to_use=capsys, caplog_to_use=caplog
@@ -1135,9 +1131,9 @@ class TestLogVerExamples:
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
-        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += "example_5     10   hello        1        1          0\n"
-        expected_result += "example_5     40 goodbye        1        1          0\n"
+        expected_result += "log_name  level log_msg records matched unmatched\n"
+        expected_result += "example_5    10 hello         1       1         0\n"
+        expected_result += "example_5    40 goodbye       1       1         0\n"
 
         test_log_ver = LogVerifier(
             log_names=["example_5"], capsys_to_use=capsys, caplog_to_use=caplog
@@ -1164,11 +1160,17 @@ class TestLogVerExamples:
         log_msg0 = "a"
         log_msg1 = "hello world for the best day ever"
         log_msg2 = "good"
+        log_msg3 = "this is not to be found"
+        log_msg4 = "oh oh"
+        log_msg5 = "yes yes"
         log_ver.add_pattern(pattern=log_msg0)
         log_ver.add_pattern(pattern=log_msg1, fullmatch=False)
         log_ver.add_pattern(pattern=log_msg2)
-        # t_logger.debug(log_msg1)
-        # t_logger.error(log_msg2)
+        log_ver.add_pattern(pattern=log_msg5)
+        t_logger.debug(log_msg1)
+        t_logger.debug(log_msg3)
+        t_logger.debug(log_msg4)
+        t_logger.debug(log_msg5)
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
         # log_ver.verify_match_results(match_results)
@@ -1272,6 +1274,85 @@ class TestLogVerBasic:
 
         expected = "LogVer(log_name='simple_repr2_log_name')\n"
         assert captured == expected
+
+    ####################################################################
+    # test_log_verifier_alignment
+    ####################################################################
+    @pytest.mark.parametrize("unmatched_pattern_1_arg", (True, False))
+    @pytest.mark.parametrize("unmatched_pattern_2_arg", (True, False))
+    @pytest.mark.parametrize("unmatched_pattern_6_arg", (True, False))
+    @pytest.mark.parametrize("unmatched_pattern_7_arg", (True, False))
+    @pytest.mark.parametrize("unmatched_pattern_8_arg", (True, False))
+    @pytest.mark.parametrize("unmatched_pattern_9_arg", (True, False))
+    @pytest.mark.parametrize("unmatched_pattern_10_arg", (True, False))
+    def test_log_verifier_alignment(
+        self, capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test log_verifier example5 for add_pattern.
+
+        Args:
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+
+        """
+        # add two log messages, each different level
+        t_logger = logging.getLogger("example_6")
+        log_ver = LogVer("example_6")
+        log_msg0 = "a"
+        log_msg1 = "hello world for the best day ever"
+        log_msg2 = "good"
+        log_msg3 = "this is not to be found"
+        log_msg4 = "oh oh"
+        log_msg5 = "yes yes"
+        log_ver.add_pattern(pattern=log_msg0)
+        log_ver.add_pattern(pattern=log_msg1, fullmatch=False)
+        log_ver.add_pattern(pattern=log_msg2)
+        log_ver.add_pattern(pattern=log_msg5)
+        t_logger.debug(log_msg1)
+        t_logger.debug(log_msg3)
+        t_logger.debug(log_msg4)
+        t_logger.debug(log_msg5)
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        # log_ver.verify_match_results(match_results)
+
+        expected_result = "\n"
+        expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
+        expected_result += "*                summary stats                 *\n"
+        expected_result += "************************************************\n"
+        expected_result += "    type  records  matched  unmatched\n"
+        expected_result += "patterns        2        2          0\n"
+        expected_result += "log_msgs        2        2          0\n"
+        expected_result += "\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched patterns: *\n"
+        expected_result += "***********************\n"
+        expected_result += "*** no unmatched patterns found ***\n"
+        expected_result += "\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched log_msgs: *\n"
+        expected_result += "***********************\n"
+        expected_result += "*** no unmatched log messages found ***\n"
+        expected_result += "\n"
+        expected_result += "***********************\n"
+        expected_result += "*  matched log_msgs:  *\n"
+        expected_result += "***********************\n"
+        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
+        expected_result += "example_5     10   hello        1        1          0\n"
+        expected_result += "example_5     40 goodbye        1        1          0\n"
+
+        # test_log_ver = LogVerifier(
+        #     log_names=["example_5"], capsys_to_use=capsys, caplog_to_use=caplog
+        # )
+        #
+        # test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_no_match1

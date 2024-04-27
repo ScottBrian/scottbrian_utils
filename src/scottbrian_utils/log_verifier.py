@@ -248,7 +248,7 @@ import logging
 import pandas as pd  # type: ignore
 import pytest
 
-from typing import Optional, Type, TYPE_CHECKING, Union
+from typing import Callable, Optional, Type, TYPE_CHECKING, Union
 import warnings
 
 ########################################################################
@@ -945,46 +945,6 @@ class LogVer:
         print(print_stats)
 
         ################################################################
-        # df_print_spec
-        ################################################################
-        @dataclass
-        class df_print_spec:
-            columns: list[str]
-            header: list[str]
-            formatters: dict[str, str]
-
-        def get_print_spec(
-            df: pd.DataFrame,
-            all_cols: list[str],
-            left_justify_cols: list[str],
-        ) -> df_print_spec:
-            def left_justify(len):
-                def format(v):
-                    return f"{str(v):<{len}}"
-
-                return format
-
-            ret_cols: list[str] = []
-            formatters: dict[str, str] = {}
-            header: list[str] = []
-
-            for col_name in all_cols:
-                ret_cols.append(col_name)
-                if col_name in left_justify_cols:
-                    maxlen = df[col_name].astype(str).str.len().max()
-                    maxlen = max(maxlen, len(col_name))
-                    formatters[col_name] = left_justify(maxlen)
-                    header.append(col_name.ljust(maxlen))
-                else:
-                    header.append(col_name)
-
-            return df_print_spec(
-                columns=ret_cols,
-                header=header,
-                formatters=formatters,
-            )
-
-        ################################################################
         # print unmatched patterns
         ################################################################
         print_flower_box_msg("unmatched patterns:")
@@ -995,9 +955,9 @@ class LogVer:
         if unmatched_pattern_df.empty:
             print("*** no unmatched patterns found ***")
         else:
-            print_spec = get_print_spec(
-                df=unmatched_pattern_df,
-                all_cols=[
+            self.print_df(
+                df_to_print=unmatched_pattern_df,
+                col_names=[
                     "log_name",
                     "level",
                     "pattern",
@@ -1006,19 +966,12 @@ class LogVer:
                     "matched",
                     "unmatched",
                 ],
-                left_justify_cols=[
+                left_justify_col_names=[
                     "log_name",
                     "pattern",
                     "fullmatch",
                 ],
             )
-            unmatched_pattern_print = unmatched_pattern_df.to_string(
-                formatters=print_spec.formatters,
-                columns=print_spec.columns,
-                header=print_spec.header,
-                index=False,
-            )
-            print(unmatched_pattern_print)
 
         ################################################################
         # print unmatched log messages
@@ -1032,8 +985,9 @@ class LogVer:
         if unmatched_msg_df.empty:
             print("*** no unmatched log messages found ***")
         else:
-            unmatched_msg_print = unmatched_msg_df.to_string(
-                columns=[
+            self.print_df(
+                df_to_print=unmatched_msg_df,
+                col_names=[
                     "log_name",
                     "level",
                     "log_msg",
@@ -1041,9 +995,11 @@ class LogVer:
                     "matched",
                     "unmatched",
                 ],
-                index=False,
+                left_justify_col_names=[
+                    "log_name",
+                    "log_msg",
+                ],
             )
-            print(unmatched_msg_print)
 
         ################################################################
         # print matched log messages
@@ -1057,8 +1013,9 @@ class LogVer:
             if matched_msg_df.empty:
                 print("*** no matched log messages found ***")
             else:
-                matched_msg_print = matched_msg_df.to_string(
-                    columns=[
+                self.print_df(
+                    df_to_print=matched_msg_df,
+                    col_names=[
                         "log_name",
                         "level",
                         "log_msg",
@@ -1066,9 +1023,61 @@ class LogVer:
                         "matched",
                         "unmatched",
                     ],
-                    index=False,
+                    left_justify_col_names=[
+                        "log_name",
+                        "log_msg",
+                    ],
                 )
-                print(matched_msg_print)
+
+    ####################################################################
+    # print_df
+    ####################################################################
+    @staticmethod
+    def print_df(
+        df_to_print: pd.DataFrame,
+        col_names: list[str],
+        left_justify_col_names: list[str],
+    ) -> None:
+        """Prin the data set to screen.
+
+        Args:
+            df_to_print: the dataframe to print
+            col_names: list of column names to be printed
+            left_justify_col_names: list of column names to be printed
+                left justified
+
+        """
+
+        ################################################################
+        # get_left_justify_rtn
+        ################################################################
+        def get_left_justify_rtn(val_str_len) -> Callable[[str | bool], str]:
+            def left_justify(value: str | bool) -> str:
+                return f"{str(value):<{val_str_len}}"
+
+            return left_justify
+
+        formatters: dict[str, Callable[[str | bool], str]] = {}
+        header: list[str] = []
+
+        # we build a dictionary of functions keyed by column names that
+        for col_name in col_names:
+            if col_name in left_justify_col_names:
+                maxlen = max(
+                    df_to_print[col_name].astype(str).str.len().max(), len(col_name)
+                )
+                formatters[col_name] = get_left_justify_rtn(maxlen)
+                header.append(col_name.ljust(maxlen))
+            else:
+                header.append(col_name)
+
+        df_print_str = df_to_print.to_string(
+            formatters=formatters,
+            columns=col_names,
+            header=header,
+            index=False,
+        )
+        print(df_print_str)
 
     ####################################################################
     # verify log messages
