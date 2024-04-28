@@ -1155,82 +1155,6 @@ class TestLogVerExamples:
 
         test_log_ver.verify_captured(expected_result=expected_result)
 
-    ####################################################################
-    # test_log_verifier_example6
-    ####################################################################
-    def test_log_verifier_example6(
-        self, capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture
-    ) -> None:
-        """Test log_verifier example5 for add_pattern.
-
-        Args:
-            capsys: pytest fixture to capture print output
-            caplog: pytest fixture to capture log output
-
-        """
-        # add two log messages, each different level
-        t_logger = logging.getLogger("example_6")
-        log_ver = LogVer("example_6")
-        log_msg0 = "a"
-        log_msg1 = "hello world for the best day ever"
-        log_msg2 = "good"
-        log_msg3 = "this is not to be found"
-        log_msg4 = "oh oh"
-        log_msg5 = "yes yes"
-        log_ver.add_pattern(pattern=log_msg0)
-        log_ver.add_pattern(pattern=log_msg1, fullmatch=False)
-        log_ver.add_pattern(pattern=log_msg2)
-        log_ver.add_pattern(pattern=log_msg5)
-        t_logger.debug(log_msg1)
-        t_logger.debug(log_msg3)
-        t_logger.debug(log_msg4)
-        t_logger.debug(log_msg5)
-        match_results = log_ver.get_match_results(caplog=caplog)
-
-        # print(f"\n{match_results.pattern_grp.loc[0, "level"]=}")
-        # match_results.pattern_grp.loc[0, "level"] = 99999999999999
-        # print(f"\n{match_results.pattern_grp.loc[0, "level"]=}")
-        log_ver.print_match_results(match_results, print_matched=True)
-        # log_ver.verify_match_results(match_results)
-
-        expected_result = "\n"
-        expected_result += "************************************************\n"
-        expected_result += "*             log verifier results             *\n"
-        expected_result += "************************************************\n"
-        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
-        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
-        expected_result += "Elapsed time: 0:00:00.006002\n"
-        expected_result += "\n"
-        expected_result += "************************************************\n"
-        expected_result += "*                summary stats                 *\n"
-        expected_result += "************************************************\n"
-        expected_result += "    type  records  matched  unmatched\n"
-        expected_result += "patterns        2        2          0\n"
-        expected_result += "log_msgs        2        2          0\n"
-        expected_result += "\n"
-        expected_result += "***********************\n"
-        expected_result += "* unmatched patterns: *\n"
-        expected_result += "***********************\n"
-        expected_result += "*** no unmatched patterns found ***\n"
-        expected_result += "\n"
-        expected_result += "***********************\n"
-        expected_result += "* unmatched log_msgs: *\n"
-        expected_result += "***********************\n"
-        expected_result += "*** no unmatched log messages found ***\n"
-        expected_result += "\n"
-        expected_result += "***********************\n"
-        expected_result += "*  matched log_msgs:  *\n"
-        expected_result += "***********************\n"
-        expected_result += " log_name  level log_msg  records  matched  unmatched\n"
-        expected_result += "example_5     10   hello        1        1          0\n"
-        expected_result += "example_5     40 goodbye        1        1          0\n"
-
-        # test_log_ver = LogVerifier(
-        #     log_names=["example_5"], capsys_to_use=capsys, caplog_to_use=caplog
-        # )
-        #
-        # test_log_ver.verify_captured(expected_result=expected_result)
-
 
 ########################################################################
 # TestLogVerBasic class
@@ -1494,13 +1418,107 @@ class TestLogVerBasic:
             )
             expected_result += f"{log_name}    10 {log_msg}       1       1         0\n"
 
-        # print(expected_result)
-
         test_log_ver = LogVerifier(
             log_names=[log_name_arg], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
         test_log_ver.verify_captured(expected_result=expected_result)
+
+    ####################################################################
+    # test_log_verifier_alignment
+    ####################################################################
+    msgs = ["fedcb6", "gfedcb7", "hgfedcb8", "ihgfedcb9", "jihgfedcb0"]
+
+    msg_combos = mi.collapse(
+        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(8)),
+        base_type=tuple,
+    )
+
+    pattern_combos = mi.collapse(
+        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(8)),
+        base_type=tuple,
+    )
+
+    @pytest.mark.parametrize("msgs_arg", msg_combos)
+    @pytest.mark.parametrize("patterns_arg", pattern_combos)
+    @pytest.mark.parametrize("fullmatch_arg", [0, 1, 2])
+    def test_log_verifier_alignment3(
+        self,
+        msgs_arg: tuple[str, ...],
+        patterns_arg: tuple[str, ...],
+        fullmatch_arg: int,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test log_verifier example5 for add_pattern.
+
+        Args:
+            msgs_arg: msgs to issue to log
+            patterns_arg: patterns to try
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+
+        """
+        caplog.clear()
+
+        log_names = ["log4567", "log45678", "log456789", "log4567890"]
+        test_log_ver = LogVerifier(
+            log_names=log_names, capsys_to_use=capsys, caplog_to_use=caplog
+        )
+
+        exp_num_unmatched_patterns = 0
+        exp_num_unmatched_log_msgs = 0
+        exp_num_matched_log_msgs = 0
+
+        for idx, msg in enumerate(msgs_arg):
+            log_name_idx = idx % len(log_names)
+            test_log_ver.issue_log_msg(log_msg=msg, log_name=log_names[log_name_idx])
+            if msg in patterns_arg:
+                exp_num_matched_log_msgs += 1
+            else:
+                exp_num_unmatched_log_msgs += 1
+
+        for idx, pattern in enumerate(patterns_arg):
+            log_name_idx = idx % len(log_names)
+            if pattern in msgs_arg:
+                msg_idx = msgs_arg.index(pattern)
+                log_name_idx = msg_idx % len(log_names)
+            else:
+                exp_num_unmatched_patterns += 1
+
+            if fullmatch_arg == 0:
+                test_log_ver.add_pattern(
+                    pattern=pattern, fullmatch=False, log_name=log_names[log_name_idx]
+                )
+            elif fullmatch_arg == 1:
+                if idx % 2 == 0:
+                    test_log_ver.add_pattern(
+                        pattern=pattern,
+                        fullmatch=True,
+                        log_name=log_names[log_name_idx],
+                    )
+                else:
+                    test_log_ver.add_pattern(
+                        pattern=pattern,
+                        fullmatch=False,
+                        log_name=log_names[log_name_idx],
+                    )
+            else:  # fullmatch == 2
+                test_log_ver.add_pattern(
+                    pattern=pattern, fullmatch=True, log_name=log_names[log_name_idx]
+                )
+
+        ################################################################
+        # verify results
+        ################################################################
+
+        test_log_ver.verify_results(
+            print_only=False,
+            print_matched=True,
+            exp_num_unmatched_patterns=exp_num_unmatched_patterns,
+            exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
+            exp_num_matched_log_msgs=exp_num_matched_log_msgs,
+        )
 
     ####################################################################
     # test_log_verifier_no_match1
@@ -1571,10 +1589,10 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         if num_patterns_arg:
             expected_result += (
-                " log_name  level pattern  fullmatch  records  matched  unmatched\n"
+                "log_name  level pattern fullmatch records matched unmatched\n"
             )
             expected_result += (
-                f"no_match1     10       a       True {num_patterns_arg:>8} {0:>8} "
+                f"no_match1    10 a       True     {num_patterns_arg:>8}{0:>8}"
                 f"{num_patterns_arg:>10}\n"
             )
         else:
@@ -1585,9 +1603,9 @@ class TestLogVerBasic:
         expected_result += "* unmatched log_msgs: *\n"
         expected_result += "***********************\n"
         if num_log_msgs_arg:
-            expected_result += " log_name  level log_msg  records  matched  unmatched\n"
+            expected_result += "log_name  level log_msg records matched unmatched\n"
             expected_result += (
-                f"no_match1     10       b {num_log_msgs_arg:>8} {0:>8} "
+                f"no_match1    10 b      {num_log_msgs_arg:>8}{0:>8}"
                 f"{num_log_msgs_arg:>10}\n"
             )
         else:
@@ -1713,12 +1731,12 @@ class TestLogVerBasic:
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
         expected_result += (
-            f"    log_name  level {hdr_log_msg:>{hdr_log_msg_width}} "
-            f" records  matched  unmatched\n"
+            f"log_name     level {hdr_log_msg:>{hdr_log_msg_width}} "
+            f"records matched unmatched\n"
         )
         expected_result += (
-            f"simple_match     10 {simple_str_arg:>{hdr_log_msg_width}} "
-            f"       1        1          0\n"
+            f"simple_match    10 {simple_str_arg:<{hdr_log_msg_width}} "
+            f"      1       1         0\n"
         )
 
         test_log_ver = LogVerifier(
@@ -2085,12 +2103,12 @@ class TestLogVerBasic:
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
         expected_result += (
-            f"  log_name  level {hdr_log_msg:>{hdr_log_msg_width}} "
-            f" records  matched  unmatched\n"
+            f"log_name   level {hdr_log_msg:<{hdr_log_msg_width}} "
+            f"records matched unmatched\n"
         )
         expected_result += (
-            f"time_match     10 {act_msg:>{hdr_log_msg_width}} "
-            f"       1        1          0\n"
+            f"time_match    10 {act_msg:<{hdr_log_msg_width}} "
+            f"      1       1         0\n"
         )
 
         test_log_ver = LogVerifier(
@@ -2131,8 +2149,7 @@ class TestLogVerBasic:
         )
         log_ver.verify_match_results(match_results)
 
-        hdr_log_msg = "log_msg"
-        hdr_log_msg_width = max(len(hdr_log_msg), (len(simple_str_arg) + 4))
+        hdr_log_msg = "log_msg".ljust(max(len("log_msg"), (len(simple_str_arg) + 4)))
 
         expected_result = "\n"
         expected_result += "************************************************\n"
@@ -2162,13 +2179,10 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
+        expected_result += f"log_name level {hdr_log_msg} records matched unmatched\n"
         expected_result += (
-            f"log_name  level {hdr_log_msg:>{hdr_log_msg_width}} "
-            f" records  matched  unmatched\n"
-        )
-        expected_result += (
-            f"call_seq     10 {simple_str_arg:>{hdr_log_msg_width - 4}}:123 "
-            f"       1        1          0\n"
+            f"call_seq    10 {simple_str_arg+':123':<{len(hdr_log_msg)}} "
+            f"      1       1         0\n"
         )
 
         test_log_ver = LogVerifier(
@@ -2209,8 +2223,7 @@ class TestLogVerBasic:
         )
         log_ver.verify_match_results(match_results)
 
-        hdr_log_msg = "log_msg"
-        hdr_log_msg_width = max(len(hdr_log_msg), len(my_seq))
+        hdr_log_msg = "log_msg".ljust(max(len("log_msg"), len(my_seq)))
 
         expected_result = "\n"
         expected_result += "************************************************\n"
@@ -2240,13 +2253,9 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
+        expected_result += f"log_name  level {hdr_log_msg} records matched unmatched\n"
         expected_result += (
-            f" log_name  level {hdr_log_msg:>{hdr_log_msg_width}} "
-            f" records  matched  unmatched\n"
-        )
-        expected_result += (
-            f"call_seq2     10 {my_seq:>{hdr_log_msg_width}} "
-            f"       1        1          0\n"
+            f"call_seq2    10 {my_seq:<{len(hdr_log_msg)}}       1       1         0\n"
         )
 
         test_log_ver = LogVerifier(
@@ -2303,8 +2312,7 @@ class TestLogVerBasic:
         )
         log_ver.verify_match_results(match_results)
 
-        hdr_log_msg = "log_msg"
-        hdr_log_msg_width = max(len(hdr_log_msg), len(log_msg))
+        hdr_log_msg = "log_msg".ljust(max(len("log_msg"), len(log_msg)))
 
         expected_result = "\n"
         expected_result += "************************************************\n"
@@ -2334,13 +2342,10 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += "*  matched log_msgs:  *\n"
         expected_result += "***********************\n"
+        expected_result += f"log_name  level {hdr_log_msg} records matched unmatched\n"
         expected_result += (
-            f" log_name  level {hdr_log_msg:>{hdr_log_msg_width}} "
-            f" records  matched  unmatched\n"
-        )
-        expected_result += (
-            f"call_seq3     10 {log_msg:>{hdr_log_msg_width}} "
-            f"       1        1          0\n"
+            f"call_seq3    10 {log_msg:<{len(hdr_log_msg)}} "
+            f"      1       1         0\n"
         )
 
         test_log_ver = LogVerifier(
@@ -2417,13 +2422,6 @@ class TestLogVerBasic:
     @pytest.mark.parametrize("log_2_diff_levels_arg", [True, False])
     @pytest.mark.parametrize("log_3_diff_levels_arg", [True, False])
     @pytest.mark.parametrize("print_matched_arg", [True, False])
-    # @pytest.mark.parametrize("num_log_1_msgs_arg", [1])
-    # @pytest.mark.parametrize("num_log_2_msgs_arg", [1])
-    # @pytest.mark.parametrize("num_log_3_msgs_arg", [0])
-    # @pytest.mark.parametrize("log_1_diff_levels_arg", [True])
-    # @pytest.mark.parametrize("log_2_diff_levels_arg", [True])
-    # @pytest.mark.parametrize("log_3_diff_levels_arg", [True])
-    # @pytest.mark.parametrize("print_matched_arg", [True, False])
     def test_log_verifier_multi_loggers(
         self,
         num_log_1_msgs_arg: int,
