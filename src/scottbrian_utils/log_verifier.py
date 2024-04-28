@@ -339,7 +339,7 @@ class LogVer:
     ####################################################################
     # __init__
     ####################################################################
-    def __init__(self, log_name: str = "root") -> None:
+    def __init__(self, log_name: str = "root", col_width: int = 64) -> None:
         """Initialize a LogVer object.
 
         Args:
@@ -361,6 +361,7 @@ class LogVer:
             ]
         ] = []
         self.log_name = log_name
+        self.col_width = col_width
         self.start_DT = datetime.now()
         self.end_DT = datetime.now()
 
@@ -1032,8 +1033,8 @@ class LogVer:
     ####################################################################
     # print_df
     ####################################################################
-    @staticmethod
     def print_df(
+        self,
         df_to_print: pd.DataFrame,
         col_names: list[str],
         left_justify_col_names: list[str],
@@ -1066,6 +1067,7 @@ class LogVer:
                 maxlen = max(
                     df_to_print[col_name].astype(str).str.len().max(), len(col_name)
                 )
+                maxlen = min(maxlen, self.col_width)
                 formatters[col_name] = get_left_justify_rtn(maxlen)
                 header.append(col_name.ljust(maxlen))
             else:
@@ -1076,6 +1078,7 @@ class LogVer:
             columns=col_names,
             header=header,
             index=False,
+            # max_colwidth=self.col_width,
         )
         print(df_print_str)
 
