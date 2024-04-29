@@ -133,6 +133,7 @@ class LogVerifier:
         log_names: list[str],
         capsys_to_use: pytest.CaptureFixture[str],
         caplog_to_use: pytest.LogCaptureFixture,
+        str_col_width: Optional[int] = None,
         level: int = logging.DEBUG,
     ):
         """Initialize the test log verification.
@@ -146,6 +147,7 @@ class LogVerifier:
         """
         self.log_name: str = log_names[0]
         self.log_names: list[str] = log_names
+        self.str_col_width = str_col_width
         self.capsys_to_use = capsys_to_use
         self.caplog_to_use = caplog_to_use
         self.level = level
@@ -661,7 +663,6 @@ class LogVerifier:
             if captured_lines[idx] == "":
                 ret_section.end_idx = idx
                 break
-                # return ret_section
             else:
                 if section_type == "unmatched_patterns":
                     rsplit_actual = captured_lines[idx].rsplit(maxsplit=4)
@@ -1527,7 +1528,7 @@ class TestLogVerBasic:
     ####################################################################
     @pytest.mark.parametrize("msg_len_arg", range(1, 25))
     @pytest.mark.parametrize("pattern_len_arg", range(1, 25))
-    @pytest.mark.parametrize("col_width_arg", range(1, 25))
+    @pytest.mark.parametrize("col_width_arg", range(5, 25))
     def test_log_verifier_width1(
         self,
         msg_len_arg: int,
@@ -1546,20 +1547,39 @@ class TestLogVerBasic:
             caplog: pytest fixture to capture log output
 
         """
-        t_logger = logging.getLogger("width1_test")
-        log_ver = LogVer(log_name="width1_test", col_width=col_width_arg)
+        log_name = "width1_test"
+        t_logger = logging.getLogger(log_name)
+        log_ver = LogVer(log_name=log_name, str_col_width=col_width_arg)
 
         log_msg = string.ascii_lowercase[:msg_len_arg]
         pattern = string.ascii_lowercase[:pattern_len_arg]
 
-        log_name_hdr = "log_name".ljust(max(len("width1_test"), len("log_name")))
-        log_name = "width1_test".ljust(max(len("width1_test"), len("log_name")))
+        ################################################################
+        # log_name adjustments
+        ################################################################
+        log_name_width = min(max(col_width_arg, len("log_name")), len(log_name))
+        log_name_col_width = max(log_name_width, len("log_name"))
 
-        pattern_hdr = "pattern".ljust(max(len(pattern), len("pattern")))
-        pattern_str = pattern.ljust(max(len(pattern), len("pattern")))
+        log_name_str = log_name[:log_name_width].ljust(log_name_col_width)
+        log_name_hdr = "log_name".ljust(log_name_col_width)
 
-        log_msg_hdr = "log_msg".ljust(max(len(log_msg), len("log_msg")))
-        log_msg_str = log_msg.ljust(max(len(log_msg), len("log_msg")))
+        ################################################################
+        # pattern adjustments
+        ################################################################
+        pattern_width = min(max(col_width_arg, len("pattern")), len(pattern))
+        pattern_col_width = max(pattern_width, len("pattern"))
+
+        pattern_str = pattern[:pattern_width].ljust(pattern_col_width)
+        pattern_hdr = "pattern".ljust(pattern_col_width)
+
+        ################################################################
+        # log_msg adjustments
+        ################################################################
+        log_msg_width = min(max(col_width_arg, len("log_msg")), len(log_msg))
+        log_msg_col_width = max(log_msg_width, len("log_msg"))
+
+        log_msg_str = log_msg[:log_msg_width].ljust(log_msg_col_width)
+        log_msg_hdr = "log_msg".ljust(log_msg_col_width)
 
         if msg_len_arg == pattern_len_arg:
             match = 1
@@ -1601,9 +1621,7 @@ class TestLogVerBasic:
             expected_result += "*** no unmatched patterns found ***\n"
         else:
             expected_result += f"{log_name_hdr} level {pattern_hdr} fullmatch records matched unmatched\n"
-            expected_result += (
-                f"{log_name}    10 {pattern_str} True            1       0         1\n"
-            )
+            expected_result += f"{log_name_str}    10 {pattern_str} True            1       0         1\n"
 
         expected_result += "\n"
         expected_result += "***********************\n"
@@ -1617,7 +1635,7 @@ class TestLogVerBasic:
                 f"{log_name_hdr} level {log_msg_hdr} records matched unmatched\n"
             )
             expected_result += (
-                f"{log_name}    10 {log_msg_str}       1       0         1\n"
+                f"{log_name_str}    10 {log_msg_str}       1       0         1\n"
             )
 
         expected_result += "\n"
@@ -1631,21 +1649,21 @@ class TestLogVerBasic:
                 f"{log_name_hdr} level {log_msg_hdr} records matched unmatched\n"
             )
             expected_result += (
-                f"{log_name}    10 {log_msg_str}       1       1         0\n"
+                f"{log_name_str}    10 {log_msg_str}       1       1         0\n"
             )
 
         test_log_ver = LogVerifier(
             log_names=["width1_test"], capsys_to_use=capsys, caplog_to_use=caplog
         )
 
-        # test_log_ver.verify_captured(expected_result=expected_result)
+        test_log_ver.verify_captured(expected_result=expected_result)
 
     ####################################################################
     # test_log_verifier_alignment
     ####################################################################
-    @pytest.mark.parametrize("msg_len_arg", range(1, 32))
-    @pytest.mark.parametrize("pattern_len_arg", range(1, 32))
-    @pytest.mark.parametrize("col_width_arg", range(1, 32))
+    @pytest.mark.parametrize("msg_len_arg", range(1, 24))
+    @pytest.mark.parametrize("pattern_len_arg", range(1, 24))
+    @pytest.mark.parametrize("col_width_arg", range(5, 24))
     def test_log_verifier_width2(
         self,
         msg_len_arg: int,
@@ -1668,7 +1686,7 @@ class TestLogVerBasic:
 
         test_log_ver = LogVerifier(
             log_names=["width_test"],
-            col_width=col_width_arg,
+            str_col_width=col_width_arg,
             capsys_to_use=capsys,
             caplog_to_use=caplog,
         )
@@ -1689,20 +1707,12 @@ class TestLogVerBasic:
         test_log_ver.issue_log_msg(log_msg=log_msg)
         test_log_ver.add_pattern(pattern=pattern, fullmatch=True)
 
-        for idx, msg in enumerate(msgs_arg):
-            log_name_idx = idx % len(log_names)
-            test_log_ver.issue_log_msg(log_msg=msg, log_name=log_names[log_name_idx])
-            if msg in patterns_arg:
-                exp_num_matched_log_msgs += 1
-            else:
-                exp_num_unmatched_log_msgs += 1
-
         ################################################################
         # verify results
         ################################################################
 
         test_log_ver.verify_results(
-            print_only=True,
+            print_only=False,
             print_matched=True,
             exp_num_unmatched_patterns=exp_num_unmatched_patterns,
             exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,

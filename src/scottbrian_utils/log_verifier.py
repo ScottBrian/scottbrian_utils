@@ -339,11 +339,20 @@ class LogVer:
     ####################################################################
     # __init__
     ####################################################################
-    def __init__(self, log_name: str = "root", col_width: int = 64) -> None:
+    def __init__(
+        self, log_name: str = "root", str_col_width: Optional[int] = None
+    ) -> None:
         """Initialize a LogVer object.
 
         Args:
             log_name: name of the logger
+            str_col_width: If specifief, limits the maximum width for
+                string values in the display produced by method
+                print_match_results. The string values that are limited
+                are for columns *log_name*, *log_msg*, *pattern*, and
+                *fullmatch*. Note that the specified limit will be
+                adjusted to be no less that the width of the column
+                header.
 
         Example: create a logger and a LogVer instance
         >>> logger = logging.getLogger('example_logger')
@@ -361,7 +370,7 @@ class LogVer:
             ]
         ] = []
         self.log_name = log_name
-        self.col_width = col_width
+        self.str_col_width = str_col_width
         self.start_DT = datetime.now()
         self.end_DT = datetime.now()
 
@@ -1054,7 +1063,11 @@ class LogVer:
         ################################################################
         def get_left_justify_rtn(val_str_len) -> Callable[[str | bool], str]:
             def left_justify(value: str | bool) -> str:
-                return f"{str(value):<{val_str_len}}"
+                if len(str(value)) > val_str_len:
+                    ret_str = str(value)[:val_str_len]
+                else:
+                    ret_str = str(value)
+                return f"{ret_str:<{val_str_len}}"
 
             return left_justify
 
@@ -1067,7 +1080,8 @@ class LogVer:
                 maxlen = max(
                     df_to_print[col_name].astype(str).str.len().max(), len(col_name)
                 )
-                maxlen = min(maxlen, self.col_width)
+                if self.str_col_width is not None:
+                    maxlen = min(maxlen, max(int(self.str_col_width), len(col_name)))
                 formatters[col_name] = get_left_justify_rtn(maxlen)
                 header.append(col_name.ljust(maxlen))
             else:
