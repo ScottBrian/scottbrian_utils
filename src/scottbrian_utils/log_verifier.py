@@ -286,6 +286,18 @@ class LogVerError(Exception):
     pass
 
 
+class InvalidLogNameSpecified(LogVerError):
+    """Invalid log name was specified during initialization."""
+
+    pass
+
+
+class InvalidStrColWidthSpecified(LogVerError):
+    """Invalid str_col_width was specified during initialization."""
+
+    pass
+
+
 class UnmatchedExpectedMessages(LogVerError):
     """Unmatched expected messages were found during verify."""
 
@@ -350,9 +362,8 @@ class LogVer:
                 string values in the display produced by method
                 print_match_results. The string values that are limited
                 are for columns *log_name*, *log_msg*, *pattern*, and
-                *fullmatch*. Note that the specified limit will be
-                adjusted to be no less that the width of the column
-                header.
+                *fullmatch*. The specified limit must be an int with a
+                value of 9 or greater.
 
         Example: create a logger and a LogVer instance
         >>> logger = logging.getLogger('example_logger')
@@ -360,6 +371,28 @@ class LogVer:
 
         """
         self.specified_args = locals()  # used for __repr__, see below
+
+        self.start_DT = datetime.now()
+        self.end_DT = datetime.now()
+
+        if isinstance(log_name, str):
+            self.log_name = log_name
+        else:
+            raise InvalidLogNameSpecified(
+                f"The specified log_name of {log_name} is invalid - it must be of "
+                f"type str."
+            )
+
+        if str_col_width is None or (
+            isinstance(str_col_width, int) and 9 <= str_col_width
+        ):
+            self.str_col_width = str_col_width
+        else:
+            raise InvalidStrColWidthSpecified(
+                f"The specified str_col_width of {str_col_width} is invalid - it must "
+                f"be an int value greater than or equal to 9."
+            )
+
         self.call_seqs: dict[str, str] = {}
         self.patterns: list[
             tuple[
@@ -369,10 +402,6 @@ class LogVer:
                 bool,
             ]
         ] = []
-        self.log_name = log_name
-        self.str_col_width = str_col_width
-        self.start_DT = datetime.now()
-        self.end_DT = datetime.now()
 
     ####################################################################
     # __repr__
@@ -1081,7 +1110,7 @@ class LogVer:
                     df_to_print[col_name].astype(str).str.len().max(), len(col_name)
                 )
                 if self.str_col_width is not None:
-                    maxlen = min(maxlen, max(int(self.str_col_width), len(col_name)))
+                    maxlen = min(maxlen, self.str_col_width)
                 formatters[col_name] = get_left_justify_rtn(maxlen)
                 header.append(col_name.ljust(maxlen))
             else:
@@ -1092,7 +1121,6 @@ class LogVer:
             columns=col_names,
             header=header,
             index=False,
-            # max_colwidth=self.col_width,
         )
         print(df_print_str)
 

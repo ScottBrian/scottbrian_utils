@@ -1163,7 +1163,7 @@ class TestLogVerExamples:
 # TestLogVerBasic class
 ########################################################################
 @pytest.mark.cover
-class TestLogVerBasic:
+class TestLogVerErrors:
     """Test basic functions of LogVer."""
 
     ####################################################################
@@ -1194,6 +1194,60 @@ class TestLogVerBasic:
             assert len(w) == 1
             assert issubclass(w[-1].category, DeprecationWarning)
             assert "deprecated" in str(w[-1].message)
+
+    ####################################################################
+    # test_log_verifier_log_name
+    ####################################################################
+    def test_log_verifier_log_name(
+        self,
+    ) -> None:
+        """Test log_verifier log name."""
+        log_ver = LogVer(log_name="good_name")
+
+        bad_log_name = 42
+        error_msg = (
+            f"The specified log_name {bad_log_name} is invalid - it must be "
+            f"of type str."
+        )
+        with pytest.raises(InvalidLogNameSpecified, match=error_msg):
+            log_ver2 = LogVer(log_name=bad_log_name)
+
+    ####################################################################
+    # test_log_verifier_str_col_width
+    ####################################################################
+    def test_log_verifier_str_col_width(
+        self,
+    ) -> None:
+        """Test log_verifier str_col_width."""
+        log_ver0 = LogVer(log_name="good_name0")
+
+        log_ver1 = LogVer(log_name="good_name1", str_col_width=None)
+
+        log_ver2 = LogVer(log_name="good_name2", str_col_width=9)
+
+        bad_str_col_width3= 8
+        error_msg = (
+            f"The specified str_col_width of {bad_str_col_width3} is invalid - it must "
+            f"be an int value greater than or equal to 9."
+        )
+        with pytest.raises(InvalidStrColWidthSpecified, match=error_msg):
+            log_ver3 = LogVer(log_name="good_name3", str_col_width=bad_str_col_width3)
+
+        bad_str_col_width4 = "9"
+        error_msg = (
+            f"The specified str_col_width of {bad_str_col_width4} is invalid - it must "
+            f"be an int value greater than or equal to 9."
+        )
+        with pytest.raises(InvalidStrColWidthSpecified, match=error_msg):
+            log_ver4 = LogVer(log_name="good_name4", str_col_width=bad_str_col_width4)
+
+
+########################################################################
+# TestLogVerBasic class
+########################################################################
+@pytest.mark.cover
+class TestLogVerBasic:
+    """Test basic functions of LogVer."""
 
     ####################################################################
     # test_log_verifier_repr
