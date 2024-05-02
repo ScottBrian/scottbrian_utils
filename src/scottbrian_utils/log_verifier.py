@@ -617,6 +617,22 @@ class LogVer:
         """
         self.start_DT = datetime.now()
 
+        msg_df = pd.DataFrame(
+            caplog.record_tuples,
+            columns=("log_name", "level", "log_msg"),
+        )
+
+        msg_grp = msg_df.groupby(msg_df.columns.tolist(), as_index=False).size()
+        msg_grp.rename(columns={"size": "records"}, inplace=True)
+
+        work_msg_grp = msg_grp.copy()
+
+        work_msg_grp["potential_matches"] = [set() for _ in range(len(work_msg_grp))]
+        work_msg_grp["num_potential_matches"] = 0
+        work_msg_grp.rename(columns={"records": "num_avail"}, inplace=True)
+
+        msg_grp["matched"] = 0
+
         pattern_df = pd.DataFrame(
             self.patterns,
             columns=("log_name", "level", "pattern", "fullmatch"),
@@ -636,22 +652,6 @@ class LogVer:
         work_pattern_grp.rename(columns={"records": "num_avail"}, inplace=True)
 
         pattern_grp["matched"] = 0
-
-        msg_df = pd.DataFrame(
-            caplog.record_tuples,
-            columns=("log_name", "level", "log_msg"),
-        )
-
-        msg_grp = msg_df.groupby(msg_df.columns.tolist(), as_index=False).size()
-        msg_grp.rename(columns={"size": "records"}, inplace=True)
-
-        work_msg_grp = msg_grp.copy()
-
-        work_msg_grp["potential_matches"] = [set() for _ in range(len(work_msg_grp))]
-        work_msg_grp["num_potential_matches"] = 0
-        work_msg_grp.rename(columns={"records": "num_avail"}, inplace=True)
-
-        msg_grp["matched"] = 0
 
         ################################################################
         # set potential matches in both data frames
@@ -1090,7 +1090,7 @@ class LogVer:
         ################################################################
         # get_left_justify_rtn
         ################################################################
-        def get_left_justify_rtn(val_str_len) -> Callable[[str | bool], str]:
+        def get_left_justify_rtn(val_str_len: int) -> Callable[[str | bool], str]:
             def left_justify(value: str | bool) -> str:
                 if len(str(value)) > val_str_len:
                     ret_str = str(value)[:val_str_len]

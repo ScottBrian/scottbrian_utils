@@ -33,6 +33,8 @@ from scottbrian_utils.diag_msg import get_formatted_call_sequence
 from scottbrian_utils.log_verifier import LogVer
 from scottbrian_utils.log_verifier import MatchResults
 from scottbrian_utils.log_verifier import (
+    InvalidLogNameSpecified,
+    InvalidStrColWidthSpecified,
     UnmatchedExpectedMessages,
     UnmatchedActualMessages,
     UnmatchedPatterns,
@@ -1202,15 +1204,15 @@ class TestLogVerErrors:
         self,
     ) -> None:
         """Test log_verifier log name."""
-        log_ver = LogVer(log_name="good_name")
+        LogVer(log_name="good_name")
 
         bad_log_name = 42
         error_msg = (
-            f"The specified log_name {bad_log_name} is invalid - it must be "
+            f"The specified log_name of {bad_log_name} is invalid - it must be "
             f"of type str."
         )
         with pytest.raises(InvalidLogNameSpecified, match=error_msg):
-            log_ver2 = LogVer(log_name=bad_log_name)
+            LogVer(log_name=bad_log_name)  # type: ignore
 
     ####################################################################
     # test_log_verifier_str_col_width
@@ -1219,19 +1221,19 @@ class TestLogVerErrors:
         self,
     ) -> None:
         """Test log_verifier str_col_width."""
-        log_ver0 = LogVer(log_name="good_name0")
+        LogVer(log_name="good_name0")
 
-        log_ver1 = LogVer(log_name="good_name1", str_col_width=None)
+        LogVer(log_name="good_name1", str_col_width=None)
 
-        log_ver2 = LogVer(log_name="good_name2", str_col_width=9)
+        LogVer(log_name="good_name2", str_col_width=9)
 
-        bad_str_col_width3= 8
+        bad_str_col_width3 = 8
         error_msg = (
             f"The specified str_col_width of {bad_str_col_width3} is invalid - it must "
             f"be an int value greater than or equal to 9."
         )
         with pytest.raises(InvalidStrColWidthSpecified, match=error_msg):
-            log_ver3 = LogVer(log_name="good_name3", str_col_width=bad_str_col_width3)
+            LogVer(log_name="good_name3", str_col_width=bad_str_col_width3)
 
         bad_str_col_width4 = "9"
         error_msg = (
@@ -1239,7 +1241,21 @@ class TestLogVerErrors:
             f"be an int value greater than or equal to 9."
         )
         with pytest.raises(InvalidStrColWidthSpecified, match=error_msg):
-            log_ver4 = LogVer(log_name="good_name4", str_col_width=bad_str_col_width4)
+            LogVer(
+                log_name="good_name4",
+                str_col_width=bad_str_col_width4,  # type: ignore
+            )
+
+        bad_str_col_width5 = 9.0
+        error_msg = (
+            f"The specified str_col_width of {bad_str_col_width5} is invalid - it must "
+            f"be an int value greater than or equal to 9."
+        )
+        with pytest.raises(InvalidStrColWidthSpecified, match=error_msg):
+            LogVer(
+                log_name="good_name4",
+                str_col_width=bad_str_col_width5,  # type: ignore
+            )
 
 
 ########################################################################
@@ -1445,7 +1461,10 @@ class TestLogVerBasic:
         if match:
             expected_result += "*** no unmatched patterns found ***\n"
         else:
-            expected_result += f"{log_name_hdr} level {pattern_hdr} fullmatch records matched unmatched\n"
+            expected_result += (
+                f"{log_name_hdr} level {pattern_hdr} "
+                f"fullmatch records matched unmatched\n"
+            )
             expected_result += (
                 f"{log_name}    10 {pattern} {fullmatch}       1       0         1\n"
             )
@@ -1582,7 +1601,7 @@ class TestLogVerBasic:
     ####################################################################
     @pytest.mark.parametrize("msg_len_arg", range(1, 25))
     @pytest.mark.parametrize("pattern_len_arg", range(1, 25))
-    @pytest.mark.parametrize("col_width_arg", range(5, 25))
+    @pytest.mark.parametrize("col_width_arg", range(9, 25))
     def test_log_verifier_width1(
         self,
         msg_len_arg: int,
@@ -1611,7 +1630,7 @@ class TestLogVerBasic:
         ################################################################
         # log_name adjustments
         ################################################################
-        log_name_width = min(max(col_width_arg, len("log_name")), len(log_name))
+        log_name_width = min(col_width_arg, len(log_name))
         log_name_col_width = max(log_name_width, len("log_name"))
 
         log_name_str = log_name[:log_name_width].ljust(log_name_col_width)
@@ -1620,7 +1639,7 @@ class TestLogVerBasic:
         ################################################################
         # pattern adjustments
         ################################################################
-        pattern_width = min(max(col_width_arg, len("pattern")), len(pattern))
+        pattern_width = min(col_width_arg, len(pattern))
         pattern_col_width = max(pattern_width, len("pattern"))
 
         pattern_str = pattern[:pattern_width].ljust(pattern_col_width)
@@ -1629,7 +1648,7 @@ class TestLogVerBasic:
         ################################################################
         # log_msg adjustments
         ################################################################
-        log_msg_width = min(max(col_width_arg, len("log_msg")), len(log_msg))
+        log_msg_width = min(col_width_arg, len(log_msg))
         log_msg_col_width = max(log_msg_width, len("log_msg"))
 
         log_msg_str = log_msg[:log_msg_width].ljust(log_msg_col_width)
@@ -1674,8 +1693,14 @@ class TestLogVerBasic:
         if match:
             expected_result += "*** no unmatched patterns found ***\n"
         else:
-            expected_result += f"{log_name_hdr} level {pattern_hdr} fullmatch records matched unmatched\n"
-            expected_result += f"{log_name_str}    10 {pattern_str} True            1       0         1\n"
+            expected_result += (
+                f"{log_name_hdr} level {pattern_hdr} "
+                f"fullmatch records matched unmatched\n"
+            )
+            expected_result += (
+                f"{log_name_str}    10 {pattern_str} "
+                f"True            1       0         1\n"
+            )
 
         expected_result += "\n"
         expected_result += "***********************\n"
@@ -1717,7 +1742,7 @@ class TestLogVerBasic:
     ####################################################################
     @pytest.mark.parametrize("msg_len_arg", range(1, 24))
     @pytest.mark.parametrize("pattern_len_arg", range(1, 24))
-    @pytest.mark.parametrize("col_width_arg", range(5, 24))
+    @pytest.mark.parametrize("col_width_arg", range(9, 24))
     def test_log_verifier_width2(
         self,
         msg_len_arg: int,
@@ -2434,7 +2459,7 @@ class TestLogVerBasic:
         expected_result += "***********************\n"
         expected_result += f"log_name level {hdr_log_msg} records matched unmatched\n"
         expected_result += (
-            f"call_seq    10 {simple_str_arg+':123':<{len(hdr_log_msg)}} "
+            f"call_seq    10 {simple_str_arg+':123':<{len(hdr_log_msg)}} "  # noqa E226
             f"      1       1         0\n"
         )
 
