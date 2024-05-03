@@ -705,10 +705,7 @@ class LogVer:
         ################################################################
         # settle matches
         ################################################################
-        num_loops = 0
         while True:
-            num_loops += 1
-
             work_pattern_grp = work_pattern_grp[
                 work_pattern_grp["num_potential_matches"] > 0
             ]
@@ -716,15 +713,11 @@ class LogVer:
                 break
 
             work_msg_grp = work_msg_grp[work_msg_grp["num_potential_matches"] > 0]
-            if work_msg_grp.empty:
-                break
+            # the work_pattern_grp being non-empty implies that
+            # work_msg_grp will also be non-empty
 
             p_min_potential_matches = work_pattern_grp["num_potential_matches"].min()
             m_min_potential_matches = work_msg_grp["num_potential_matches"].min()
-
-            min_potential_matches = min(
-                p_min_potential_matches, m_min_potential_matches
-            )
 
             if p_min_potential_matches <= m_min_potential_matches:
                 self.search_df(
@@ -732,7 +725,7 @@ class LogVer:
                     search_arg_df=pattern_grp,
                     search_targ_df=msg_grp,
                     targ_work_grp=work_msg_grp,
-                    min_potential_matches=min_potential_matches,
+                    min_potential_matches=p_min_potential_matches,
                 )
             else:
                 self.search_df(
@@ -740,7 +733,7 @@ class LogVer:
                     search_arg_df=msg_grp,
                     search_targ_df=pattern_grp,
                     targ_work_grp=work_pattern_grp,
-                    min_potential_matches=min_potential_matches,
+                    min_potential_matches=m_min_potential_matches,
                 )
 
         ################################################################
