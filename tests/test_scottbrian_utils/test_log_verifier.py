@@ -185,6 +185,33 @@ class LogVerifier:
 
         self.start_time = 0.0
 
+    def test_msg(
+        self,
+        log_msg: str,
+        level: int = logging.DEBUG,
+    ) -> None:
+
+        self.log_ver.test_msg(log_msg=log_msg, level=level)
+
+        # add the log_msg to track only if it was logged per level
+        if self.level <= level:
+            self.log_msgs.append(
+                LogItemDescriptor(
+                    log_name=self.log_name,
+                    level=level,
+                    item=log_msg,
+                )
+            )
+        pattern = re.escape(log_msg)
+        ret_pattern = LogItemDescriptor(
+            log_name=self.log_name,
+            level=level,
+            item=pattern,
+            c_pattern=re.compile(pattern),
+            fullmatch=True,
+        )
+        self.patterns.append(ret_pattern)
+
     def issue_log_msg(
         self,
         log_msg: str,
@@ -1160,6 +1187,64 @@ class TestLogVerExamples:
 
         test_log_ver.verify_captured(expected_result=expected_result)
 
+    ####################################################################
+    # test_log_verifier_example6
+    ####################################################################
+    def test_log_verifier_example6(
+        self, capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test log_verifier example6 for test_msg.
+
+        Args:
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+
+        """
+        # issue one test message
+        log_ver = LogVer("example_6")
+        log_ver.test_msg("my test message")
+
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+        expected_result = "\n"
+        expected_result += "************************************************\n"
+        expected_result += "*             log verifier results             *\n"
+        expected_result += "************************************************\n"
+        expected_result += "Start: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "End: Thu Apr 11 2024 19:24:28\n"
+        expected_result += "Elapsed time: 0:00:00.006002\n"
+        expected_result += "\n"
+        expected_result += "************************************************\n"
+        expected_result += "*                summary stats                 *\n"
+        expected_result += "************************************************\n"
+        expected_result += "    type  records  matched  unmatched\n"
+        expected_result += "patterns        1        1          0\n"
+        expected_result += "log_msgs        1        1          0\n"
+        expected_result += "\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched patterns: *\n"
+        expected_result += "***********************\n"
+        expected_result += "*** no unmatched patterns found ***\n"
+        expected_result += "\n"
+        expected_result += "***********************\n"
+        expected_result += "* unmatched log_msgs: *\n"
+        expected_result += "***********************\n"
+        expected_result += "*** no unmatched log messages found ***\n"
+        expected_result += "\n"
+        expected_result += "***********************\n"
+        expected_result += "*  matched log_msgs:  *\n"
+        expected_result += "***********************\n"
+        expected_result += "log_name  level log_msg         records matched unmatched\n"
+        expected_result += "example_6    10 my test message       1       1         0\n"
+
+        test_log_ver = LogVerifier(
+            log_names=["example_6"], capsys_to_use=capsys, caplog_to_use=caplog
+        )
+
+        test_log_ver.verify_captured(expected_result=expected_result)
+
 
 ########################################################################
 # TestLogVerBasic class
@@ -1289,6 +1374,62 @@ class TestLogVerBasic:
 
         expected = "LogVer(log_name='simple_repr2_log_name')\n"
         assert captured == expected
+
+    ####################################################################
+    # test_log_verifier_test_msg
+    ####################################################################
+    msgs = ["fedcb6", "gfedcb7", "hgfedcb8", "ihgfedcb9", "jihgfedcb0"]
+
+    msg_combos = mi.collapse(
+        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(8)),
+        base_type=tuple,
+    )
+
+    @pytest.mark.parametrize("msgs_arg", msg_combos)
+    @pytest.mark.parametrize(
+        "log_name_arg",
+        ["log4567", "log45678", "log456789", "log4567890"],
+    )
+    def test_log_verifier_test_msg(
+        self,
+        msgs_arg: tuple[str, ...],
+        log_name_arg: str,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test log_verifier example5 for add_pattern.
+
+        Args:
+            msgs_arg: msgs to issue to log
+            log_name_arg: log name to use
+            capsys: pytest fixture to capture print output
+            caplog: pytest fixture to capture log output
+
+        """
+        caplog.clear()
+
+        test_log_ver = LogVerifier(
+            log_names=[log_name_arg], capsys_to_use=capsys, caplog_to_use=caplog
+        )
+
+        exp_num_unmatched_patterns = 0
+        exp_num_unmatched_log_msgs = 0
+        exp_num_matched_log_msgs = len(msgs_arg)
+
+        for msg in msgs_arg:
+            test_log_ver.test_msg(msg)
+
+        ################################################################
+        # verify results
+        ################################################################
+
+        test_log_ver.verify_results(
+            print_only=False,
+            print_matched=True,
+            exp_num_unmatched_patterns=exp_num_unmatched_patterns,
+            exp_num_unmatched_log_msgs=exp_num_unmatched_log_msgs,
+            exp_num_matched_log_msgs=exp_num_matched_log_msgs,
+        )
 
     ####################################################################
     # test_log_verifier_alignment

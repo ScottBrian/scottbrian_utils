@@ -56,8 +56,8 @@ The output from ``LogVer.print_match_results()`` for test_example1::
         ***********************
         *  matched log_msgs:  *
         ***********************
-         log_name  level log_msg  records  matched  unmatched
-        example_1     10   hello        1        1          0
+        log_name  level log_msg records matched unmatched
+        example_1    10 hello         1       1         0
 
 :Example2: pytest test case expects two log records, only one is issued
 
@@ -98,8 +98,8 @@ The output from ``LogVer.print_match_results()`` for test_example2::
         ***********************
         * unmatched patterns: *
         ***********************
-         log_name  level pattern  fullmatch  records  matched  unmatched
-        example_2     10 goodbye       True        1        0          1
+        log_name  level pattern fullmatch records matched unmatched
+        example_2    10 goodbye True            1       0         1
 
         ***********************
         * unmatched log_msgs: *
@@ -109,8 +109,8 @@ The output from ``LogVer.print_match_results()`` for test_example2::
         ***********************
         *  matched log_msgs:  *
         ***********************
-         log_name  level log_msg  records  matched  unmatched
-        example_2     10   hello        1        1          0
+        log_name  level log_msg records matched unmatched
+        example_2    10 hello         1       1         0
 
 :Example3: pytest test case expects one log record, two were issued
 
@@ -157,14 +157,14 @@ The output from ``LogVer.print_match_results()`` for test_example3::
         ***********************
         * unmatched log_msgs: *
         ***********************
-         log_name  level log_msg  records  matched  unmatched
-        example_3     10 goodbye        1        0          1
+        log_name  level log_msg records matched unmatched
+        example_3    10 goodbye       1       0         1
 
         ***********************
         *  matched log_msgs:  *
         ***********************
-         log_name  level log_msg  records  matched  unmatched
-        example_3     10   hello        1        1          0
+        log_name  level log_msg records matched unmatched
+        example_3    10 hello         1       1         0
 
 :Example4: pytest test case expect two log records, two were issued,
            one different
@@ -209,20 +209,20 @@ The output from ``LogVer.print_match_results()`` for test_example4::
         ***********************
         * unmatched patterns: *
         ***********************
-         log_name  level pattern  fullmatch  records  matched  unmatched
-        example_4     10 goodbye       True        1        0          1
+        log_name  level pattern fullmatch records matched unmatched
+        example_4    10 goodbye True            1       0         1
 
         ***********************
         * unmatched log_msgs: *
         ***********************
-         log_name  level      log_msg  records  matched  unmatched
-        example_4     10 see you soon        1        0          1
+        log_name  level log_msg      records matched unmatched
+        example_4    10 see you soon       1       0         1
 
         ***********************
         *  matched log_msgs:  *
         ***********************
-         log_name  level log_msg  records  matched  unmatched
-        example_4     10   hello        1        1          0
+        log_name  level log_msg records matched unmatched
+        example_4    10 hello         1       1         0
 
 The log_verifier module contains:
 
@@ -247,6 +247,8 @@ import logging
 
 import pandas as pd  # type: ignore
 import pytest
+
+import re
 
 from typing import Callable, Optional, Type, TYPE_CHECKING, Union
 import warnings
@@ -382,6 +384,8 @@ class LogVer:
                 f"The specified log_name of {log_name} is invalid - it must be of "
                 f"type str."
             )
+
+        self.logger = logging.getLogger(log_name)
 
         if str_col_width is None or (
             isinstance(str_col_width, int) and 9 <= str_col_width
@@ -570,9 +574,9 @@ class LogVer:
             ***********************
             *  matched log_msgs:  *
             ***********************
-             log_name  level log_msg  records  matched  unmatched
-            example_5     10   hello        1        1          0
-            example_5     40 goodbye        1        1          0
+            log_name  level log_msg records matched unmatched
+            example_5    10 hello         1       1         0
+            example_5    40 goodbye       1       1         0
 
         """
         if log_name:
@@ -598,6 +602,78 @@ class LogVer:
                     False,
                 )
             )
+
+    ####################################################################
+    # msg
+    ####################################################################
+    def test_msg(
+        self,
+        log_msg: str,
+        level: int = logging.DEBUG,
+    ) -> None:
+        """Issue a log msg and add its pattern.
+
+        Args:
+            log_msg: log message to issue
+            level: logging level to use
+
+        Notes:
+
+            1) This method makes it easier to issue a log message in a
+               test case by also adding the pattern.
+
+        .. versionadded:: 3.0.0
+
+        Example: issue a test msg
+
+        .. code-block:: python
+
+            def test_example(caplog: pytest.LogCaptureFixture) -> None:
+                log_ver = LogVer("example_6")
+                log_ver.test_msg("my test message")
+
+                match_results = log_ver.get_match_results(caplog=caplog)
+                log_ver.print_match_results(match_results,
+                                            print_matched=True)
+                log_ver.verify_match_results(match_results)
+
+        The output from ``LogVer.print_match_results()`` for
+        test_example::
+
+            ************************************************
+            *             log verifier results             *
+            ************************************************
+            Start: Thu Apr 11 2024 19:24:28
+            End: Thu Apr 11 2024 19:24:28
+            Elapsed time: 0:00:00.006002
+
+            ************************************************
+            *                summary stats                 *
+            ************************************************
+                type  records  matched  unmatched
+            patterns        1        1          0
+            log_msgs        1        1          0
+
+            ***********************
+            * unmatched patterns: *
+            ***********************
+            *** no unmatched patterns found ***
+
+            ***********************
+            * unmatched log_msgs: *
+            ***********************
+            *** no unmatched log messages found ***
+
+            ***********************
+            *  matched log_msgs:  *
+            ***********************
+            log_name  level log_msg     records matched unmatched
+            example_6    10 my test msg       1       1         0
+
+
+        """
+        self.add_pattern(pattern=re.escape(log_msg), level=level)
+        self.logger.log(level=level, msg=log_msg, stacklevel=2)
 
     ####################################################################
     # get_match_results
