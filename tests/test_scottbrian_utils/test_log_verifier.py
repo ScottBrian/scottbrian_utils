@@ -1378,30 +1378,47 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_test_msg
     ####################################################################
-    msgs = ["fedcb6", "gfedcb7", "hgfedcb8", "ihgfedcb9", "jihgfedcb0"]
+    test_msgs = ["tmsg1", "t2_msg2", "test3_msg3"]
+
+    test_msg_combos = mi.collapse(
+        map(lambda n: it.combinations(TestLogVerBasic.test_msgs, n), range(3)),
+        base_type=tuple,
+    )
+    msgs = ["fedcb6", "gfedcb7", "hgfedcb8"]
 
     msg_combos = mi.collapse(
-        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(8)),
+        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(3)),
         base_type=tuple,
     )
 
+    pattern_combos = mi.collapse(
+        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(3)),
+        base_type=tuple,
+    )
+
+    @pytest.mark.parametrize("test_msgs_arg", test_msg_combos)
     @pytest.mark.parametrize("msgs_arg", msg_combos)
+    @pytest.mark.parametrize("patterns_arg", pattern_combos)
     @pytest.mark.parametrize(
         "log_name_arg",
         ["log4567", "log45678", "log456789", "log4567890"],
     )
     def test_log_verifier_test_msg(
         self,
+        test_msgs_arg: tuple[str, ...],
         msgs_arg: tuple[str, ...],
         log_name_arg: str,
+        patterns_arg: tuple[str, ...],
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test log_verifier example5 for add_pattern.
 
         Args:
+            test_msgs_arg: test messages to issue
             msgs_arg: msgs to issue to log
             log_name_arg: log name to use
+            patterns_arg: patterns to try
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
 
@@ -1414,10 +1431,22 @@ class TestLogVerBasic:
 
         exp_num_unmatched_patterns = 0
         exp_num_unmatched_log_msgs = 0
-        exp_num_matched_log_msgs = len(msgs_arg)
+        exp_num_matched_log_msgs = len(test_msgs_arg)
+
+        for test_msg in test_msgs_arg:
+            test_log_ver.test_msg(test_msg)
 
         for msg in msgs_arg:
-            test_log_ver.test_msg(msg)
+            test_log_ver.issue_log_msg(msg)
+            if msg in patterns_arg:
+                exp_num_matched_log_msgs += 1
+            else:
+                exp_num_unmatched_log_msgs += 1
+
+        for idx, pattern in enumerate(patterns_arg):
+            if pattern not in msgs_arg:
+                exp_num_unmatched_patterns += 1
+            test_log_ver.add_pattern(pattern=pattern, fullmatch=True)
 
         ################################################################
         # verify results
