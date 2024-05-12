@@ -176,6 +176,8 @@ def etrace(
     enable_trace: Union[bool, Callable[..., bool]] = True,
     omit_parms: Optional[Iterable[str]] = None,
     omit_return_value: bool = False,
+    latest: int = 1,
+    depth: int = 1,
 ) -> F:
     pass
 
@@ -186,6 +188,8 @@ def etrace(
     enable_trace: Union[bool, Callable[..., bool]] = True,
     omit_parms: Optional[Iterable[str]] = None,
     omit_return_value: bool = False,
+    latest: int = 1,
+    depth: int = 1,
 ) -> Callable[[F], F]:
     pass
 
@@ -196,6 +200,8 @@ def etrace(
     enable_trace: Union[bool, Callable[..., bool]] = True,
     omit_parms: Optional[Iterable[str]] = None,
     omit_return_value: bool = False,
+    latest: int = 1,
+    depth: int = 1,
 ) -> F:
     """Decorator to produce entry/exit log.
 
@@ -208,6 +214,16 @@ def etrace(
             size of the trace entry for large arguments.
         omit_return_value: if True, do not place the return value into
             the exit trace entry.
+        latest: specifies the position in the call sequence that is to
+            be designated as the caller named in the trace output. A
+            value of 1, the default, specifies that the caller is one
+            call back in the sequence and is the normal case. A value
+            greater than 1 is useful when decorators are stacked and the
+            caller of interest is thus further back in the sequence.
+        depth: specifies the depth of the call sequence to include in
+            the trace output. A value of 1, the default, species that
+            only the latest caller is to be included. Values greater
+            than 1 will include the latest caller and its callers.
 
     Returns:
         funtools partial (when wrapped is None) or decorated function
@@ -235,6 +251,8 @@ def etrace(
                 enable_trace=enable_trace,
                 omit_parms=omit_parms,
                 omit_return_value=omit_return_value,
+                latest=latest,
+                depth=depth,
             ),
         )
 
@@ -264,7 +282,7 @@ def etrace(
     except OSError:
         target_line_num = "?"
 
-    target = f"{target_file}:{target_name}:{target_line_num}"
+    target = f"{target_file}::{target_name}:{target_line_num}"
 
     if type(wrapped).__name__ == "classmethod":
         target_sig = inspect.signature(wrapped.__func__)  # type: ignore
@@ -352,7 +370,7 @@ def etrace(
 
         logger.debug(
             f"{target} entry: {log_sig_array}caller: "
-            f"{get_formatted_call_sequence(latest=1, depth=1)}"
+            f"{get_formatted_call_sequence(latest=latest, depth=depth)}"
         )
 
         return_value = wrapped(*args, **kwargs)

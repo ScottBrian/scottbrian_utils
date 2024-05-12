@@ -432,6 +432,210 @@ class TestEntryTraceBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
+    # test_etrace_on_function_no_parm
+    ####################################################################
+    @pytest.mark.parametrize("latest_arg", (1, 2, 3, 4, 5))
+    @pytest.mark.parametrize("depth_arg", (1, 2, 3, 4, 5))
+    def test_etrace_on_nested_functions(
+        self,
+        latest_arg: int,
+        depth_arg: int,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            latest_arg: latest arg for etrace
+            depth_arg: depth arg for etrace
+            caplog: pytest fixture to capture log output
+
+        """
+
+        @etrace
+        def f1() -> None:
+            f2()
+
+        @etrace
+        def f2() -> None:
+            f3()
+
+        @etrace(depth=depth_arg)
+        def f3() -> None:
+            f4()
+
+        @etrace(latest=latest_arg)
+        def f4() -> None:
+            f5()
+
+        @etrace(latest=latest_arg, depth=depth_arg)
+        def f5() -> None:
+            pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        f1()
+
+        ################################################################
+        # fn line numbers
+        ################################################################
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        f2_line_num = inspect.getsourcelines(f2)[1]
+        f3_line_num = inspect.getsourcelines(f3)[1]
+        f4_line_num = inspect.getsourcelines(f4)[1]
+        f5_line_num = inspect.getsourcelines(f5)[1]
+
+        ################################################################
+        # fn entry/exit strings
+        ################################################################
+        f1_entry_exit = f"test_entry_trace.py::f1:{f1_line_num}"
+        f2_entry_exit = f"test_entry_trace.py::f2:{f2_line_num}"
+        f3_entry_exit = f"test_entry_trace.py::f3:{f3_line_num}"
+        f4_entry_exit = f"test_entry_trace.py::f4:{f4_line_num}"
+        f5_entry_exit = f"test_entry_trace.py::f5:{f5_line_num}"
+
+        ################################################################
+        # caller strings
+        ################################################################
+        ml_seq = (
+            "test_entry_trace.py::TestEntryTraceBasic."
+            "test_etrace_on_nested_functions:[0-9]+"
+        )
+        f1_seq = "test_entry_trace.py::f1:[0-9]+"
+        f2_seq = "test_entry_trace.py::f2:[0-9]+"
+        f3_seq = "test_entry_trace.py::f3:[0-9]+"
+        f4_seq = "test_entry_trace.py::f4:[0-9]+"
+        tw_seq = "entry_trace.py::trace_wrapper:[0-9]+"
+
+        ################################################################
+        # f1 expected trace results
+        ################################################################
+        f1_call_seq = f"{ml_seq}"
+        log_ver.add_pattern(pattern=f"{f1_entry_exit} entry: caller: {f1_call_seq}")
+        log_ver.add_pattern(pattern=f"{f1_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # f2 expected trace results
+        ################################################################
+        f2_call_seq = f"{f1_seq}"
+        log_ver.add_pattern(pattern=f"{f2_entry_exit} entry: caller: {f2_call_seq}")
+        log_ver.add_pattern(pattern=f"{f2_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # f3 expected trace results
+        ################################################################
+        if depth_arg == 1:
+            f3_call_seq = f"{f2_seq}"
+        elif depth_arg == 2:
+            f3_call_seq = f"{tw_seq} -> {f2_seq}"
+        elif depth_arg == 3:
+            f3_call_seq = f"{f1_seq} -> {tw_seq} -> {f2_seq}"
+        elif depth_arg == 4:
+            f3_call_seq = f"{tw_seq} -> {f1_seq} -> {tw_seq} -> {f2_seq}"
+        else:
+            f3_call_seq = f"{ml_seq} -> {tw_seq} -> {f1_seq} -> {tw_seq} -> {f2_seq}"
+
+        log_ver.add_pattern(pattern=f"{f3_entry_exit} entry: caller: {f3_call_seq}")
+        log_ver.add_pattern(pattern=f"{f3_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # f4 expected trace results
+        ################################################################
+        if latest_arg == 1:
+            f4_call_seq = f"{f3_seq}"
+        elif latest_arg == 2:
+            f4_call_seq = f"{tw_seq}"
+        elif latest_arg == 3:
+            f4_call_seq = f"{f2_seq}"
+        elif latest_arg == 4:
+            f4_call_seq = f"{tw_seq}"
+        else:
+            f4_call_seq = f"{f1_seq}"
+
+        log_ver.add_pattern(pattern=f"{f4_entry_exit} entry: caller: {f4_call_seq}")
+        log_ver.add_pattern(pattern=f"{f4_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # f5 expected trace results
+        ################################################################
+        if latest_arg == 1:
+            if depth_arg == 1:
+                f5_call_seq = f"{f4_seq}"
+            elif depth_arg == 2:
+                f5_call_seq = f"{tw_seq} -> {f4_seq}"
+            elif depth_arg == 3:
+                f5_call_seq = f"{f3_seq} -> {tw_seq} -> {f4_seq}"
+            elif depth_arg == 4:
+                f5_call_seq = f"{tw_seq} -> {f3_seq} -> {tw_seq} -> {f4_seq}"
+            else:
+                f5_call_seq = (
+                    f"{f2_seq} -> {tw_seq} -> {f3_seq} -> {tw_seq} -> {f4_seq}"
+                )
+        elif latest_arg == 2:
+            if depth_arg == 1:
+                f5_call_seq = f"{tw_seq}"
+            elif depth_arg == 2:
+                f5_call_seq = f"{f3_seq} -> {tw_seq}"
+            elif depth_arg == 3:
+                f5_call_seq = f"{tw_seq} -> {f3_seq} -> {tw_seq}"
+            elif depth_arg == 4:
+                f5_call_seq = f"{f2_seq} -> {tw_seq} -> {f3_seq} -> {tw_seq}"
+            else:
+                f5_call_seq = (
+                    f"{tw_seq} -> {f2_seq} -> {tw_seq} -> {f3_seq} -> {tw_seq}"
+                )
+        elif latest_arg == 3:
+            if depth_arg == 1:
+                f5_call_seq = f"{f3_seq}"
+            elif depth_arg == 2:
+                f5_call_seq = f"{tw_seq} -> {f3_seq}"
+            elif depth_arg == 3:
+                f5_call_seq = f"{f2_seq} -> {tw_seq} -> {f3_seq}"
+            elif depth_arg == 4:
+                f5_call_seq = f"{tw_seq} -> {f2_seq} -> {tw_seq} -> {f3_seq}"
+            else:
+                f5_call_seq = (
+                    f"{f1_seq} -> {tw_seq} -> {f2_seq} -> {tw_seq} -> {f3_seq}"
+                )
+        elif latest_arg == 4:
+            if depth_arg == 1:
+                f5_call_seq = f"{tw_seq}"
+            elif depth_arg == 2:
+                f5_call_seq = f"{f2_seq} -> {tw_seq}"
+            elif depth_arg == 3:
+                f5_call_seq = f"{tw_seq} -> {f2_seq} -> {tw_seq}"
+            elif depth_arg == 4:
+                f5_call_seq = f"{f1_seq} -> {tw_seq} -> {f2_seq} -> {tw_seq}"
+            else:
+                f5_call_seq = (
+                    f"{tw_seq} -> {f1_seq} -> {tw_seq} -> {f2_seq} -> {tw_seq}"
+                )
+        else:
+            if depth_arg == 1:
+                f5_call_seq = f"{f2_seq}"
+            elif depth_arg == 2:
+                f5_call_seq = f"{tw_seq} -> {f2_seq}"
+            elif depth_arg == 3:
+                f5_call_seq = f"{f1_seq} -> {tw_seq} -> {f2_seq}"
+            elif depth_arg == 4:
+                f5_call_seq = f"{tw_seq} -> {f1_seq} -> {tw_seq} -> {f2_seq}"
+            else:
+                f5_call_seq = (
+                    f"{ml_seq} -> {tw_seq} -> {f1_seq} -> {tw_seq} -> {f2_seq}"
+                )
+
+        log_ver.add_pattern(pattern=f"{f5_entry_exit} entry: caller: {f5_call_seq}")
+        log_ver.add_pattern(pattern=f"{f5_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
     # test_etrace_on_function_one_parm
     ####################################################################
     def test_etrace_on_function_one_parm(
