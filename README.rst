@@ -155,6 +155,8 @@ Release History
         * method add_pattern replaces deprecated method add_msg
         * method verify_match_results replaces deprecated verify_log_results
 
+* 4.0.1
+    * fix etrace to put 2 colons between file name and func
 
 Meta
 ====

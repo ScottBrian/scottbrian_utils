@@ -36,8 +36,8 @@ The decorator can be controlled via the following parameters:
 
 Expected trace output for Example 1::
 
-    test_entry_trace.py:f1:69 entry: caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example1:77
-    test_entry_trace.py:f1:69 exit: return_value=None
+    test_entry_trace.py::f1:69 entry: caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example1:77
+    test_entry_trace.py::f1:69 exit: return_value=None
 
 
 :Example 2: Decorate a function that has 1 positional arg and 1 keyword
@@ -56,8 +56,8 @@ Expected trace output for Example 1::
 
 Expected trace output for Example 2::
 
-    test_entry_trace.py:f1:122 entry: a1=42, kw1='forty two', caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example2:130
-    test_entry_trace.py:f1:122 exit: return_value="a1=42, kw1='forty two'"
+    test_entry_trace.py::f1:122 entry: a1=42, kw1='forty two', caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example2:130
+    test_entry_trace.py::f1:122 exit: return_value="a1=42, kw1='forty two'"
 
 
 :Example 3: Decorate two functions, the first with etrace enabled and
@@ -84,8 +84,8 @@ Expected trace output for Example 2::
 
 Expected trace output for Example 3::
 
-    test_entry_trace.py:f1:180 entry: a1=42, kw1='forty two', caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example3:194
-    test_entry_trace.py:f1:180 exit: return_value="a1=42, kw1='forty two'"
+    test_entry_trace.py::f1:180 entry: a1=42, kw1='forty two', caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example3:194
+    test_entry_trace.py::f1:180 exit: return_value="a1=42, kw1='forty two'"
 
 
 :Example 4: Decorate a function with the positional arg omitted.
@@ -102,8 +102,8 @@ Expected trace output for Example 3::
 
 Expected trace output for Example 4::
 
-    test_entry_trace.py:f1:244 entry: a1='...', kw1='forty two', caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example4:252
-    test_entry_trace.py:f1:244 exit: return_value="a1=42, kw1='forty two'"
+    test_entry_trace.py::f1:244 entry: a1='...', kw1='forty two', caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example4:252
+    test_entry_trace.py::f1:244 exit: return_value="a1=42, kw1='forty two'"
 
 
 :Example 5: Decorate a function with the first keyword arg omitted.
@@ -120,8 +120,8 @@ Expected trace output for Example 4::
 
 Expected trace output for Example 5::
 
-    test_entry_trace.py:f1:300 entry: a1=42, kw1='...', kw2=84, caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example5:308
-    test_entry_trace.py:f1:300 exit: return_value="a1=42, kw1='forty two', kw2=84"
+    test_entry_trace.py::f1:300 entry: a1=42, kw1='...', kw2=84, caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example5:308
+    test_entry_trace.py::f1:300 exit: return_value="a1=42, kw1='forty two', kw2=84"
 
 
 :Example 6: Decorate a function with the return value omitted.
@@ -138,8 +138,8 @@ Expected trace output for Example 5::
 
 Expected trace output for Example 6::
 
-    test_entry_trace.py:f1:347 entry: a1=42, kw1='forty two', kw2=84, caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example6:356
-    test_entry_trace.py:f1:347 exit: return value omitted
+    test_entry_trace.py::f1:347 entry: a1=42, kw1='forty two', kw2=84, caller: test_entry_trace.py::TestEntryTraceExamples.test_etrace_example6:356
+    test_entry_trace.py::f1:347 exit: return value omitted
 
   .. # noqa: E501, W505
 
@@ -273,7 +273,7 @@ def etrace(
         target_name = qual_name_list[-1]
     else:
         # set target_name to class name and method name
-        target_name = f":{qual_name_list[-2]}.{qual_name_list[-1]}"
+        target_name = f"{qual_name_list[-2]}.{qual_name_list[-1]}"
         if type(wrapped).__name__ != "staticmethod":
             skip_self_cls = True
 

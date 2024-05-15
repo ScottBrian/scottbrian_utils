@@ -79,7 +79,7 @@ class TestEntryTraceExamples:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example1:[0-9]+"
         )
@@ -92,7 +92,7 @@ class TestEntryTraceExamples:
         )
 
         exp_exit_log_msg = (
-            f"test_entry_trace.py:f1:{f1_line_num} exit: " f"return_value=None"
+            f"test_entry_trace.py::f1:{f1_line_num} exit: " f"return_value=None"
         )
 
         log_ver.add_pattern(
@@ -132,7 +132,7 @@ class TestEntryTraceExamples:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1=42, "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: a1=42, "
             "kw1='forty two', "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example2:[0-9]+"
@@ -147,7 +147,7 @@ class TestEntryTraceExamples:
         kw_value = "forty two"
         quote = "'"
         exp_exit_log_msg = (
-            f'test_entry_trace.py:f1:{f1_line_num} exit: return_value="a1=42, '
+            f'test_entry_trace.py::f1:{f1_line_num} exit: return_value="a1=42, '
             f'kw1={quote}{kw_value}{quote}"'
         )
 
@@ -198,7 +198,7 @@ class TestEntryTraceExamples:
         f1_line_num = inspect.getsourcelines(f1)[1]
 
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1=42, "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: a1=42, "
             "kw1='forty two', "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example3:[0-9]+"
@@ -213,7 +213,7 @@ class TestEntryTraceExamples:
         kw_value = "forty two"
         quote = "'"
         exp_exit_log_msg = (
-            f'test_entry_trace.py:f1:{f1_line_num} exit: return_value="a1=42, '
+            f'test_entry_trace.py::f1:{f1_line_num} exit: return_value="a1=42, '
             f'kw1={quote}{kw_value}{quote}"'
         )
 
@@ -254,7 +254,7 @@ class TestEntryTraceExamples:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1='...', "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: a1='...', "
             "kw1='forty two', "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example4:[0-9]+"
@@ -269,7 +269,7 @@ class TestEntryTraceExamples:
         kw_value = "forty two"
         quote = "'"
         exp_exit_log_msg = (
-            f'test_entry_trace.py:f1:{f1_line_num} exit: return_value="a1=42, '
+            f'test_entry_trace.py::f1:{f1_line_num} exit: return_value="a1=42, '
             f'kw1={quote}{kw_value}{quote}"'
         )
 
@@ -311,7 +311,7 @@ class TestEntryTraceExamples:
         f1_line_num = inspect.getsourcelines(f1)[1]
 
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1=42, "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: a1=42, "
             "kw1='...', kw2=84, "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example5:[0-9]+"
@@ -321,7 +321,7 @@ class TestEntryTraceExamples:
         kw_value = "forty two"
         quote = "'"
         exp_exit_log_msg = (
-            f'test_entry_trace.py:f1:{f1_line_num} exit: return_value="a1=42, '
+            f'test_entry_trace.py::f1:{f1_line_num} exit: return_value="a1=42, '
             f'kw1={quote}{kw_value}{quote}, kw2=84"'
         )
 
@@ -358,7 +358,7 @@ class TestEntryTraceExamples:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1=42, "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: a1=42, "
             "kw1='forty two', kw2=84, "
             "caller: test_entry_trace.py::TestEntryTraceExamples."
             "test_etrace_example6:[0-9]+"
@@ -367,7 +367,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
-            f"test_entry_trace.py:f1:{f1_line_num} exit: return value omitted"
+            f"test_entry_trace.py::f1:{f1_line_num} exit: return value omitted"
         )
 
         log_ver.add_pattern(pattern=exp_exit_log_msg)
@@ -412,7 +412,7 @@ class TestEntryTraceBasic:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
             "test_etrace_on_function_no_parm:[0-9]+"
         )
@@ -420,7 +420,7 @@ class TestEntryTraceBasic:
         log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
-            f"test_entry_trace.py:f1:{f1_line_num} exit: return_value=None"
+            f"test_entry_trace.py::f1:{f1_line_num} exit: return_value=None"
         )
 
         log_ver.add_pattern(pattern=exp_exit_log_msg)
@@ -719,14 +719,16 @@ class TestEntryTraceBasic:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: a1=42, "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: a1=42, "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
             "test_etrace_on_function_one_parm:[0-9]+"
         )
 
         log_ver.add_pattern(pattern=exp_entry_log_msg)
 
-        exp_exit_log_msg = f"test_entry_trace.py:f1:{f1_line_num} exit: return_value=42"
+        exp_exit_log_msg = (
+            f"test_entry_trace.py::f1:{f1_line_num} exit: " "return_value=42"
+        )
 
         log_ver.add_pattern(pattern=exp_exit_log_msg)
         ################################################################
@@ -765,7 +767,7 @@ class TestEntryTraceBasic:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: "
             r"args=\(42, 'forty_two', 83\), "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
             "test_etrace_on_function_args:[0-9]+"
@@ -774,7 +776,7 @@ class TestEntryTraceBasic:
         log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
-            f"test_entry_trace.py:f1:{f1_line_num} exit: "
+            f"test_entry_trace.py::f1:{f1_line_num} exit: "
             "return_value='42 forty_two 83 '"
         )
 
@@ -815,7 +817,7 @@ class TestEntryTraceBasic:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: "
             "kw1=42, kw2='forty_two', kw3=83, "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
             "test_etrace_on_function_kwargs:[0-9]+"
@@ -824,7 +826,7 @@ class TestEntryTraceBasic:
         log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
-            f"test_entry_trace.py:f1:{f1_line_num} exit: return_value='kw1=42 "
+            f"test_entry_trace.py::f1:{f1_line_num} exit: return_value='kw1=42 "
             f"kw2=forty_two kw3=83 '"
         )
 
@@ -865,7 +867,7 @@ class TestEntryTraceBasic:
 
         f1_line_num = inspect.getsourcelines(f1)[1]
         exp_entry_log_msg = (
-            rf"test_entry_trace.py:f1:{f1_line_num} entry: "
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: "
             r"a1=42, args=\('forty_two', 83\), "
             "caller: test_entry_trace.py::TestEntryTraceBasic."
             "test_etrace_on_function_args2:[0-9]+"
@@ -874,7 +876,7 @@ class TestEntryTraceBasic:
         log_ver.add_pattern(pattern=exp_entry_log_msg)
 
         exp_exit_log_msg = (
-            f"test_entry_trace.py:f1:{f1_line_num} exit: "
+            f"test_entry_trace.py::f1:{f1_line_num} exit: "
             f"return_value='42 forty_two 83 '"
         )
 
@@ -1960,7 +1962,7 @@ class TestEntryTraceCombos:
                     exec(f"f999({arg_spec_ret_res.arg_spec})")
 
                     exp_entry_log_msg = (
-                        rf"<string>:f1:\? entry: {arg_spec_ret_res.log_result}"
+                        rf"<string>::f1:\? entry: {arg_spec_ret_res.log_result}"
                         "caller: <string>:1"
                     )
 
@@ -1972,7 +1974,7 @@ class TestEntryTraceCombos:
                     )
 
                     exp_exit_log_msg = (
-                        rf"<string>:f1:\? exit: return_value='"
+                        rf"<string>::f1:\? exit: return_value='"
                         rf"{arg_spec_ret_res.ret_result}'"
                     )
 
@@ -2065,7 +2067,7 @@ class TestEntryTraceCombos:
         if target_type_arg == FunctionType.Function:
             target_rtn = f1
             target_line_num = inspect.getsourcelines(f1)[1]
-            target_qual_name = ":f1"
+            target_qual_name = "::f1"
 
         elif target_type_arg == FunctionType.Method:
             target_rtn = Target().target
@@ -2225,7 +2227,7 @@ class TestEntryTraceCombos:
         if target_type_arg == FunctionType.Function:
             target_rtn = f1
             target_line_num = inspect.getsourcelines(f1)[1]
-            target_qual_name = ":f1"
+            target_qual_name = "::f1"
 
         elif target_type_arg == FunctionType.Method:
             target_rtn = Target().target
@@ -2444,7 +2446,7 @@ class TestEntryTraceCombos:
         if target_type_arg == FunctionType.Function:
             target_rtn = f1
             target_line_num = inspect.getsourcelines(f1)[1]
-            target_qual_name = ":f1"
+            target_qual_name = "::f1"
 
         elif target_type_arg == FunctionType.Method:
             target_rtn = Target().target
@@ -2736,7 +2738,7 @@ class TestEntryTraceCombos:
         if target_type_arg == FunctionType.Function:
             target_rtn = f1
             target_line_num = inspect.getsourcelines(f1)[1]
-            target_qual_name = ":f1"
+            target_qual_name = "::f1"
 
         elif target_type_arg == FunctionType.Method:
             target_rtn = Target().target
