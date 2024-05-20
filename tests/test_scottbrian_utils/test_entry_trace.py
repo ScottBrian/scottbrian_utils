@@ -178,6 +178,9 @@ class TestEntryTraceExamples:
 
         do_trace: bool = True
 
+        def do_trace_fn() -> bool:
+            return do_trace
+
         @etrace(enable_trace=do_trace)
         def f1(a1: int, kw1: str = "42") -> str:
             return f"{a1=}, {kw1=}"
@@ -188,15 +191,28 @@ class TestEntryTraceExamples:
         def f2(a1: int, kw1: str = "42") -> str:
             return f"{a1=}, {kw1=}"
 
+        @etrace(enable_trace=do_trace_fn)
+        def f3(a1: int, kw1: str = "42") -> str:
+            return f"{a1=}, {kw1=}"
+
         ################################################################
         # mainline
         ################################################################
         log_ver = LogVer()
         f1(42, kw1="forty two")
         f2(24, kw1="twenty four")
+        f3(84, kw1="eighty four")
+
+        do_trace = True
+
+        f3(12, kw1="twelve")
 
         f1_line_num = inspect.getsourcelines(f1)[1]
+        f3_line_num = inspect.getsourcelines(f3)[1]
 
+        ################################################################
+        # f1 expected results
+        ################################################################
         exp_entry_log_msg = (
             rf"test_entry_trace.py::f1:{f1_line_num} entry: a1=42, "
             "kw1='forty two', "
@@ -214,6 +230,36 @@ class TestEntryTraceExamples:
         quote = "'"
         exp_exit_log_msg = (
             f'test_entry_trace.py::f1:{f1_line_num} exit: return_value="a1=42, '
+            f'kw1={quote}{kw_value}{quote}"'
+        )
+
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+
+        ################################################################
+        # f3 expected results
+        ################################################################
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py::f3:{f3_line_num} entry: a1=12, "
+            "kw1='twelve', "
+            "caller: test_entry_trace.py::TestEntryTraceExamples."
+            "test_etrace_example3:[0-9]+"
+        )
+
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+        kw_value = "twelve"
+        quote = "'"
+        exp_exit_log_msg = (
+            f'test_entry_trace.py::f3:{f3_line_num} exit: return_value="a1=12, '
             f'kw1={quote}{kw_value}{quote}"'
         )
 
@@ -1471,6 +1517,47 @@ class TestEntryTraceBasic:
         log_ver.add_pattern(pattern=exp_exit_log_msg)
 
         assert t1.args_str == "42 forty_two 83 "
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_with_log_ver
+    ####################################################################
+    def test_etrace_on_with_log_ver(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a class method.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        class Test1:
+            def __init__(self, *args: Any, a_log_ver: LogVer) -> None:
+                self.args_str = ""
+                for arg in args:
+                    self.args_str = f"{self.args_str}{arg} "
+                self.log_ver = a_log_ver
+
+            @etrace(log_ver=True)
+            def f1(self, a: int, b: str = "forty-two") -> str:
+                return f"{a=}, {b=}, {self.args_str=}"
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        t1 = Test1(42, "forty_two", 83, a_log_ver=log_ver)
+
+        assert t1.args_str == "42 forty_two 83 "
+
+        t1.f1(84, b="eighty-four")
         ################################################################
         # check log results
         ################################################################

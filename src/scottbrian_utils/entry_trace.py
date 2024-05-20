@@ -158,6 +158,7 @@ from typing import Any, Callable, cast, Optional, overload, TypeVar, Union
 # Third Party
 ########################################################################
 from scottbrian_utils.diag_msg import get_formatted_call_sequence
+from scottbrian_utils.log_verifier import LogVer  # noqa F401
 import wrapt
 
 logger = logging.getLogger(__name__)
@@ -178,6 +179,7 @@ def etrace(
     omit_return_value: bool = False,
     latest: int = 1,
     depth: int = 1,
+    log_ver: bool = False,
 ) -> F:
     pass
 
@@ -190,6 +192,7 @@ def etrace(
     omit_return_value: bool = False,
     latest: int = 1,
     depth: int = 1,
+    log_ver: bool = False,
 ) -> Callable[[F], F]:
     pass
 
@@ -202,6 +205,7 @@ def etrace(
     omit_return_value: bool = False,
     latest: int = 1,
     depth: int = 1,
+    log_ver: bool = False,
 ) -> F:
     """Decorator to produce entry/exit log.
 
@@ -224,6 +228,11 @@ def etrace(
             the trace output. A value of 1, the default, species that
             only the latest caller is to be included. Values greater
             than 1 will include the latest caller and its callers.
+        log_ver: if True, the etrace message will be logged and added to
+            the log verifier. The log verifier must be instantiated in
+            the object being traced and referenced as self.log_ver. This
+            is provided strictly for testing purposes to make it easy
+            to add etrace to test case methods.
 
     Returns:
         funtools partial (when wrapped is None) or decorated function
@@ -253,6 +262,7 @@ def etrace(
                 omit_return_value=omit_return_value,
                 latest=latest,
                 depth=depth,
+                log_ver=log_ver,
             ),
         )
 
@@ -368,17 +378,27 @@ def etrace(
             else:
                 log_sig_array = f"{log_sig_array}{key}={item}, "
 
-        logger.debug(
+        entry_msg = (
             f"{target} entry: {log_sig_array}caller: "
             f"{get_formatted_call_sequence(latest=latest, depth=depth)}"
         )
 
+        if log_ver:
+            instance.log_ver.test_msg(log_msg=entry_msg)  # type: ignore
+        else:
+            logger.debug(entry_msg)
+
         return_value = wrapped(*args, **kwargs)
 
         if omit_return_value:
-            logger.debug(f"{target} exit: return value omitted")
+            exit_msg = f"{target} exit: return value omitted"
         else:
-            logger.debug(f"{target} exit: {return_value=}")
+            exit_msg = f"{target} exit: {return_value=}"
+
+        if log_ver:
+            instance.log_ver.test_msg(log_msg=exit_msg)  # type: ignore
+        else:
+            logger.debug(exit_msg)
         return return_value
 
     return cast(F, trace_wrapper(wrapped))

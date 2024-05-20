@@ -29,6 +29,8 @@
 
    stop_watch <stop_watch_link>
 
+   scenario_driver <scenario_driver_link>
+
    time_hdr <time_hdr_link>
 
    timer <timer_link>

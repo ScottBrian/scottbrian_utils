@@ -158,6 +158,10 @@ Release History
 * 4.0.1
     * fix etrace to put 2 colons between file name and func
 
+* 4.1.0
+    * enhance etrace to accept log_ver
+    * add scenario_driver
+
 Meta
 ====
 
