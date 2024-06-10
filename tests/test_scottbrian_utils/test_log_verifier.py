@@ -17,7 +17,7 @@ import re
 
 import threading
 import time
-from typing import Any, cast, Optional, Union
+from typing import Any, Callable, cast, Optional, Union
 import warnings
 
 ########################################################################
@@ -189,28 +189,37 @@ class LogVerifier:
         self,
         log_msg: str,
         level: int = logging.DEBUG,
+        enabled: Optional[Union[bool, Callable[..., bool]]] = None,
     ) -> None:
 
-        self.log_ver.test_msg(log_msg=log_msg, level=level)
+        if enabled is None:
+            self.log_ver.test_msg(log_msg=log_msg, level=level)
+        else:
+            self.log_ver.test_msg(log_msg=log_msg, level=level, enabled=enabled)
 
-        # add the log_msg to track only if it was logged per level
-        if self.level <= level:
-            self.log_msgs.append(
-                LogItemDescriptor(
-                    log_name=self.log_name,
-                    level=level,
-                    item=log_msg,
+        if (
+            enabled is None
+            or (type(enabled) is bool and enabled)
+            or (callable(enabled) and enabled())
+        ):
+            # add the log_msg to track only if it was logged per level
+            if self.level <= level:
+                self.log_msgs.append(
+                    LogItemDescriptor(
+                        log_name=self.log_name,
+                        level=level,
+                        item=log_msg,
+                    )
                 )
+            pattern = re.escape(log_msg)
+            ret_pattern = LogItemDescriptor(
+                log_name=self.log_name,
+                level=level,
+                item=pattern,
+                c_pattern=re.compile(pattern),
+                fullmatch=True,
             )
-        pattern = re.escape(log_msg)
-        ret_pattern = LogItemDescriptor(
-            log_name=self.log_name,
-            level=level,
-            item=pattern,
-            c_pattern=re.compile(pattern),
-            fullmatch=True,
-        )
-        self.patterns.append(ret_pattern)
+            self.patterns.append(ret_pattern)
 
     def issue_log_msg(
         self,
@@ -1396,16 +1405,31 @@ class TestLogVerBasic:
         base_type=tuple,
     )
 
+    @staticmethod
+    def enable_true():
+        return True
+
+    @staticmethod
+    def enable_false():
+        return False
+
     @pytest.mark.parametrize("test_msgs_arg", test_msg_combos)
+    @pytest.mark.parametrize(
+        "test_msgs_enabled_arg", [None, True, False, enable_true, enable_false]
+    )
     @pytest.mark.parametrize("msgs_arg", msg_combos)
     @pytest.mark.parametrize("patterns_arg", pattern_combos)
     @pytest.mark.parametrize(
         "log_name_arg",
-        ["log4567", "log45678", "log456789", "log4567890"],
+        [
+            "log4567",
+            "log45678",
+        ],
     )
     def test_log_verifier_test_msg(
         self,
         test_msgs_arg: tuple[str, ...],
+        test_msgs_enabled_arg: Union[None, bool, Callable[..., bool]],
         msgs_arg: tuple[str, ...],
         log_name_arg: str,
         patterns_arg: tuple[str, ...],
@@ -1416,6 +1440,7 @@ class TestLogVerBasic:
 
         Args:
             test_msgs_arg: test messages to issue
+            test_msgs_enabled_arg: If True, do the test_msg logging
             msgs_arg: msgs to issue to log
             log_name_arg: log name to use
             patterns_arg: patterns to try
@@ -1431,10 +1456,16 @@ class TestLogVerBasic:
 
         exp_num_unmatched_patterns = 0
         exp_num_unmatched_log_msgs = 0
-        exp_num_matched_log_msgs = len(test_msgs_arg)
-
+        if (
+            test_msgs_enabled_arg is None
+            or (type(test_msgs_enabled_arg) is bool and test_msgs_enabled_arg)
+            or (callable(test_msgs_enabled_arg) and test_msgs_enabled_arg())
+        ):
+            exp_num_matched_log_msgs = len(test_msgs_arg)
+        else:
+            exp_num_matched_log_msgs = 0
         for test_msg in test_msgs_arg:
-            test_log_ver.test_msg(test_msg)
+            test_log_ver.test_msg(test_msg, enabled=test_msgs_enabled_arg)
 
         for msg in msgs_arg:
             test_log_ver.issue_log_msg(msg)

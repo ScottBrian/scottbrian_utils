@@ -610,12 +610,16 @@ class LogVer:
         self,
         log_msg: str,
         level: int = logging.DEBUG,
+        stacklevel: int = 2,
+        enabled: Union[bool, Callable[..., bool]] = True,
     ) -> None:
         """Issue a log msg and add its pattern.
 
         Args:
             log_msg: log message to issue
             level: logging level to use
+            stacklevel: stacklevel to use on the call to logger
+            enabled: If True, allow the log message to be logged
 
         Notes:
 
@@ -672,8 +676,9 @@ class LogVer:
 
 
         """
-        self.add_pattern(pattern=re.escape(log_msg), level=level)
-        self.logger.log(level=level, msg=log_msg, stacklevel=2)
+        if (type(enabled) is bool and enabled) or (callable(enabled) and enabled()):
+            self.add_pattern(pattern=re.escape(log_msg), level=level)
+            self.logger.log(level=level, msg=log_msg, stacklevel=stacklevel)
 
     ####################################################################
     # get_match_results
