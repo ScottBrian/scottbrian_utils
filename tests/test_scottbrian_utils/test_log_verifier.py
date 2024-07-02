@@ -189,13 +189,19 @@ class LogVerifier:
         self,
         log_msg: str,
         level: int = logging.DEBUG,
+        stacklevel: int = 2,
         enabled: Optional[Union[bool, Callable[..., bool]]] = None,
     ) -> None:
 
         if enabled is None:
             self.log_ver.test_msg(log_msg=log_msg, level=level)
         else:
-            self.log_ver.test_msg(log_msg=log_msg, level=level, enabled=enabled)
+            if stacklevel == 0:
+                self.log_ver.test_msg(log_msg=log_msg, level=level, enabled=enabled)
+            else:
+                self.log_ver.test_msg(
+                    log_msg=log_msg, level=level, stacklevel=stacklevel, enabled=enabled
+                )
 
         if (
             enabled is None
@@ -1387,10 +1393,10 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_test_msg
     ####################################################################
-    test_msgs = ["tmsg1", "t2_msg2", "test3_msg3"]
+    test_msgs = ["tmsg1", "t2_msg2", "test3_msg3", "tst4_msg_four"]
 
     test_msg_combos = mi.collapse(
-        map(lambda n: it.combinations(TestLogVerBasic.test_msgs, n), range(3)),
+        map(lambda n: it.combinations(TestLogVerBasic.test_msgs, n), range(5)),
         base_type=tuple,
     )
     msgs = ["fedcb6", "gfedcb7", "hgfedcb8"]
@@ -1464,8 +1470,11 @@ class TestLogVerBasic:
             exp_num_matched_log_msgs = len(test_msgs_arg)
         else:
             exp_num_matched_log_msgs = 0
-        for test_msg in test_msgs_arg:
-            test_log_ver.test_msg(test_msg, enabled=test_msgs_enabled_arg)
+
+        for idx, test_msg in enumerate(test_msgs_arg):
+            test_log_ver.test_msg(
+                test_msg, stacklevel=idx % 4, enabled=test_msgs_enabled_arg
+            )
 
         for msg in msgs_arg:
             test_log_ver.issue_log_msg(msg)
