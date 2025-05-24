@@ -1412,11 +1412,11 @@ class TestLogVerBasic:
     )
 
     @staticmethod
-    def enable_true():
+    def enable_true() -> bool:
         return True
 
     @staticmethod
-    def enable_false():
+    def enable_false() -> bool:
         return False
 
     @pytest.mark.parametrize("test_msgs_arg", test_msg_combos)
@@ -3198,6 +3198,7 @@ class TestLogVerCombos:
             (30000, 2),
         ],
     )
+    @pytest.mark.skip(reason="test takes 3 hours to run")
     def test_log_verifier_30k_x_to_y(
         self,
         num_a_msg_arg: tuple[int, int],

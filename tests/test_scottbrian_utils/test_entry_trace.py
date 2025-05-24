@@ -49,6 +49,31 @@ class ErrorTstEntryTrace(Exception):
 
 
 ########################################################################
+# TestEntryTraceErrors class
+########################################################################
+class TestEntryTraceErrors:
+    """TestEntryTraceErrors class."""
+
+    ####################################################################
+    # test_entry_trace_unknown_omit_parm
+    ####################################################################
+    def test_entry_trace_unknown_omit_parm(self) -> None:
+        """Test bad pause min_interval_secs raises error."""
+
+        from scottbrian_utils.entry_trace import etrace
+
+        @etrace(omit_parms=["a2"])
+        def f1(a1: int, kw1: str = "42") -> str:
+            return f"{a1=}, {kw1=}"
+
+        ################################################################
+        # mainline
+        ################################################################
+        with pytest.raises(ValueError):
+            f1(42, kw1="forty two")
+
+
+########################################################################
 # TestEntryTraceExamples class
 ########################################################################
 # @pytest.mark.cover2
@@ -478,7 +503,112 @@ class TestEntryTraceBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
+    # test_etrace_on_function_no_parm2
+    ####################################################################
+    @etrace(log_ver=True)
+    def test_etrace_on_function_no_parm2(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+        log_ver = self.log_ver
+
+        @etrace(log_ver=log_ver)
+        def f1() -> None:
+            pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        f1()
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
     # test_etrace_on_function_no_parm
+    ####################################################################
+    def test_etrace_on_function_no_parm3(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        @etrace(omit_caller=True)
+        def f1() -> None:
+            pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        f1()
+
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        exp_entry_log_msg = rf"test_entry_trace.py::f1:{f1_line_num} entry: "
+
+        log_ver.add_pattern(pattern=exp_entry_log_msg)
+
+        exp_exit_log_msg = (
+            f"test_entry_trace.py::f1:{f1_line_num} exit: return_value=None"
+        )
+
+        log_ver.add_pattern(pattern=exp_exit_log_msg)
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_function_no_parm4
+    ####################################################################
+    @etrace(log_ver=True, omit_caller=True)
+    def test_etrace_on_function_no_parm4(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+        log_ver = self.log_ver
+
+        @etrace(omit_caller=True, log_ver=log_ver)
+        def f1() -> None:
+            pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        f1()
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_nested_functions
     ####################################################################
     @pytest.mark.parametrize("latest_arg", (1, 2, 3, 4, 5))
     @pytest.mark.parametrize("depth_arg", (1, 2, 3, 4, 5))
@@ -731,6 +861,417 @@ class TestEntryTraceBasic:
 
         log_ver.add_pattern(pattern=f"{f5_entry_exit} entry: caller: {f5_call_seq}")
         log_ver.add_pattern(pattern=f"{f5_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_function_no_parm2
+    ####################################################################
+    @pytest.mark.parametrize("latest_arg", (1, 2, 3, 4, 5))
+    @pytest.mark.parametrize("depth_arg", (1, 2, 3, 4, 5))
+    @pytest.mark.parametrize("f3_depth_arg", (1, 2, 3, 4))
+    @pytest.mark.parametrize("f2_trace_enable_arg", (True, False))
+    @pytest.mark.parametrize("f3_trace_enable_arg", (True, False))
+    @etrace(log_ver=True)
+    def test_etrace_on_nested_functions2(
+        self,
+        latest_arg: int,
+        depth_arg: int,
+        f3_depth_arg: int,
+        f2_trace_enable_arg: bool,
+        f3_trace_enable_arg: bool,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            latest_arg: latest arg for etrace
+            depth_arg: depth arg for etrace
+            f3_depth_arg: depth arg for etrace for f3
+            f2_trace_enable_arg: specifies etrace enable for f2
+            f3_trace_enable_arg: specifies etrace enable for f3
+            caplog: pytest fixture to capture log output
+
+        """
+        f5_max_latest = 5
+        if not f2_trace_enable_arg:
+            f5_max_latest -= 1
+        if not f3_trace_enable_arg:
+            f5_max_latest -= 1
+        f5_latest = min(f5_max_latest, latest_arg)
+
+        @etrace(log_ver=self.log_ver)
+        def f1() -> None:
+            f2()
+
+        @etrace(enable_trace=f2_trace_enable_arg, log_ver=self.log_ver)
+        def f2() -> None:
+            f3()
+
+        @etrace(
+            enable_trace=f3_trace_enable_arg, depth=f3_depth_arg, log_ver=self.log_ver
+        )
+        def f3() -> None:
+            f4()
+
+        @etrace(latest=latest_arg, log_ver=self.log_ver)
+        def f4() -> None:
+            f5()
+
+        @etrace(latest=f5_latest, depth=depth_arg, log_ver=self.log_ver)
+        def f5() -> None:
+            pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = self.log_ver
+        f1()
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_nested_functions3
+    ####################################################################
+    @pytest.mark.parametrize("latest_arg", (1, 2, 3, 4, 5))
+    @pytest.mark.parametrize("depth_arg", (1, 2, 3, 4, 5))
+    @pytest.mark.parametrize("f3_depth_arg", (1, 2, 3, 4))
+    @pytest.mark.parametrize("f2_trace_enable_arg", (True, False))
+    @pytest.mark.parametrize("f3_trace_enable_arg", (True, False))
+    def test_etrace_on_nested_functions3(
+        self,
+        latest_arg: int,
+        depth_arg: int,
+        f3_depth_arg: int,
+        f2_trace_enable_arg: bool,
+        f3_trace_enable_arg: bool,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            latest_arg: latest arg for etrace
+            depth_arg: depth arg for etrace
+            f3_depth_arg: depth arg for etrace for f3
+            f2_trace_enable_arg: specifies etrace enable for f2
+            f3_trace_enable_arg: specifies etrace enable for f3
+            caplog: pytest fixture to capture log output
+
+        """
+        f5_max_latest = 5
+        if not f2_trace_enable_arg:
+            f5_max_latest -= 1
+        if not f3_trace_enable_arg:
+            f5_max_latest -= 1
+        f5_latest = min(f5_max_latest, latest_arg)
+
+        @etrace(omit_caller=True)
+        def f1() -> None:
+            f2()
+
+        @etrace(enable_trace=f2_trace_enable_arg, omit_caller=True)
+        def f2() -> None:
+            f3()
+
+        @etrace(enable_trace=f3_trace_enable_arg, omit_caller=True, depth=f3_depth_arg)
+        def f3() -> None:
+            f4()
+
+        @etrace(omit_caller=True, latest=latest_arg)
+        def f4() -> None:
+            f5()
+
+        @etrace(latest=f5_latest, depth=depth_arg, omit_caller=True)
+        def f5() -> None:
+            pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = LogVer(log_name="scottbrian_utils.entry_trace")
+        f1()
+
+        ################################################################
+        # fn line numbers
+        ################################################################
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        f2_line_num = inspect.getsourcelines(f2)[1]
+        f3_line_num = inspect.getsourcelines(f3)[1]
+        f4_line_num = inspect.getsourcelines(f4)[1]
+        f5_line_num = inspect.getsourcelines(f5)[1]
+
+        ################################################################
+        # fn entry/exit strings
+        ################################################################
+        f1_entry_exit = f"test_entry_trace.py::f1:{f1_line_num}"
+        f2_entry_exit = f"test_entry_trace.py::f2:{f2_line_num}"
+        f3_entry_exit = f"test_entry_trace.py::f3:{f3_line_num}"
+        f4_entry_exit = f"test_entry_trace.py::f4:{f4_line_num}"
+        f5_entry_exit = f"test_entry_trace.py::f5:{f5_line_num}"
+
+        ################################################################
+        # caller strings
+        ################################################################
+        ml_seq = (
+            "test_entry_trace.py::TestEntryTraceBasic."
+            "test_etrace_on_nested_functions:[0-9]+"
+        )
+        f1_seq = "test_entry_trace.py::f1:[0-9]+"
+        f2_seq = "test_entry_trace.py::f2:[0-9]+"
+        f3_seq = "test_entry_trace.py::f3:[0-9]+"
+        f4_seq = "test_entry_trace.py::f4:[0-9]+"
+        tw_seq = "entry_trace.py::trace_wrapper:[0-9]+"
+
+        ################################################################
+        # f1 expected trace results
+        ################################################################
+        f1_call_seq = f"{ml_seq}"
+        log_ver.add_pattern(pattern=f"{f1_entry_exit} entry: ")
+        log_ver.add_pattern(pattern=f"{f1_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # f2 expected trace results
+        ################################################################
+        f2_call_seq = f"{f1_seq}"
+        if f2_trace_enable_arg:
+            log_ver.add_pattern(pattern=f"{f2_entry_exit} entry: ")
+            log_ver.add_pattern(pattern=f"{f2_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # f3 expected trace results
+        ################################################################
+        if f2_trace_enable_arg:
+            pos_1 = f2_seq
+            pos_2 = tw_seq
+            pos_3 = f1_seq
+            pos_4 = tw_seq
+        else:
+            pos_1 = f2_seq
+            pos_2 = f1_seq
+            pos_3 = tw_seq
+            pos_4 = ml_seq
+
+        if f3_depth_arg == 1:
+            f3_call_seq = f"{pos_1}"
+        elif f3_depth_arg == 2:
+            f3_call_seq = f"{pos_2} -> {pos_1}"
+        elif f3_depth_arg == 3:
+            f3_call_seq = f"{pos_3} -> {pos_2} -> {pos_1}"
+        else:
+            f3_call_seq = f"{pos_4} -> {pos_3} -> {pos_2} -> {pos_1}"
+
+        if f3_trace_enable_arg:
+            log_ver.add_pattern(pattern=f"{f3_entry_exit} entry: ")
+            log_ver.add_pattern(pattern=f"{f3_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # f4 expected trace results
+        ################################################################
+        pos_1 = f4_seq
+        pos_2 = tw_seq
+        pos_3 = f3_seq
+        pos_4 = tw_seq
+        pos_5 = f2_seq
+        pos_6 = tw_seq
+        pos_7 = f1_seq
+        pos_8 = tw_seq
+        pos_9 = ml_seq
+        if not f3_trace_enable_arg:
+            pos_4 = pos_5
+            pos_5 = pos_6
+            pos_6 = pos_7
+            pos_7 = pos_8
+            pos_8 = pos_9
+        if not f2_trace_enable_arg:
+            if not f3_trace_enable_arg:
+                pos_5 = pos_6
+            pos_6 = pos_7
+            pos_7 = pos_8
+            pos_8 = pos_9
+        if latest_arg == 1:
+            f4_call_seq = f"{pos_3}"
+        elif latest_arg == 2:
+            f4_call_seq = f"{pos_4}"
+        elif latest_arg == 3:
+            f4_call_seq = f"{pos_5}"
+        elif latest_arg == 4:
+            f4_call_seq = f"{pos_6}"
+        else:
+            f4_call_seq = f"{pos_7}"
+
+        log_ver.add_pattern(pattern=f"{f4_entry_exit} entry: ")
+        log_ver.add_pattern(pattern=f"{f4_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # f5 expected trace results
+        ################################################################
+        pos_1 = f4_seq
+        pos_2 = tw_seq
+        pos_3 = f3_seq
+        pos_4 = tw_seq
+        pos_5 = f2_seq
+        pos_6 = tw_seq
+        pos_7 = f1_seq
+        pos_8 = tw_seq
+        pos_9 = ml_seq
+        if not f3_trace_enable_arg:
+            pos_4 = pos_5
+            pos_5 = pos_6
+            pos_6 = pos_7
+            pos_7 = pos_8
+            pos_8 = pos_9
+        if not f2_trace_enable_arg:
+            if not f3_trace_enable_arg:
+                pos_5 = pos_6
+            pos_6 = pos_7
+            pos_7 = pos_8
+            pos_8 = pos_9
+        if f5_latest == 1:
+            if depth_arg == 1:
+                f5_call_seq = f"{pos_1}"
+            elif depth_arg == 2:
+                f5_call_seq = f"{pos_2} -> {pos_1}"
+            elif depth_arg == 3:
+                f5_call_seq = f"{pos_3} -> {pos_2} -> {pos_1}"
+            elif depth_arg == 4:
+                f5_call_seq = f"{pos_4} -> {pos_3} -> {pos_2} -> {pos_1}"
+            else:
+                f5_call_seq = f"{pos_5} -> {pos_4} -> {pos_3} -> {pos_2} -> {pos_1}"
+        elif f5_latest == 2:
+            if depth_arg == 1:
+                f5_call_seq = f"{pos_2}"
+            elif depth_arg == 2:
+                f5_call_seq = f"{pos_3} -> {pos_2}"
+            elif depth_arg == 3:
+                f5_call_seq = f"{pos_4} -> {pos_3} -> {pos_2}"
+            elif depth_arg == 4:
+                f5_call_seq = f"{pos_5} -> {pos_4} -> {pos_3} -> {pos_2}"
+            else:
+                f5_call_seq = f"{pos_6} -> {pos_5} -> {pos_4} -> {pos_3} -> {pos_2}"
+        elif f5_latest == 3:
+            if depth_arg == 1:
+                f5_call_seq = f"{pos_3}"
+            elif depth_arg == 2:
+                f5_call_seq = f"{pos_4} -> {pos_3}"
+            elif depth_arg == 3:
+                f5_call_seq = f"{pos_5} -> {pos_4} -> {pos_3}"
+            elif depth_arg == 4:
+                f5_call_seq = f"{pos_6} -> {pos_5} -> {pos_4} -> {pos_3}"
+            else:
+                f5_call_seq = f"{pos_7} -> {pos_6} -> {pos_5} -> {pos_4} -> {pos_3}"
+        elif f5_latest == 4:
+            if depth_arg == 1:
+                f5_call_seq = f"{pos_4}"
+            elif depth_arg == 2:
+                f5_call_seq = f"{pos_5} -> {pos_4}"
+            elif depth_arg == 3:
+                f5_call_seq = f"{pos_6} -> {pos_5} -> {pos_4}"
+            elif depth_arg == 4:
+                f5_call_seq = f"{pos_7} -> {pos_6} -> {pos_5} -> {pos_4}"
+            else:
+                f5_call_seq = f"{pos_8} -> {pos_7} -> {pos_6} -> {pos_5} -> {pos_4}"
+        else:
+            if depth_arg == 1:
+                f5_call_seq = f"{pos_5}"
+            elif depth_arg == 2:
+                f5_call_seq = f"{pos_6} -> {pos_5}"
+            elif depth_arg == 3:
+                f5_call_seq = f"{pos_7} -> {pos_6} -> {pos_5}"
+            elif depth_arg == 4:
+                f5_call_seq = f"{pos_8} -> {pos_7} -> {pos_6} -> {pos_5}"
+            else:
+                f5_call_seq = f"{pos_9} -> {pos_8} -> {pos_7} -> {pos_6} -> {pos_5}"
+
+        log_ver.add_pattern(pattern=f"{f5_entry_exit} entry: ")
+        log_ver.add_pattern(pattern=f"{f5_entry_exit} exit: return_value=None")
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_nested_functions4
+    ####################################################################
+    @pytest.mark.parametrize("latest_arg", (1, 2, 3, 4, 5))
+    @pytest.mark.parametrize("depth_arg", (1, 2, 3, 4, 5))
+    @pytest.mark.parametrize("f3_depth_arg", (1, 2, 3, 4))
+    @pytest.mark.parametrize("f2_trace_enable_arg", (True, False))
+    @pytest.mark.parametrize("f3_trace_enable_arg", (True, False))
+    @etrace(omit_caller=True, log_ver=True)
+    def test_etrace_on_nested_functions4(
+        self,
+        latest_arg: int,
+        depth_arg: int,
+        f3_depth_arg: int,
+        f2_trace_enable_arg: bool,
+        f3_trace_enable_arg: bool,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a function.
+
+        Args:
+            latest_arg: latest arg for etrace
+            depth_arg: depth arg for etrace
+            f3_depth_arg: depth arg for etrace for f3
+            f2_trace_enable_arg: specifies etrace enable for f2
+            f3_trace_enable_arg: specifies etrace enable for f3
+            caplog: pytest fixture to capture log output
+
+        """
+        f5_max_latest = 5
+        if not f2_trace_enable_arg:
+            f5_max_latest -= 1
+        if not f3_trace_enable_arg:
+            f5_max_latest -= 1
+        f5_latest = min(f5_max_latest, latest_arg)
+
+        @etrace(log_ver=self.log_ver, omit_caller=True)
+        def f1() -> None:
+            f2()
+
+        @etrace(
+            enable_trace=f2_trace_enable_arg, omit_caller=True, log_ver=self.log_ver
+        )
+        def f2() -> None:
+            f3()
+
+        @etrace(
+            omit_caller=True,
+            enable_trace=f3_trace_enable_arg,
+            depth=f3_depth_arg,
+            log_ver=self.log_ver,
+        )
+        def f3() -> None:
+            f4()
+
+        @etrace(latest=latest_arg, omit_caller=True, log_ver=self.log_ver)
+        def f4() -> None:
+            f5()
+
+        @etrace(
+            omit_caller=True, latest=f5_latest, depth=depth_arg, log_ver=self.log_ver
+        )
+        def f5() -> None:
+            pass
+
+        ################################################################
+        # mainline
+        ################################################################
+        log_ver = self.log_ver
+        f1()
 
         ################################################################
         # check log results
@@ -1565,6 +2106,86 @@ class TestEntryTraceBasic:
         log_ver.print_match_results(match_results, print_matched=True)
         log_ver.verify_match_results(match_results)
 
+    ####################################################################
+    # test_etrace_on_with_create_log_ver1
+    ####################################################################
+    def test_etrace_on_with_create_log_ver1(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a class method.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        class Test1:
+            def __init__(self, *args: Any) -> None:
+                self.args_str = ""
+                for arg in args:
+                    self.args_str = f"{self.args_str}{arg} "
+
+            @etrace(log_ver=True, create_log_ver=True)
+            def f1(self, a: int, b: str = "forty-two") -> str:
+                return f"{a=}, {b=}, {self.args_str=}"
+
+        ################################################################
+        # mainline
+        ################################################################
+        t1 = Test1(42, "forty_two", 83)
+
+        assert t1.args_str == "42 forty_two 83 "
+
+        t1.f1(84, b="eighty-four")
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = t1.log_ver.get_match_results(caplog=caplog)
+        t1.log_ver.print_match_results(match_results, print_matched=True)
+        t1.log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_etrace_on_with_create_log_ver2
+    ####################################################################
+    def test_etrace_on_with_create_log_ver2(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test etrace on a class method.
+
+        Args:
+            caplog: pytest fixture to capture log output
+
+        """
+
+        class Test1:
+            def __init__(self, *args: Any) -> None:
+                self.args_str = ""
+                for arg in args:
+                    self.args_str = f"{self.args_str}{arg} "
+
+            @etrace(create_log_ver=True)
+            def f1(self, a: int, b: str = "forty-two") -> str:
+                return f"{a=}, {b=}, {self.args_str=}"
+
+        ################################################################
+        # mainline
+        ################################################################
+        t1 = Test1(42, "forty_two", 83)
+
+        # @sbt
+
+        assert t1.args_str == "42 forty_two 83 "
+
+        t1.f1(84, b="eighty-four")
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = t1.log_ver.get_match_results(caplog=caplog)
+        t1.log_ver.print_match_results(match_results, print_matched=True)
+        t1.log_ver.verify_match_results(match_results)
+
 
 ########################################################################
 # FunctionType
@@ -1949,7 +2570,7 @@ class TestEntryTraceCombos:
                 arg_spec_array: list[int],
                 *,
                 plist_parms: list[str],
-                omit_parm_parts: tuple[str],
+                omit_parm_parts: tuple[str, ...],
                 raw_arg_specs: list[list[str]],
             ) -> Iterable[ArgSpecRetRes]:
                 ret_res_parts = list(

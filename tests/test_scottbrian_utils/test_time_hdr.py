@@ -662,6 +662,8 @@ class TestStartStopHeader:
             file_arg: specifies file_arg fixture
             flush_arg: specifies the flush_arg fixture
         """
+        # print(f"{sys.version_info.major=}")
+        # print(f"{sys.version_info.minor=}")
         logger.debug(
             f"mainline entered: {dt_format_arg=}, {end_arg=},"
             f"{file_arg=}, {flush_arg=}"
@@ -737,7 +739,9 @@ class TestStartStopHeader:
         expected = "\n" + flowers + end + msg + end + flowers + end
         assert captured == expected
 
-        logger.debug("mainline exiting")
+        logger.debug(
+            f"mainline exiting, {sys.version_info.major=}, {sys.version_info.minor=}"
+        )
 
     def test_print_end_msg(
         self,
@@ -1239,10 +1243,12 @@ class TestTimeBox:
         Raises:
               InvalidRouteNum: 'route_num was not recognized'
         """
-        # func: Union[Callable[[int, str], int],
-        #              Callable[[int, str], None],
-        #              Callable[[], int],
-        #              Callable[[], None]]
+        func: Union[
+            Callable[[int, str], int],
+            Callable[[int, str], None],
+            Callable[[], int],
+            Callable[[], None],
+        ]
 
         if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
             if f_style == 1:

@@ -177,6 +177,7 @@ def etrace(
     enable_trace: Union[bool, Callable[..., bool]] = True,
     omit_parms: Optional[Iterable[str]] = None,
     omit_return_value: bool = False,
+    omit_caller: bool = False,
     latest: int = 1,
     depth: int = 1,
     log_ver: bool = False,
@@ -190,6 +191,7 @@ def etrace(
     enable_trace: Union[bool, Callable[..., bool]] = True,
     omit_parms: Optional[Iterable[str]] = None,
     omit_return_value: bool = False,
+    omit_caller: bool = False,
     latest: int = 1,
     depth: int = 1,
     log_ver: bool = False,
@@ -203,6 +205,7 @@ def etrace(
     enable_trace: Union[bool, Callable[..., bool]] = True,
     omit_parms: Optional[Iterable[str]] = None,
     omit_return_value: bool = False,
+    omit_caller: bool = False,
     latest: int = 1,
     depth: int = 1,
     log_ver: bool = False,
@@ -218,21 +221,27 @@ def etrace(
             size of the trace entry for large arguments.
         omit_return_value: if True, do not place the return value into
             the exit trace entry.
+        omit_caller: if True, the call sequence will not be traced.
         latest: specifies the position in the call sequence that is to
             be designated as the caller named in the trace output. A
             value of 1, the default, specifies that the caller is one
             call back in the sequence and is the normal case. A value
             greater than 1 is useful when decorators are stacked and the
             caller of interest is thus further back in the sequence.
+            Note that *latest* will be ignored if omit_caller is True.
         depth: specifies the depth of the call sequence to include in
             the trace output. A value of 1, the default, species that
             only the latest caller is to be included. Values greater
             than 1 will include the latest caller and its callers.
-        log_ver: if True, the etrace message will be logged and added to
-            the log verifier. The log verifier must be instantiated in
-            the object being traced and referenced as self.log_ver. This
-            is provided strictly for testing purposes to make it easy
-            to add etrace to test case methods.
+            Note that *depth* will be ignored if omit_caller is True.
+        log_ver: if True, a LogVer instance will be instantiated in
+            the callers class object and the etrace message will be
+            logged and added to the log verifier. If *log_ver* is
+            specified with the name of a LogVer instance, the etrace
+            message will be logged and added to the specified log
+            verifier. This is intended for use in a testing environment
+            (e.g., pytest) where the etrace wrapped method is a test
+            case method in a class.
 
     Returns:
         funtools partial (when wrapped is None) or decorated function
@@ -246,8 +255,9 @@ def etrace(
            the line number where it is defined.
         2) The positional and keyword arguments (if any) will appear
            after "entry:".
-        3) The caller of the traced function or method will appear after
-           "caller:" and will include the line number of the call.
+        3) Unless *omit_caller* is specified as False, the caller of the
+           traced function or method will appear after "caller:" and
+           will include the line number of the call.
         4) The exit trace will include the return value unless
            *omit_return_value* specifies True.
 
@@ -260,6 +270,7 @@ def etrace(
                 enable_trace=enable_trace,
                 omit_parms=omit_parms,
                 omit_return_value=omit_return_value,
+                omit_caller=omit_caller,
                 latest=latest,
                 depth=depth,
                 log_ver=log_ver,
@@ -378,13 +389,19 @@ def etrace(
             else:
                 log_sig_array = f"{log_sig_array}{key}={item}, "
 
-        entry_msg = (
-            f"{target} entry: {log_sig_array}caller: "
-            f"{get_formatted_call_sequence(latest=latest, depth=depth)}"
-        )
+        if omit_caller:
+            entry_msg = f"{target} entry: {log_sig_array}"
+        else:
+            entry_msg = (
+                f"{target} entry: {log_sig_array}caller: "
+                f"{get_formatted_call_sequence(latest=latest, depth=depth)}"
+            )
 
-        if log_ver:
+        if isinstance(log_ver, bool) and log_ver is True:
+            instance.log_ver = LogVer(log_name=__name__)
             instance.log_ver.test_msg(log_msg=entry_msg)  # type: ignore
+        elif isinstance(log_ver, LogVer):
+            log_ver.test_msg(log_msg=entry_msg)  # type: ignore
         else:
             logger.debug(entry_msg)
 
@@ -395,8 +412,10 @@ def etrace(
         else:
             exit_msg = f"{target} exit: {return_value=}"
 
-        if log_ver:
+        if isinstance(log_ver, bool) and log_ver is True:
             instance.log_ver.test_msg(log_msg=exit_msg)  # type: ignore
+        elif isinstance(log_ver, LogVer):
+            log_ver.test_msg(log_msg=exit_msg)  # type: ignore
         else:
             logger.debug(exit_msg)
         return return_value

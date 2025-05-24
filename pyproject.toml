@@ -1,9 +1,9 @@
 [project]
 name = "scottbrian_utils"
-version = "4.1.0"
+version = "4.2.0"
 description = "Miscellaneous utilities"
 readme = "README.rst"
-requires-python = "~=3.12"
+requires-python = "~=3.11"
 license = {file = "LICENSE.txt"}
 keywords = ["utilities"]
 authors = [{name = "Scott Tuttle", email = "sbtuttle@outlook.com"}]
@@ -16,12 +16,13 @@ classifiers = [
     "Topic :: Utilities",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: Microsoft :: Windows :: Windows 10"]
 dependencies = [
-    "more-itertools ~=10.2",
+    "more-itertools ~=10.7",
     "pandas ~=2.2",
-    "typing_extensions ~=4.11",
-    "wrapt ~=1.16",
+    "typing_extensions ~=4.13",
+    "wrapt ~=1.17",
 ]
 
 [tool.setuptools]

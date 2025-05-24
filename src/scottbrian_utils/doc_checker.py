@@ -12,16 +12,10 @@ the example will fail to match the timestamp generated when the example
 is tested. Example 1 below shows a way to make the adjustment to the
 timestamp so that it will match.
 
-The DocChecker also has a way to print messages for troubleshooting
-cases that fail to verify. In example 1 below, the line
-
-.. sourcecode:: python
-
-    self.msgs.append([old_want, want, old_got, got])
-
-
-will show the input and output values to help solve problems. Using
-messages is optional and can be customized for any purpose.
+The DocChecker also has a way to optionally print messages for
+troubleshooting cases that fail to verify. This is done by appending to
+the msgs variable as shown below in example 1 just before the return
+statement.
 
 :Example 1: This example shows how to make an adjustment to accommodate
             doc examples in a module called time_hdr that have
@@ -111,6 +105,7 @@ messages is optional and can be customized for any purpose.
         ).pytest()
 
 """
+
 from doctest import OutputChecker as BaseOutputChecker
 
 from sybil.document import Document
