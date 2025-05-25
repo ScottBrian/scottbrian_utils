@@ -180,7 +180,7 @@ def etrace(
     omit_caller: bool = False,
     latest: int = 1,
     depth: int = 1,
-    log_ver: bool = False,
+    log_ver: Union[bool, str] = False,
 ) -> F:
     pass
 
@@ -194,7 +194,7 @@ def etrace(
     omit_caller: bool = False,
     latest: int = 1,
     depth: int = 1,
-    log_ver: bool = False,
+    log_ver: Union[bool, str] = False,
 ) -> Callable[[F], F]:
     pass
 
@@ -208,7 +208,7 @@ def etrace(
     omit_caller: bool = False,
     latest: int = 1,
     depth: int = 1,
-    log_ver: bool = False,
+    log_ver: Union[bool, str] = False,
 ) -> F:
     """Decorator to produce entry/exit log.
 
@@ -234,14 +234,32 @@ def etrace(
             only the latest caller is to be included. Values greater
             than 1 will include the latest caller and its callers.
             Note that *depth* will be ignored if omit_caller is True.
-        log_ver: if True, a LogVer instance will be instantiated in
-            the callers class object and the etrace message will be
-            logged and added to the log verifier. If *log_ver* is
-            specified with the name of a LogVer instance, the etrace
-            message will be logged and added to the specified log
-            verifier. This is intended for use in a testing environment
-            (e.g., pytest) where the etrace wrapped method is a test
-            case method in a class.
+        log_ver: specifies that the etrace log messages should be added
+            to an instance of LogVer (scottbrian_utils.log_verifier)
+            to be verified along with any other log messages being
+            issued and verified. This is intended for use in a testing
+            environment (e.g., pytest) where the etrace wrapped method
+            is a test case method in a class. There are two possible
+            specifications:
+
+            1) bool: log_ver=True specifies that an instance of LogVer
+               should be instantiated in the class that contains the
+               method that etrace is decorating, and the entry and exit
+               log message for the method will be added to the
+               instantiated log verifier. Note that a new LogVer
+               instance is created for each invocation of the method
+               since pytest could be calling the test method repeatedly
+               with a new set of inputs.
+               log_ver=False (the default) specifies that a LogVer is
+               not to be instantiated by etrace and the entry and exit
+               log messages will not be added to a LogVer instance by
+               etrace.
+            2) str: log_ver=log_ver_name: specifies that the etrace log
+               messages should be added to the LogVer instance named by
+               *log_ver_name*. This is useful for inner functions of a
+               test case where a LogVer instance already exists (e.g.,
+               an instance created in the outer method using
+               etrace(log_ver=True)).
 
     Returns:
         funtools partial (when wrapped is None) or decorated function
@@ -348,7 +366,6 @@ def etrace(
         kwargs: dict[str, Any],
     ) -> Any:
         """Setup the trace."""
-        log_sig_array = ""
         target_sig_array_copy = target_sig_array.copy()
 
         # for VAR_POSITIONAL, we can have a signature of f(*args), or
@@ -383,22 +400,30 @@ def etrace(
         ):
             del target_sig_array_copy[target_sig_names[var_pos_idx]]
 
+        spc1: str = " "
+        comma1: str = ""
+        log_sig_array = ""
         for key, item in target_sig_array_copy.items():
             if isinstance(item, str) and item != "?":
-                log_sig_array = f"{log_sig_array}{key}='{item}', "
+                log_sig_array = f"{spc1}{log_sig_array}{comma1}{key}='{item}'"
             else:
-                log_sig_array = f"{log_sig_array}{key}={item}, "
+                log_sig_array = f"{spc1}{log_sig_array}{comma1}{key}={item}"
+            spc1 = ""
+            comma1 = ", "
 
-        if omit_caller:
-            entry_msg = f"{target} entry: {log_sig_array}"
-        else:
-            entry_msg = (
-                f"{target} entry: {log_sig_array}caller: "
+        caller_str: str = ""
+        if not omit_caller:
+            if log_sig_array:
+                caller_str = ","
+            caller_str = (
+                f"{caller_str} caller: "
                 f"{get_formatted_call_sequence(latest=latest, depth=depth)}"
             )
 
+        entry_msg = f"{target} entry:{log_sig_array}{caller_str}"
+
         if isinstance(log_ver, bool) and log_ver is True:
-            instance.log_ver = LogVer(log_name=__name__)
+            instance.log_ver = LogVer(log_name=logger.name)
             instance.log_ver.test_msg(log_msg=entry_msg)  # type: ignore
         elif isinstance(log_ver, LogVer):
             log_ver.test_msg(log_msg=entry_msg)  # type: ignore
