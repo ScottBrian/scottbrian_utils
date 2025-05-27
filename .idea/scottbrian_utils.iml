@@ -14,7 +14,7 @@
       <excludeFolder url="file://$MODULE_DIR$/venv312" />
       <excludeFolder url="file://$MODULE_DIR$/.venv313" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.12 (scottbrian_utils)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.13 (scottbrian_utils)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PackageRequirementsSettings">

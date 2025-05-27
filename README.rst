@@ -162,11 +162,12 @@ Release History
     * add log_ver support to etrace
     * add stacklevel and enable parms to log_ver test_msg
 
-* 4.2.0
+* 5.0.0
     * support python 3.13
     * etrace log_ver instantiate LogVer
     * etrace log_ver accept LogVer instance
     * etrace omit_caller
+    * etrace use caller __name__ for log_name
 
 
 Meta

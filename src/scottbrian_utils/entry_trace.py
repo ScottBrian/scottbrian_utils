@@ -149,9 +149,11 @@ Expected trace output for Example 6::
 # Standard Library
 ########################################################################
 from collections.abc import Iterable
+from enum import Enum, auto
 import functools
 import inspect
 import logging
+import sys
 from typing import Any, Callable, cast, Optional, overload, TypeVar, Union
 
 ########################################################################
@@ -160,8 +162,6 @@ from typing import Any, Callable, cast, Optional, overload, TypeVar, Union
 from scottbrian_utils.diag_msg import get_formatted_call_sequence
 from scottbrian_utils.log_verifier import LogVer  # noqa F401
 import wrapt
-
-logger = logging.getLogger(__name__)
 
 
 ####################################################################
@@ -180,7 +180,7 @@ def etrace(
     omit_caller: bool = False,
     latest: int = 1,
     depth: int = 1,
-    log_ver: Union[bool, str] = False,
+    log_ver: Union[bool, LogVer] = False,
 ) -> F:
     pass
 
@@ -194,7 +194,7 @@ def etrace(
     omit_caller: bool = False,
     latest: int = 1,
     depth: int = 1,
-    log_ver: Union[bool, str] = False,
+    log_ver: Union[bool, LogVer] = False,
 ) -> Callable[[F], F]:
     pass
 
@@ -208,7 +208,7 @@ def etrace(
     omit_caller: bool = False,
     latest: int = 1,
     depth: int = 1,
-    log_ver: Union[bool, str] = False,
+    log_ver: Union[bool, LogVer] = False,
 ) -> F:
     """Decorator to produce entry/exit log.
 
@@ -254,12 +254,12 @@ def etrace(
                not to be instantiated by etrace and the entry and exit
                log messages will not be added to a LogVer instance by
                etrace.
-            2) str: log_ver=log_ver_name: specifies that the etrace log
-               messages should be added to the LogVer instance named by
-               *log_ver_name*. This is useful for inner functions of a
-               test case where a LogVer instance already exists (e.g.,
-               an instance created in the outer method using
-               etrace(log_ver=True)).
+            2) LogVer: log_ver=log_ver_instance: specifies that the
+               etrace log messages should be added to the LogVer
+               instance specified by log_ver_instance. This is useful
+               for inner functions of a test case where a LogVer
+               instance already exists (e.g., an instance created in the
+               outer method using etrace(log_ver=True)).
 
     Returns:
         funtools partial (when wrapped is None) or decorated function
@@ -294,6 +294,25 @@ def etrace(
                 log_ver=log_ver,
             ),
         )
+
+    try:
+        logger = logging.getLogger(sys._getframemodulename(1))
+    except:
+        logger = logging.getLogger(__name__)
+
+    class LogVerSpec(Enum):
+        """Request for LogVer."""
+
+        CreateLogVer = auto()
+        UseProvidedLogVer = auto()
+        UseLogger = auto()
+
+    if isinstance(log_ver, bool) and log_ver is True:
+        log_ver_spec = LogVerSpec.CreateLogVer
+    elif isinstance(log_ver, LogVer):
+        log_ver_spec = LogVerSpec.UseProvidedLogVer
+    else:
+        log_ver_spec = LogVerSpec.UseLogger
 
     omit_parms = set({omit_parms} if isinstance(omit_parms, str) else omit_parms or "")
 
@@ -422,14 +441,20 @@ def etrace(
 
         entry_msg = f"{target} entry:{log_sig_array}{caller_str}"
 
-        if isinstance(log_ver, bool) and log_ver is True:
+        ################################################################
+        # set up for LogVer as requested and log the entry
+        ################################################################
+        if log_ver_spec == LogVerSpec.UseLogger:
+            logger.debug(entry_msg)
+        elif log_ver_spec == LogVerSpec.CreateLogVer:
             instance.log_ver = LogVer(log_name=logger.name)
             instance.log_ver.test_msg(log_msg=entry_msg)  # type: ignore
-        elif isinstance(log_ver, LogVer):
+        else:  # log_ver_spec == LogVerSpec.UseProvidedLogVer:
             log_ver.test_msg(log_msg=entry_msg)  # type: ignore
-        else:
-            logger.debug(entry_msg)
 
+        ################################################################
+        # call wrapped function
+        ################################################################
         return_value = wrapped(*args, **kwargs)
 
         if omit_return_value:
@@ -437,12 +462,16 @@ def etrace(
         else:
             exit_msg = f"{target} exit: {return_value=}"
 
-        if isinstance(log_ver, bool) and log_ver is True:
-            instance.log_ver.test_msg(log_msg=exit_msg)  # type: ignore
-        elif isinstance(log_ver, LogVer):
-            log_ver.test_msg(log_msg=exit_msg)  # type: ignore
-        else:
+        ################################################################
+        # log the exit
+        ################################################################
+        if log_ver_spec == LogVerSpec.UseLogger:
             logger.debug(exit_msg)
+        elif log_ver_spec == LogVerSpec.CreateLogVer:
+            instance.log_ver.test_msg(log_msg=exit_msg)  # type: ignore
+        else:  #  log_ver_spec == LogVerSpec.UseProvidedLogVer:
+            log_ver.test_msg(log_msg=exit_msg)  # type: ignore
+
         return return_value
 
     return cast(F, trace_wrapper(wrapped))
