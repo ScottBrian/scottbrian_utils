@@ -296,8 +296,8 @@ def etrace(
         )
 
     try:
-        logger = logging.getLogger(sys._getframemodulename(1))
-    except:
+        logger = logging.getLogger(sys._getframemodulename(1))  # type: ignore
+    except NameError:
         logger = logging.getLogger(__name__)
 
     class LogVerSpec(Enum):
@@ -447,7 +447,7 @@ def etrace(
         if log_ver_spec == LogVerSpec.UseLogger:
             logger.debug(entry_msg)
         elif log_ver_spec == LogVerSpec.CreateLogVer:
-            instance.log_ver = LogVer(log_name=logger.name)
+            instance.log_ver = LogVer(log_name=logger.name)  # type: ignore
             instance.log_ver.test_msg(log_msg=entry_msg)  # type: ignore
         else:  # log_ver_spec == LogVerSpec.UseProvidedLogVer:
             log_ver.test_msg(log_msg=entry_msg)  # type: ignore
@@ -469,7 +469,7 @@ def etrace(
             logger.debug(exit_msg)
         elif log_ver_spec == LogVerSpec.CreateLogVer:
             instance.log_ver.test_msg(log_msg=exit_msg)  # type: ignore
-        else:  #  log_ver_spec == LogVerSpec.UseProvidedLogVer:
+        else:  # log_ver_spec == LogVerSpec.UseProvidedLogVer:
             log_ver.test_msg(log_msg=exit_msg)  # type: ignore
 
         return return_value

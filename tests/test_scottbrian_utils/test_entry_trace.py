@@ -113,7 +113,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
 
@@ -124,7 +124,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -167,7 +167,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         kw_value = "forty two"
@@ -180,7 +180,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -249,7 +249,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         kw_value = "forty two"
@@ -262,7 +262,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
 
@@ -279,7 +279,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         kw_value = "twelve"
@@ -292,7 +292,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -335,7 +335,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         kw_value = "forty two"
@@ -348,7 +348,7 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -603,7 +603,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         @etrace(log_ver=log_ver)
         def f1() -> None:
@@ -676,7 +676,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         @etrace(omit_caller=True, log_ver=log_ver)
         def f1() -> None:
@@ -992,32 +992,34 @@ class TestEntryTraceBasic:
             f5_max_latest -= 1
         f5_latest = min(f5_max_latest, latest_arg)
 
-        @etrace(log_ver=self.log_ver)
+        @etrace(log_ver=self.log_ver)  # type: ignore
         def f1() -> None:
             f2()
 
-        @etrace(enable_trace=f2_trace_enable_arg, log_ver=self.log_ver)
+        @etrace(enable_trace=f2_trace_enable_arg, log_ver=self.log_ver)  # type: ignore
         def f2() -> None:
             f3()
 
         @etrace(
-            enable_trace=f3_trace_enable_arg, depth=f3_depth_arg, log_ver=self.log_ver
+            enable_trace=f3_trace_enable_arg,
+            depth=f3_depth_arg,
+            log_ver=self.log_ver,  # type: ignore
         )
         def f3() -> None:
             f4()
 
-        @etrace(latest=latest_arg, log_ver=self.log_ver)
+        @etrace(latest=latest_arg, log_ver=self.log_ver)  # type: ignore
         def f4() -> None:
             f5()
 
-        @etrace(latest=f5_latest, depth=depth_arg, log_ver=self.log_ver)
+        @etrace(latest=f5_latest, depth=depth_arg, log_ver=self.log_ver)  # type: ignore
         def f5() -> None:
             pass
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         f1()
 
         ################################################################
@@ -1107,29 +1109,14 @@ class TestEntryTraceBasic:
         f5_entry_exit = f"test_entry_trace.py::f5:{f5_line_num}"
 
         ################################################################
-        # caller strings
-        ################################################################
-        ml_seq = (
-            "test_entry_trace.py::TestEntryTraceBasic."
-            "test_etrace_on_nested_functions:[0-9]+"
-        )
-        f1_seq = "test_entry_trace.py::f1:[0-9]+"
-        f2_seq = "test_entry_trace.py::f2:[0-9]+"
-        f3_seq = "test_entry_trace.py::f3:[0-9]+"
-        f4_seq = "test_entry_trace.py::f4:[0-9]+"
-        tw_seq = "entry_trace.py::trace_wrapper:[0-9]+"
-
-        ################################################################
         # f1 expected trace results
         ################################################################
-        f1_call_seq = f"{ml_seq}"
         log_ver.add_pattern(pattern=f"{f1_entry_exit} entry:")
         log_ver.add_pattern(pattern=f"{f1_entry_exit} exit: return_value=None")
 
         ################################################################
         # f2 expected trace results
         ################################################################
-        f2_call_seq = f"{f1_seq}"
         if f2_trace_enable_arg:
             log_ver.add_pattern(pattern=f"{f2_entry_exit} entry:")
             log_ver.add_pattern(pattern=f"{f2_entry_exit} exit: return_value=None")
@@ -1137,26 +1124,6 @@ class TestEntryTraceBasic:
         ################################################################
         # f3 expected trace results
         ################################################################
-        if f2_trace_enable_arg:
-            pos_1 = f2_seq
-            pos_2 = tw_seq
-            pos_3 = f1_seq
-            pos_4 = tw_seq
-        else:
-            pos_1 = f2_seq
-            pos_2 = f1_seq
-            pos_3 = tw_seq
-            pos_4 = ml_seq
-
-        if f3_depth_arg == 1:
-            f3_call_seq = f"{pos_1}"
-        elif f3_depth_arg == 2:
-            f3_call_seq = f"{pos_2} -> {pos_1}"
-        elif f3_depth_arg == 3:
-            f3_call_seq = f"{pos_3} -> {pos_2} -> {pos_1}"
-        else:
-            f3_call_seq = f"{pos_4} -> {pos_3} -> {pos_2} -> {pos_1}"
-
         if f3_trace_enable_arg:
             log_ver.add_pattern(pattern=f"{f3_entry_exit} entry:")
             log_ver.add_pattern(pattern=f"{f3_entry_exit} exit: return_value=None")
@@ -1164,121 +1131,12 @@ class TestEntryTraceBasic:
         ################################################################
         # f4 expected trace results
         ################################################################
-        pos_1 = f4_seq
-        pos_2 = tw_seq
-        pos_3 = f3_seq
-        pos_4 = tw_seq
-        pos_5 = f2_seq
-        pos_6 = tw_seq
-        pos_7 = f1_seq
-        pos_8 = tw_seq
-        pos_9 = ml_seq
-        if not f3_trace_enable_arg:
-            pos_4 = pos_5
-            pos_5 = pos_6
-            pos_6 = pos_7
-            pos_7 = pos_8
-            pos_8 = pos_9
-        if not f2_trace_enable_arg:
-            if not f3_trace_enable_arg:
-                pos_5 = pos_6
-            pos_6 = pos_7
-            pos_7 = pos_8
-            pos_8 = pos_9
-        if latest_arg == 1:
-            f4_call_seq = f"{pos_3}"
-        elif latest_arg == 2:
-            f4_call_seq = f"{pos_4}"
-        elif latest_arg == 3:
-            f4_call_seq = f"{pos_5}"
-        elif latest_arg == 4:
-            f4_call_seq = f"{pos_6}"
-        else:
-            f4_call_seq = f"{pos_7}"
-
         log_ver.add_pattern(pattern=f"{f4_entry_exit} entry:")
         log_ver.add_pattern(pattern=f"{f4_entry_exit} exit: return_value=None")
 
         ################################################################
         # f5 expected trace results
         ################################################################
-        pos_1 = f4_seq
-        pos_2 = tw_seq
-        pos_3 = f3_seq
-        pos_4 = tw_seq
-        pos_5 = f2_seq
-        pos_6 = tw_seq
-        pos_7 = f1_seq
-        pos_8 = tw_seq
-        pos_9 = ml_seq
-        if not f3_trace_enable_arg:
-            pos_4 = pos_5
-            pos_5 = pos_6
-            pos_6 = pos_7
-            pos_7 = pos_8
-            pos_8 = pos_9
-        if not f2_trace_enable_arg:
-            if not f3_trace_enable_arg:
-                pos_5 = pos_6
-            pos_6 = pos_7
-            pos_7 = pos_8
-            pos_8 = pos_9
-        if f5_latest == 1:
-            if depth_arg == 1:
-                f5_call_seq = f"{pos_1}"
-            elif depth_arg == 2:
-                f5_call_seq = f"{pos_2} -> {pos_1}"
-            elif depth_arg == 3:
-                f5_call_seq = f"{pos_3} -> {pos_2} -> {pos_1}"
-            elif depth_arg == 4:
-                f5_call_seq = f"{pos_4} -> {pos_3} -> {pos_2} -> {pos_1}"
-            else:
-                f5_call_seq = f"{pos_5} -> {pos_4} -> {pos_3} -> {pos_2} -> {pos_1}"
-        elif f5_latest == 2:
-            if depth_arg == 1:
-                f5_call_seq = f"{pos_2}"
-            elif depth_arg == 2:
-                f5_call_seq = f"{pos_3} -> {pos_2}"
-            elif depth_arg == 3:
-                f5_call_seq = f"{pos_4} -> {pos_3} -> {pos_2}"
-            elif depth_arg == 4:
-                f5_call_seq = f"{pos_5} -> {pos_4} -> {pos_3} -> {pos_2}"
-            else:
-                f5_call_seq = f"{pos_6} -> {pos_5} -> {pos_4} -> {pos_3} -> {pos_2}"
-        elif f5_latest == 3:
-            if depth_arg == 1:
-                f5_call_seq = f"{pos_3}"
-            elif depth_arg == 2:
-                f5_call_seq = f"{pos_4} -> {pos_3}"
-            elif depth_arg == 3:
-                f5_call_seq = f"{pos_5} -> {pos_4} -> {pos_3}"
-            elif depth_arg == 4:
-                f5_call_seq = f"{pos_6} -> {pos_5} -> {pos_4} -> {pos_3}"
-            else:
-                f5_call_seq = f"{pos_7} -> {pos_6} -> {pos_5} -> {pos_4} -> {pos_3}"
-        elif f5_latest == 4:
-            if depth_arg == 1:
-                f5_call_seq = f"{pos_4}"
-            elif depth_arg == 2:
-                f5_call_seq = f"{pos_5} -> {pos_4}"
-            elif depth_arg == 3:
-                f5_call_seq = f"{pos_6} -> {pos_5} -> {pos_4}"
-            elif depth_arg == 4:
-                f5_call_seq = f"{pos_7} -> {pos_6} -> {pos_5} -> {pos_4}"
-            else:
-                f5_call_seq = f"{pos_8} -> {pos_7} -> {pos_6} -> {pos_5} -> {pos_4}"
-        else:
-            if depth_arg == 1:
-                f5_call_seq = f"{pos_5}"
-            elif depth_arg == 2:
-                f5_call_seq = f"{pos_6} -> {pos_5}"
-            elif depth_arg == 3:
-                f5_call_seq = f"{pos_7} -> {pos_6} -> {pos_5}"
-            elif depth_arg == 4:
-                f5_call_seq = f"{pos_8} -> {pos_7} -> {pos_6} -> {pos_5}"
-            else:
-                f5_call_seq = f"{pos_9} -> {pos_8} -> {pos_7} -> {pos_6} -> {pos_5}"
-
         log_ver.add_pattern(pattern=f"{f5_entry_exit} entry:")
         log_ver.add_pattern(pattern=f"{f5_entry_exit} exit: return_value=None")
 
@@ -1325,12 +1183,14 @@ class TestEntryTraceBasic:
             f5_max_latest -= 1
         f5_latest = min(f5_max_latest, latest_arg)
 
-        @etrace(log_ver=self.log_ver, omit_caller=True)
+        @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
         def f1() -> None:
             f2()
 
         @etrace(
-            enable_trace=f2_trace_enable_arg, omit_caller=True, log_ver=self.log_ver
+            enable_trace=f2_trace_enable_arg,
+            omit_caller=True,
+            log_ver=self.log_ver,  # type: ignore
         )
         def f2() -> None:
             f3()
@@ -1339,17 +1199,22 @@ class TestEntryTraceBasic:
             omit_caller=True,
             enable_trace=f3_trace_enable_arg,
             depth=f3_depth_arg,
-            log_ver=self.log_ver,
+            log_ver=self.log_ver,  # type: ignore
         )
         def f3() -> None:
             f4()
 
-        @etrace(latest=latest_arg, omit_caller=True, log_ver=self.log_ver)
+        @etrace(
+            latest=latest_arg, omit_caller=True, log_ver=self.log_ver  # type: ignore
+        )
         def f4() -> None:
             f5()
 
         @etrace(
-            omit_caller=True, latest=f5_latest, depth=depth_arg, log_ver=self.log_ver
+            omit_caller=True,
+            latest=f5_latest,
+            depth=depth_arg,
+            log_ver=self.log_ver,  # type: ignore
         )
         def f5() -> None:
             pass
@@ -1357,7 +1222,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         f1()
 
         ################################################################
@@ -1427,14 +1292,14 @@ class TestEntryTraceBasic:
 
         """
 
-        @etrace(log_ver=self.log_ver)
+        @etrace(log_ver=self.log_ver)  # type: ignore
         def f1(a1: int) -> int:
             return a1
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         f1(42)
 
         ################################################################
@@ -1500,14 +1365,14 @@ class TestEntryTraceBasic:
 
         """
 
-        @etrace(omit_caller=True, log_ver=self.log_ver)
+        @etrace(omit_caller=True, log_ver=self.log_ver)  # type: ignore
         def f1(a1: int) -> int:
             return a1
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         f1(42)
 
         ################################################################
@@ -1581,7 +1446,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         @etrace(log_ver=log_ver)
         def f1(*args: Any) -> str:
@@ -1664,7 +1529,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         @etrace(log_ver=log_ver, omit_caller=True)
         def f1(*args: Any) -> str:
@@ -1749,7 +1614,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         @etrace(log_ver=log_ver)
         def f1(**kwargs: Any) -> str:
@@ -1832,7 +1697,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         @etrace(log_ver=log_ver, omit_caller=True)
         def f1(**kwargs: Any) -> str:
@@ -1917,7 +1782,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         @etrace(log_ver=log_ver)
         def f1(a1: int, *args: Any) -> str:
@@ -2000,7 +1865,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         @etrace(log_ver=log_ver, omit_caller=True)
         def f1(a1: int, *args: Any) -> str:
@@ -2093,7 +1958,7 @@ class TestEntryTraceBasic:
         t1 = Test1()
         t1.f1()
 
-        log_ver = t1.log_ver
+        log_ver = t1.log_ver  # type: ignore
 
         ################################################################
         # check log results
@@ -2116,7 +1981,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver)
@@ -2205,7 +2070,7 @@ class TestEntryTraceBasic:
         t1 = Test1()
         t1.f1()
 
-        log_ver = t1.log_ver
+        log_ver = t1.log_ver  # type: ignore
 
         ################################################################
         # check log results
@@ -2228,7 +2093,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -2311,14 +2176,14 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)
+            @etrace(log_ver=self.log_ver)  # type: ignore
             def f1(self, a1: int) -> None:
                 pass
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         Test1().f1(42)
 
         ################################################################
@@ -2386,14 +2251,14 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(omit_caller=True, log_ver=self.log_ver)
+            @etrace(omit_caller=True, log_ver=self.log_ver)  # type: ignore
             def f1(self, a1: int) -> None:
                 pass
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         Test1().f1(42)
 
         ################################################################
@@ -2470,7 +2335,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)
+            @etrace(log_ver=self.log_ver)  # type: ignore
             def f1(self, *args: Any) -> str:
                 ret_str = ""
                 for arg in args:
@@ -2480,7 +2345,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         Test1().f1(42, "forty_two", 83)
 
         ################################################################
@@ -2555,7 +2420,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver, omit_caller=True)
+            @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
             def f1(self, *args: Any) -> str:
                 ret_str = ""
                 for arg in args:
@@ -2565,7 +2430,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         Test1().f1(42, "forty_two", 83)
 
         ################################################################
@@ -2636,10 +2501,10 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
-            @etrace(log_ver=self.log_ver)
+            @etrace(log_ver=self.log_ver)  # type: ignore
             @staticmethod
             def f1() -> None:
                 pass
@@ -2713,7 +2578,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -2794,7 +2659,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver)
@@ -2874,7 +2739,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -2961,7 +2826,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver)
@@ -3035,10 +2900,10 @@ class TestEntryTraceBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
-    # test_etrace_on_static_method_args2
+    # test_etrace_on_static_method_args22
     ####################################################################
     @etrace(log_ver=True, omit_caller=True)
-    def test_etrace_on_static_method_args2(
+    def test_etrace_on_static_method_args22(
         self,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
@@ -3048,7 +2913,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -3132,7 +2997,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver)
@@ -3210,7 +3075,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -3292,7 +3157,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver)
@@ -3371,7 +3236,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -3459,7 +3324,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)
+            @etrace(log_ver=self.log_ver)  # type: ignore
             @classmethod
             def f1(cls, *args: Any) -> str:
                 ret_str = ""
@@ -3470,7 +3335,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         Test1.f1(42, "forty_two", 83)
 
         ################################################################
@@ -3546,7 +3411,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver, omit_caller=True)
+            @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
             @classmethod
             def f1(cls, *args: Any) -> str:
                 ret_str = ""
@@ -3557,7 +3422,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         Test1.f1(42, "forty_two", 83)
 
         ################################################################
@@ -3633,7 +3498,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)
+            @etrace(log_ver=self.log_ver)  # type: ignore
             def __init__(self) -> None:
                 self.v1 = 1
 
@@ -3644,7 +3509,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         Test1()
 
         ################################################################
@@ -3716,7 +3581,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver, omit_caller=True)
+            @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
             def __init__(self) -> None:
                 self.v1 = 1
 
@@ -3727,7 +3592,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         Test1()
 
         ################################################################
@@ -3803,7 +3668,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)
+            @etrace(log_ver=self.log_ver)  # type: ignore
             def __init__(self, v1: int) -> None:
                 self.v1 = v1
 
@@ -3814,7 +3679,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         Test1(42)
 
         ################################################################
@@ -3888,7 +3753,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver, omit_caller=True)
+            @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
             def __init__(self, v1: int) -> None:
                 self.v1 = v1
 
@@ -3899,7 +3764,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         Test1(42)
 
         ################################################################
@@ -3980,7 +3845,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)
+            @etrace(log_ver=self.log_ver)  # type: ignore
             def __init__(self, *args: Any) -> None:
                 self.args_str = ""
                 for arg in args:
@@ -3993,7 +3858,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         t1 = Test1(42, "forty_two", 83)
 
         assert t1.args_str == "42 forty_two 83 "
@@ -4073,7 +3938,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver, omit_caller=True)
+            @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
             def __init__(self, *args: Any) -> None:
                 self.args_str = ""
                 for arg in args:
@@ -4086,7 +3951,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
         t1 = Test1(42, "forty_two", 83)
 
         assert t1.args_str == "42 forty_two 83 "
@@ -4153,7 +4018,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             def __init__(self, *args: Any, a_log_ver: LogVer) -> None:
@@ -4238,7 +4103,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver
+        log_ver = self.log_ver  # type: ignore
 
         class Test1:
             def __init__(self, *args: Any, a_log_ver: LogVer) -> None:
@@ -4758,7 +4623,7 @@ class TestEntryTraceCombos:
                     log_ver.add_pattern(
                         level=logging.DEBUG,
                         pattern=exp_entry_log_msg,
-                        log_name="scottbrian_utils.entry_trace",
+                        log_name="test_scottbrian_utils.test_entry_trace",
                         fullmatch=True,
                     )
 
@@ -4770,7 +4635,7 @@ class TestEntryTraceCombos:
                     log_ver.add_pattern(
                         level=logging.DEBUG,
                         pattern=exp_exit_log_msg,
-                        log_name="scottbrian_utils.entry_trace",
+                        log_name="test_scottbrian_utils.test_entry_trace",
                         fullmatch=True,
                     )
         ################################################################
@@ -4909,7 +4774,7 @@ class TestEntryTraceCombos:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
 
@@ -4920,7 +4785,7 @@ class TestEntryTraceCombos:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -5084,7 +4949,7 @@ class TestEntryTraceCombos:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
 
@@ -5095,7 +4960,7 @@ class TestEntryTraceCombos:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="scottbrian_utils.entry_trace",
+            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
