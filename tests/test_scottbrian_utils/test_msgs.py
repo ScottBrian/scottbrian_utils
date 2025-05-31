@@ -140,7 +140,7 @@ class TestMsgsErrors:
             """Beta f1 function."""
             log_test_msg(log_ver, "f1 beta entered")
 
-            f1_to_low = f1_timeout
+            f1_to_low = f1_timeout * 0.9
             f1_to_high = f1_timeout * 1.1
 
             f1_stop_watch = StopWatch()

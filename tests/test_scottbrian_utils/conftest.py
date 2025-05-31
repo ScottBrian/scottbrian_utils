@@ -108,9 +108,9 @@ def thread_exc(monkeypatch: Any) -> Generator[ExcHook, None, None]:
 
         """
         exc_err_msg = (
-            f"Test case excepthook: {args.exc_type}, "
-            f"{args.exc_value}, {args.exc_traceback},"
-            f" {args.thread}"
+            f"Test case excepthook: {args.exc_type=}, "
+            f"{args.exc_value=}, {args.exc_traceback=},"
+            f" {args.thread=}"
         )
         traceback.print_tb(args.exc_traceback)
         logger.debug(exc_err_msg)

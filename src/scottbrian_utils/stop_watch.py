@@ -59,7 +59,7 @@ The stop_watch module contains:
 ########################################################################
 import threading
 import time
-from typing import Optional, Type, TYPE_CHECKING, Union
+from typing import Final, Optional, Type, TYPE_CHECKING, Union
 
 ########################################################################
 # Third Party
@@ -75,12 +75,19 @@ from typing import Optional, Type, TYPE_CHECKING, Union
 IntFloat = Union[int, float]
 OptIntFloat = Optional[IntFloat]
 
+########################################################################
+# constants
+########################################################################
+NS_2_SECS: Final[float] = 0.000000001
+SECS_2_NS: Final[int] = 1000000000
+
 
 ########################################################################
 # StopWatch Exceptions classes
 ########################################################################
 class StopWatchError(Exception):
     """Base class for exception in this module."""
+
     pass
 
 
@@ -97,6 +104,7 @@ class StopWatch:
     The start_clock and duration methods are used to verify event times.
 
     """
+
     ####################################################################
     # __init__
     ####################################################################
@@ -107,6 +115,7 @@ class StopWatch:
         self.previous_start_time: float = 0.0
         self.clock_in_use = False
         self.clock_iter = 0
+        self.start_time_nano_secs: float = 0.0
 
     ####################################################################
     # repr
@@ -128,16 +137,14 @@ class StopWatch:
         if TYPE_CHECKING:
             __class__: Type[StopWatch]  # noqa: F842
         classname = self.__class__.__name__
-        parms = ''
+        parms = ""
 
-        return f'{classname}({parms})'
+        return f"{classname}({parms})"
 
     ####################################################################
     # pause
     ####################################################################
-    def pause(self,
-              seconds: IntFloat,
-              clock_iter: int) -> None:
+    def pause(self, seconds: IntFloat, clock_iter: int) -> None:
         """Sleep for the number of input seconds relative to start_time.
 
         Args:
@@ -154,19 +161,23 @@ class StopWatch:
                the StopWatch clock_iter.
 
         """
+        nano_secs = seconds * SECS_2_NS
         while clock_iter != self.clock_iter:
             time.sleep(0.1)
 
-        remaining_seconds = seconds - (time.time() - self.start_time)
-        while remaining_seconds > 0:
-            time.sleep(remaining_seconds)
-            remaining_seconds = seconds - (time.time() - self.start_time)
+        remaining_nano_secs = nano_secs - (
+            time.perf_counter_ns() - self.start_time_nano_secs
+        )
+        while remaining_nano_secs > 0:
+            time.sleep(remaining_nano_secs * NS_2_SECS)
+            remaining_nano_secs = nano_secs - (
+                time.perf_counter_ns() - self.start_time_nano_secs
+            )
 
     ####################################################################
     # start_clock
     ####################################################################
-    def start_clock(self,
-                    clock_iter: int) -> None:
+    def start_clock(self, clock_iter: int) -> None:
         """Set the start_time to the current time.
 
         Args:
@@ -179,6 +190,7 @@ class StopWatch:
                     break
             time.sleep(0.01)  # wait until we can have the clock
 
+        self.start_time_nano_secs = time.perf_counter_ns()
         self.start_time = time.time()
         self.clock_iter = clock_iter
 
@@ -191,7 +203,7 @@ class StopWatch:
         Returns:
             number of seconds from the start_time
         """
-        ret_duration = time.time() - self.start_time
+        ret_duration = (time.perf_counter_ns() - self.start_time_nano_secs) * NS_2_SECS
         # no need to get clock_lock to reset the clock_in_use flag
         self.clock_in_use = False  # make available to others
         return ret_duration
