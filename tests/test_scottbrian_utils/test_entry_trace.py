@@ -4983,6 +4983,15 @@ class TestEntryTraceCombos:
         )
     )
 
+    # @pytest.mark.parametrize("caller_type_arg",
+    # (FunctionType.Function,))
+    # @pytest.mark.parametrize("target_type_arg",
+    # (FunctionType.InitMethod,))
+    # @pytest.mark.parametrize("args_arg", args_to_use)
+    # @pytest.mark.parametrize("omit_args_arg", (True,))
+    # @pytest.mark.parametrize("kwargs_and_omits_arg", kwargs_and_omits)
+    # @pytest.mark.parametrize("omit_ret_val_arg", (True,))
+
     @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
     @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
     @pytest.mark.parametrize("args_arg", args_to_use)
