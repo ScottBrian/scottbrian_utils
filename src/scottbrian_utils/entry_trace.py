@@ -19,6 +19,7 @@ The decorator can be controlled via the following parameters:
        of the trace entry for large arguments. The default is None.
     3) omit_return_value: if True, do not trace the return value in the
        exit trace entry. The default is False.
+    4) omit_caller: if True, the call sequence will not be traced.
 
 
 :Example 1: Decorate a function with no args nor kwargs.
@@ -297,7 +298,7 @@ def etrace(
 
     try:
         logger = logging.getLogger(sys._getframemodulename(1))  # type: ignore
-    except NameError:
+    except (NameError, AttributeError):
         logger = logging.getLogger(__name__)
 
     class LogVerSpec(Enum):

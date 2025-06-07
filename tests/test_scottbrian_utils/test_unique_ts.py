@@ -134,6 +134,17 @@ class TestUniqueTSBasic:
                 "\\py312-coverage\\Lib\\site-packages\\scottbrian_utils"
                 "\\unique_ts.py"
             )
+        elif sys.version_info.minor == 13:
+            exp1 = (
+                "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
+                "\\py313-pytest\\Lib\\site-packages\\scottbrian_utils"
+                "\\unique_ts.py"
+            )
+            exp2 = (
+                "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
+                "\\py313-coverage\\Lib\\site-packages\\scottbrian_utils"
+                "\\unique_ts.py"
+            )
         else:
             exp1 = ""
             exp2 = ""

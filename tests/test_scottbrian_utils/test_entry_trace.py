@@ -458,6 +458,117 @@ class TestEntryTraceExamples:
 class TestEntryTraceBasic:
     """Test basic functions of EntryTrace."""
 
+    log_ver: LogVer
+
+    ####################################################################
+    # test_entry_trace_no_sys
+    ####################################################################
+    def test_entry_trace_with_sys(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Test case where sys in not available."""
+
+        from scottbrian_utils.entry_trace import etrace
+
+        log_ver = LogVer()
+
+        @etrace
+        def f1() -> None:
+            return
+
+        ################################################################
+        # mainline
+        ################################################################
+        f1()
+        f1_line_num = inspect.getsourcelines(f1)[1]
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: "
+            "caller: test_entry_trace.py::TestEntryTraceBasic."
+            "test_entry_trace_with_sys:[0-9]+"
+        )
+
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
+            log_name="test_scottbrian_utils.test_entry_trace",
+            fullmatch=True,
+        )
+
+        exp_exit_log_msg = (
+            f"test_entry_trace.py::f1:{f1_line_num} exit: return_value=None"
+        )
+
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
+            log_name="test_scottbrian_utils.test_entry_trace",
+            fullmatch=True,
+        )
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_entry_trace_no_sys
+    ####################################################################
+    def test_entry_trace_no_sys(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Test case where sys in not available."""
+
+        from scottbrian_utils import entry_trace
+
+        # force path through etrace that selects entry_trace logger
+        save_sys = entry_trace.sys
+        entry_trace.sys = None
+
+        @entry_trace.etrace
+        def f1() -> None:
+            return
+
+        # restore sys to prevent errors in other test cases
+        entry_trace.sys = save_sys
+
+        ################################################################
+        # mainline
+        ################################################################
+        f1()
+
+        log_ver = LogVer()
+
+        f1_line_num = inspect.getsourcelines(f1)[1]
+
+        exp_entry_log_msg = (
+            rf"test_entry_trace.py::f1:{f1_line_num} entry: "
+            "caller: test_entry_trace.py::TestEntryTraceBasic."
+            "test_entry_trace_no_sys:[0-9]+"
+        )
+
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_entry_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+
+        exp_exit_log_msg = (
+            f"test_entry_trace.py::f1:{f1_line_num} exit: return_value=None"
+        )
+
+        log_ver.add_pattern(
+            level=logging.DEBUG,
+            pattern=exp_exit_log_msg,
+            log_name="scottbrian_utils.entry_trace",
+            fullmatch=True,
+        )
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
     ####################################################################
     # test_etrace_on_function_no_parm
     ####################################################################
@@ -603,7 +714,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         @etrace(log_ver=log_ver)
         def f1() -> None:
@@ -676,7 +787,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         @etrace(omit_caller=True, log_ver=log_ver)
         def f1() -> None:
@@ -992,34 +1103,34 @@ class TestEntryTraceBasic:
             f5_max_latest -= 1
         f5_latest = min(f5_max_latest, latest_arg)
 
-        @etrace(log_ver=self.log_ver)  # type: ignore
+        @etrace(log_ver=self.log_ver)
         def f1() -> None:
             f2()
 
-        @etrace(enable_trace=f2_trace_enable_arg, log_ver=self.log_ver)  # type: ignore
+        @etrace(enable_trace=f2_trace_enable_arg, log_ver=self.log_ver)
         def f2() -> None:
             f3()
 
         @etrace(
             enable_trace=f3_trace_enable_arg,
             depth=f3_depth_arg,
-            log_ver=self.log_ver,  # type: ignore
+            log_ver=self.log_ver,
         )
         def f3() -> None:
             f4()
 
-        @etrace(latest=latest_arg, log_ver=self.log_ver)  # type: ignore
+        @etrace(latest=latest_arg, log_ver=self.log_ver)
         def f4() -> None:
             f5()
 
-        @etrace(latest=f5_latest, depth=depth_arg, log_ver=self.log_ver)  # type: ignore
+        @etrace(latest=f5_latest, depth=depth_arg, log_ver=self.log_ver)
         def f5() -> None:
             pass
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         f1()
 
         ################################################################
@@ -1183,14 +1294,14 @@ class TestEntryTraceBasic:
             f5_max_latest -= 1
         f5_latest = min(f5_max_latest, latest_arg)
 
-        @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
+        @etrace(log_ver=self.log_ver, omit_caller=True)
         def f1() -> None:
             f2()
 
         @etrace(
             enable_trace=f2_trace_enable_arg,
             omit_caller=True,
-            log_ver=self.log_ver,  # type: ignore
+            log_ver=self.log_ver,
         )
         def f2() -> None:
             f3()
@@ -1199,14 +1310,12 @@ class TestEntryTraceBasic:
             omit_caller=True,
             enable_trace=f3_trace_enable_arg,
             depth=f3_depth_arg,
-            log_ver=self.log_ver,  # type: ignore
+            log_ver=self.log_ver,
         )
         def f3() -> None:
             f4()
 
-        @etrace(
-            latest=latest_arg, omit_caller=True, log_ver=self.log_ver  # type: ignore
-        )
+        @etrace(latest=latest_arg, omit_caller=True, log_ver=self.log_ver)
         def f4() -> None:
             f5()
 
@@ -1214,7 +1323,7 @@ class TestEntryTraceBasic:
             omit_caller=True,
             latest=f5_latest,
             depth=depth_arg,
-            log_ver=self.log_ver,  # type: ignore
+            log_ver=self.log_ver,
         )
         def f5() -> None:
             pass
@@ -1222,7 +1331,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         f1()
 
         ################################################################
@@ -1292,14 +1401,14 @@ class TestEntryTraceBasic:
 
         """
 
-        @etrace(log_ver=self.log_ver)  # type: ignore
+        @etrace(log_ver=self.log_ver)
         def f1(a1: int) -> int:
             return a1
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         f1(42)
 
         ################################################################
@@ -1365,14 +1474,14 @@ class TestEntryTraceBasic:
 
         """
 
-        @etrace(omit_caller=True, log_ver=self.log_ver)  # type: ignore
+        @etrace(omit_caller=True, log_ver=self.log_ver)
         def f1(a1: int) -> int:
             return a1
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         f1(42)
 
         ################################################################
@@ -1446,7 +1555,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         @etrace(log_ver=log_ver)
         def f1(*args: Any) -> str:
@@ -1529,7 +1638,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         @etrace(log_ver=log_ver, omit_caller=True)
         def f1(*args: Any) -> str:
@@ -1614,7 +1723,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         @etrace(log_ver=log_ver)
         def f1(**kwargs: Any) -> str:
@@ -1697,7 +1806,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         @etrace(log_ver=log_ver, omit_caller=True)
         def f1(**kwargs: Any) -> str:
@@ -1782,7 +1891,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         @etrace(log_ver=log_ver)
         def f1(a1: int, *args: Any) -> str:
@@ -1865,7 +1974,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         @etrace(log_ver=log_ver, omit_caller=True)
         def f1(a1: int, *args: Any) -> str:
@@ -1981,7 +2090,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver)
@@ -2093,7 +2202,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -2176,14 +2285,14 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)  # type: ignore
+            @etrace(log_ver=self.log_ver)
             def f1(self, a1: int) -> None:
                 pass
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         Test1().f1(42)
 
         ################################################################
@@ -2251,14 +2360,14 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(omit_caller=True, log_ver=self.log_ver)  # type: ignore
+            @etrace(omit_caller=True, log_ver=self.log_ver)
             def f1(self, a1: int) -> None:
                 pass
 
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         Test1().f1(42)
 
         ################################################################
@@ -2335,7 +2444,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)  # type: ignore
+            @etrace(log_ver=self.log_ver)
             def f1(self, *args: Any) -> str:
                 ret_str = ""
                 for arg in args:
@@ -2345,7 +2454,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         Test1().f1(42, "forty_two", 83)
 
         ################################################################
@@ -2420,7 +2529,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
+            @etrace(log_ver=self.log_ver, omit_caller=True)
             def f1(self, *args: Any) -> str:
                 ret_str = ""
                 for arg in args:
@@ -2430,7 +2539,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         Test1().f1(42, "forty_two", 83)
 
         ################################################################
@@ -2501,10 +2610,10 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
-            @etrace(log_ver=self.log_ver)  # type: ignore
+            @etrace(log_ver=self.log_ver)
             @staticmethod
             def f1() -> None:
                 pass
@@ -2578,7 +2687,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -2659,7 +2768,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver)
@@ -2739,7 +2848,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -2826,7 +2935,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver)
@@ -2913,7 +3022,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -2997,7 +3106,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver)
@@ -3075,7 +3184,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -3157,7 +3266,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver)
@@ -3236,7 +3345,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             @etrace(log_ver=log_ver, omit_caller=True)
@@ -3324,7 +3433,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)  # type: ignore
+            @etrace(log_ver=self.log_ver)
             @classmethod
             def f1(cls, *args: Any) -> str:
                 ret_str = ""
@@ -3335,7 +3444,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         Test1.f1(42, "forty_two", 83)
 
         ################################################################
@@ -3411,7 +3520,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
+            @etrace(log_ver=self.log_ver, omit_caller=True)
             @classmethod
             def f1(cls, *args: Any) -> str:
                 ret_str = ""
@@ -3422,7 +3531,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         Test1.f1(42, "forty_two", 83)
 
         ################################################################
@@ -3498,7 +3607,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)  # type: ignore
+            @etrace(log_ver=self.log_ver)
             def __init__(self) -> None:
                 self.v1 = 1
 
@@ -3509,7 +3618,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         Test1()
 
         ################################################################
@@ -3581,7 +3690,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
+            @etrace(log_ver=self.log_ver, omit_caller=True)
             def __init__(self) -> None:
                 self.v1 = 1
 
@@ -3592,7 +3701,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         Test1()
 
         ################################################################
@@ -3668,7 +3777,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)  # type: ignore
+            @etrace(log_ver=self.log_ver)
             def __init__(self, v1: int) -> None:
                 self.v1 = v1
 
@@ -3679,7 +3788,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         Test1(42)
 
         ################################################################
@@ -3753,7 +3862,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
+            @etrace(log_ver=self.log_ver, omit_caller=True)
             def __init__(self, v1: int) -> None:
                 self.v1 = v1
 
@@ -3764,7 +3873,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         Test1(42)
 
         ################################################################
@@ -3845,7 +3954,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver)  # type: ignore
+            @etrace(log_ver=self.log_ver)
             def __init__(self, *args: Any) -> None:
                 self.args_str = ""
                 for arg in args:
@@ -3858,7 +3967,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         t1 = Test1(42, "forty_two", 83)
 
         assert t1.args_str == "42 forty_two 83 "
@@ -3938,7 +4047,7 @@ class TestEntryTraceBasic:
         """
 
         class Test1:
-            @etrace(log_ver=self.log_ver, omit_caller=True)  # type: ignore
+            @etrace(log_ver=self.log_ver, omit_caller=True)
             def __init__(self, *args: Any) -> None:
                 self.args_str = ""
                 for arg in args:
@@ -3951,7 +4060,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
         t1 = Test1(42, "forty_two", 83)
 
         assert t1.args_str == "42 forty_two 83 "
@@ -4018,7 +4127,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             def __init__(self, *args: Any, a_log_ver: LogVer) -> None:
@@ -4103,7 +4212,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = self.log_ver  # type: ignore
+        log_ver = self.log_ver
 
         class Test1:
             def __init__(self, *args: Any, a_log_ver: LogVer) -> None:
