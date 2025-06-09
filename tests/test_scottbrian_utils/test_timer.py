@@ -580,64 +580,6 @@ class TestTimerBasic:
         """Test timer correct source."""
         print("\nmainline entered")
         print(f"{inspect.getsourcefile(Timer)=}")
-        # if sys.version_info.minor == 9:
-        #     exp1 = (
-        #         "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-        #         "\\py39-pytest\\lib\\site-packages\\scottbrian_utils"
-        #         "\\timer.py"
-        #     )
-        #     exp2 = (
-        #         "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-        #         "\\py39-coverage\\lib\\site-packages\\scottbrian_utils"
-        #         "\\timer.py"
-        #     )
-        # elif sys.version_info.minor == 10:
-        #     exp1 = (
-        #         "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-        #         "\\py310-pytest\\lib\\site-packages\\scottbrian_utils"
-        #         "\\timer.py"
-        #     )
-        #     exp2 = (
-        #         "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-        #         "\\py310-coverage\\lib\\site-packages\\scottbrian_utils"
-        #         "\\timer.py"
-        #     )
-        # elif sys.version_info.minor == 11:
-        #     exp1 = (
-        #         "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-        #         "\\py311-pytest\\Lib\\site-packages\\scottbrian_utils"
-        #         "\\timer.py"
-        #     )
-        #     exp2 = (
-        #         "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-        #         "\\py311-coverage\\Lib\\site-packages\\scottbrian_utils"
-        #         "\\timer.py"
-        #     )
-        # elif sys.version_info.minor == 12:
-        #     exp1 = (
-        #         "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-        #         "\\py312-pytest\\Lib\\site-packages\\scottbrian_utils"
-        #         "\\timer.py"
-        #     )
-        #     exp2 = (
-        #         "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-        #         "\\py312-coverage\\Lib\\site-packages\\scottbrian_utils"
-        #         "\\timer.py"
-        #     )
-        # elif sys.version_info.minor == 13:
-        #     exp1 = (
-        #         "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-        #         "\\py313-pytest\\Lib\\site-packages\\scottbrian_utils"
-        #         "\\timer.py"
-        #     )
-        #     exp2 = (
-        #         "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-        #         "\\py313-coverage\\Lib\\site-packages\\scottbrian_utils"
-        #         "\\timer.py"
-        #     )
-        # else:
-        #     exp1 = ""
-        #     exp2 = ""
 
         exp1 = (
             "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"

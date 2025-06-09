@@ -520,7 +520,7 @@ class TestEntryTraceBasic:
 
         # force path through etrace that selects entry_trace logger
         save_sys = entry_trace.sys
-        entry_trace.sys = None
+        entry_trace.sys = None  # type: ignore
 
         @entry_trace.etrace
         def f1() -> None:
