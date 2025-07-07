@@ -3,12 +3,12 @@ name = "scottbrian_utils"
 version = "5.0.0"
 description = "Miscellaneous utilities"
 readme = "README.rst"
-requires-python = "~=3.11"
-license = {file = "LICENSE.txt"}
+requires-python = "~=3.12"
+license = "MIT"
+license-files = ["LICENSE.txt"]
 keywords = ["utilities"]
 authors = [{name = "Scott Tuttle", email = "sbtuttle@outlook.com"}]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -35,7 +35,6 @@ Source = "https://github.com/ScottBrian/scottbrian_utils.git"
 
 [build-system]
 requires = [
-    "setuptools ~=69.5",
-    "wheel ~=0.43"
+    "setuptools ~=80.9",
 ]
 build-backend = 'setuptools.build_meta'

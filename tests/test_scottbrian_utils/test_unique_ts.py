@@ -88,23 +88,24 @@ class TestUniqueTSBasic:
     ####################################################################
     def test_unique_time_stamp_correct_source(self) -> None:
         """Test unique time stamp correct source."""
-        print("\nmainline entered")
-        print(f"{inspect.getsourcefile(UniqueTS)=}")
 
-        exp1 = (
-            "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-            f"\\py3{sys.version_info.minor}-pytest\\Lib\\site-packages\\"
-            "scottbrian_utils\\unique_ts.py"
-        )
-        exp2 = (
-            "C:\\Users\\Tiger\\PycharmProjects\\scottbrian_utils\\.tox"
-            f"\\py3{sys.version_info.minor}-coverage\\Lib\\site-packages\\"
-            "scottbrian_utils\\unique_ts.py"
-        )
+        # set the following four lines
+        library = "C:\\Users\\Tiger\\PycharmProjects\\"
+        project = "scottbrian_utils"
+        py_file = "unique_ts.py"
+        class_to_use = UniqueTS
 
-        actual = inspect.getsourcefile(UniqueTS)
-        assert (actual == exp1) or (actual == exp2)
-        print("mainline exiting")
+        file_prefix = (
+            f"{library}{project}\\.tox"
+            f"\\py{sys.version_info.major}{sys.version_info.minor}-"
+        )
+        file_suffix = f"\\Lib\\site-packages\\{project}\\{py_file}"
+
+        pytest_run = f"{file_prefix}pytest{file_suffix}"
+        coverage_run = f"{file_prefix}coverage{file_suffix}"
+
+        actual = inspect.getsourcefile(class_to_use)
+        assert (actual == pytest_run) or (actual == coverage_run)
 
     ####################################################################
     # test_unique_ts_case1a

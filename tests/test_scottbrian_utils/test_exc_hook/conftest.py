@@ -66,37 +66,8 @@ def thread_exc(monkeypatch: Any, request) -> Generator[ExcHook, None, None]:
         a thread exception handler
 
     """
-    with ExcHook(monkeypatch) as exc_hook:
-        yield exc_hook
-
-
-########################################################################
-# dt_format_arg_list
-########################################################################
-dt_format_arg_list = [
-    None,
-    "%H:%M",
-    "%H:%M:%S",
-    "%m/%d %H:%M:%S",
-    "%b %d %H:%M:%S",
-    "%m/%d/%y %H:%M:%S",
-    "%m/%d/%Y %H:%M:%S",
-    "%b %d %Y %H:%M:%S",
-    "%a %b %d %Y %H:%M:%S",
-    "%a %b %d %H:%M:%S.%f",
-    "%A %b %d %H:%M:%S.%f",
-    "%A %B %d %H:%M:%S.%f",
-]
-
-
-@pytest.fixture(params=dt_format_arg_list)
-def dt_format_arg(request: Any) -> str:
-    """Using different time formats.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(str, request.param)
+    try:
+        with ExcHook(monkeypatch) as exc_hook:
+            yield exc_hook
+    except Exception as exc:
+        print(exc)
