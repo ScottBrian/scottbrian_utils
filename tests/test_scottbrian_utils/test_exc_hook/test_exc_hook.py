@@ -125,9 +125,13 @@ class TestExcHookBasic:
     ####################################################################
     # test_exc_hook_thread_handled_assert_error
     ####################################################################
-    def test_exc_hook_thread_handled_assert_error(self) -> None:
+    def test_exc_hook_thread_handled_assert_error(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test exc_hook case1a."""
-        print("mainline entered")
+        log_ver = LogVer(log_name=__name__)
+
+        log_ver.test_msg("mainline entry")
 
         def f1() -> None:
             """F1 thread."""
@@ -140,7 +144,14 @@ class TestExcHookBasic:
         f1_thread.start()
         f1_thread.join()
 
-        print("mainline exiting")
+        log_ver.test_msg("mainline exit")
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_exc_hook_thread_unhandled_assert_error
@@ -162,6 +173,8 @@ class TestExcHookBasic:
         f1_thread = threading.Thread(target=f1)
         f1_thread.start()
         f1_thread.join()
+
+        log_ver.test_msg("mainline exit")
 
         ################################################################
         # check log results

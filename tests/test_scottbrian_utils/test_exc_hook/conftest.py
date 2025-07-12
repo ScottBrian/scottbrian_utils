@@ -17,6 +17,7 @@ import logging
 # Local
 ########################################################################
 from scottbrian_utils.exc_hook import ExcHook
+from scottbrian_utils.log_verifier import LogVer
 
 ########################################################################
 # logging
@@ -55,7 +56,9 @@ logger = logging.getLogger(__name__)
 #
 ########################################################################
 @pytest.fixture(autouse=True)
-def thread_exc(monkeypatch: Any, request) -> Generator[ExcHook, None, None]:
+def thread_exc(
+    monkeypatch: Any, request, caplog: pytest.LogCaptureFixture
+) -> Generator[ExcHook, None, None]:
     """Instantiate and return a ThreadExc for testing.
 
     Args:
@@ -66,8 +69,23 @@ def thread_exc(monkeypatch: Any, request) -> Generator[ExcHook, None, None]:
         a thread exception handler
 
     """
+    log_ver = LogVer(log_name=__name__)
+
+    log_ver.test_msg("conftest entry")
+
     try:
-        with ExcHook(monkeypatch) as exc_hook:
+        with ExcHook(monkeypatch, log_ver=log_ver) as exc_hook:
             yield exc_hook
     except Exception as exc:
         print(exc)
+
+    log_ver.test_msg("conftest exit")
+
+    ################################################################
+    # check log results
+    ################################################################
+    match_results = log_ver.get_match_results(
+        caplog=caplog, which_records=["setup", "teardown"]
+    )
+    log_ver.print_match_results(match_results, print_matched=True)
+    log_ver.verify_match_results(match_results)

@@ -250,7 +250,7 @@ import pytest
 
 import re
 
-from typing import Callable, Optional, Type, TYPE_CHECKING, Union
+from typing import Callable, Literal, Optional, Type, TYPE_CHECKING, Union
 import warnings
 
 ########################################################################
@@ -683,11 +683,17 @@ class LogVer:
     ####################################################################
     # get_match_results
     ####################################################################
-    def get_match_results(self, caplog: pytest.LogCaptureFixture) -> MatchResults:
+    def get_match_results(
+        self,
+        caplog: pytest.LogCaptureFixture,
+        which_records: Optional[Literal["setup", "call", "teardown"]] = None,
+    ) -> MatchResults:
         """Match the patterns to log records.
 
         Args:
             caplog: pytest fixture that captures log messages
+            which_records: list to request log records for any
+                combination of setup, call, and teardown
 
         Returns:
             MatchResults object, which contain the results of the
@@ -696,10 +702,46 @@ class LogVer:
             patterns and messaged used to print and verify the results.
 
         """
+        # print("\ncaplog.records:")
+        # for rec_row in caplog.records:
+        #     print(f"({rec_row.name}, {rec_row.levelno},
+        #     {rec_row.message})")
+        #
+        # print("\ncaplog.get_records(setup):")
+        # for rec_row in caplog.get_records("setup"):
+        #     print(f"({rec_row.name}, {rec_row.levelno},
+        #     {rec_row.message})")
+        #
+        # print("\ncaplog.get_records(call):")
+        # for rec_row in caplog.get_records("call"):
+        #     print(f"({rec_row.name}, {rec_row.levelno},
+        #     {rec_row.message})")
+        #
+        # print("\ncaplog.get_records(teardown):")
+        # for rec_row in caplog.get_records("teardown"):
+        #     print(f"({rec_row.name}, {rec_row.levelno},
+        #     {rec_row.message})")
+        #
+        # msg_df = pd.DataFrame(
+        #     caplog.record_tuples,
+        #     columns=("log_name", "level", "log_msg"),
+        # )
+
         self.start_DT = datetime.now()
 
+        rec_list = []
+
+        if which_records is None:
+            which_records = ["call"]
+        for which_record in which_records:
+            records_list = [
+                (rec_row.name, rec_row.levelno, rec_row.message)
+                for rec_row in caplog.get_records(which_record)
+            ]
+            rec_list.extend(records_list)
+
         msg_df = pd.DataFrame(
-            caplog.record_tuples,
+            rec_list,
             columns=("log_name", "level", "log_msg"),
         )
 

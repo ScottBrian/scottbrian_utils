@@ -11,9 +11,10 @@ The *test_helpers* module provides classes to use during testing.
 ########################################################################
 # Standard Library
 ########################################################################
+import re
 import threading
 import traceback
-from typing import Any
+from typing import Any, Optional
 import logging
 
 ########################################################################
@@ -23,7 +24,11 @@ import logging
 ########################################################################
 # Local
 ########################################################################
+from scottbrian_utils.log_verifier import LogVer
 
+########################################################################
+# setup the logger
+########################################################################
 logger = logging.getLogger(__name__)
 
 
@@ -57,12 +62,13 @@ logger = logging.getLogger(__name__)
 class ExcHook:
     """Context manager exception hook."""
 
-    def __init__(self, monkeypatch) -> None:
+    def __init__(self, monkeypatch, log_ver: Optional[LogVer] = None) -> None:
         """Initialize the ExcHook class instance."""
         self.exc_err_msg1 = ""
         self.old_hook = None
         self.new_hook = None
         self.mpatch = monkeypatch
+        self.log_ver = log_ver
 
     def raise_exc_if_one(self) -> None:
         """Raise an error is we have one.
@@ -84,9 +90,13 @@ class ExcHook:
         self.mpatch.setattr(threading, "excepthook", ExcHook.mock_threading_excepthook)
         # keep a copy
         self.new_hook = threading.excepthook
-        logger.debug(
+
+        log_msg = (
             f"ExcHook __enter__ new hook was set: {self.old_hook=}, {self.new_hook=}"
         )
+        logger.debug(log_msg)
+        if self.log_ver is not None:
+            self.log_ver.add_pattern(re.escape(log_msg), log_name=__name__)
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit method.
@@ -115,10 +125,15 @@ class ExcHook:
             f"ExcHook {self.new_hook=} was incorrectly replaced at some point by "
             f"{threading.excepthook=}"
         )
-        logger.debug(
+
+        log_msg = (
             f"ExcHook __exit__ current hook {threading.excepthook=} will now be restored "
-            f"from {self.old_hook=}"
+            f"to {self.old_hook=}"
         )
+        logger.debug(log_msg)
+        if self.log_ver is not None:
+            self.log_ver.add_pattern(re.escape(log_msg), log_name=__name__)
+
         threading.excepthook = self.old_hook
 
     @staticmethod
@@ -135,16 +150,25 @@ class ExcHook:
             Exception: Test case thread test error
 
         """
+        exc_hook = getattr(ExcHook.mock_threading_excepthook, "exc_hook", None)
+
+        traceback.print_tb(args.exc_traceback)
+
         exc_err_msg = (
             f"Test case excepthook: {args.exc_type=}, "
             f"{args.exc_value=}, {args.exc_traceback=},"
             f" {args.thread=}"
         )
-        traceback.print_tb(args.exc_traceback)
         logger.debug(exc_err_msg)
-        current_thread = threading.current_thread()
-        logging.exception(f"exception caught for {current_thread}")
-        logger.debug(f"excepthook current thread is {current_thread}")
-        exc_hook = getattr(ExcHook.mock_threading_excepthook, "exc_hook", None)
+        if exc_hook.log_ver is not None:
+            exc_hook.log_ver.add_pattern(re.escape(exc_err_msg), log_name=__name__)
         exc_hook.exc_err_msg1 = exc_err_msg
+
+        log_msg = f"exception caught for thread: {threading.current_thread()}"
+        logging.exception(log_msg)
+        if exc_hook.log_ver is not None:
+            exc_hook.log_ver.add_pattern(
+                re.escape(exc_err_msg), level=logging.ERROR, log_name=__name__
+            )
+
         raise Exception(f"Test case thread test error: {exc_err_msg}")
