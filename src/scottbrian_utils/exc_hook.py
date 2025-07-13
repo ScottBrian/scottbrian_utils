@@ -86,17 +86,16 @@ class ExcHook:
         """Context manager enter method."""
         self.old_hook = threading.excepthook  # save to restore in __exit__
         ExcHook.mock_threading_excepthook.exc_hook = self
+
         # replace the current hook with our ExcHook
         self.mpatch.setattr(threading, "excepthook", ExcHook.mock_threading_excepthook)
         # keep a copy
         self.new_hook = threading.excepthook
 
-        log_msg = (
-            f"ExcHook __enter__ new hook was set: {self.old_hook=}, {self.new_hook=}"
+        logger.debug(
+            f"ExcHook __enter__ new hook was set: {self.old_hook=}, "
+            f"{self.new_hook=}"
         )
-        logger.debug(log_msg)
-        if self.log_ver is not None:
-            self.log_ver.add_pattern(re.escape(log_msg), log_name=__name__)
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit method.
@@ -107,9 +106,6 @@ class ExcHook:
             exc_tb: exception traceback or None
 
         """
-        # surface any remote thread uncaught exceptions
-        self.raise_exc_if_one()
-
         # the following check ensures that the test case waited via join for
         # any started threads to come home
         if threading.active_count() > 1:
@@ -126,15 +122,15 @@ class ExcHook:
             f"{threading.excepthook=}"
         )
 
-        log_msg = (
-            f"ExcHook __exit__ current hook {threading.excepthook=} will now be restored "
-            f"to {self.old_hook=}"
+        logger.debug(
+            f"ExcHook __exit__ current hook {threading.excepthook=} will now "
+            f"be restored to {self.old_hook=}"
         )
-        logger.debug(log_msg)
-        if self.log_ver is not None:
-            self.log_ver.add_pattern(re.escape(log_msg), log_name=__name__)
 
         threading.excepthook = self.old_hook
+
+        # surface any remote thread uncaught exceptions
+        self.raise_exc_if_one()
 
     @staticmethod
     def mock_threading_excepthook(args: Any) -> None:
@@ -160,15 +156,15 @@ class ExcHook:
             f" {args.thread=}"
         )
         logger.debug(exc_err_msg)
-        if exc_hook.log_ver is not None:
-            exc_hook.log_ver.add_pattern(re.escape(exc_err_msg), log_name=__name__)
+        # if exc_hook.log_ver is not None:
+        #     exc_hook.log_ver.add_pattern(re.escape(exc_err_msg), log_name=__name__)
         exc_hook.exc_err_msg1 = exc_err_msg
 
         log_msg = f"exception caught for thread: {threading.current_thread()}"
         logging.exception(log_msg)
-        if exc_hook.log_ver is not None:
-            exc_hook.log_ver.add_pattern(
-                re.escape(exc_err_msg), level=logging.ERROR, log_name=__name__
-            )
+        # if exc_hook.log_ver is not None:
+        #     exc_hook.log_ver.add_pattern(
+        #         re.escape(exc_err_msg), level=logging.ERROR, log_name=__name__
+        #     )
 
         raise Exception(f"Test case thread test error: {exc_err_msg}")

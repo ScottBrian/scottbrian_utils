@@ -4,6 +4,7 @@
 # Standard Library
 ########################################################################
 import logging
+import re
 import threading
 
 import pytest
@@ -160,7 +161,7 @@ class TestExcHookBasic:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """test_exc_hook_thread_unhandled_assert_error."""
-        log_ver = LogVer(log_name="scottbrian_locking.se_lock")
+        log_ver = LogVer(log_name=__name__)
 
         log_ver.test_msg("mainline entry")
 
@@ -176,6 +177,22 @@ class TestExcHookBasic:
 
         log_ver.test_msg("mainline exit")
 
+        exc_hook_log_msg_1 = (
+            r"Test case excepthook: args.exc_type=<class 'AssertionError'>, "
+            r"args.exc_value=AssertionError\(\'assert \(3 \* 5\) == 16\'\), "
+            r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
+            r"args.thread=<Thread\(Thread-1 \(f1\), started [0-9]{5,6}\)>"
+        )
+        log_ver.add_pattern(
+            exc_hook_log_msg_1, log_name="scottbrian_utils.exc_hook", fullmatch=True
+        )
+        exc_hook_log_msg_2 = (
+            r"exception caught for thread: <Thread\(Thread-1 \(f1\), "
+            r"started [0-9]{5,6}\)>"
+        )
+        log_ver.add_pattern(
+            exc_hook_log_msg_2, log_name="root", level=40, fullmatch=True
+        )
         ################################################################
         # check log results
         ################################################################
