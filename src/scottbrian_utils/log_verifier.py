@@ -686,7 +686,8 @@ class LogVer:
     def get_match_results(
         self,
         caplog: pytest.LogCaptureFixture,
-        which_records: Optional[Literal["setup", "call", "teardown"]] = None,
+        which_records: list[Literal["setup", "call", "teardown"]] = ["call"],
+        # which_records: Optional[Literal["setup", "call", "teardown"]] = None,
     ) -> MatchResults:
         """Match the patterns to log records.
 
@@ -731,8 +732,8 @@ class LogVer:
 
         rec_list = []
 
-        if which_records is None:
-            which_records = ["call"]
+        # if which_records is None:
+        #     which_records = ["call"]
         for which_record in which_records:
             records_list = [
                 (rec_row.name, rec_row.levelno, rec_row.message)

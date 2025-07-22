@@ -65,6 +65,7 @@ def thread_exc(
     Args:
         monkeypatch: pytest fixture used to modify code for testing
         request: for pytest
+        caplog: pytest fixture for logging capturing
 
     Yields:
         a thread exception handler
