@@ -19,6 +19,7 @@ This is a collection of generally useful functions for use with any application.
 10. The @time_box decorator allows you to print start, stop, and execution times.
 11. The timer item provides a way to keep track of time to determine when a function has timed out.
 12. The UniqueTS class provides a way to obtain a unique timestamp.
+13. The ExcHook class handles thread exceptions for test cases to ensure the test case fails
 
 
 Examples:
@@ -169,7 +170,10 @@ Release History
     * etrace omit_caller
     * etrace use caller __name__ for log_name
 
-
+* 6.0.0
+    * drop support for python 3.12
+    * add ExcHook for test case use to catch thread errors
+    *
 Meta
 ====
 

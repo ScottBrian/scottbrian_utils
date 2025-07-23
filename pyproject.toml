@@ -1,11 +1,11 @@
 [project]
 name = "scottbrian_utils"
-version = "5.0.0"
+version = "6.0.0"
 description = "Miscellaneous utilities"
 readme = "README.rst"
-requires-python = "~=3.12"
+requires-python = "~=3.13"
 license = "MIT"
-license-files = ["LICENSE.txt"]
+license-files = ["LICEN[CS]E*"]
 keywords = ["utilities"]
 authors = [{name = "Scott Tuttle", email = "sbtuttle@outlook.com"}]
 classifiers = [

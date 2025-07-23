@@ -158,7 +158,7 @@ class ExcHook:
         logger.debug(exc_err_msg)
         # if exc_hook.log_ver is not None:
         #     exc_hook.log_ver.add_pattern(re.escape(exc_err_msg), log_name=__name__)
-        exc_hook.exc_err_msg1 = exc_err_msg
+        # exc_hook.exc_err_msg1 = exc_err_msg
 
         log_msg = f"exception caught for thread: {threading.current_thread()}"
         logging.exception(log_msg)
