@@ -59,8 +59,8 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(autouse=True)
 def thread_exc(
     monkeypatch: Any, request, caplog: pytest.LogCaptureFixture
-) -> Generator[ExcHook, None, None]:
-    """Instantiate and return a ThreadExc for testing.
+) -> Generator["ExcHook", None, None]:
+    """Instantiate and yield a ThreadExc for testing.
 
     Args:
         monkeypatch: pytest fixture used to modify code for testing
@@ -81,7 +81,7 @@ def thread_exc(
     )
     log_ver.add_pattern(entry_log_msg, log_name="scottbrian_utils.exc_hook")
     try:
-        with ExcHook(monkeypatch, log_ver=log_ver) as exc_hook:
+        with ExcHook(monkeypatch) as exc_hook:
             yield exc_hook
     except Exception as exc:
         print(exc)

@@ -62,13 +62,12 @@ logger = logging.getLogger(__name__)
 class ExcHook:
     """Context manager exception hook."""
 
-    def __init__(self, monkeypatch, log_ver: Optional[LogVer] = None) -> None:
+    def __init__(self, monkeypatch) -> None:
         """Initialize the ExcHook class instance."""
-        self.exc_err_msg1 = ""
+        self.exc_err_msg = ""
         self.old_hook = None
         self.new_hook = None
         self.mpatch = monkeypatch
-        self.log_ver = log_ver
 
     def raise_exc_if_one(self) -> None:
         """Raise an error is we have one.
@@ -77,9 +76,9 @@ class ExcHook:
             Exception: exc_msg
 
         """
-        if self.exc_err_msg1:
-            exc_msg = self.exc_err_msg1
-            self.exc_err_msg1 = ""
+        if self.exc_err_msg:
+            exc_msg = self.exc_err_msg
+            self.exc_err_msg = ""  # prevent being issued again
             raise Exception(f"{exc_msg}")
 
     def __enter__(self) -> None:
@@ -150,21 +149,9 @@ class ExcHook:
 
         traceback.print_tb(args.exc_traceback)
 
-        exc_err_msg = (
+        exc_hook.exc_err_msg = (
             f"Test case excepthook: {args.exc_type=}, "
             f"{args.exc_value=}, {args.exc_traceback=},"
             f" {args.thread=}"
         )
-        logger.debug(exc_err_msg)
-        # if exc_hook.log_ver is not None:
-        #     exc_hook.log_ver.add_pattern(re.escape(exc_err_msg), log_name=__name__)
-        # exc_hook.exc_err_msg1 = exc_err_msg
-
-        log_msg = f"exception caught for thread: {threading.current_thread()}"
-        logging.exception(log_msg)
-        # if exc_hook.log_ver is not None:
-        #     exc_hook.log_ver.add_pattern(
-        #         re.escape(exc_err_msg), level=logging.ERROR, log_name=__name__
-        #     )
-
-        raise Exception(f"Test case thread test error: {exc_err_msg}")
+        logger.debug(exc_hook.exc_err_msg)
