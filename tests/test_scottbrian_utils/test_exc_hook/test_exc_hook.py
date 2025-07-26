@@ -199,15 +199,20 @@ class TestExcHookBasic:
 
         log_ver.test_msg("mainline exit")
 
-        exc_hook_log_msg_1 = (
+        exception_msg = (
             r"Test case excepthook: args.exc_type=<class 'AssertionError'>, "
             r"args.exc_value=AssertionError\(\'assert \(3 \* 5\) == 16\'\), "
             r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
             r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
         )
-        log_ver.add_pattern(
-            exc_hook_log_msg_1, log_name="scottbrian_utils.exc_hook", fullmatch=True
+        exc_hook_log_msg = (
+            rf"caller test_exc_hook.py::TestExcHookBasic.test_exc_hook_thread_unhandled_assert_error:[0-9]+ is raising "
+            rf'Exception: exc_err_msg="{exception_msg}"'
         )
+
+        # log_ver.add_pattern(
+        #     exc_hook_log_msg, log_name="scottbrian_utils.exc_hook", fullmatch=True
+        # )
 
         ################################################################
         # check log results
@@ -217,46 +222,13 @@ class TestExcHookBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
-    # test_exc_hook_raise_error
-    ####################################################################
-    def test_exc_hook_raise_error(
-        self,
-        caplog: pytest.LogCaptureFixture,
-        thread_exc,
-    ) -> None:
-        """test_exc_hook_raise_error."""
-        log_ver = LogVer(log_name=__name__)
-
-        log_ver.test_msg("mainline entry")
-
-        print(f'\n{id(thread_exc)=}')
-        log_ver.test_msg("mainline exit")
-
-        exc_hook_log_msg_1 = (
-            r"Test case excepthook: args.exc_type=<class 'AssertionError'>, "
-            r"args.exc_value=AssertionError\(\'assert \(3 \* 5\) == 16\'\), "
-            r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
-            r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+}\)>"
-        )
-        log_ver.add_pattern(
-            exc_hook_log_msg_1, log_name="scottbrian_utils.exc_hook", fullmatch=True
-        )
-
-        ################################################################
-        # check log results
-        ################################################################
-        # match_results = log_ver.get_match_results(caplog=caplog)
-        # log_ver.print_match_results(match_results, print_matched=True)
-        # log_ver.verify_match_results(match_results)
-
-    ####################################################################
     # test_exc_hook_thread_raise_error
     ####################################################################
     def test_exc_hook_thread_raise_error(
         self,
         caplog: pytest.LogCaptureFixture,
         monkeypatch: pytest.MonkeyPatch,
-        thread_exc
+        thread_exc,
     ) -> None:
         """test_exc_hook_thread_raise_error."""
         log_ver = LogVer(log_name=__name__)
@@ -265,9 +237,7 @@ class TestExcHookBasic:
 
         def f1() -> None:
             """F1 thread."""
-            var1 = 3
-            var2 = 5
-            assert var1 * var2 == 16
+            var1 = 1 / 0
 
         f1_thread = threading.Thread(target=f1)
 
@@ -275,31 +245,32 @@ class TestExcHookBasic:
 
         f1_thread.join()
 
-        # exc_hook = getattr(ExcHook.mock_threading_excepthook, "exc_hook", None)
-        # err_msg1 = "test error for test case: test_exc_hook_thread_raise_error"
-
-        # with pytest.raises(Exception):  #  ,match=err_msg1):
-        #
-        #     print('\nabout to call thread_exc.exc_hook.raise_exc_if_one1()')
-        #     thread_exc.raise_exc_if_one("calling from test case test_exc_hook_thread_raise_error")
-        #     # exc_hook.raise_exc_if_one("calling from test case test_exc_hook_thread_raise_error")
-        #     print('\nafter to call thread_exc.exc_hook.raise_exc_if_one1()')
-
-        log_ver.test_msg("mainline exit")
-
-        exc_hook_log_msg_1 = (
-            r"Test case excepthook: args.exc_type=<class 'AssertionError'>, "
-            r"args.exc_value=AssertionError\(\'assert \(3 \* 5\) == 16\'\), "
+        exception_msg = (
+            r"Test case excepthook: args.exc_type=<class 'ZeroDivisionError'>, "
+            r"args.exc_value=ZeroDivisionError\('division by zero'\), "
             r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
             r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
         )
-        # log_ver.add_pattern(
-        #     exc_hook_log_msg_1, log_name="scottbrian_utils.exc_hook", fullmatch=True
-        # )
+
+        with pytest.raises(ZeroDivisionError, match=exception_msg):
+            # thread_exc.raise_exc_if_one()
+            thread_exc.raise_exc_if_one(exception=ZeroDivisionError)
+            # thread_exc.raise_exc_if_one(exception_to_raise=Exception,"calling from test case test_exc_hook_thread_raise_error")
+
+        log_ver.test_msg("mainline exit")
+
+        exc_hook_log_msg = (
+            rf"caller test_exc_hook.py::TestExcHookBasic.test_exc_hook_thread_raise_error:[0-9]+ is raising Exception: "
+            rf'exc_err_msg="{exception_msg}"'
+        )
+
+        log_ver.add_pattern(
+            exc_hook_log_msg, log_name="scottbrian_utils.exc_hook", fullmatch=True
+        )
 
         ################################################################
         # check log results
         ################################################################
-        # match_results = log_ver.get_match_results(caplog=caplog)
-        # log_ver.print_match_results(match_results, print_matched=True)
-        # log_ver.verify_match_results(match_results)
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)

@@ -24,7 +24,7 @@ import logging
 ########################################################################
 # Local
 ########################################################################
-from scottbrian_utils.log_verifier import LogVer
+from scottbrian_utils.diag_msg import get_formatted_call_sequence
 
 ########################################################################
 # setup the logger
@@ -46,7 +46,8 @@ logger = logging.getLogger(__name__)
 # .. code-block:: python
 #
 #    @pytest.fixture(autouse=True)
-#    def thread_exc(monkeypatch: Any, request) -> Generator[ExcHook, None, None]:
+#    def thread_exc(monkeypatch: Any, request
+#                  ) -> Generator[ExcHook, None, None]:
 #        with ExcHook(monkeypatch) as exc_hook:
 #            yield exc_hook
 
@@ -62,6 +63,9 @@ logger = logging.getLogger(__name__)
 class ExcHook:
     """Context manager exception hook."""
 
+    ####################################################################
+    # __init__
+    ####################################################################
     def __init__(self, monkeypatch) -> None:
         """Initialize the ExcHook class instance."""
         self.exc_err_msg = ""
@@ -69,19 +73,32 @@ class ExcHook:
         self.new_hook = None
         self.mpatch = monkeypatch
 
-    def raise_exc_if_one(self, extra_msg: str = '') -> None:
+    ####################################################################
+    # raise_exc_if_one
+    ####################################################################
+    def raise_exc_if_one(self, exception: type[Exception] = Exception) -> None:
         """Raise an error if we have one.
+
+        Args:
+            exception (Exception): The exception to raise.
 
         Raises:
             Exception: exc_msg
 
         """
         if self.exc_err_msg:
-            exc_err_msg = f'{self.exc_err_msg} {extra_msg}'
+            exc_err_msg = self.exc_err_msg
             self.exc_err_msg = ""  # prevent being issued again
-            logger.debug(f'ExcHook::raise_exc_if_one raising Exception: {exc_err_msg=}')
-            raise Exception(f"{exc_err_msg}")
+            logger.debug(
+                f"caller {get_formatted_call_sequence(latest=1, depth=1)} is raising "
+                f"Exception: {exc_err_msg=}"
+            )
 
+            raise exception(f"{exc_err_msg}")
+
+    ####################################################################
+    # __enter__
+    ####################################################################
     def __enter__(self) -> "ExcHook":
         """Context manager enter method."""
         self.old_hook = threading.excepthook  # save to restore in __exit__
@@ -98,6 +115,9 @@ class ExcHook:
         )
         return self
 
+    ####################################################################
+    # __exit__
+    ####################################################################
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit method.
 
@@ -107,8 +127,8 @@ class ExcHook:
             exc_tb: exception traceback or None
 
         """
-        # the following check ensures that the test case waited via join for
-        # any started threads to come home
+        # the following check ensures that the test case waited via join
+        # for any started threads to complete
         if threading.active_count() > 1:
             for idx, thread in enumerate(threading.enumerate()):
                 logger.debug(f"active thread {idx}: {thread}")
@@ -124,18 +144,21 @@ class ExcHook:
         )
 
         logger.debug(
-            f"ExcHook __exit__ current hook {threading.excepthook=} will now "
-            f"be restored to {self.old_hook=}"
+            f"ExcHook __exit__ current hook {threading.excepthook=} will now be "
+            f"restored to {self.old_hook=}"
         )
 
         threading.excepthook = self.old_hook
 
         # surface any remote thread uncaught exceptions
-        self.raise_exc_if_one("called from ExcHook.__exit__")
+        self.raise_exc_if_one()
 
+    ####################################################################
+    # mock_threading_excepthook
+    ####################################################################
     @staticmethod
     def mock_threading_excepthook(args: Any) -> None:
-        """Build error message from exception.
+        """Build and save error message from exception.
 
         Args:
             args: contains:
@@ -143,10 +166,10 @@ class ExcHook:
                       args.exc_value: Optional[BaseException]
                       args.exc_traceback: Optional[TracebackType]
 
-        Raises:
-            Exception: Test case thread test error
-
         """
+        # The error message is built and saved in the exc_hook instance
+        # and will be issued with an exception when __exit__ or the
+        # test case calls raise_exc_if_one
         exc_hook = getattr(ExcHook.mock_threading_excepthook, "exc_hook", None)
 
         traceback.print_tb(args.exc_traceback)
