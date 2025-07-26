@@ -80,8 +80,10 @@ def thread_exc(
         "<function ExcHook.mock_threading_excepthook at 0x[0-9A-F]+>"
     )
     log_ver.add_pattern(entry_log_msg, log_name="scottbrian_utils.exc_hook")
+
     try:
         with ExcHook(monkeypatch) as exc_hook:
+            # thread_exc.exc_hook = exc_hook
             yield exc_hook
     except Exception as exc:
         print(exc)

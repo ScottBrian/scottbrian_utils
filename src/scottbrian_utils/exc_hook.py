@@ -69,19 +69,20 @@ class ExcHook:
         self.new_hook = None
         self.mpatch = monkeypatch
 
-    def raise_exc_if_one(self) -> None:
-        """Raise an error is we have one.
+    def raise_exc_if_one(self, extra_msg: str = '') -> None:
+        """Raise an error if we have one.
 
         Raises:
             Exception: exc_msg
 
         """
         if self.exc_err_msg:
-            exc_msg = self.exc_err_msg
+            exc_err_msg = f'{self.exc_err_msg} {extra_msg}'
             self.exc_err_msg = ""  # prevent being issued again
-            raise Exception(f"{exc_msg}")
+            logger.debug(f'ExcHook::raise_exc_if_one raising Exception: {exc_err_msg=}')
+            raise Exception(f"{exc_err_msg}")
 
-    def __enter__(self) -> None:
+    def __enter__(self) -> "ExcHook":
         """Context manager enter method."""
         self.old_hook = threading.excepthook  # save to restore in __exit__
         ExcHook.mock_threading_excepthook.exc_hook = self
@@ -95,6 +96,7 @@ class ExcHook:
             f"ExcHook __enter__ new hook was set: {self.old_hook=}, "
             f"{self.new_hook=}"
         )
+        return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit method.
@@ -129,7 +131,7 @@ class ExcHook:
         threading.excepthook = self.old_hook
 
         # surface any remote thread uncaught exceptions
-        self.raise_exc_if_one()
+        self.raise_exc_if_one("called from ExcHook.__exit__")
 
     @staticmethod
     def mock_threading_excepthook(args: Any) -> None:
@@ -154,4 +156,3 @@ class ExcHook:
             f"{args.exc_value=}, {args.exc_traceback=},"
             f" {args.thread=}"
         )
-        logger.debug(exc_hook.exc_err_msg)

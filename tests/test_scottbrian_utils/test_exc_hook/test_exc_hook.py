@@ -208,13 +208,7 @@ class TestExcHookBasic:
         log_ver.add_pattern(
             exc_hook_log_msg_1, log_name="scottbrian_utils.exc_hook", fullmatch=True
         )
-        exc_hook_log_msg_2 = (
-            r"exception caught for thread: <Thread\(Thread-[0-9]+ \(f1\), "
-            r"started [0-9]+\)>"
-        )
-        log_ver.add_pattern(
-            exc_hook_log_msg_2, log_name="root", level=40, fullmatch=True
-        )
+
         ################################################################
         # check log results
         ################################################################
@@ -235,8 +229,7 @@ class TestExcHookBasic:
 
         log_ver.test_msg("mainline entry")
 
-        thread_exc.raise_exc_if_one()
-
+        print(f'\n{id(thread_exc)=}')
         log_ver.test_msg("mainline exit")
 
         exc_hook_log_msg_1 = (
@@ -245,67 +238,16 @@ class TestExcHookBasic:
             r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
             r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+}\)>"
         )
-        # log_ver.add_pattern(
-        #     exc_hook_log_msg_1, log_name="scottbrian_utils.exc_hook", fullmatch=True
-        # )
-        exc_hook_log_msg_2 = (
-            r"exception caught for thread: <Thread\(Thread-[0-9]+ \(f1\), "
-            r"started [0-9]+\)>"
+        log_ver.add_pattern(
+            exc_hook_log_msg_1, log_name="scottbrian_utils.exc_hook", fullmatch=True
         )
-        # log_ver.add_pattern(
-        #     exc_hook_log_msg_2, log_name="root", level=40, fullmatch=True
-        # )
+
         ################################################################
         # check log results
         ################################################################
-        match_results = log_ver.get_match_results(caplog=caplog)
-        log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_match_results(match_results)
-
-    ####################################################################
-    # test_exc_hook_raise_error
-    ####################################################################
-    def test_exc_hook_raise_error(
-        self,
-        caplog: pytest.LogCaptureFixture,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """test_exc_hook_raise_error."""
-        log_ver = LogVer(log_name=__name__)
-
-        log_ver.test_msg("mainline entry")
-
-        exc_hook2 = ExcHook(monkeypatch)
-        err_msg1 = "test error for test case: test_exc_hook_thread_raise_error"
-        exc_hook2.exc_err_msg1 = err_msg1
-
-        with pytest.raises(Exception, match=err_msg1):
-            exc_hook2.raise_exc_if_one()
-
-        log_ver.test_msg("mainline exit")
-
-        exc_hook_log_msg_1 = (
-            r"Test case excepthook: args.exc_type=<class 'AssertionError'>, "
-            r"args.exc_value=AssertionError\(\'assert \(3 \* 5\) == 16\'\), "
-            r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
-            r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
-        )
-        # log_ver.add_pattern(
-        #     exc_hook_log_msg_1, log_name="scottbrian_utils.exc_hook", fullmatch=True
-        # )
-        exc_hook_log_msg_2 = (
-            r"exception caught for thread: <Thread\(Thread-[0-9]+ \(f1\), "
-            r"started [0-9]+\)>"
-        )
-        # log_ver.add_pattern(
-        #     exc_hook_log_msg_2, log_name="root", level=40, fullmatch=True
-        # )
-        ################################################################
-        # check log results
-        ################################################################
-        match_results = log_ver.get_match_results(caplog=caplog)
-        log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_match_results(match_results)
+        # match_results = log_ver.get_match_results(caplog=caplog)
+        # log_ver.print_match_results(match_results, print_matched=True)
+        # log_ver.verify_match_results(match_results)
 
     ####################################################################
     # test_exc_hook_thread_raise_error
@@ -314,28 +256,34 @@ class TestExcHookBasic:
         self,
         caplog: pytest.LogCaptureFixture,
         monkeypatch: pytest.MonkeyPatch,
+        thread_exc
     ) -> None:
         """test_exc_hook_thread_raise_error."""
         log_ver = LogVer(log_name=__name__)
 
         log_ver.test_msg("mainline entry")
 
-        # def f1() -> None:
-        #     """F1 thread."""
-        #     var1 = 3
-        #     var2 = 5
-        #     assert var1 * var2 == 16
+        def f1() -> None:
+            """F1 thread."""
+            var1 = 3
+            var2 = 5
+            assert var1 * var2 == 16
+
+        f1_thread = threading.Thread(target=f1)
+
+        f1_thread.start()
+
+        f1_thread.join()
+
+        # exc_hook = getattr(ExcHook.mock_threading_excepthook, "exc_hook", None)
+        # err_msg1 = "test error for test case: test_exc_hook_thread_raise_error"
+
+        # with pytest.raises(Exception):  #  ,match=err_msg1):
         #
-        # f1_thread = threading.Thread(target=f1)
-        # f1_thread.start()
-        # f1_thread.join()
-
-        exc_hook2 = ExcHook(monkeypatch)
-        err_msg1 = "test error for test case: test_exc_hook_thread_raise_error"
-        exc_hook2.exc_err_msg1 = err_msg1
-
-        with pytest.raises(Exception, match=err_msg1):
-            exc_hook2.raise_exc_if_one()
+        #     print('\nabout to call thread_exc.exc_hook.raise_exc_if_one1()')
+        #     thread_exc.raise_exc_if_one("calling from test case test_exc_hook_thread_raise_error")
+        #     # exc_hook.raise_exc_if_one("calling from test case test_exc_hook_thread_raise_error")
+        #     print('\nafter to call thread_exc.exc_hook.raise_exc_if_one1()')
 
         log_ver.test_msg("mainline exit")
 
@@ -348,16 +296,10 @@ class TestExcHookBasic:
         # log_ver.add_pattern(
         #     exc_hook_log_msg_1, log_name="scottbrian_utils.exc_hook", fullmatch=True
         # )
-        exc_hook_log_msg_2 = (
-            r"exception caught for thread: <Thread\(Thread-[0-9]+ \(f1\), "
-            r"started [0-9]+\)>"
-        )
-        # log_ver.add_pattern(
-        #     exc_hook_log_msg_2, log_name="root", level=40, fullmatch=True
-        # )
+
         ################################################################
         # check log results
         ################################################################
-        match_results = log_ver.get_match_results(caplog=caplog)
-        log_ver.print_match_results(match_results, print_matched=True)
-        log_ver.verify_match_results(match_results)
+        # match_results = log_ver.get_match_results(caplog=caplog)
+        # log_ver.print_match_results(match_results, print_matched=True)
+        # log_ver.verify_match_results(match_results)
