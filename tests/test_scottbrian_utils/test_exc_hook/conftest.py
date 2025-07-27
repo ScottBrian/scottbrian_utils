@@ -81,9 +81,18 @@ def thread_exc(
     )
     log_ver.add_pattern(entry_log_msg, log_name="scottbrian_utils.exc_hook")
 
+    # Test cases build the expected LogVer pattern for the log msg that
+    # ExcHook __exit__ will issue when it calls raise_exc_if_one.
+    # The test case uses pytest.mark.fixt_data to pass the msg to this
+    # thread_exc fixture which is doing the log verification for
+    # the breakdown.
+    marker = request.node.get_closest_marker("fixt_data")
+    if marker is not None:
+        exc_hook_log_msg = marker.args[0]
+        log_ver.add_pattern(exc_hook_log_msg, log_name="scottbrian_utils.exc_hook")
+
     try:
         with ExcHook(monkeypatch) as exc_hook:
-            # thread_exc.exc_hook = exc_hook
             yield exc_hook
     except Exception as exc:
         print(exc)

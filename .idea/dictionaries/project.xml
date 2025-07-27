@@ -2,7 +2,9 @@
   <dictionary name="project">
     <words>
       <w>caplog</w>
+      <w>conftest</w>
       <w>mpatch</w>
+      <w>scottbrian</w>
     </words>
   </dictionary>
 </component>
