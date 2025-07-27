@@ -68,6 +68,7 @@ class ExcHook:
     ####################################################################
     def __init__(self, monkeypatch) -> None:
         """Initialize the ExcHook class instance."""
+        self.exc_err_type = None
         self.exc_err_msg = ""
         self.old_hook = None
         self.new_hook = None
@@ -86,7 +87,7 @@ class ExcHook:
             Exception: exc_msg
 
         """
-        if self.exc_err_msg:
+        if self.exc_err_type is not None:
             exc_err_msg = self.exc_err_msg
             self.exc_err_msg = ""  # prevent being issued again
             logger.debug(
@@ -94,7 +95,7 @@ class ExcHook:
                 f"Exception: {exc_err_msg=}"
             )
 
-            raise exception(f"{exc_err_msg}")
+            raise self.exc_err_type(f"{exc_err_msg}")
 
     ####################################################################
     # __enter__
@@ -174,6 +175,7 @@ class ExcHook:
 
         traceback.print_tb(args.exc_traceback)
 
+        exc_hook.exc_err_type = args.exc_type
         exc_hook.exc_err_msg = (
             f"Test case excepthook: {args.exc_type=}, "
             f"{args.exc_value=}, {args.exc_traceback=},"

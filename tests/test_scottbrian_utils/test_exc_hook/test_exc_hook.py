@@ -126,7 +126,7 @@ class TestExcHookBasic:
     def test_exc_hook_handled_assert_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """Test exc_hook case1a."""
+        """Test exc_hook assert error."""
         log_ver = LogVer(log_name=__name__)
 
         log_ver.test_msg("mainline entry")
@@ -182,6 +182,7 @@ class TestExcHookBasic:
     # build the LogVer pattern for the exception message that will be
     # issued by the ExcHook __exit__ and pass it to the thread_exc
     # fixture in conftest via the pytest.mark.fixt_data construct
+    exception_type = AssertionError
     exception_msg = (
         r"Test case excepthook: args.exc_type=<class 'AssertionError'>, "
         r"args.exc_value=AssertionError\(\'assert \(3 \* 5\) == 16\'\), "
@@ -193,7 +194,7 @@ class TestExcHookBasic:
         rf'Exception: exc_err_msg="{exception_msg}"'
     )
 
-    @pytest.mark.fixt_data(exc_hook_log_msg)
+    @pytest.mark.fixt_data((exception_type, exc_hook_log_msg))
     def test_exc_hook_thread_unhandled_assert_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -253,9 +254,7 @@ class TestExcHookBasic:
         )
 
         with pytest.raises(ZeroDivisionError, match=exception_msg):
-            # thread_exc.raise_exc_if_one()
             thread_exc.raise_exc_if_one(exception=ZeroDivisionError)
-            # thread_exc.raise_exc_if_one(exception_to_raise=Exception,"calling from test case test_exc_hook_thread_raise_error")
 
         log_ver.test_msg("mainline exit")
 

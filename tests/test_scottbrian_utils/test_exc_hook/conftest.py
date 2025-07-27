@@ -87,15 +87,20 @@ def thread_exc(
     # thread_exc fixture which is doing the log verification for
     # the breakdown.
     marker = request.node.get_closest_marker("fixt_data")
+    my_exc_type = Exception
+    print(f"\n*** here is is 1: {my_exc_type=}")
     if marker is not None:
-        exc_hook_log_msg = marker.args[0]
+        my_exc_type, exc_hook_log_msg = marker.args[0]
         log_ver.add_pattern(exc_hook_log_msg, log_name="scottbrian_utils.exc_hook")
 
+    print(f"\n*** here is is 2: {my_exc_type=}")
     try:
         with ExcHook(monkeypatch) as exc_hook:
             yield exc_hook
-    except Exception as exc:
-        print(exc)
+    except my_exc_type as exc:
+        print(f"\n*** here is is 3: {exc}")
+    # except Exception as exc2:
+    #     print(f"\n*** here is is 4: {exc2}")
 
     exit_log_msg = (
         "ExcHook __exit__ current hook threading.excepthook=<function "
