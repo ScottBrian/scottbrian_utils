@@ -686,8 +686,7 @@ class LogVer:
     def get_match_results(
         self,
         caplog: pytest.LogCaptureFixture,
-        which_records: list[Literal["setup", "call", "teardown"]] = ["call"],
-        # which_records: Optional[Literal["setup", "call", "teardown"]] = None,
+        which_records: Optional[list[Literal["setup", "call", "teardown"]]] = None,
     ) -> MatchResults:
         """Match the patterns to log records.
 
@@ -697,43 +696,18 @@ class LogVer:
                 combination of setup, call, and teardown
 
         Returns:
-            MatchResults object, which contain the results of the
+            MatchResults object that contains the results of the
             matching operation. This will include a summary for the
             patterns and messages, and the data frames containing the
             patterns and messaged used to print and verify the results.
 
         """
-        # print("\ncaplog.records:")
-        # for rec_row in caplog.records:
-        #     print(f"({rec_row.name}, {rec_row.levelno},
-        #     {rec_row.message})")
-        #
-        # print("\ncaplog.get_records(setup):")
-        # for rec_row in caplog.get_records("setup"):
-        #     print(f"({rec_row.name}, {rec_row.levelno},
-        #     {rec_row.message})")
-        #
-        # print("\ncaplog.get_records(call):")
-        # for rec_row in caplog.get_records("call"):
-        #     print(f"({rec_row.name}, {rec_row.levelno},
-        #     {rec_row.message})")
-        #
-        # print("\ncaplog.get_records(teardown):")
-        # for rec_row in caplog.get_records("teardown"):
-        #     print(f"({rec_row.name}, {rec_row.levelno},
-        #     {rec_row.message})")
-        #
-        # msg_df = pd.DataFrame(
-        #     caplog.record_tuples,
-        #     columns=("log_name", "level", "log_msg"),
-        # )
-
         self.start_DT = datetime.now()
 
         rec_list = []
 
-        # if which_records is None:
-        #     which_records = ["call"]
+        if which_records is None:
+            which_records = ["call"]
         for which_record in which_records:
             records_list = [
                 (rec_row.name, rec_row.levelno, rec_row.message)

@@ -3,16 +3,13 @@
 ########################################################################
 # Standard Library
 ########################################################################
-import re
-import pytest
-
-from typing import Any, cast, Generator
-
 import logging
+from typing import Generator
 
 ########################################################################
 # Third Party
 ########################################################################
+import pytest
 
 ########################################################################
 # Local
@@ -58,7 +55,9 @@ logger = logging.getLogger(__name__)
 ########################################################################
 @pytest.fixture(autouse=True)
 def thread_exc(
-    monkeypatch: Any, request, caplog: pytest.LogCaptureFixture
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+    caplog: pytest.LogCaptureFixture,
 ) -> Generator["ExcHook", None, None]:
     """Instantiate and yield a ThreadExc for testing.
 

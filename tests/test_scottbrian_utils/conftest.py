@@ -55,7 +55,9 @@ logger = logging.getLogger(__name__)
 #
 ########################################################################
 @pytest.fixture(autouse=True)
-def thread_exc(monkeypatch: Any, request) -> Generator[ExcHook, None, None]:
+def thread_exc(
+    monkeypatch: Any, request: pytest.FixtureRequest
+) -> Generator[ExcHook, None, None]:
     """Instantiate and return a ThreadExc for testing.
 
     Args:

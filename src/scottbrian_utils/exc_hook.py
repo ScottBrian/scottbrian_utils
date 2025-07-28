@@ -11,15 +11,15 @@ The *test_helpers* module provides classes to use during testing.
 ########################################################################
 # Standard Library
 ########################################################################
-import re
 import threading
 import traceback
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 import logging
 
 ########################################################################
 # Third Party
 ########################################################################
+import pytest
 
 ########################################################################
 # Local
@@ -60,42 +60,41 @@ logger = logging.getLogger(__name__)
 # When the above is done, cleanup will not raise the error again.
 #
 ########################################################################
+
+
 class ExcHook:
     """Context manager exception hook."""
 
     ####################################################################
     # __init__
     ####################################################################
-    def __init__(self, monkeypatch) -> None:
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Initialize the ExcHook class instance."""
-        self.exc_err_type = None
-        self.exc_err_msg = ""
-        self.old_hook = None
-        self.new_hook = None
-        self.mpatch = monkeypatch
+        self.exc_err_type: Optional[type[Exception]] = None
+        self.exc_err_msg: str = ""
+        self.old_hook: Callable[[threading.ExceptHookArgs], Any]
+        self.new_hook: Callable[[threading.ExceptHookArgs], Any]
+        self.mpatch: pytest.MonkeyPatch = monkeypatch
 
     ####################################################################
     # raise_exc_if_one
     ####################################################################
-    def raise_exc_if_one(self, exception: type[Exception] = Exception) -> None:
+    def raise_exc_if_one(self) -> None:
         """Raise an error if we have one.
-
-        Args:
-            exception (Exception): The exception to raise.
 
         Raises:
             Exception: exc_msg
 
         """
         if self.exc_err_type is not None:
-            exc_err_msg = self.exc_err_msg
-            self.exc_err_msg = ""  # prevent being issued again
+            exception = self.exc_err_type
+            self.exc_err_type = None
             logger.debug(
                 f"caller {get_formatted_call_sequence(latest=1, depth=1)} is raising "
-                f"Exception: {exc_err_msg=}"
+                f'Exception: "{self.exc_err_msg}"'
             )
 
-            raise self.exc_err_type(f"{exc_err_msg}")
+            raise exception(f"{self.exc_err_msg}")
 
     ####################################################################
     # __enter__
@@ -103,7 +102,6 @@ class ExcHook:
     def __enter__(self) -> "ExcHook":
         """Context manager enter method."""
         self.old_hook = threading.excepthook  # save to restore in __exit__
-        ExcHook.mock_threading_excepthook.exc_hook = self
 
         # replace the current hook with our ExcHook
         self.mpatch.setattr(threading, "excepthook", ExcHook.mock_threading_excepthook)
@@ -119,7 +117,7 @@ class ExcHook:
     ####################################################################
     # __exit__
     ####################################################################
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(self, exc_type: type[Exception], exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit method.
 
         Args:
@@ -135,7 +133,7 @@ class ExcHook:
                 logger.debug(f"active thread {idx}: {thread}")
         assert (
             threading.active_count() == 1
-        ), f"{threading.active_count()-1} threads failed to complete"
+        ), f"{threading.active_count() - 1} threads failed to complete"
 
         # the following assert ensures our ExcHook is still active
 
@@ -171,7 +169,7 @@ class ExcHook:
         # The error message is built and saved in the exc_hook instance
         # and will be issued with an exception when __exit__ or the
         # test case calls raise_exc_if_one
-        exc_hook = getattr(ExcHook.mock_threading_excepthook, "exc_hook", None)
+        exc_hook = getattr(ExcHook.mock_threading_excepthook, "exc_hook")
 
         traceback.print_tb(args.exc_traceback)
 
