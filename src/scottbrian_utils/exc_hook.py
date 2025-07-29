@@ -129,25 +129,27 @@ class ExcHook:
         # the following check ensures that the test case waited via join
         # for any started threads to complete
         if threading.active_count() > 1:
+            logger.debug(f"{threading.active_count() - 1} threads failed to complete")
             for idx, thread in enumerate(threading.enumerate()):
                 logger.debug(f"active thread {idx}: {thread}")
-        assert (
-            threading.active_count() == 1
-        ), f"{threading.active_count() - 1} threads failed to complete"
+            raise RuntimeError(
+                f"{threading.active_count() - 1} threads failed to complete"
+            )
 
         # the following assert ensures our ExcHook is still active
 
-        assert threading.excepthook == self.new_hook, (
-            f"ExcHook {self.new_hook=} was incorrectly replaced at some point by "
-            f"{threading.excepthook=}"
-        )
+        if threading.excepthook != self.new_hook:
+            raise RuntimeError(
+                f"ExcHook {self.new_hook=} was incorrectly replaced at some point by "
+                f"{threading.excepthook=}"
+            )
 
-        logger.debug(
-            f"ExcHook __exit__ current hook {threading.excepthook=} will now be "
-            f"restored to {self.old_hook=}"
-        )
-
+        replaced_hook = threading.excepthook
         threading.excepthook = self.old_hook
+        logger.debug(
+            "ExcHook __exit__ hook in threading.excepthook restored, "
+            f"changed from {replaced_hook} to {self.old_hook=}"
+        )
 
         # surface any remote thread uncaught exceptions
         self.raise_exc_if_one()

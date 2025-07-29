@@ -106,6 +106,12 @@ def thread_exc(
         "ExcHook.mock_threading_excepthook at 0x[0-9A-F]+> will now be "
         "restored to self.old_hook=.+"
     )
+    exit_log_msg = (
+        "ExcHook __exit__ hook in threading.excepthook restored, "
+        "changed from <function ExcHook.mock_threading_excepthook at "
+        "0x[0-9A-F]+> to self.old_hook=.+"
+    )
+
     log_ver.add_pattern(exit_log_msg, log_name="scottbrian_utils.exc_hook")
 
     log_ver.test_msg("conftest exit")

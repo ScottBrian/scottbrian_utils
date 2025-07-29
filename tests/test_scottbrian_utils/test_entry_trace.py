@@ -100,7 +100,7 @@ class TestEntryTraceExamples:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
         f1()
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -113,7 +113,6 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
 
@@ -124,7 +123,6 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -153,7 +151,7 @@ class TestEntryTraceExamples:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
         f1(42, kw1="forty two")
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -167,7 +165,6 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         kw_value = "forty two"
@@ -180,7 +177,6 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -224,7 +220,7 @@ class TestEntryTraceExamples:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
         f1(42, kw1="forty two")
         f2(24, kw1="twenty four")
         f3(84, kw1="eighty four")
@@ -249,7 +245,6 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         kw_value = "forty two"
@@ -262,7 +257,6 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
 
@@ -279,7 +273,6 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         kw_value = "twelve"
@@ -292,7 +285,6 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -321,7 +313,7 @@ class TestEntryTraceExamples:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
         f1(42, kw1="forty two")
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -335,7 +327,6 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         kw_value = "forty two"
@@ -348,7 +339,6 @@ class TestEntryTraceExamples:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -377,7 +367,7 @@ class TestEntryTraceExamples:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1(42, kw1="forty two", kw2=84)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -424,7 +414,7 @@ class TestEntryTraceExamples:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
 
         f1(42, kw1="forty two", kw2=84)
 
@@ -468,7 +458,7 @@ class TestEntryTraceBasic:
 
         from scottbrian_utils.entry_trace import etrace
 
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
 
         @etrace
         def f1() -> None:
@@ -488,7 +478,6 @@ class TestEntryTraceBasic:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
 
@@ -499,7 +488,6 @@ class TestEntryTraceBasic:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
 
@@ -534,7 +522,7 @@ class TestEntryTraceBasic:
         ################################################################
         f1()
 
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
 
@@ -590,7 +578,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1()
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -627,7 +615,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
 
         @etrace(log_ver=log_ver)
         def f1() -> None:
@@ -668,7 +656,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
 
         @etrace(log_ver=log_ver)
         def f1() -> None:
@@ -689,9 +677,7 @@ class TestEntryTraceBasic:
             "caller: python.py::pytest_pyfunc_call:[0-9]+"
         )
 
-        log_ver.add_pattern(
-            pattern=exp_entry_log_msg, log_name="test_scottbrian_utils.test_entry_trace"
-        )
+        log_ver.add_pattern(pattern=exp_entry_log_msg, log_name=__name__)
 
         ################################################################
         # check log results
@@ -753,7 +739,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1()
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -863,7 +849,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1()
 
         ################################################################
@@ -1198,7 +1184,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1()
 
         ################################################################
@@ -1362,7 +1348,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1(42)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -1439,7 +1425,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1(42)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -1515,7 +1501,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -1600,7 +1586,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -1683,7 +1669,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1(kw1=42, kw2="forty_two", kw3=83)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -1768,7 +1754,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1(kw1=42, kw2="forty_two", kw3=83)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -1851,7 +1837,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -1936,7 +1922,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         f1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(f1)[1]
@@ -2017,7 +2003,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1()
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2133,7 +2119,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1()
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2245,7 +2231,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1(42)
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2324,7 +2310,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1(42)
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2402,7 +2388,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2489,7 +2475,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2572,7 +2558,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1()
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2653,7 +2639,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1()
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2730,7 +2716,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1("42")
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2812,7 +2798,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1("42")
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2895,7 +2881,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -2984,7 +2970,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1().f1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -3068,7 +3054,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1.f1()
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -3150,7 +3136,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1.f1()
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -3228,7 +3214,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1.f1(1.1)
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -3309,7 +3295,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1.f1(1.1)
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -3391,7 +3377,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1.f1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -3480,7 +3466,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1.f1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(Test1.f1)[1]
@@ -3567,7 +3553,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1()
 
         f1_line_num = inspect.getsourcelines(Test1.__init__)[1]
@@ -3654,7 +3640,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1()
 
         f1_line_num = inspect.getsourcelines(Test1.__init__)[1]
@@ -3737,7 +3723,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1(42)
 
         f1_line_num = inspect.getsourcelines(Test1.__init__)[1]
@@ -3824,7 +3810,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         Test1(42)
 
         f1_line_num = inspect.getsourcelines(Test1.__init__)[1]
@@ -3911,7 +3897,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         t1 = Test1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(Test1.__init__)[1]
@@ -4006,7 +3992,7 @@ class TestEntryTraceBasic:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
         t1 = Test1(42, "forty_two", 83)
 
         f1_line_num = inspect.getsourcelines(Test1.__init__)[1]
@@ -4084,7 +4070,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
 
         class Test1:
             def __init__(self, *args: Any, a_log_ver: LogVer) -> None:
@@ -4169,7 +4155,7 @@ class TestEntryTraceBasic:
             caplog: pytest fixture to capture log output
 
         """
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
 
         class Test1:
             def __init__(self, *args: Any, a_log_ver: LogVer) -> None:
@@ -4345,7 +4331,7 @@ class TestEntryTraceCombos:
             f"test_etrace_combo_signature entered: {num_po_arg=}, {num_pk_arg=}, "
             f"{num_ko_arg=}"
         )
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
 
         @dataclass
         class ArgSpecRetRes:
@@ -4732,7 +4718,6 @@ class TestEntryTraceCombos:
                     log_ver.add_pattern(
                         level=logging.DEBUG,
                         pattern=exp_entry_log_msg,
-                        log_name="test_scottbrian_utils.test_entry_trace",
                         fullmatch=True,
                     )
 
@@ -4744,7 +4729,6 @@ class TestEntryTraceCombos:
                     log_ver.add_pattern(
                         level=logging.DEBUG,
                         pattern=exp_exit_log_msg,
-                        log_name="test_scottbrian_utils.test_entry_trace",
                         fullmatch=True,
                     )
         ################################################################
@@ -4819,7 +4803,7 @@ class TestEntryTraceCombos:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
 
         file_name = "test_entry_trace.py"
 
@@ -4883,7 +4867,6 @@ class TestEntryTraceCombos:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
 
@@ -4894,7 +4877,6 @@ class TestEntryTraceCombos:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -4979,7 +4961,7 @@ class TestEntryTraceCombos:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer()
+        log_ver = LogVer(log_name=__name__)
 
         file_name = "test_entry_trace.py"
 
@@ -5058,7 +5040,6 @@ class TestEntryTraceCombos:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_entry_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
 
@@ -5069,7 +5050,6 @@ class TestEntryTraceCombos:
         log_ver.add_pattern(
             level=logging.DEBUG,
             pattern=exp_exit_log_msg,
-            log_name="test_scottbrian_utils.test_entry_trace",
             fullmatch=True,
         )
         ################################################################
@@ -5208,7 +5188,7 @@ class TestEntryTraceCombos:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
 
         file_name = "test_entry_trace.py"
 
@@ -5499,7 +5479,7 @@ class TestEntryTraceCombos:
         ################################################################
         # mainline
         ################################################################
-        log_ver = LogVer(log_name="test_scottbrian_utils.test_entry_trace")
+        log_ver = LogVer(log_name=__name__)
 
         file_name = "test_entry_trace.py"
 

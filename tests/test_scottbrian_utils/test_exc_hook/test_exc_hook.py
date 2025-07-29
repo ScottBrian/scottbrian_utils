@@ -5,6 +5,7 @@
 ########################################################################
 import logging
 import threading
+import time
 
 import pytest
 from typing import Any
@@ -368,6 +369,53 @@ class TestExcHookBasic:
         log_ver.add_pattern(
             exc_hook_log_msg, log_name="scottbrian_utils.exc_hook", fullmatch=True
         )
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_exc_hook_one_thread_still_running_error
+    ####################################################################
+    # build the LogVer pattern for the exception message that will be
+    # issued by the ExcHook __exit__ and pass it to the thread_exc
+    # fixture in conftest via the pytest.mark.fixt_data construct
+    exception_type3 = RuntimeError
+    exception_msg3 = (
+        r"Test case excepthook: args.exc_type=<class 'RuntimeError'>, "
+        r"args.exc_value=RuntimeError\), "
+        r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
+        r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
+    )
+    exc_hook_log_msg3 = (
+        rf"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
+        rf'Exception: "{exception_msg2}"'
+    )
+
+    @pytest.mark.fixt_data((exception_type3, exc_hook_log_msg3))
+    def test_exc_hook_one_thread_still_running_error(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """test exc_hook one thread still running error."""
+        log_ver = LogVer(log_name=__name__)
+
+        log_ver.test_msg("mainline entry")
+
+        def f1() -> None:
+            """F1 thread."""
+            f1_event.set()
+            time.sleep(120)
+
+        f1_event = threading.Event()
+        f1_thread = threading.Thread(target=f1)
+        f1_thread.start()
+        # f1_thread.join()
+        f1_event.wait()
+
+        log_ver.test_msg("mainline exit")
 
         ################################################################
         # check log results

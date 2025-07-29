@@ -173,7 +173,7 @@ Release History
 * 6.0.0
     * drop support for python 3.12
     * add ExcHook for test case use to catch thread errors
-    *
+
 Meta
 ====
 
