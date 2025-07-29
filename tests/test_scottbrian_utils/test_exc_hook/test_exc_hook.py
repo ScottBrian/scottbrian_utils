@@ -183,18 +183,18 @@ class TestExcHookBasic:
     # issued by the ExcHook __exit__ and pass it to the thread_exc
     # fixture in conftest via the pytest.mark.fixt_data construct
     exception_type = AssertionError
-    exception_msg = (
+    exception_pattern = (
         r"Test case excepthook: args.exc_type=<class 'AssertionError'>, "
         r"args.exc_value=AssertionError\(\'assert \(3 \* 5\) == 16\'\), "
         r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
         r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
     )
-    exc_hook_log_msg = (
+    exc_hook_log_pattern = (
         r"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
-        rf'Exception: "{exception_msg}"'
+        rf'Exception: "{exception_pattern}"'
     )
 
-    @pytest.mark.fixt_data((exception_type, exc_hook_log_msg))
+    @pytest.mark.fixt_data((exception_type, (exception_pattern,)))
     def test_exc_hook_thread_unhandled_assert_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:

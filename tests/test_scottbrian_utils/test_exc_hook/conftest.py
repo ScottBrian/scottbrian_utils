@@ -89,8 +89,9 @@ def thread_exc(
     my_exc_type = Exception
     print(f"\n*** here is is 1: {my_exc_type=}")
     if marker is not None:
-        my_exc_type, exc_hook_log_msg = marker.args[0]
-        log_ver.add_pattern(exc_hook_log_msg, log_name="scottbrian_utils.exc_hook")
+        my_exc_type, exc_hook_log_patterns = marker.args[0]
+        for log_pattern in exc_hook_log_patterns:
+            log_ver.add_pattern(log_pattern, log_name="scottbrian_utils.exc_hook")
 
     print(f"\n*** here is is 2: {my_exc_type=}")
     try:
@@ -101,11 +102,11 @@ def thread_exc(
     # except Exception as exc2:
     #     print(f"\n*** here is is 4: {exc2}")
 
-    exit_log_msg = (
-        "ExcHook __exit__ current hook threading.excepthook=<function "
-        "ExcHook.mock_threading_excepthook at 0x[0-9A-F]+> will now be "
-        "restored to self.old_hook=.+"
-    )
+    # exit_log_msg = (
+    #     "ExcHook __exit__ current hook threading.excepthook=<function "
+    #     "ExcHook.mock_threading_excepthook at 0x[0-9A-F]+> will now be "
+    #     "restored to self.old_hook=.+"
+    # )
     exit_log_msg = (
         "ExcHook __exit__ hook in threading.excepthook restored, "
         "changed from <function ExcHook.mock_threading_excepthook at "

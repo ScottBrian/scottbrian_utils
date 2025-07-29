@@ -126,30 +126,36 @@ class ExcHook:
             exc_tb: exception traceback or None
 
         """
-        # the following check ensures that the test case waited via join
-        # for any started threads to complete
-        if threading.active_count() > 1:
-            logger.debug(f"{threading.active_count() - 1} threads failed to complete")
-            for idx, thread in enumerate(threading.enumerate()):
-                logger.debug(f"active thread {idx}: {thread}")
-            raise RuntimeError(
-                f"{threading.active_count() - 1} threads failed to complete"
-            )
-
-        # the following assert ensures our ExcHook is still active
-
-        if threading.excepthook != self.new_hook:
-            raise RuntimeError(
-                f"ExcHook {self.new_hook=} was incorrectly replaced at some point by "
-                f"{threading.excepthook=}"
-            )
-
+        ################################################################
+        # restore the original hook
+        ################################################################
         replaced_hook = threading.excepthook
         threading.excepthook = self.old_hook
         logger.debug(
             "ExcHook __exit__ hook in threading.excepthook restored, "
             f"changed from {replaced_hook} to {self.old_hook=}"
         )
+
+        # the following code ensures our ExcHook was still in place
+        # before we restored it
+        if replaced_hook != self.new_hook:
+            raise RuntimeError(
+                f"ExcHook {self.new_hook=} was incorrectly replaced at some point by "
+                f"{replaced_hook}"
+            )
+
+        # the following check ensures that the test case waited via join
+        # for any started threads to complete
+        if threading.active_count() > 1:
+            singular_plural_str = "s" if threading.active_count() > 2 else ""
+            logger.debug(
+                f"{threading.active_count() - 1} thread{singular_plural_str} failed to complete"
+            )
+            for idx, thread in enumerate(threading.enumerate()):
+                logger.debug(f"active thread {idx}: {thread}")
+            raise RuntimeError(
+                f"{threading.active_count() - 1} thread{singular_plural_str} failed to complete"
+            )
 
         # surface any remote thread uncaught exceptions
         self.raise_exc_if_one()
