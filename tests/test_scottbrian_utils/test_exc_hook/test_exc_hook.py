@@ -182,7 +182,7 @@ class TestExcHookBasic:
     # build the LogVer pattern for the exception message that will be
     # issued by the ExcHook __exit__ and pass it to the thread_exc
     # fixture in conftest via the pytest.mark.fixt_data construct
-    exception_type = AssertionError
+    exception_type = AssertionError("testing 123")
     exception_pattern = (
         r"Test case excepthook: args.exc_type=<class 'AssertionError'>, "
         r"args.exc_value=AssertionError\(\'assert \(3 \* 5\) == 16\'\), "
@@ -383,19 +383,31 @@ class TestExcHookBasic:
     # build the LogVer pattern for the exception message that will be
     # issued by the ExcHook __exit__ and pass it to the thread_exc
     # fixture in conftest via the pytest.mark.fixt_data construct
-    exception_type3 = RuntimeError
-    exception_pattern = (
-        r"Test case excepthook: args.exc_type=<class 'RuntimeError'>, "
-        r"args.exc_value=RuntimeError\), "
-        r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
-        r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
+    exception_type3 = RuntimeError("1 thread failed to complete")
+    # exception_pattern = (
+    #     r"Test case excepthook: args.exc_type=<class 'RuntimeError'>, "
+    #     r"args.exc_value=RuntimeError\), "
+    #     r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
+    #     r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
+    # )
+    # exc_hook_log_pattern = (
+    #     rf"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
+    #     rf'Exception: "{exception_pattern}"'
+    # )
+    exc_hook_log_pattern1 = "1 thread failed to complete"
+    exc_hook_log_pattern2 = (
+        r"active thread 0: <_MainThread\(MainThread, started [0-9]+\)>"
     )
-    exc_hook_log_pattern = (
-        rf"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
-        rf'Exception: "{exception_pattern}"'
+    exc_hook_log_pattern3 = (
+        r"active thread 1: <Thread\(Thread-1 \(f1\), started [0-9]+\)>"
     )
 
-    @pytest.mark.fixt_data((exception_type3, (exc_hook_log_pattern,)))
+    @pytest.mark.fixt_data(
+        (
+            exception_type3,
+            (exc_hook_log_pattern1, exc_hook_log_pattern2, exc_hook_log_pattern3),
+        )
+    )
     def test_exc_hook_one_thread_still_running_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
