@@ -19,6 +19,7 @@ import logging
 ########################################################################
 # Third Party
 ########################################################################
+import functools
 import pytest
 
 ########################################################################
@@ -104,7 +105,8 @@ class ExcHook:
         self.old_hook = threading.excepthook  # save to restore in __exit__
 
         # replace the current hook with our ExcHook
-        self.mpatch.setattr(threading, "excepthook", ExcHook.mock_threading_excepthook)
+        mock_hook = functools.partial(ExcHook.mock_threading_excepthook, self)
+        self.mpatch.setattr(threading, "excepthook", mock_hook)
         # keep a copy
         self.new_hook = threading.excepthook
 
@@ -163,8 +165,7 @@ class ExcHook:
     ####################################################################
     # mock_threading_excepthook
     ####################################################################
-    @staticmethod
-    def mock_threading_excepthook(args: Any) -> None:
+    def mock_threading_excepthook(self, args: Any) -> None:
         """Build and save error message from exception.
 
         Args:
@@ -177,13 +178,37 @@ class ExcHook:
         # The error message is built and saved in the exc_hook instance
         # and will be issued with an exception when __exit__ or the
         # test case calls raise_exc_if_one
-        exc_hook = getattr(ExcHook.mock_threading_excepthook, "exc_hook")
 
         traceback.print_tb(args.exc_traceback)
 
-        exc_hook.exc_err_type = args.exc_type
-        exc_hook.exc_err_msg = (
+        self.exc_err_type = args.exc_type
+        self.exc_err_msg = (
             f"Test case excepthook: {args.exc_type=}, "
             f"{args.exc_value=}, {args.exc_traceback=},"
             f" {args.thread=}"
         )
+
+    # @staticmethod
+    # def mock_threading_excepthook(args: Any) -> None:
+    #     """Build and save error message from exception.
+    #
+    #     Args:
+    #         args: contains:
+    #                   args.exc_type: Optional[Type[BaseException]]
+    #                   args.exc_value: Optional[BaseException]
+    #                   args.exc_traceback: Optional[TracebackType]
+    #
+    #     """
+    #     # The error message is built and saved in the exc_hook instance
+    #     # and will be issued with an exception when __exit__ or the
+    #     # test case calls raise_exc_if_one
+    #     exc_hook = getattr(ExcHook.mock_threading_excepthook, "exc_hook")
+    #
+    #     traceback.print_tb(args.exc_traceback)
+    #
+    #     exc_hook.exc_err_type = args.exc_type
+    #     exc_hook.exc_err_msg = (
+    #         f"Test case excepthook: {args.exc_type=}, "
+    #         f"{args.exc_value=}, {args.exc_traceback=},"
+    #         f" {args.thread=}"
+    #     )
