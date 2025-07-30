@@ -146,6 +146,13 @@ class ExcHook:
                 f"{replaced_hook}"
             )
 
+        # Surface any remote thread uncaught exceptions.
+        # Note that we raise the uncaught exceptions before checking
+        # for unended threads since the exception may have resulted in
+        # other threads failing to complete. We need to see the root
+        # cause.
+        self.raise_exc_if_one()
+
         # the following check ensures that the test case waited via join
         # for any started threads to complete
         if threading.active_count() > 1:
@@ -158,9 +165,6 @@ class ExcHook:
             raise RuntimeError(
                 f"{threading.active_count() - 1} thread{singular_plural_str} failed to complete"
             )
-
-        # surface any remote thread uncaught exceptions
-        self.raise_exc_if_one()
 
     ####################################################################
     # mock_threading_excepthook

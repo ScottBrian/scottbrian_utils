@@ -75,8 +75,9 @@ def thread_exc(
     log_ver.test_msg("conftest entry")
 
     entry_log_msg = (
-        "ExcHook __enter__ new hook was set: self.old_hook=.+, self.new_hook="
-        "<function ExcHook.mock_threading_excepthook at 0x[0-9A-F]+>"
+        r"ExcHook __enter__ new hook was set: self.old_hook=.+, self.new_hook="
+        r"functools.partial\(<function ExcHook.mock_threading_excepthook at "
+        r"0x[0-9A-F]+>, <scottbrian_utils.exc_hook.ExcHook object at 0x[0-9A-F]+>\)"
     )
     log_ver.add_pattern(entry_log_msg, log_name="scottbrian_utils.exc_hook")
 
@@ -108,10 +109,10 @@ def thread_exc(
     #     "restored to self.old_hook=.+"
     # )
     exit_log_msg = (
-        "ExcHook __exit__ hook in threading.excepthook restored, "
-        "changed from functools.partial(<function ExcHook.mock_threading_excepthook at "
-        "0x[0-9A-F]+>, <scottbrian_utils.exc_hook.ExcHook object at 0x[0-9A-F]+>) to "
-        "self.old_hook=.+"
+        r"ExcHook __exit__ hook in threading.excepthook restored, "
+        r"changed from functools.partial\(<function ExcHook.mock_threading_excepthook at "
+        r"0x[0-9A-F]+>, <scottbrian_utils.exc_hook.ExcHook object at 0x[0-9A-F]+>\) to "
+        r"self.old_hook=.+"
     )
 
     log_ver.add_pattern(

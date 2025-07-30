@@ -194,7 +194,7 @@ class TestExcHookBasic:
         rf'Exception: "{exception_pattern}"'
     )
 
-    @pytest.mark.fixt_data((exception_type, (exception_pattern,)))
+    @pytest.mark.fixt_data((exception_type, (exc_hook_log_pattern,)))
     def test_exc_hook_thread_unhandled_assert_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -229,18 +229,18 @@ class TestExcHookBasic:
     # issued by the ExcHook __exit__ and pass it to the thread_exc
     # fixture in conftest via the pytest.mark.fixt_data construct
     exception_type2 = ZeroDivisionError
-    exception_msg2 = (
+    exception_pattern = (
         r"Test case excepthook: args.exc_type=<class 'ZeroDivisionError'>, "
         r"args.exc_value=ZeroDivisionError\('division by zero'\), "
         r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
         r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
     )
-    exc_hook_log_msg2 = (
-        rf"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
-        rf'Exception: "{exception_msg2}"'
+    exc_hook_log_pattern = (
+        r"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
+        rf'Exception: "{exception_pattern}"'
     )
 
-    @pytest.mark.fixt_data((exception_type2, exc_hook_log_msg2))
+    @pytest.mark.fixt_data((exception_type2, (exc_hook_log_pattern,)))
     def test_exc_hook_thread_unhandled_zero_divide_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -384,18 +384,18 @@ class TestExcHookBasic:
     # issued by the ExcHook __exit__ and pass it to the thread_exc
     # fixture in conftest via the pytest.mark.fixt_data construct
     exception_type3 = RuntimeError
-    exception_msg3 = (
+    exception_pattern = (
         r"Test case excepthook: args.exc_type=<class 'RuntimeError'>, "
         r"args.exc_value=RuntimeError\), "
         r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
         r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
     )
-    exc_hook_log_msg3 = (
+    exc_hook_log_pattern = (
         rf"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
-        rf'Exception: "{exception_msg2}"'
+        rf'Exception: "{exception_pattern}"'
     )
 
-    @pytest.mark.fixt_data((exception_type3, exc_hook_log_msg3))
+    @pytest.mark.fixt_data((exception_type3, (exc_hook_log_pattern,)))
     def test_exc_hook_one_thread_still_running_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -407,7 +407,7 @@ class TestExcHookBasic:
         def f1() -> None:
             """F1 thread."""
             f1_event.set()
-            time.sleep(120)
+            time.sleep(5)
 
         f1_event = threading.Event()
         f1_thread = threading.Thread(target=f1)
