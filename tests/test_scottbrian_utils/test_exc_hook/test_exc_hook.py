@@ -182,13 +182,13 @@ class TestExcHookBasic:
     # build the LogVer pattern for the exception message that will be
     # issued by the ExcHook __exit__ and pass it to the thread_exc
     # fixture in conftest via the pytest.mark.fixt_data construct
-    exception_type = AssertionError("testing 123")
     exception_pattern = (
         r"Test case excepthook: args.exc_type=<class 'AssertionError'>, "
         r"args.exc_value=AssertionError\(\'assert \(3 \* 5\) == 16\'\), "
         r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
         r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
     )
+    exception_type = AssertionError(exception_pattern)
     exc_hook_log_pattern = (
         r"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
         rf'Exception: "{exception_pattern}"'
@@ -228,13 +228,13 @@ class TestExcHookBasic:
     # build the LogVer pattern for the exception message that will be
     # issued by the ExcHook __exit__ and pass it to the thread_exc
     # fixture in conftest via the pytest.mark.fixt_data construct
-    exception_type2 = ZeroDivisionError
     exception_pattern = (
         r"Test case excepthook: args.exc_type=<class 'ZeroDivisionError'>, "
         r"args.exc_value=ZeroDivisionError\('division by zero'\), "
         r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
         r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
     )
+    exception_type2 = ZeroDivisionError(exception_pattern)
     exc_hook_log_pattern = (
         r"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
         rf'Exception: "{exception_pattern}"'
@@ -378,54 +378,53 @@ class TestExcHookBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
-    # test_exc_hook_one_thread_still_running_error
+    # drive_threads_still_running_error
     ####################################################################
-    # build the LogVer pattern for the exception message that will be
-    # issued by the ExcHook __exit__ and pass it to the thread_exc
-    # fixture in conftest via the pytest.mark.fixt_data construct
-    exception_type3 = RuntimeError("1 thread failed to complete")
-    # exception_pattern = (
-    #     r"Test case excepthook: args.exc_type=<class 'RuntimeError'>, "
-    #     r"args.exc_value=RuntimeError\), "
-    #     r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
-    #     r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
-    # )
-    # exc_hook_log_pattern = (
-    #     rf"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
-    #     rf'Exception: "{exception_pattern}"'
-    # )
-    exc_hook_log_pattern1 = "1 thread failed to complete"
-    exc_hook_log_pattern2 = (
-        r"active thread 0: <_MainThread\(MainThread, started [0-9]+\)>"
-    )
-    exc_hook_log_pattern3 = (
-        r"active thread 1: <Thread\(Thread-1 \(f1\), started [0-9]+\)>"
-    )
-
-    @pytest.mark.fixt_data(
-        (
-            exception_type3,
-            (exc_hook_log_pattern1, exc_hook_log_pattern2, exc_hook_log_pattern3),
-        )
-    )
-    def test_exc_hook_one_thread_still_running_error(
-        self, caplog: pytest.LogCaptureFixture
+    def drive_threads_still_running_error(
+        self, caplog: pytest.LogCaptureFixture, num_threads: int
     ) -> None:
         """test exc_hook one thread still running error."""
         log_ver = LogVer(log_name=__name__)
 
         log_ver.test_msg("mainline entry")
 
-        def f1() -> None:
+        def f1(num_threads_arg) -> None:
             """F1 thread."""
             f1_event.set()
-            time.sleep(5)
+            if num_threads_arg >= 1:
+                time.sleep(5)
+
+        def f2(num_threads_arg) -> None:
+            """F2 thread."""
+            f2_event.set()
+            if num_threads_arg >= 2:
+                time.sleep(5)
+
+        def f3(num_threads_arg) -> None:
+            """F2 thread."""
+            f3_event.set()
+            if num_threads_arg >= 3:
+                time.sleep(5)
 
         f1_event = threading.Event()
-        f1_thread = threading.Thread(target=f1)
+        f2_event = threading.Event()
+        f3_event = threading.Event()
+
+        f1_thread = threading.Thread(target=f1, args=(num_threads,))
+        f2_thread = threading.Thread(target=f2, args=(num_threads,))
+        f3_thread = threading.Thread(target=f3, args=(num_threads,))
+
+        # start each thread one at a time and wait to ensure it was
+        # started and got control so that we can control the assigned
+        # thread number
         f1_thread.start()
-        # f1_thread.join()
         f1_event.wait()
+
+        f2_thread.start()
+        f2_event.wait()
+
+        f3_thread.start()
+        f3_event.wait()
 
         log_ver.test_msg("mainline exit")
 
@@ -435,3 +434,88 @@ class TestExcHookBasic:
         match_results = log_ver.get_match_results(caplog=caplog)
         log_ver.print_match_results(match_results, print_matched=True)
         log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_exc_hook_one_thread_still_running_error
+    ####################################################################
+    # build the LogVer pattern for the exception message that will be
+    # issued by the ExcHook __exit__ and pass it to the thread_exc
+    # fixture in conftest via the pytest.mark.fixt_data construct
+    exc_hook_main_thread_log_pattern = (
+        r"active thread 0: <_MainThread\(MainThread, started [0-9]+\)>"
+    )
+    exc_hook_f1_thread_log_pattern = (
+        r"active thread 1: <Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
+    )
+    exc_hook_f2_thread_log_pattern = (
+        r"active thread 2: <Thread\(Thread-[0-9]+ \(f2\), started [0-9]+\)>"
+    )
+    exc_hook_f3_thread_log_pattern = (
+        r"active thread 3: <Thread\(Thread-[0-9]+ \(f3\), started [0-9]+\)>"
+    )
+
+    runtime_exception_pattern = "1 thread failed to complete"
+    runtime_error_type = RuntimeError(runtime_exception_pattern)
+
+    @pytest.mark.fixt_data(
+        (
+            runtime_error_type,
+            (
+                runtime_exception_pattern,
+                exc_hook_main_thread_log_pattern,
+                exc_hook_f1_thread_log_pattern,
+            ),
+        )
+    )
+    def test_exc_hook_one_thread_still_running_error(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """test exc_hook one thread still running error."""
+        self.drive_threads_still_running_error(caplog=caplog, num_threads=1)
+
+    ####################################################################
+    # test_exc_hook_two_threads_still_running_error
+    ####################################################################
+    runtime_exception_pattern = "2 threads failed to complete"
+    runtime_error_type = RuntimeError(runtime_exception_pattern)
+
+    @pytest.mark.fixt_data(
+        (
+            runtime_error_type,
+            (
+                runtime_exception_pattern,
+                exc_hook_main_thread_log_pattern,
+                exc_hook_f1_thread_log_pattern,
+                exc_hook_f2_thread_log_pattern,
+            ),
+        )
+    )
+    def test_exc_hook_two_threads_still_running_error(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """test exc_hook two threads still running error."""
+        self.drive_threads_still_running_error(caplog=caplog, num_threads=2)
+
+    ####################################################################
+    # test_exc_hook_three_threads_still_running_error
+    ####################################################################
+    runtime_exception_pattern = "3 threads failed to complete"
+    runtime_error_type = RuntimeError(runtime_exception_pattern)
+
+    @pytest.mark.fixt_data(
+        (
+            runtime_error_type,
+            (
+                runtime_exception_pattern,
+                exc_hook_main_thread_log_pattern,
+                exc_hook_f1_thread_log_pattern,
+                exc_hook_f2_thread_log_pattern,
+                exc_hook_f3_thread_log_pattern,
+            ),
+        )
+    )
+    def test_exc_hook_three_threads_still_running_error(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """test exc_hook one thread still running error."""
+        self.drive_threads_still_running_error(caplog=caplog, num_threads=3)

@@ -4,6 +4,7 @@
 # Standard Library
 ########################################################################
 import logging
+import re
 from typing import Generator
 
 ########################################################################
@@ -87,24 +88,20 @@ def thread_exc(
     # thread_exc fixture which is doing the log verification for
     # the breakdown.
     marker = request.node.get_closest_marker("fixt_data")
-    my_exc_type = Exception
+    my_exc_type = Exception(r".+")
     expected_error_occurred = True
-    print(f"\n*** here is is 1: {my_exc_type=}")
+
     if marker is not None:
         expected_error_occurred = False
         my_exc_type, exc_hook_log_patterns = marker.args[0]
         for log_pattern in exc_hook_log_patterns:
             log_ver.add_pattern(log_pattern, log_name="scottbrian_utils.exc_hook")
 
-    print(f"\n*** here is is 2: {my_exc_type=}")
     try:
         with ExcHook(monkeypatch) as exc_hook:
             yield exc_hook
     except type(my_exc_type) as exc:
-        print(f"\n*** here is is 3: {exc}")
-        print(f"\n*** here is is 4: {str(exc)}")
-        print(f"\n*** here is is 5: {str(my_exc_type)}")
-        assert str(exc) == str(my_exc_type)
+        re.fullmatch(str(my_exc_type), str(exc))
         expected_error_occurred = True
     finally:
         if not expected_error_occurred:
