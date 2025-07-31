@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 # type aliases
 ########################################################################
 
+thread_array: list = []
+
 
 ########################################################################
 # UniqueTS test exceptions
@@ -63,9 +65,6 @@ class TestExcHookExamples:
         print("mainline entered")
 
         print("mainline exiting")
-
-
-thread_array: list = []
 
 
 ########################################################################
@@ -478,7 +477,6 @@ class TestExcHookBasic:
 
     runtime_exception_pattern = "1 thread failed to complete"
     runtime_error_type = RuntimeError(runtime_exception_pattern)
-    thread_array = ["hello"]
 
     @pytest.mark.fixt_data(
         (
@@ -495,18 +493,18 @@ class TestExcHookBasic:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """test exc_hook one thread still running error."""
-        print(f"\n ##### test case thread_array 1: {TestExcHookBasic.thread_array}")
+        thread_array.clear()
+        print(f"\n ##### test case thread_array 1: {thread_array}")
         self.drive_threads_still_running_error(
-            TestExcHookBasic.thread_array, caplog=caplog, num_threads=1
+            thread_array, caplog=caplog, num_threads=1
         )
-        print(f"\n ##### test case thread_array 2: {TestExcHookBasic.thread_array}")
+        print(f"\n ##### test case thread_array 2: {thread_array}")
 
     ####################################################################
     # test_exc_hook_two_threads_still_running_error
     ####################################################################
     runtime_exception_pattern = "2 threads failed to complete"
     runtime_error_type = RuntimeError(runtime_exception_pattern)
-    thread_array = []
 
     @pytest.mark.fixt_data(
         (
@@ -524,8 +522,9 @@ class TestExcHookBasic:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """test exc_hook two threads still running error."""
+        thread_array.clear()
         self.drive_threads_still_running_error(
-            TestExcHookBasic.thread_array, caplog=caplog, num_threads=2
+            thread_array, caplog=caplog, num_threads=2
         )
 
     ####################################################################
@@ -533,7 +532,6 @@ class TestExcHookBasic:
     ####################################################################
     runtime_exception_pattern = "3 threads failed to complete"
     runtime_error_type = RuntimeError(runtime_exception_pattern)
-    thread_array = []
 
     @pytest.mark.fixt_data(
         (
@@ -552,6 +550,7 @@ class TestExcHookBasic:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """test exc_hook one thread still running error."""
+        thread_array.clear()
         self.drive_threads_still_running_error(
-            TestExcHookBasic.thread_array, caplog=caplog, num_threads=3
+            thread_array, caplog=caplog, num_threads=3
         )
