@@ -93,9 +93,15 @@ def thread_exc(
 
     if marker is not None:
         expected_error_occurred = False
-        my_exc_type, exc_hook_log_patterns = marker.args[0]
+        marker_args = marker.args[0]
+        # my_exc_type, exc_hook_log_patterns = marker.args[0]
+        my_exc_type = marker_args[0]
+        exc_hook_log_patterns = marker_args[1]
         for log_pattern in exc_hook_log_patterns:
             log_ver.add_pattern(log_pattern, log_name="scottbrian_utils.exc_hook")
+        if len(marker_args) > 2:
+            thread_array = marker_args[2]
+            print(f"\n******* thread_array 1: {thread_array}")
 
     try:
         with ExcHook(monkeypatch) as exc_hook:
@@ -106,6 +112,12 @@ def thread_exc(
     finally:
         if not expected_error_occurred:
             print(f"\n*** failed to catch expected error: {my_exc_type}")
+        if marker is not None and len(marker.args[0]) > 2:
+            thread_array = marker.args[0][2]
+            print(f"\n******* thread_array 2: {thread_array}")
+            # for thread in thread_array:
+            #     thread[0].set()
+            #     thread[1].join(timeout=5)
 
     exit_log_msg = (
         r"ExcHook __exit__ hook in threading.excepthook restored, "

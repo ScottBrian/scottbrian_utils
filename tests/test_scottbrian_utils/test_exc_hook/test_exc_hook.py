@@ -65,6 +65,9 @@ class TestExcHookExamples:
         print("mainline exiting")
 
 
+thread_array: list = []
+
+
 ########################################################################
 # TestUniqueTSBasic class
 ########################################################################
@@ -381,38 +384,38 @@ class TestExcHookBasic:
     # drive_threads_still_running_error
     ####################################################################
     def drive_threads_still_running_error(
-        self, caplog: pytest.LogCaptureFixture, num_threads: int
+        self, thread_array: list, caplog: pytest.LogCaptureFixture, num_threads: int
     ) -> None:
         """test exc_hook one thread still running error."""
         log_ver = LogVer(log_name=__name__)
 
         log_ver.test_msg("mainline entry")
 
-        def f1(num_threads_arg) -> None:
+        def f1() -> None:
             """F1 thread."""
             f1_event.set()
-            if num_threads_arg >= 1:
-                time.sleep(5)
+            f1_event_exit.wait()
 
-        def f2(num_threads_arg) -> None:
+        def f2() -> None:
             """F2 thread."""
             f2_event.set()
-            if num_threads_arg >= 2:
-                time.sleep(5)
+            f2_event_exit.wait()
 
-        def f3(num_threads_arg) -> None:
+        def f3() -> None:
             """F2 thread."""
             f3_event.set()
-            if num_threads_arg >= 3:
-                time.sleep(5)
+            f3_event_exit.wait()
 
         f1_event = threading.Event()
+        f1_event_exit = threading.Event()
         f2_event = threading.Event()
+        f2_event_exit = threading.Event()
         f3_event = threading.Event()
+        f3_event_exit = threading.Event()
 
-        f1_thread = threading.Thread(target=f1, args=(num_threads,))
-        f2_thread = threading.Thread(target=f2, args=(num_threads,))
-        f3_thread = threading.Thread(target=f3, args=(num_threads,))
+        f1_thread = threading.Thread(target=f1)
+        f2_thread = threading.Thread(target=f2)
+        f3_thread = threading.Thread(target=f3)
 
         # start each thread one at a time and wait to ensure it was
         # started and got control so that we can control the assigned
@@ -425,6 +428,25 @@ class TestExcHookBasic:
 
         f3_thread.start()
         f3_event.wait()
+
+        if num_threads == 1:
+            thread_array.append((f1_event_exit, f1_thread))
+
+            f2_event_exit.set()
+            f2_thread.join(timeout=5)
+
+            f3_event_exit.set()
+            f3_thread.join(timeout=5)
+        elif num_threads == 2:
+            thread_array.append((f1_event_exit, f1_thread))
+            thread_array.append((f2_event_exit, f2_thread))
+
+            f3_event_exit.set()
+            f3_thread.join(timeout=5)
+        else:
+            thread_array.append((f1_event_exit, f1_thread))
+            thread_array.append((f2_event_exit, f2_thread))
+            thread_array.append((f3_event_exit, f3_thread))
 
         log_ver.test_msg("mainline exit")
 
@@ -456,6 +478,7 @@ class TestExcHookBasic:
 
     runtime_exception_pattern = "1 thread failed to complete"
     runtime_error_type = RuntimeError(runtime_exception_pattern)
+    thread_array = ["hello"]
 
     @pytest.mark.fixt_data(
         (
@@ -465,19 +488,25 @@ class TestExcHookBasic:
                 exc_hook_main_thread_log_pattern,
                 exc_hook_f1_thread_log_pattern,
             ),
+            thread_array,
         )
     )
     def test_exc_hook_one_thread_still_running_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """test exc_hook one thread still running error."""
-        self.drive_threads_still_running_error(caplog=caplog, num_threads=1)
+        print(f"\n ##### test case thread_array 1: {TestExcHookBasic.thread_array}")
+        self.drive_threads_still_running_error(
+            TestExcHookBasic.thread_array, caplog=caplog, num_threads=1
+        )
+        print(f"\n ##### test case thread_array 2: {TestExcHookBasic.thread_array}")
 
     ####################################################################
     # test_exc_hook_two_threads_still_running_error
     ####################################################################
     runtime_exception_pattern = "2 threads failed to complete"
     runtime_error_type = RuntimeError(runtime_exception_pattern)
+    thread_array = []
 
     @pytest.mark.fixt_data(
         (
@@ -488,19 +517,23 @@ class TestExcHookBasic:
                 exc_hook_f1_thread_log_pattern,
                 exc_hook_f2_thread_log_pattern,
             ),
+            thread_array,
         )
     )
     def test_exc_hook_two_threads_still_running_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """test exc_hook two threads still running error."""
-        self.drive_threads_still_running_error(caplog=caplog, num_threads=2)
+        self.drive_threads_still_running_error(
+            TestExcHookBasic.thread_array, caplog=caplog, num_threads=2
+        )
 
     ####################################################################
     # test_exc_hook_three_threads_still_running_error
     ####################################################################
     runtime_exception_pattern = "3 threads failed to complete"
     runtime_error_type = RuntimeError(runtime_exception_pattern)
+    thread_array = []
 
     @pytest.mark.fixt_data(
         (
@@ -512,10 +545,13 @@ class TestExcHookBasic:
                 exc_hook_f2_thread_log_pattern,
                 exc_hook_f3_thread_log_pattern,
             ),
+            thread_array,
         )
     )
     def test_exc_hook_three_threads_still_running_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """test exc_hook one thread still running error."""
-        self.drive_threads_still_running_error(caplog=caplog, num_threads=3)
+        self.drive_threads_still_running_error(
+            TestExcHookBasic.thread_array, caplog=caplog, num_threads=3
+        )
