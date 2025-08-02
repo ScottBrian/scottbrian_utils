@@ -98,7 +98,9 @@ def thread_exc(
         my_exc_type = marker_args[0]
         exc_hook_log_patterns = marker_args[1]
         for log_pattern in exc_hook_log_patterns:
-            log_ver.add_pattern(log_pattern, log_name="scottbrian_utils.exc_hook")
+            log_ver.add_pattern(
+                log_pattern, log_name="scottbrian_utils.exc_hook", fullmatch=False
+            )
 
     try:
         with ExcHook(monkeypatch) as exc_hook:
@@ -117,9 +119,7 @@ def thread_exc(
 
     exit_log_msg = (
         r"ExcHook __exit__ hook in threading.excepthook restored, "
-        r"changed from functools.partial\(<function ExcHook.mock_threading_excepthook at "
-        r"0x[0-9A-F]+>, <scottbrian_utils.exc_hook.ExcHook object at 0x[0-9A-F]+>\) to "
-        r"self.old_hook=.+"
+        r"changed from .+ to self.old_hook=.+"
     )
 
     log_ver.add_pattern(

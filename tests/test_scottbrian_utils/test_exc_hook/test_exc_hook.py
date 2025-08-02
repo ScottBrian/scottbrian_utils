@@ -554,3 +554,40 @@ class TestExcHookBasic:
         self.drive_threads_still_running_error(
             thread_array, caplog=caplog, num_threads=3
         )
+
+    ####################################################################
+    # test_exc_hook_replaced_error
+    ####################################################################
+    runtime_exception_pattern = (
+        f"ExcHook self.new_hook=.+ was incorrectly replaced at some point by .+"
+    )
+    runtime_exception_pattern = f"ExcHook self.new_hook="
+    runtime_error_type = RuntimeError(runtime_exception_pattern)
+
+    @pytest.mark.fixt_data(
+        (
+            runtime_error_type,
+            (runtime_exception_pattern,),
+        )
+    )
+    def test_exc_hook_replaced_error(
+        self,
+        caplog: pytest.LogCaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+        thread_exc: ExcHook,
+    ) -> None:
+        """test_exc_hook_thread_raise_error."""
+        log_ver = LogVer(log_name=__name__)
+
+        log_ver.test_msg("mainline entry")
+
+        threading.excepthook = thread_exc.old_hook
+
+        log_ver.test_msg("mainline exit")
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)

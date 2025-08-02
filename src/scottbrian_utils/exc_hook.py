@@ -141,10 +141,12 @@ class ExcHook:
         # the following code ensures our ExcHook was still in place
         # before we restored it
         if replaced_hook != self.new_hook:
-            raise RuntimeError(
+            error_msg = (
                 f"ExcHook {self.new_hook=} was incorrectly replaced at some point by "
                 f"{replaced_hook}"
             )
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
         # Surface any remote thread uncaught exceptions.
         # Note that we raise the uncaught exceptions before checking
@@ -156,15 +158,16 @@ class ExcHook:
         # the following check ensures that the test case waited via join
         # for any started threads to complete
         if threading.active_count() > 1:
-            singular_plural_str = "s" if threading.active_count() > 2 else ""
-            logger.debug(
-                f"{threading.active_count() - 1} thread{singular_plural_str} failed to complete"
-            )
             for idx, thread in enumerate(threading.enumerate()):
                 logger.debug(f"active thread {idx}: {thread}")
-            raise RuntimeError(
-                f"{threading.active_count() - 1} thread{singular_plural_str} failed to complete"
+
+            singular_plural_str = "s" if threading.active_count() > 2 else ""
+            error_msg = (
+                f"{threading.active_count() - 1} thread{singular_plural_str} "
+                f"failed to complete"
             )
+            logger.debug(error_msg)
+            raise RuntimeError(error_msg)
 
     ####################################################################
     # mock_threading_excepthook
