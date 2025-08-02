@@ -559,9 +559,10 @@ class TestExcHookBasic:
     # test_exc_hook_replaced_error
     ####################################################################
     runtime_exception_pattern = (
-        f"ExcHook self.new_hook=.+ was incorrectly replaced at some point by .+"
+        f"ExcHook self.new_hook=.+ was incorrectly replaced at some point by .+",
+        40,
     )
-    runtime_exception_pattern = f"ExcHook self.new_hook="
+
     runtime_error_type = RuntimeError(runtime_exception_pattern)
 
     @pytest.mark.fixt_data(

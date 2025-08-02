@@ -98,8 +98,15 @@ def thread_exc(
         my_exc_type = marker_args[0]
         exc_hook_log_patterns = marker_args[1]
         for log_pattern in exc_hook_log_patterns:
+            log_level = 10
+            if isinstance(log_pattern, tuple):
+                log_level = log_pattern[1]
+                log_pattern = log_pattern[0]
             log_ver.add_pattern(
-                log_pattern, log_name="scottbrian_utils.exc_hook", fullmatch=False
+                log_pattern,
+                level=log_level,
+                log_name="scottbrian_utils.exc_hook",
+                fullmatch=False,
             )
 
     try:
