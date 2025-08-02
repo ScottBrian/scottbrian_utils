@@ -76,7 +76,7 @@ def thread_exc(
     log_ver.test_msg("conftest entry")
 
     entry_log_msg = (
-        r"ExcHook __enter__ new hook was set: self.old_hook=.+, self.new_hook="
+        r"ExcHook __enter__ new hook was set: old_hook=.+, self.new_hook="
         r"functools.partial\(<function ExcHook.mock_threading_excepthook at "
         r"0x[0-9A-F]+>, <scottbrian_utils.exc_hook.ExcHook object at 0x[0-9A-F]+>\)"
     )
@@ -106,7 +106,7 @@ def thread_exc(
                 log_pattern,
                 level=log_level,
                 log_name="scottbrian_utils.exc_hook",
-                fullmatch=False,
+                fullmatch=True,
             )
 
     try:
@@ -124,14 +124,14 @@ def thread_exc(
                 thread[0].set()
                 thread[1].join(timeout=5)
 
-    exit_log_msg = (
-        r"ExcHook __exit__ hook in threading.excepthook restored, "
-        r"changed from .+ to self.old_hook=.+"
-    )
-
-    log_ver.add_pattern(
-        exit_log_msg, log_name="scottbrian_utils.exc_hook", fullmatch=False
-    )
+    # exit_log_msg = (
+    #     r"ExcHook __exit__ hook in threading.excepthook restored, "
+    #     r"changed from .+ to self.old_hook=.+"
+    # )
+    #
+    # log_ver.add_pattern(
+    #     exit_log_msg, log_name="scottbrian_utils.exc_hook", fullmatch=False
+    # )
 
     log_ver.test_msg("conftest exit")
 
