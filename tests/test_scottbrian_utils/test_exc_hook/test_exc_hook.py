@@ -20,6 +20,7 @@ from typing import Any, NamedTuple
 ########################################################################
 from scottbrian_utils.log_verifier import LogVer
 from scottbrian_utils.exc_hook import ExcHook
+from .conftest import LogMsgPattern, MarkerArgs
 
 
 ########################################################################
@@ -191,13 +192,17 @@ class TestExcHookBasic:
         r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
         r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
     )
-    exception_type = AssertionError(exception_pattern)
-    exc_hook_log_pattern = (
+    log_msg_pattern = LogMsgPattern(
         r"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
         rf'Exception: "{exception_pattern}"'
     )
 
-    @pytest.mark.fixt_data((exception_type, (exc_hook_log_pattern,)))
+    @pytest.mark.fixt_data(
+        MarkerArgs(
+            exception=AssertionError(exception_pattern),
+            log_msg_patterns=(log_msg_pattern,),
+        )
+    )
     def test_exc_hook_thread_unhandled_assert_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -237,13 +242,17 @@ class TestExcHookBasic:
         r"args.exc_traceback=<traceback object at 0x[0-9A-F]+>, "
         r"args.thread=<Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
     )
-    exception_type2 = ZeroDivisionError(exception_pattern)
-    exc_hook_log_pattern = (
+    log_msg_pattern = LogMsgPattern(
         r"caller exc_hook.py::ExcHook.__exit__:[0-9]+ is raising "
         rf'Exception: "{exception_pattern}"'
     )
 
-    @pytest.mark.fixt_data((exception_type2, (exc_hook_log_pattern,)))
+    @pytest.mark.fixt_data(
+        MarkerArgs(
+            exception=ZeroDivisionError(exception_pattern),
+            log_msg_patterns=(log_msg_pattern,),
+        )
+    )
     def test_exc_hook_thread_unhandled_zero_divide_error(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -463,31 +472,32 @@ class TestExcHookBasic:
     # build the LogVer pattern for the exception message that will be
     # issued by the ExcHook __exit__ and pass it to the thread_exc
     # fixture in conftest via the pytest.mark.fixt_data construct
-    exc_hook_main_thread_log_pattern = (
+    exc_hook_main_thread_log_pattern = LogMsgPattern(
         r"active thread 0: <_MainThread\(MainThread, started [0-9]+\)>"
     )
-    exc_hook_f1_thread_log_pattern = (
+    exc_hook_f1_thread_log_pattern = LogMsgPattern(
         r"active thread 1: <Thread\(Thread-[0-9]+ \(f1\), started [0-9]+\)>"
     )
-    exc_hook_f2_thread_log_pattern = (
+    exc_hook_f2_thread_log_pattern = LogMsgPattern(
         r"active thread 2: <Thread\(Thread-[0-9]+ \(f2\), started [0-9]+\)>"
     )
-    exc_hook_f3_thread_log_pattern = (
+    exc_hook_f3_thread_log_pattern = LogMsgPattern(
         r"active thread 3: <Thread\(Thread-[0-9]+ \(f3\), started [0-9]+\)>"
     )
-
     runtime_exception_pattern = "1 thread failed to complete"
-    runtime_error_type = RuntimeError(runtime_exception_pattern)
+    log_msg_pattern = LogMsgPattern(
+        log_msg_pattern=runtime_exception_pattern, log_level=10
+    )
 
     @pytest.mark.fixt_data(
-        (
-            runtime_error_type,
-            (
-                runtime_exception_pattern,
+        MarkerArgs(
+            exception=RuntimeError(runtime_exception_pattern),
+            log_msg_patterns=(
+                log_msg_pattern,
                 exc_hook_main_thread_log_pattern,
                 exc_hook_f1_thread_log_pattern,
             ),
-            thread_array,
+            thread_array=tuple(thread_array),
         )
     )
     def test_exc_hook_one_thread_still_running_error(
@@ -505,18 +515,20 @@ class TestExcHookBasic:
     # test_exc_hook_two_threads_still_running_error
     ####################################################################
     runtime_exception_pattern = "2 threads failed to complete"
-    runtime_error_type = RuntimeError(runtime_exception_pattern)
+    log_msg_pattern = LogMsgPattern(
+        log_msg_pattern=runtime_exception_pattern, log_level=10
+    )
 
     @pytest.mark.fixt_data(
-        (
-            runtime_error_type,
-            (
-                runtime_exception_pattern,
+        MarkerArgs(
+            exception=RuntimeError(runtime_exception_pattern),
+            log_msg_patterns=(
+                log_msg_pattern,
                 exc_hook_main_thread_log_pattern,
                 exc_hook_f1_thread_log_pattern,
                 exc_hook_f2_thread_log_pattern,
             ),
-            thread_array,
+            thread_array=tuple(thread_array),
         )
     )
     def test_exc_hook_two_threads_still_running_error(
@@ -532,19 +544,21 @@ class TestExcHookBasic:
     # test_exc_hook_three_threads_still_running_error
     ####################################################################
     runtime_exception_pattern = "3 threads failed to complete"
-    runtime_error_type = RuntimeError(runtime_exception_pattern)
+    log_msg_pattern = LogMsgPattern(
+        log_msg_pattern=runtime_exception_pattern, log_level=10
+    )
 
     @pytest.mark.fixt_data(
-        (
-            runtime_error_type,
-            (
-                runtime_exception_pattern,
+        MarkerArgs(
+            exception=RuntimeError(runtime_exception_pattern),
+            log_msg_patterns=(
+                log_msg_pattern,
                 exc_hook_main_thread_log_pattern,
                 exc_hook_f1_thread_log_pattern,
                 exc_hook_f2_thread_log_pattern,
                 exc_hook_f3_thread_log_pattern,
             ),
-            thread_array,
+            thread_array=tuple(thread_array),
         )
     )
     def test_exc_hook_three_threads_still_running_error(
@@ -559,35 +573,24 @@ class TestExcHookBasic:
     ####################################################################
     # test_exc_hook_replaced_error
     ####################################################################
-    runtime_exception_pattern: tuple[str, int] = (
+    runtime_exception_pattern = (
         f"ExcHook __exit__ detected that threading.excepthook does not contain "
         f"the expected mock hook set by the ExcHook __entry__ method. "
         rf"Expected hook: self.new_hook=functools.partial\(<function "
         f"ExcHook.mock_threading_excepthook at 0x[0-9A-F]+>, "
         rf"<scottbrian_utils.exc_hook.ExcHook object at 0x[0-9A-F]+>\) "
-        f"threading.excepthook: .+",
-        40,
+        f"threading.excepthook: .+"
+    )
+    log_msg_pattern = LogMsgPattern(
+        log_msg_pattern=runtime_exception_pattern, log_level=40
     )
 
-    runtime_error_type = RuntimeError(runtime_exception_pattern)
-
-    class MarkerArgs(NamedTuple):
-        """NamedTuple for the request queue item."""
-
-        error_type: Exception
-        log_msg_patterns: tuple[tuple[str, int], ...]
-
-    marker_args: MarkerArgs = MarkerArgs(
-        error_type=runtime_error_type, log_msg_patterns=(runtime_exception_pattern,)
+    @pytest.mark.fixt_data(
+        MarkerArgs(
+            exception=RuntimeError(runtime_exception_pattern),
+            log_msg_patterns=(log_msg_pattern,),
+        )
     )
-
-    # @pytest.mark.fixt_data(
-    #     (
-    #         runtime_error_type,
-    #         (runtime_exception_pattern,),
-    #     )
-    # )
-    @pytest.mark.fixt_data(marker_args)
     def test_exc_hook_replaced_error(
         self,
         caplog: pytest.LogCaptureFixture,

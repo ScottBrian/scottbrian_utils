@@ -36,11 +36,28 @@ from scottbrian_utils.log_verifier import LogVer
 logger = logging.getLogger(__name__)
 
 
-class MarkerArgs(NamedTuple):
-    """NamedTuple for the request queue item."""
+class LogMsgPattern(NamedTuple):
+    """NamedTuple for the request passed to conftest."""
 
-    error_type: Exception
-    log_msg_patterns: tuple[tuple[str, int], ...]
+    log_msg_pattern: str
+    log_level: int = 10
+    log_name: str = "scottbrian_utils.exc_hook"
+    fullmatch: bool = True
+
+
+class ThreadItem(NamedTuple):
+    """NamedTuple for the request passed to conftest."""
+
+    thread: threading.Thread
+    event: threading.Event
+
+
+class MarkerArgs(NamedTuple):
+    """NamedTuple for the request passed to conftest."""
+
+    exception: Exception
+    log_msg_patterns: tuple[LogMsgPattern, ...] = ()
+    thread_array: tuple[ThreadItem, ...] = ()
 
 
 ########################################################################
@@ -99,24 +116,19 @@ def thread_exc(
     expected_error_occurred = True
 
     marker = request.node.get_closest_marker("fixt_data")
+    thread_array = ()
     if marker is not None:
         expected_error_occurred = False
         marker_args: MarkerArgs = marker.args[0]
-        # my_exc_type, exc_hook_log_patterns = marker.args[0]
-        my_exc_type = marker_args.error_type
-        exc_hook_log_patterns = marker_args[1]
-        exc_hook_log_patterns = marker_args.log_msg_patterns
-        for log_pattern in exc_hook_log_patterns:
-            log_level = 10
-            if isinstance(log_pattern, tuple):
-                log_level = log_pattern[1]
-                log_pattern = log_pattern[0]
+        my_exc_type = marker_args.exception
+        for log_pattern in marker_args.log_msg_patterns:
             log_ver.add_pattern(
-                log_pattern,
-                level=log_level,
-                log_name="scottbrian_utils.exc_hook",
-                fullmatch=True,
+                log_pattern.log_msg_pattern,
+                level=log_pattern.log_level,
+                log_name=log_pattern.log_name,
+                fullmatch=log_pattern.fullmatch,
             )
+        thread_array = marker_args.thread_array
 
     try:
         with ExcHook(monkeypatch) as exc_hook:
@@ -127,11 +139,15 @@ def thread_exc(
     finally:
         if not expected_error_occurred:
             print(f"\n*** failed to catch expected error: {my_exc_type}")
-        if marker is not None and len(marker.args[0]) > 2:
-            thread_array = marker.args[0][2]
-            for thread in thread_array:
-                thread[0].set()
-                thread[1].join(timeout=5)
+        print(f"\n*** thread array: {thread_array}")
+        for thread_item in thread_array:
+            thread_item.event.set()
+            thread_item.thread.join(timeout=5)
+        # if marker is not None and len(marker.args[0]) > 2:
+        #     thread_array = marker.args[0][2]
+        #     for thread in thread_array:
+        #         thread[0].set()
+        #         thread[1].join(timeout=5)
 
     log_ver.test_msg("conftest exit")
 
