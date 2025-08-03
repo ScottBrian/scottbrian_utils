@@ -8,7 +8,7 @@ import threading
 import time
 
 import pytest
-from typing import Any
+from typing import Any, NamedTuple
 
 ########################################################################
 # Third Party
@@ -20,6 +20,7 @@ from typing import Any
 ########################################################################
 from scottbrian_utils.log_verifier import LogVer
 from scottbrian_utils.exc_hook import ExcHook
+
 
 ########################################################################
 # logger
@@ -558,19 +559,35 @@ class TestExcHookBasic:
     ####################################################################
     # test_exc_hook_replaced_error
     ####################################################################
-    runtime_exception_pattern = (
-        f"ExcHook self.new_hook=.+ was incorrectly replaced at some point by .+",
+    runtime_exception_pattern: tuple[str, int] = (
+        f"ExcHook __exit__ detected that threading.excepthook does not contain "
+        f"the expected mock hook set by the ExcHook __entry__ method. "
+        rf"Expected hook: self.new_hook=functools.partial\(<function "
+        f"ExcHook.mock_threading_excepthook at 0x[0-9A-F]+>, "
+        rf"<scottbrian_utils.exc_hook.ExcHook object at 0x[0-9A-F]+>\) "
+        f"threading.excepthook: .+",
         40,
     )
 
     runtime_error_type = RuntimeError(runtime_exception_pattern)
 
-    @pytest.mark.fixt_data(
-        (
-            runtime_error_type,
-            (runtime_exception_pattern,),
-        )
+    class MarkerArgs(NamedTuple):
+        """NamedTuple for the request queue item."""
+
+        error_type: Exception
+        log_msg_patterns: tuple[tuple[str, int], ...]
+
+    marker_args: MarkerArgs = MarkerArgs(
+        error_type=runtime_error_type, log_msg_patterns=(runtime_exception_pattern,)
     )
+
+    # @pytest.mark.fixt_data(
+    #     (
+    #         runtime_error_type,
+    #         (runtime_exception_pattern,),
+    #     )
+    # )
+    @pytest.mark.fixt_data(marker_args)
     def test_exc_hook_replaced_error(
         self,
         caplog: pytest.LogCaptureFixture,

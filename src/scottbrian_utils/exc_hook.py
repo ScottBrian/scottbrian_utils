@@ -135,19 +135,14 @@ class ExcHook:
         ################################################################
         # restore the original hook
         ################################################################
-        # replaced_hook = threading.excepthook
-        # threading.excepthook = self.old_hook
-        # logger.debug(
-        #     "ExcHook __exit__ hook in threading.excepthook restored, "
-        #     f"changed from {replaced_hook} to {self.old_hook=}"
-        # )
-
         # the following code ensures our ExcHook was still in place
         # before we restored it
         if threading.excepthook != self.new_hook:
             error_msg = (
-                f"ExcHook {self.new_hook=} was incorrectly replaced at some point by "
-                f"{threading.excepthook}"
+                f"ExcHook __exit__ detected that threading.excepthook does not contain "
+                f"the expected mock hook set by the ExcHook __entry__ method. "
+                f"Expected hook: {self.new_hook=} "
+                f"threading.excepthook: {threading.excepthook}"
             )
             logger.error(error_msg)
             raise RuntimeError(error_msg)
@@ -186,12 +181,12 @@ class ExcHook:
                       args.exc_traceback: Optional[TracebackType]
 
         """
+        # print the error traceback
+        traceback.print_tb(args.exc_traceback)
+
         # The error message is built and saved in the exc_hook instance
         # and will be issued with an exception when raise_exc_if_one
         # is called by either __exit__ or the test case
-
-        traceback.print_tb(args.exc_traceback)
-
         self.exc_err_type = args.exc_type
         self.exc_err_msg = (
             f"Test case excepthook: {args.exc_type=}, "

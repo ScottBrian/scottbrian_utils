@@ -5,7 +5,8 @@
 ########################################################################
 import logging
 import re
-from typing import Generator
+import threading
+from typing import Generator, NamedTuple
 
 ########################################################################
 # Third Party
@@ -33,6 +34,13 @@ from scottbrian_utils.log_verifier import LogVer
 #                            '%(message)s')
 
 logger = logging.getLogger(__name__)
+
+
+class MarkerArgs(NamedTuple):
+    """NamedTuple for the request queue item."""
+
+    error_type: Exception
+    log_msg_patterns: tuple[tuple[str, int], ...]
 
 
 ########################################################################
@@ -87,16 +95,17 @@ def thread_exc(
     # The test case uses pytest.mark.fixt_data to pass the msg to this
     # thread_exc fixture which is doing the log verification for
     # the breakdown.
-    marker = request.node.get_closest_marker("fixt_data")
     my_exc_type = Exception(r".+")
     expected_error_occurred = True
 
+    marker = request.node.get_closest_marker("fixt_data")
     if marker is not None:
         expected_error_occurred = False
-        marker_args = marker.args[0]
+        marker_args: MarkerArgs = marker.args[0]
         # my_exc_type, exc_hook_log_patterns = marker.args[0]
-        my_exc_type = marker_args[0]
+        my_exc_type = marker_args.error_type
         exc_hook_log_patterns = marker_args[1]
+        exc_hook_log_patterns = marker_args.log_msg_patterns
         for log_pattern in exc_hook_log_patterns:
             log_level = 10
             if isinstance(log_pattern, tuple):
@@ -123,15 +132,6 @@ def thread_exc(
             for thread in thread_array:
                 thread[0].set()
                 thread[1].join(timeout=5)
-
-    # exit_log_msg = (
-    #     r"ExcHook __exit__ hook in threading.excepthook restored, "
-    #     r"changed from .+ to self.old_hook=.+"
-    # )
-    #
-    # log_ver.add_pattern(
-    #     exit_log_msg, log_name="scottbrian_utils.exc_hook", fullmatch=False
-    # )
 
     log_ver.test_msg("conftest exit")
 
