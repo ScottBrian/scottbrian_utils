@@ -57,7 +57,7 @@ class MarkerArgs(NamedTuple):
 
     exception: Exception
     log_msg_patterns: tuple[LogMsgPattern, ...] = ()
-    thread_array: tuple[ThreadItem, ...] = ()
+    thread_array: list[ThreadItem] = []
 
 
 ########################################################################
@@ -116,7 +116,7 @@ def thread_exc(
     expected_error_occurred = True
 
     marker = request.node.get_closest_marker("fixt_data")
-    thread_array = ()
+    thread_array = []
     if marker is not None:
         expected_error_occurred = False
         marker_args: MarkerArgs = marker.args[0]
@@ -139,15 +139,9 @@ def thread_exc(
     finally:
         if not expected_error_occurred:
             print(f"\n*** failed to catch expected error: {my_exc_type}")
-        print(f"\n*** thread array: {thread_array}")
         for thread_item in thread_array:
             thread_item.event.set()
             thread_item.thread.join(timeout=5)
-        # if marker is not None and len(marker.args[0]) > 2:
-        #     thread_array = marker.args[0][2]
-        #     for thread in thread_array:
-        #         thread[0].set()
-        #         thread[1].join(timeout=5)
 
     log_ver.test_msg("conftest exit")
 

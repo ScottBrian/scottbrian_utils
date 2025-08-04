@@ -105,15 +105,13 @@ class ExcHook:
         old_hook = threading.excepthook
 
         # replace the current hook with our ExcHook
-        # mock_hook = functools.partial(ExcHook.mock_threading_excepthook, self)
+        self.new_hook = functools.partial(ExcHook.mock_threading_excepthook, self)
 
         self.mpatch.setattr(
             threading,
             "excepthook",
-            functools.partial(ExcHook.mock_threading_excepthook, self),
+            self.new_hook,
         )
-        # keep a copy
-        self.new_hook = threading.excepthook
 
         logger.debug(
             f"ExcHook __enter__ new hook was set: {old_hook=}, " f"{self.new_hook=}"

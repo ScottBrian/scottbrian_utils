@@ -5,10 +5,9 @@
 ########################################################################
 import logging
 import threading
-import time
 
 import pytest
-from typing import Any, NamedTuple
+from typing import Any
 
 ########################################################################
 # Third Party
@@ -20,7 +19,7 @@ from typing import Any, NamedTuple
 ########################################################################
 from scottbrian_utils.log_verifier import LogVer
 from scottbrian_utils.exc_hook import ExcHook
-from .conftest import LogMsgPattern, MarkerArgs
+from .conftest import LogMsgPattern, MarkerArgs, ThreadItem
 
 
 ########################################################################
@@ -32,7 +31,7 @@ logger = logging.getLogger(__name__)
 # type aliases
 ########################################################################
 
-thread_array: list = []
+thread_array: list[ThreadItem] = []
 
 
 ########################################################################
@@ -393,7 +392,10 @@ class TestExcHookBasic:
     # drive_threads_still_running_error
     ####################################################################
     def drive_threads_still_running_error(
-        self, thread_array: list, caplog: pytest.LogCaptureFixture, num_threads: int
+        self,
+        thread_array: list[ThreadItem],
+        caplog: pytest.LogCaptureFixture,
+        num_threads: int,
     ) -> None:
         """test exc_hook one thread still running error."""
         log_ver = LogVer(log_name=__name__)
@@ -439,7 +441,7 @@ class TestExcHookBasic:
         f3_event.wait()
 
         if num_threads == 1:
-            thread_array.append((f1_event_exit, f1_thread))
+            thread_array.append(ThreadItem(thread=f1_thread, event=f1_event_exit))
 
             f2_event_exit.set()
             f2_thread.join(timeout=5)
@@ -447,15 +449,15 @@ class TestExcHookBasic:
             f3_event_exit.set()
             f3_thread.join(timeout=5)
         elif num_threads == 2:
-            thread_array.append((f1_event_exit, f1_thread))
-            thread_array.append((f2_event_exit, f2_thread))
+            thread_array.append(ThreadItem(thread=f1_thread, event=f1_event_exit))
+            thread_array.append(ThreadItem(thread=f2_thread, event=f2_event_exit))
 
             f3_event_exit.set()
             f3_thread.join(timeout=5)
         else:
-            thread_array.append((f1_event_exit, f1_thread))
-            thread_array.append((f2_event_exit, f2_thread))
-            thread_array.append((f3_event_exit, f3_thread))
+            thread_array.append(ThreadItem(thread=f1_thread, event=f1_event_exit))
+            thread_array.append(ThreadItem(thread=f2_thread, event=f2_event_exit))
+            thread_array.append(ThreadItem(thread=f3_thread, event=f3_event_exit))
 
         log_ver.test_msg("mainline exit")
 
@@ -497,7 +499,7 @@ class TestExcHookBasic:
                 exc_hook_main_thread_log_pattern,
                 exc_hook_f1_thread_log_pattern,
             ),
-            thread_array=tuple(thread_array),
+            thread_array=thread_array,
         )
     )
     def test_exc_hook_one_thread_still_running_error(
@@ -505,11 +507,9 @@ class TestExcHookBasic:
     ) -> None:
         """test exc_hook one thread still running error."""
         thread_array.clear()
-        print(f"\n ##### test case thread_array 1: {thread_array}")
         self.drive_threads_still_running_error(
             thread_array, caplog=caplog, num_threads=1
         )
-        print(f"\n ##### test case thread_array 2: {thread_array}")
 
     ####################################################################
     # test_exc_hook_two_threads_still_running_error
@@ -528,7 +528,7 @@ class TestExcHookBasic:
                 exc_hook_f1_thread_log_pattern,
                 exc_hook_f2_thread_log_pattern,
             ),
-            thread_array=tuple(thread_array),
+            thread_array=thread_array,
         )
     )
     def test_exc_hook_two_threads_still_running_error(
@@ -558,7 +558,7 @@ class TestExcHookBasic:
                 exc_hook_f2_thread_log_pattern,
                 exc_hook_f3_thread_log_pattern,
             ),
-            thread_array=tuple(thread_array),
+            thread_array=thread_array,
         )
     )
     def test_exc_hook_three_threads_still_running_error(
@@ -574,12 +574,12 @@ class TestExcHookBasic:
     # test_exc_hook_replaced_error
     ####################################################################
     runtime_exception_pattern = (
-        f"ExcHook __exit__ detected that threading.excepthook does not contain "
-        f"the expected mock hook set by the ExcHook __entry__ method. "
-        rf"Expected hook: self.new_hook=functools.partial\(<function "
-        f"ExcHook.mock_threading_excepthook at 0x[0-9A-F]+>, "
-        rf"<scottbrian_utils.exc_hook.ExcHook object at 0x[0-9A-F]+>\) "
-        f"threading.excepthook: .+"
+        "ExcHook __exit__ detected that threading.excepthook does not contain "
+        "the expected mock hook set by the ExcHook __entry__ method. "
+        r"Expected hook: self.new_hook=functools.partial\(<function "
+        "ExcHook.mock_threading_excepthook at 0x[0-9A-F]+>, "
+        r"<scottbrian_utils.exc_hook.ExcHook object at 0x[0-9A-F]+>\) "
+        "threading.excepthook: .+"
     )
     log_msg_pattern = LogMsgPattern(
         log_msg_pattern=runtime_exception_pattern, log_level=40

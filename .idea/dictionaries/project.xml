@@ -2,6 +2,7 @@
   <dictionary name="project">
     <words>
       <w>caplog</w>
+      <w>capsys</w>
       <w>conftest</w>
       <w>fullmatch</w>
       <w>mpatch</w>
