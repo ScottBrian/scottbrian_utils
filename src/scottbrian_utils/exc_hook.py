@@ -60,6 +60,8 @@ logger = logging.getLogger(__name__)
 #
 # When the above is done, cleanup will not raise the error again.
 #
+# Note: requires pytest 8.4.0 or above.
+#
 ########################################################################
 
 
@@ -72,30 +74,10 @@ class ExcHook:
     def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Initialize the ExcHook class instance."""
         self.exc_err_type: Optional[type[Exception]] = None
-        self.exc_err_msg: str = ""
-        self.old_hook: Callable[[threading.ExceptHookArgs], Any] = threading.excepthook
-        self.new_hook: Callable[[threading.ExceptHookArgs], Any]
+        self.new_hook: Callable[[threading.ExceptHookArgs], Any] = functools.partial(
+            ExcHook.mock_threading_excepthook, self
+        )
         self.mpatch: pytest.MonkeyPatch = monkeypatch
-
-    ####################################################################
-    # raise_exc_if_one
-    ####################################################################
-    def raise_exc_if_one(self) -> None:
-        """Raise an error if we have one.
-
-        Raises:
-            Exception: exc_msg
-
-        """
-        if self.exc_err_type is not None:
-            exception = self.exc_err_type
-            self.exc_err_type = None
-            logger.debug(
-                f"caller {get_formatted_call_sequence(latest=1, depth=1)} is raising "
-                f'Exception: "{self.exc_err_msg}"'
-            )
-
-            raise exception(f"{self.exc_err_msg}")
 
     ####################################################################
     # __enter__
@@ -105,8 +87,6 @@ class ExcHook:
         old_hook = threading.excepthook
 
         # replace the current hook with our ExcHook
-        self.new_hook = functools.partial(ExcHook.mock_threading_excepthook, self)
-
         self.mpatch.setattr(
             threading,
             "excepthook",
@@ -116,6 +96,10 @@ class ExcHook:
         logger.debug(
             f"ExcHook __enter__ new hook was set: {old_hook=}, " f"{self.new_hook=}"
         )
+
+        # We are returning the ExcHook instance to allow test cases to
+        # have access as a fixture via a yield statement. See conftest
+        # for example usage.
         return self
 
     ####################################################################
@@ -170,7 +154,7 @@ class ExcHook:
     # mock_threading_excepthook
     ####################################################################
     def mock_threading_excepthook(self, args: Any) -> None:
-        """Build and save the error message from exception.
+        """Build and save the exception.
 
         Args:
             args: contains:
@@ -182,12 +166,32 @@ class ExcHook:
         # print the error traceback
         traceback.print_tb(args.exc_traceback)
 
-        # The error message is built and saved in the exc_hook instance
-        # and will be issued with an exception when raise_exc_if_one
+        # The exception with an error message is built and saved in the
+        # exc_hook instance and will be raised when raise_exc_if_one
         # is called by either __exit__ or the test case
-        self.exc_err_type = args.exc_type
-        self.exc_err_msg = (
+        exc_err_msg = (
             f"Test case excepthook: {args.exc_type=}, "
             f"{args.exc_value=}, {args.exc_traceback=},"
             f" {args.thread=}"
         )
+        self.exc_err_type = args.exc_type(exc_err_msg)
+
+    ####################################################################
+    # raise_exc_if_one
+    ####################################################################
+    def raise_exc_if_one(self) -> None:
+        """Raise an error if we have one.
+
+        Raises:
+            Exception: exc_msg
+
+        """
+        if self.exc_err_type is not None:
+            exception = self.exc_err_type
+            self.exc_err_type = None
+            logger.debug(
+                f"caller {get_formatted_call_sequence(latest=1, depth=1)} is raising "
+                f'Exception: "{str(exception)}"'
+            )
+
+            raise exception
