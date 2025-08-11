@@ -41,11 +41,11 @@ logger = logging.getLogger(__name__)
 # Usage:
 # The thread_exc is an autouse fixture which means it does not need to
 # be specified as an argument in the test case methods. If a thread
-# fails, such as an assert error, then thread_exc will capture the error
-# and raise it for the thread, and will also raise it during cleanup
-# processing for the mainline to ensure the test case fails. Without
-# thread_exc, any uncaptured thread failure will appear in the output,
-# but the test case itself will not fail.
+# fails, such as an assertion error, then thread_exc will capture the
+# error and raise it for the thread, and will also raise it during
+# cleanup processing for the mainline to ensure the test case fails.
+# Without thread_exc, any uncaptured thread failure will appear in the
+# output, but the test case itself will not fail.
 # Also, if you need to issue the thread error earlier, before cleanup,
 # then specify thread_exc as an argument on the test method and then in
 # mainline issue:
