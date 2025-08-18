@@ -62,7 +62,7 @@ The output from ``LogVer.print_match_results()`` for test_example1::
 # Standard Library
 ########################################################################
 import inspect
-import sys
+from typing import Any
 
 ########################################################################
 # Third Party
@@ -91,26 +91,9 @@ class IncorrectSourceLibrary(ErrorSrcVer):
 ########################################################################
 # verify_source
 ########################################################################
-def verify_source(library: str, project: str, py_file: str, obj_to_find: type) -> None:
-    # set the following four lines
-    # library = "C:\\Users\\Tiger\\PycharmProjects\\"
-    # project = "scottbrian_locking"
-    # py_file = "se_lock.py"
-    # class_to_use = SELock
+def verify_source(obj_to_check: Any, str_to_check: str = ".tox") -> None:
 
-    file_prefix = (
-        f"{library}{project}\\.tox"
-        f"\\py{sys.version_info.major}{sys.version_info.minor}-"
-    )
-    file_suffix = f"\\Lib\\site-packages\\{project}\\{py_file}"
+    actual = inspect.getsourcefile(obj_to_check)
 
-    pytest_run = f"{file_prefix}pytest{file_suffix}"
-    coverage_run = f"{file_prefix}coverage{file_suffix}"
-
-    actual = inspect.getsourcefile(obj_to_find)
-
-    if actual != pytest_run or actual != coverage_run:
-        raise IncorrectSourceLibrary(
-            f"Incorrect source library. Expected: {pytest_run} or {coverage_run} "
-            f"Actual: {actual}"
-        )
+    if str_to_check not in actual:
+        raise IncorrectSourceLibrary(f"Incorrect source library. Actual: {actual}")

@@ -78,16 +78,8 @@ class TestSrcVerifierBasic:
         log_ver = LogVer(log_name=__name__)
 
         log_ver.test_msg("mainline entry")
-        library = "C:\\Users\\Tiger\\PycharmProjects\\"
-        project = "scottbrian_utils"
-        py_file = "src_verifier.py"
-        class_to_use = verify_source
-        verify_source(
-            library=library,
-            project=project,
-            py_file=py_file,
-            obj_to_find=verify_source,
-        )
+
+        verify_source(obj_to_check=verify_source)
 
         log_ver.test_msg("mainline exit")
 
