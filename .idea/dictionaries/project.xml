@@ -6,8 +6,10 @@
       <w>caplog</w>
       <w>capsys</w>
       <w>conftest</w>
+      <w>coveragerc</w>
       <w>fullmatch</w>
       <w>mpatch</w>
+      <w>posargs</w>
       <w>scottbrian</w>
     </words>
   </dictionary>

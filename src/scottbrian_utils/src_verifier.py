@@ -62,6 +62,9 @@ The output from ``LogVer.print_match_results()`` for test_example1::
 # Standard Library
 ########################################################################
 import inspect
+import logging
+from pathlib import Path
+import re
 from typing import Any
 
 ########################################################################
@@ -71,6 +74,11 @@ from typing import Any
 ########################################################################
 # Local
 ########################################################################
+
+########################################################################
+# logger
+########################################################################
+logger = logging.getLogger(__name__)
 
 
 ########################################################################
@@ -91,9 +99,13 @@ class IncorrectSourceLibrary(ErrorSrcVer):
 ########################################################################
 # verify_source
 ########################################################################
-def verify_source(obj_to_check: Any, str_to_check: str = ".tox") -> None:
+def verify_source(obj_to_check: Any, str_to_check: str = ".tox") -> str:
 
-    actual = inspect.getsourcefile(obj_to_check)
+    src_path = Path(inspect.getsourcefile(obj_to_check)).as_posix()
 
-    if str_to_check not in actual:
-        raise IncorrectSourceLibrary(f"Incorrect source library. Actual: {actual}")
+    logger.debug(f"{obj_to_check=}, {str_to_check=}, {src_path=}")
+
+    if str_to_check not in src_path:
+        raise IncorrectSourceLibrary(f"Incorrect source library: {src_path}")
+
+    return src_path
