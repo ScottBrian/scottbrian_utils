@@ -8,7 +8,7 @@ import os
 import pytest
 import re
 import sys
-from typing import Any
+from typing import Any, NamedTuple, Optional
 
 ########################################################################
 # Third Party
@@ -19,7 +19,7 @@ from typing import Any
 # Local
 ########################################################################
 from scottbrian_utils.log_verifier import LogVer
-from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.src_verifier import verify_source, IncorrectSourceLibrary
 
 
 ########################################################################
@@ -67,49 +67,259 @@ class TestSrcVerifierExamples:
 
 
 ########################################################################
+# LocalDefClass
+########################################################################
+class LocalDefClass:
+    """Class used to cause failure in verify_source call."""
+
+    pass
+
+
+########################################################################
+# ExpPathArgs
+########################################################################
+class ExpPathArgs(NamedTuple):
+    """NamedTuple for the expected path args."""
+
+    str_to_check: str
+    exp_src_path: str
+    exp_log_pattern_args: str
+    exp_log_pattern_found: str
+
+
+########################################################################
+# get_exp_src_path
+########################################################################
+def get_exp_src_path(
+    obj_to_check: Any = verify_source, str_to_check: Optional[str] = None
+) -> ExpPathArgs:
+    """Return the expected source path."""
+
+    if obj_to_check == LogVer:
+        obj_to_check_str = "<class 'scottbrian_utils.log_verifier.LogVer'>"
+        py_file_name = "log_verifier"
+    else:
+        obj_to_check_str = "<function verify_source at 0x[0-9A-F]+>"
+        py_file_name = "src_verifier"
+
+    if "TOX_ENV_NAME" in os.environ:
+        str_to_check = ".tox" if str_to_check is None else str_to_check
+        exp_src_path = (
+            "C:/Users/Tiger/PycharmProjects/scottbrian_utils/"
+            f".tox/py{sys.version_info.major}{sys.version_info.minor}"
+            f"-(pytest|coverage)/Lib/site-packages/scottbrian_utils/{py_file_name}.py"
+        )
+    else:
+        str_to_check = "src/scottbrian_utils/" if str_to_check is None else str_to_check
+        if obj_to_check == LocalDefClass:
+            file_str = "tests/test_scottbrian_utils/test_src_verifier/"
+        else:
+            file_str = "src/scottbrian_utils/"
+        exp_src_path = (
+            "C:/Users/Tiger/PycharmProjects/scottbrian_utils/"
+            f"{file_str}{py_file_name}.py"
+        )
+
+    exp_log_pattern_args = (
+        f"verify_source entered with: obj_to_check={obj_to_check_str}, "
+        f"str_to_check='{str_to_check}'"
+    )
+
+    exp_log_pattern_found = f"verify_source found: src_path='{exp_src_path}'"
+
+    return ExpPathArgs(
+        str_to_check=str_to_check,
+        exp_src_path=exp_src_path,
+        exp_log_pattern_args=exp_log_pattern_args,
+        exp_log_pattern_found=exp_log_pattern_found,
+    )
+
+
+########################################################################
 # TestUniqueTSBasic class
 ########################################################################
 class TestSrcVerifierBasic:
     """Test basic functions of UniqueTS."""
 
     ####################################################################
-    # test_src_verifier_no_error
+    # test_src_verifier_no_error_default
     ####################################################################
-    def test_src_verifier_no_error(self, caplog: pytest.LogCaptureFixture) -> None:
+    @pytest.mark.parametrize("obj_to_check_arg", (verify_source, LogVer))
+    def test_src_verifier_no_error_default(
+        self, obj_to_check_arg: Any, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Test with default str_to_check."""
 
         log_ver = LogVer(log_name=__name__)
 
         log_ver.test_msg("mainline entry")
 
-        if "TOX_ENV_NAME" in os.environ:
-            str_to_check = ".tox"
-            exp_src_path = (
-                "C:/Users/Tiger/PycharmProjects/scottbrian_utils/"
-                f".tox/py{sys.version_info.major}{sys.version_info.minor}"
-                f"-(pytest|coverage)/Lib/site-packages/scottbrian_utils/src_verifier.py"
-            )
-        else:
-            str_to_check = "src/scottbrian_utils/src_verifier.py"
-            exp_src_path = (
-                "C:/Users/Tiger/PycharmProjects/scottbrian_utils/"
-                "src/scottbrian_utils/src_verifier.py"
-            )
-
-        expected_log_pattern = (
-            "obj_to_check=<function verify_source at 0x[0-9A-F]+>, "
-            f"str_to_check='{str_to_check}', "
-            f"src_path='{exp_src_path}'"
+        exp_path_args: ExpPathArgs = get_exp_src_path(
+            obj_to_check=obj_to_check_arg,
         )
 
-        actual_src_path = verify_source(
-            obj_to_check=verify_source, str_to_check=str_to_check
+        if exp_path_args.str_to_check == ".tox":
+            # test default str_to_check
+            actual_src_path = verify_source(obj_to_check=obj_to_check_arg)
+        else:
+            actual_src_path = verify_source(
+                obj_to_check=obj_to_check_arg, str_to_check=exp_path_args.str_to_check
+            )
+
+        log_ver.add_pattern(
+            exp_path_args.exp_log_pattern_args,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
         )
 
         log_ver.add_pattern(
-            expected_log_pattern,
+            exp_path_args.exp_log_pattern_found,
             log_name="scottbrian_utils.src_verifier",
             fullmatch=True,
+        )
+
+        assert re.fullmatch(exp_path_args.exp_src_path, actual_src_path)
+
+        log_ver.test_msg("mainline exit")
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_src_verifier_no_error_no_default
+    ####################################################################
+    @pytest.mark.parametrize("obj_to_check_arg", (verify_source, LogVer))
+    def test_src_verifier_no_error_no_default(
+        self, obj_to_check_arg: Any, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test with str_to_check specified same as default."""
+        log_ver = LogVer(log_name=__name__)
+
+        log_ver.test_msg("mainline entry")
+
+        exp_path_args: ExpPathArgs = get_exp_src_path(obj_to_check=obj_to_check_arg)
+
+        actual_src_path = verify_source(
+            obj_to_check=obj_to_check_arg, str_to_check=exp_path_args.str_to_check
+        )
+
+        log_ver.add_pattern(
+            exp_path_args.exp_log_pattern_args,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
+        )
+
+        log_ver.add_pattern(
+            exp_path_args.exp_log_pattern_found,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
+        )
+
+        assert re.fullmatch(exp_path_args.exp_src_path, actual_src_path)
+
+        log_ver.test_msg("mainline exit")
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_src_verifier_bad_str_to_check
+    ####################################################################
+    @pytest.mark.parametrize("obj_to_check_arg", (verify_source, LogVer))
+    def test_src_verifier_bad_str_to_check(
+        self, obj_to_check_arg: Any, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test with str_to_check specified same as default."""
+        log_ver = LogVer(log_name=__name__)
+
+        log_ver.test_msg("mainline entry")
+
+        exp_path_args: ExpPathArgs = get_exp_src_path(
+            obj_to_check=obj_to_check_arg,
+            str_to_check="bad str_to_check",
+        )
+
+        with pytest.raises(
+            IncorrectSourceLibrary,
+            match=f"Incorrect source library: {exp_path_args.exp_src_path}",
+        ):
+            actual_src_path = verify_source(
+                obj_to_check=obj_to_check_arg, str_to_check=exp_path_args.str_to_check
+            )
+
+        log_ver.add_pattern(
+            exp_path_args.exp_log_pattern_args,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
+        )
+
+        log_ver.add_pattern(
+            exp_path_args.exp_log_pattern_found,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
+        )
+
+        # assert re.fullmatch(exp_path_args.exp_src_path, actual_src_path)
+
+        log_ver.test_msg("mainline exit")
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_src_verifier_local_obj_to_check
+    ####################################################################
+    def test_src_verifier_local_obj_to_check(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test with obj_to_check being locally defined."""
+        log_ver = LogVer(log_name=__name__)
+
+        log_ver.test_msg("mainline entry")
+
+        exp_src_path = (
+            "C:/Users/Tiger/PycharmProjects/scottbrian_utils/"
+            f"tests/test_scottbrian_utils/test_src_verifier/test_src_verifier.py"
+        )
+        str_to_check = "tests/test_scottbrian_utils/test_src_verifier/test_src_verifier"
+
+        if "TOX_ENV_NAME" in os.environ:
+            obj_to_check_str = "<class 'tests.test_scottbrian_utils.test_src_verifier.test_src_verifier.LocalDefClass'>"
+        else:
+            obj_to_check_str = "<class 'test_src_verifier.LocalDefClass'>"
+
+        exp_log_pattern_args = (
+            f"verify_source entered with: obj_to_check={obj_to_check_str}, "
+            f"str_to_check='{str_to_check}'"
+        )
+        log_ver.add_pattern(
+            exp_log_pattern_args,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
+        )
+
+        exp_log_pattern_found = f"verify_source found: src_path='{exp_src_path}'"
+
+        log_ver.add_pattern(
+            exp_log_pattern_found,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
+        )
+
+        actual_src_path = verify_source(
+            obj_to_check=LocalDefClass, str_to_check=str_to_check
         )
 
         assert re.fullmatch(exp_src_path, actual_src_path)
@@ -124,45 +334,55 @@ class TestSrcVerifierBasic:
         log_ver.verify_match_results(match_results)
 
     ####################################################################
-    # test_src_verifier_no_error2
+    # test_src_verifier_local_obj_to_check
     ####################################################################
-    def test_src_verifier_no_error2(self, caplog: pytest.LogCaptureFixture) -> None:
-        """Test with str_to_check specified same as default."""
+    def test_src_verifier_str_obj_to_check(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test with obj_to_check being locally defined."""
         log_ver = LogVer(log_name=__name__)
 
         log_ver.test_msg("mainline entry")
 
-        if "TOX_ENV_NAME" in os.environ:
-            str_to_check = ".tox"
-            exp_src_path = (
-                "C:/Users/Tiger/PycharmProjects/scottbrian_utils/"
-                f".tox/py{sys.version_info.major}{sys.version_info.minor}"
-                f"-(pytest|coverage)/Lib/site-packages/scottbrian_utils/src_verifier.py"
-            )
-        else:
-            str_to_check = "src/scottbrian_utils/src_verifier.py"
-            exp_src_path = (
-                "C:/Users/Tiger/PycharmProjects/scottbrian_utils/"
-                "src/scottbrian_utils/src_verifier.py"
-            )
+        # exp_src_path = (
+        #     "C:/Users/Tiger/PycharmProjects/scottbrian_utils/"
+        #     f"tests/test_scottbrian_utils/test_src_verifier/test_src_verifier.py"
+        # )
+        # str_to_check = "tests/test_scottbrian_utils/test_src_verifier/test_src_verifier"
 
-        actual_src_path = verify_source(
-            obj_to_check=verify_source, str_to_check=str_to_check
+        # if "TOX_ENV_NAME" in os.environ:
+        #     obj_to_check_str = "<class 'tests.test_scottbrian_utils.test_src_verifier.test_src_verifier.LocalDefClass'>"
+        # else:
+        #     obj_to_check_str = "<class 'test_src_verifier.LocalDefClass'>"
+
+        exp_log_pattern_args = (
+            f"verify_source entered with: obj_to_check='LocalDefClass', "
+            f"str_to_check='a string'"
         )
-
-        expected_log_pattern = (
-            "obj_to_check=<function verify_source at 0x[0-9A-F]+>, "
-            f"str_to_check='{str_to_check}', "
-            f"src_path='{exp_src_path}'"
-        )
-
         log_ver.add_pattern(
-            expected_log_pattern,
+            exp_log_pattern_args,
             log_name="scottbrian_utils.src_verifier",
             fullmatch=True,
         )
 
-        assert re.fullmatch(exp_src_path, actual_src_path)
+        with pytest.raises(
+            TypeError,
+            match=(
+                "module, class, method, function, traceback, frame, or code object "
+                "was expected, got str"
+            ),
+        ):
+            actual_src_path = verify_source(
+                obj_to_check="LocalDefClass", str_to_check="a string"
+            )
+
+        log_ver.add_pattern(
+            exp_log_pattern,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
+        )
+
+        # assert re.fullmatch(exp_src_path, actual_src_path)
 
         log_ver.test_msg("mainline exit")
 

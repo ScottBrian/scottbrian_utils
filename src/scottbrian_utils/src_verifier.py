@@ -101,9 +101,11 @@ class IncorrectSourceLibrary(ErrorSrcVer):
 ########################################################################
 def verify_source(obj_to_check: Any, str_to_check: str = ".tox") -> str:
 
+    logger.debug(f"verify_source entered with: {obj_to_check=}, {str_to_check=}")
+
     src_path = Path(inspect.getsourcefile(obj_to_check)).as_posix()
 
-    logger.debug(f"{obj_to_check=}, {str_to_check=}, {src_path=}")
+    logger.debug(f"verify_source found: {src_path=}")
 
     if str_to_check not in src_path:
         raise IncorrectSourceLibrary(f"Incorrect source library: {src_path}")
