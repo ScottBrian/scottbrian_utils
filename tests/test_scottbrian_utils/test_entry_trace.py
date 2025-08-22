@@ -12,6 +12,7 @@ import inspect
 import itertools as it
 import logging
 import more_itertools as mi
+import os
 import re
 
 from typing import Any, Callable, Iterator, Optional, Union
@@ -27,6 +28,7 @@ import pytest
 ########################################################################
 from scottbrian_utils.entry_trace import etrace
 from scottbrian_utils.log_verifier import LogVer
+from scottbrian_utils.src_verifier import verify_source
 
 logger = logging.getLogger(__name__)
 logger.debug(f"start5 of test_entry_trace.py with {__name__=}")
@@ -47,6 +49,21 @@ class ErrorTstEntryTrace(Exception):
     """Base class for exception in this module."""
 
     pass
+
+
+########################################################################
+# TestDiagMsgCorrectSource
+########################################################################
+class TestETraceCorrectSource:
+    """Verify that we are testing with correctly built code."""
+
+    ####################################################################
+    # test_entry_trace_correct_source
+    ####################################################################
+    def test_entry_trace_correct_source(self) -> None:
+        """Test entry_trace correct source."""
+        if "TOX_ENV_NAME" in os.environ:
+            verify_source(obj_to_check=etrace)
 
 
 ########################################################################
