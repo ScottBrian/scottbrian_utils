@@ -1,8 +1,11 @@
 """test_diag_msg.py module."""
 
+########################################################################
+# Standard Library
+########################################################################
 from datetime import datetime
-
 import logging
+import os
 
 # noinspection PyProtectedMember
 from sys import _getframe
@@ -10,12 +13,15 @@ import sys  # noqa: F401
 
 from typing import Any, cast, Deque, Final, List, NamedTuple, Optional, Union
 
-# from typing import Text, TypeVar
-# from typing_extensions import Final
-
+########################################################################
+# Third Party
+########################################################################
 import pytest
 from collections import deque
 
+########################################################################
+# Local
+########################################################################
 from scottbrian_utils.diag_msg import get_caller_info
 from scottbrian_utils.diag_msg import get_formatted_call_sequence
 from scottbrian_utils.diag_msg import diag_msg
@@ -24,27 +30,11 @@ from scottbrian_utils.diag_msg import diag_msg_datetime_fmt
 from scottbrian_utils.diag_msg import get_formatted_call_seq_depth
 from scottbrian_utils.diag_msg import diag_msg_caller_depth
 
+from scottbrian_utils.src_verifier import verify_source
+
 from scottbrian_utils.entry_trace import etrace
 
 logger = logging.getLogger(__name__)
-
-########################################################################
-# MyPy experiments
-########################################################################
-# AnyStr = TypeVar('AnyStr', Text, bytes)
-#
-# def concat(x: AnyStr, y: AnyStr) -> AnyStr:
-#     return x + y
-#
-# x = concat('my', 'pie')
-#
-# reveal_type(x)
-#
-# class MyStr(str): ...
-#
-# x = concat(MyStr('apple'), MyStr('pie'))
-#
-# reveal_type(x)
 
 
 ########################################################################
@@ -514,6 +504,21 @@ def update_stack(exp_stack: Deque[CallerInfo], line_num: int, add: int) -> None:
 
 
 ########################################################################
+# TestDiagMsgCorrectSource
+########################################################################
+class TestDiagMsgCorrectSource:
+    """Verify that we are testing with correctly built code."""
+
+    ####################################################################
+    # test_diag_msg_correct_source
+    ####################################################################
+    def test_diag_msg_correct_source(self) -> None:
+        """Test diag_msg correct source."""
+        if "TOX_ENV_NAME" in os.environ:
+            verify_source(obj_to_check=diag_msg)
+
+
+########################################################################
 # Class to test get call sequence
 ########################################################################
 class TestCallSeq:
@@ -532,7 +537,7 @@ class TestCallSeq:
             line_num=420,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=536, add=0)
+        update_stack(exp_stack=exp_stack, line_num=541, add=0)
         call_seq = get_formatted_call_sequence()
 
         verify_call_seq(exp_stack=exp_stack, call_seq=call_seq)
@@ -563,7 +568,7 @@ class TestCallSeq:
             line_num=420,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=567, add=0)
+        update_stack(exp_stack=exp_stack, line_num=572, add=0)
         call_seq = get_formatted_call_sequence()
 
         verify_call_seq(exp_stack=exp_stack, call_seq=call_seq)
@@ -593,18 +598,18 @@ class TestCallSeq:
             line_num=449,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=599, add=0)
+        update_stack(exp_stack=exp_stack, line_num=604, add=0)
         call_seq = ""
         if latest_arg is None and depth_arg is None:
             call_seq = get_formatted_call_sequence()
         elif latest_arg is None and depth_arg is not None:
-            update_stack(exp_stack=exp_stack, line_num=602, add=0)
+            update_stack(exp_stack=exp_stack, line_num=607, add=0)
             call_seq = get_formatted_call_sequence(depth=depth_arg)
         elif latest_arg is not None and depth_arg is None:
-            update_stack(exp_stack=exp_stack, line_num=605, add=0)
+            update_stack(exp_stack=exp_stack, line_num=610, add=0)
             call_seq = get_formatted_call_sequence(latest=latest_arg)
         elif latest_arg is not None and depth_arg is not None:
-            update_stack(exp_stack=exp_stack, line_num=608, add=0)
+            update_stack(exp_stack=exp_stack, line_num=613, add=0)
             call_seq = get_formatted_call_sequence(latest=latest_arg, depth=depth_arg)
         verify_call_seq(
             exp_stack=exp_stack,
@@ -613,7 +618,7 @@ class TestCallSeq:
             seq_depth=depth_arg,
         )
 
-        update_stack(exp_stack=exp_stack, line_num=617, add=2)
+        update_stack(exp_stack=exp_stack, line_num=622, add=2)
         self.get_call_seq_depth_2(
             exp_stack=exp_stack, latest_arg=latest_arg, depth_arg=depth_arg
         )
@@ -644,18 +649,18 @@ class TestCallSeq:
             line_num=494,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=650, add=0)
+        update_stack(exp_stack=exp_stack, line_num=655, add=0)
         call_seq = ""
         if latest_arg is None and depth_arg is None:
             call_seq = get_formatted_call_sequence()
         elif latest_arg is None and depth_arg is not None:
-            update_stack(exp_stack=exp_stack, line_num=653, add=0)
+            update_stack(exp_stack=exp_stack, line_num=658, add=0)
             call_seq = get_formatted_call_sequence(depth=depth_arg)
         elif latest_arg is not None and depth_arg is None:
-            update_stack(exp_stack=exp_stack, line_num=656, add=0)
+            update_stack(exp_stack=exp_stack, line_num=661, add=0)
             call_seq = get_formatted_call_sequence(latest=latest_arg)
         elif latest_arg is not None and depth_arg is not None:
-            update_stack(exp_stack=exp_stack, line_num=659, add=0)
+            update_stack(exp_stack=exp_stack, line_num=664, add=0)
             call_seq = get_formatted_call_sequence(latest=latest_arg, depth=depth_arg)
         verify_call_seq(
             exp_stack=exp_stack,
@@ -664,7 +669,7 @@ class TestCallSeq:
             seq_depth=depth_arg,
         )
 
-        update_stack(exp_stack=exp_stack, line_num=668, add=2)
+        update_stack(exp_stack=exp_stack, line_num=673, add=2)
         self.get_call_seq_depth_3(
             exp_stack=exp_stack, latest_arg=latest_arg, depth_arg=depth_arg
         )
@@ -697,18 +702,18 @@ class TestCallSeq:
             line_num=541,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=703, add=0)
+        update_stack(exp_stack=exp_stack, line_num=708, add=0)
         call_seq = ""
         if latest_arg is None and depth_arg is None:
             call_seq = get_formatted_call_sequence()
         elif latest_arg is None and depth_arg is not None:
-            update_stack(exp_stack=exp_stack, line_num=706, add=0)
+            update_stack(exp_stack=exp_stack, line_num=711, add=0)
             call_seq = get_formatted_call_sequence(depth=depth_arg)
         elif latest_arg is not None and depth_arg is None:
-            update_stack(exp_stack=exp_stack, line_num=709, add=0)
+            update_stack(exp_stack=exp_stack, line_num=714, add=0)
             call_seq = get_formatted_call_sequence(latest=latest_arg)
         elif latest_arg is not None and depth_arg is not None:
-            update_stack(exp_stack=exp_stack, line_num=712, add=0)
+            update_stack(exp_stack=exp_stack, line_num=717, add=0)
             call_seq = get_formatted_call_sequence(latest=latest_arg, depth=depth_arg)
         verify_call_seq(
             exp_stack=exp_stack,
@@ -717,7 +722,7 @@ class TestCallSeq:
             seq_depth=depth_arg,
         )
 
-        update_stack(exp_stack=exp_stack, line_num=721, add=2)
+        update_stack(exp_stack=exp_stack, line_num=726, add=2)
         self.get_call_seq_depth_4(
             exp_stack=exp_stack, latest_arg=latest_arg, depth_arg=depth_arg
         )
@@ -750,18 +755,18 @@ class TestCallSeq:
             line_num=588,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=756, add=0)
+        update_stack(exp_stack=exp_stack, line_num=761, add=0)
         call_seq = ""
         if latest_arg is None and depth_arg is None:
             call_seq = get_formatted_call_sequence()
         elif latest_arg is None and depth_arg is not None:
-            update_stack(exp_stack=exp_stack, line_num=759, add=0)
+            update_stack(exp_stack=exp_stack, line_num=764, add=0)
             call_seq = get_formatted_call_sequence(depth=depth_arg)
         elif latest_arg is not None and depth_arg is None:
-            update_stack(exp_stack=exp_stack, line_num=762, add=0)
+            update_stack(exp_stack=exp_stack, line_num=767, add=0)
             call_seq = get_formatted_call_sequence(latest=latest_arg)
         elif latest_arg is not None and depth_arg is not None:
-            update_stack(exp_stack=exp_stack, line_num=765, add=0)
+            update_stack(exp_stack=exp_stack, line_num=770, add=0)
             call_seq = get_formatted_call_sequence(latest=latest_arg, depth=depth_arg)
         verify_call_seq(
             exp_stack=exp_stack,
@@ -785,7 +790,7 @@ class TestCallSeq:
             line_num=620,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=792, add=0)
+        update_stack(exp_stack=exp_stack, line_num=797, add=0)
         num_items = 0
         new_count = 1
         while num_items + 1 == new_count:
@@ -904,7 +909,7 @@ class TestDiagMsg:
             line_num=727,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=909, add=0)
+        update_stack(exp_stack=exp_stack, line_num=914, add=0)
         before_time = datetime.now()
         diag_msg()
         after_time = datetime.now()
@@ -949,7 +954,7 @@ class TestDiagMsg:
             line_num=768,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=961, add=0)
+        update_stack(exp_stack=exp_stack, line_num=966, add=0)
         diag_msg_args = self.get_diag_msg_args(
             dt_format_arg=dt_format_arg,
             depth_arg=depth_arg,
@@ -960,69 +965,69 @@ class TestDiagMsg:
         if diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG0_FILE0:
             diag_msg()
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=964, add=0)
+            update_stack(exp_stack=exp_stack, line_num=969, add=0)
             diag_msg(file=eval(diag_msg_args.file_arg))
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=967, add=0)
+            update_stack(exp_stack=exp_stack, line_num=972, add=0)
             diag_msg(*diag_msg_args.msg_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=970, add=0)
+            update_stack(exp_stack=exp_stack, line_num=975, add=0)
             diag_msg(*diag_msg_args.msg_arg, file=eval(diag_msg_args.file_arg))
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG0_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=973, add=0)
+            update_stack(exp_stack=exp_stack, line_num=978, add=0)
             diag_msg(depth=diag_msg_args.depth_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=976, add=0)
+            update_stack(exp_stack=exp_stack, line_num=981, add=0)
             diag_msg(depth=diag_msg_args.depth_arg, file=eval(diag_msg_args.file_arg))
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=979, add=0)
+            update_stack(exp_stack=exp_stack, line_num=984, add=0)
             diag_msg(*diag_msg_args.msg_arg, depth=diag_msg_args.depth_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=982, add=4)
+            update_stack(exp_stack=exp_stack, line_num=987, add=4)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 depth=diag_msg_args.depth_arg,
                 file=eval(diag_msg_args.file_arg),
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG0_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=989, add=0)
+            update_stack(exp_stack=exp_stack, line_num=994, add=0)
             diag_msg(dt_format=diag_msg_args.dt_format_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=992, add=2)
+            update_stack(exp_stack=exp_stack, line_num=997, add=2)
             diag_msg(
                 dt_format=diag_msg_args.dt_format_arg, file=eval(diag_msg_args.file_arg)
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=997, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1002, add=0)
             diag_msg(*diag_msg_args.msg_arg, dt_format=diag_msg_args.dt_format_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1000, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1005, add=4)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 dt_format=diag_msg_args.dt_format_arg,
                 file=eval(diag_msg_args.file_arg),
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG0_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1007, add=2)
+            update_stack(exp_stack=exp_stack, line_num=1012, add=2)
             diag_msg(
                 depth=diag_msg_args.depth_arg, dt_format=diag_msg_args.dt_format_arg
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1012, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1017, add=4)
             diag_msg(
                 depth=diag_msg_args.depth_arg,
                 file=eval(diag_msg_args.file_arg),
                 dt_format=diag_msg_args.dt_format_arg,
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1019, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1024, add=4)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 depth=diag_msg_args.depth_arg,
                 dt_format=diag_msg_args.dt_format_arg,
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1026, add=5)
+            update_stack(exp_stack=exp_stack, line_num=1031, add=5)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 depth=diag_msg_args.depth_arg,
@@ -1040,7 +1045,7 @@ class TestDiagMsg:
             diag_msg_args=diag_msg_args,
         )
 
-        update_stack(exp_stack=exp_stack, line_num=1044, add=2)
+        update_stack(exp_stack=exp_stack, line_num=1049, add=2)
         self.diag_msg_depth_2(
             exp_stack=exp_stack, capsys=capsys, diag_msg_args=diag_msg_args
         )
@@ -1070,74 +1075,74 @@ class TestDiagMsg:
             line_num=867,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=1076, add=0)
+        update_stack(exp_stack=exp_stack, line_num=1081, add=0)
         before_time = datetime.now()
         if diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG0_FILE0:
             diag_msg()
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1079, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1084, add=0)
             diag_msg(file=eval(diag_msg_args.file_arg))
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1082, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1087, add=0)
             diag_msg(*diag_msg_args.msg_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1085, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1090, add=0)
             diag_msg(*diag_msg_args.msg_arg, file=eval(diag_msg_args.file_arg))
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG0_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1088, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1093, add=0)
             diag_msg(depth=diag_msg_args.depth_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1091, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1096, add=0)
             diag_msg(depth=diag_msg_args.depth_arg, file=eval(diag_msg_args.file_arg))
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1094, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1099, add=0)
             diag_msg(*diag_msg_args.msg_arg, depth=diag_msg_args.depth_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1097, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1102, add=4)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 depth=diag_msg_args.depth_arg,
                 file=eval(diag_msg_args.file_arg),
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG0_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1104, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1109, add=0)
             diag_msg(dt_format=diag_msg_args.dt_format_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1107, add=2)
+            update_stack(exp_stack=exp_stack, line_num=1112, add=2)
             diag_msg(
                 dt_format=diag_msg_args.dt_format_arg, file=eval(diag_msg_args.file_arg)
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1112, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1117, add=0)
             diag_msg(*diag_msg_args.msg_arg, dt_format=diag_msg_args.dt_format_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1115, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1120, add=4)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 dt_format=diag_msg_args.dt_format_arg,
                 file=eval(diag_msg_args.file_arg),
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG0_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1122, add=2)
+            update_stack(exp_stack=exp_stack, line_num=1127, add=2)
             diag_msg(
                 depth=diag_msg_args.depth_arg, dt_format=diag_msg_args.dt_format_arg
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1127, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1132, add=4)
             diag_msg(
                 depth=diag_msg_args.depth_arg,
                 file=eval(diag_msg_args.file_arg),
                 dt_format=diag_msg_args.dt_format_arg,
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1134, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1139, add=4)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 depth=diag_msg_args.depth_arg,
                 dt_format=diag_msg_args.dt_format_arg,
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1141, add=5)
+            update_stack(exp_stack=exp_stack, line_num=1146, add=5)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 depth=diag_msg_args.depth_arg,
@@ -1155,7 +1160,7 @@ class TestDiagMsg:
             diag_msg_args=diag_msg_args,
         )
 
-        update_stack(exp_stack=exp_stack, line_num=1159, add=2)
+        update_stack(exp_stack=exp_stack, line_num=1164, add=2)
         self.diag_msg_depth_3(
             exp_stack=exp_stack, capsys=capsys, diag_msg_args=diag_msg_args
         )
@@ -1187,74 +1192,74 @@ class TestDiagMsg:
             line_num=968,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=1193, add=0)
+        update_stack(exp_stack=exp_stack, line_num=1198, add=0)
         before_time = datetime.now()
         if diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG0_FILE0:
             diag_msg()
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1196, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1201, add=0)
             diag_msg(file=eval(diag_msg_args.file_arg))
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1199, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1204, add=0)
             diag_msg(*diag_msg_args.msg_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH0_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1202, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1207, add=0)
             diag_msg(*diag_msg_args.msg_arg, file=eval(diag_msg_args.file_arg))
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG0_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1205, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1210, add=0)
             diag_msg(depth=diag_msg_args.depth_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1208, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1213, add=0)
             diag_msg(depth=diag_msg_args.depth_arg, file=eval(diag_msg_args.file_arg))
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1211, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1216, add=0)
             diag_msg(*diag_msg_args.msg_arg, depth=diag_msg_args.depth_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT0_DEPTH1_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1214, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1219, add=4)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 depth=diag_msg_args.depth_arg,
                 file=eval(diag_msg_args.file_arg),
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG0_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1221, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1226, add=0)
             diag_msg(dt_format=diag_msg_args.dt_format_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1224, add=2)
+            update_stack(exp_stack=exp_stack, line_num=1229, add=2)
             diag_msg(
                 dt_format=diag_msg_args.dt_format_arg, file=eval(diag_msg_args.file_arg)
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1229, add=0)
+            update_stack(exp_stack=exp_stack, line_num=1234, add=0)
             diag_msg(*diag_msg_args.msg_arg, dt_format=diag_msg_args.dt_format_arg)
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH0_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1232, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1237, add=4)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 dt_format=diag_msg_args.dt_format_arg,
                 file=eval(diag_msg_args.file_arg),
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG0_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1239, add=2)
+            update_stack(exp_stack=exp_stack, line_num=1244, add=2)
             diag_msg(
                 depth=diag_msg_args.depth_arg, dt_format=diag_msg_args.dt_format_arg
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG0_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1244, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1249, add=4)
             diag_msg(
                 depth=diag_msg_args.depth_arg,
                 file=eval(diag_msg_args.file_arg),
                 dt_format=diag_msg_args.dt_format_arg,
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG1_FILE0:
-            update_stack(exp_stack=exp_stack, line_num=1251, add=4)
+            update_stack(exp_stack=exp_stack, line_num=1256, add=4)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 depth=diag_msg_args.depth_arg,
                 dt_format=diag_msg_args.dt_format_arg,
             )
         elif diag_msg_args.arg_bits == TestDiagMsg.DT1_DEPTH1_MSG1_FILE1:
-            update_stack(exp_stack=exp_stack, line_num=1258, add=5)
+            update_stack(exp_stack=exp_stack, line_num=1263, add=5)
             diag_msg(
                 *diag_msg_args.msg_arg,
                 depth=diag_msg_args.depth_arg,
@@ -1302,7 +1307,7 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
         line_num=1071,
     )
     exp_stack.append(exp_caller_info)
-    update_stack(exp_stack=exp_stack, line_num=1309, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1314, add=0)
     for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
         try:
             frame = _getframe(i)
@@ -1312,13 +1317,13 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
         assert caller_info == expected_caller_info
 
     # test call sequence
-    update_stack(exp_stack=exp_stack, line_num=1316, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1321, add=0)
     call_seq = get_formatted_call_sequence(depth=1)
 
     assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
     # test diag_msg
-    update_stack(exp_stack=exp_stack, line_num=1323, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1328, add=0)
     before_time = datetime.now()
     diag_msg("message 0", 0, depth=1)
     after_time = datetime.now()
@@ -1333,69 +1338,69 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
     )
 
     # call module level function
-    update_stack(exp_stack=exp_stack, line_num=1337, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1342, add=0)
     func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
     # call method
     cls_get_caller_info1 = ClassGetCallerInfo1()
-    update_stack(exp_stack=exp_stack, line_num=1342, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1347, add=0)
     cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
     # call static method
-    update_stack(exp_stack=exp_stack, line_num=1346, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1351, add=0)
     cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
     # call class method
-    update_stack(exp_stack=exp_stack, line_num=1350, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1355, add=0)
     ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded base class method
-    update_stack(exp_stack=exp_stack, line_num=1354, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1359, add=0)
     cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded base class static method
-    update_stack(exp_stack=exp_stack, line_num=1358, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1363, add=0)
     cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded base class class method
-    update_stack(exp_stack=exp_stack, line_num=1362, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1367, add=0)
     ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
     # call subclass method
     cls_get_caller_info1s = ClassGetCallerInfo1S()
-    update_stack(exp_stack=exp_stack, line_num=1367, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1372, add=0)
     cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
     # call subclass static method
-    update_stack(exp_stack=exp_stack, line_num=1371, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1376, add=0)
     cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
     # call subclass class method
-    update_stack(exp_stack=exp_stack, line_num=1375, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1380, add=0)
     ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded subclass method
-    update_stack(exp_stack=exp_stack, line_num=1379, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1384, add=0)
     cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded subclass static method
-    update_stack(exp_stack=exp_stack, line_num=1383, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1388, add=0)
     cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded subclass class method
-    update_stack(exp_stack=exp_stack, line_num=1387, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1392, add=0)
     ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
     # call base method from subclass method
-    update_stack(exp_stack=exp_stack, line_num=1391, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1396, add=0)
     cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
     # call base static method from subclass static method
-    update_stack(exp_stack=exp_stack, line_num=1395, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1400, add=0)
     cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
     # call base class method from subclass class method
-    update_stack(exp_stack=exp_stack, line_num=1399, add=0)
+    update_stack(exp_stack=exp_stack, line_num=1404, add=0)
     ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
     ####################################################################
@@ -1423,7 +1428,7 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 line_num=1197,
             )
             exp_stack_g.append(exp_caller_info_g)
-            update_stack(exp_stack=exp_stack_g, line_num=1430, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=1435, add=0)
             for i_g, expected_caller_info_g in enumerate(list(reversed(exp_stack_g))):
                 try:
                     frame_g = _getframe(i_g)
@@ -1433,14 +1438,14 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 assert caller_info_g == expected_caller_info_g
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_g, line_num=1437, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=1442, add=0)
             call_seq_g = get_formatted_call_sequence(depth=len(exp_stack_g))
 
             assert call_seq_g == get_exp_seq(exp_stack=exp_stack_g)
 
             # test diag_msg
             if capsys_g:  # if capsys_g, test diag_msg
-                update_stack(exp_stack=exp_stack_g, line_num=1445, add=0)
+                update_stack(exp_stack=exp_stack_g, line_num=1450, add=0)
                 before_time_g = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_g))
                 after_time_g = datetime.now()
@@ -1457,97 +1462,97 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_g, line_num=1461, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=1466, add=0)
             func_get_caller_info_1(exp_stack=exp_stack_g, capsys=capsys_g)
 
             # call method
             cls_get_caller_info1 = ClassGetCallerInfo1()
-            update_stack(exp_stack=exp_stack_g, line_num=1466, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1471, add=2)
             cls_get_caller_info1.get_caller_info_m1(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_g, line_num=1472, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1477, add=2)
             cls_get_caller_info1.get_caller_info_s1(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_g, line_num=1478, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1483, add=2)
             ClassGetCallerInfo1.get_caller_info_c1(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_g, line_num=1484, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1489, add=2)
             cls_get_caller_info1.get_caller_info_m1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_g, line_num=1490, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1495, add=2)
             cls_get_caller_info1.get_caller_info_s1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_g, line_num=1496, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1501, add=2)
             ClassGetCallerInfo1.get_caller_info_c1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass method
             cls_get_caller_info1s = ClassGetCallerInfo1S()
-            update_stack(exp_stack=exp_stack_g, line_num=1503, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1508, add=2)
             cls_get_caller_info1s.get_caller_info_m1s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=1509, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1514, add=2)
             cls_get_caller_info1s.get_caller_info_s1s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=1515, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1520, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=1521, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1526, add=2)
             cls_get_caller_info1s.get_caller_info_m1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=1527, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1532, add=2)
             cls_get_caller_info1s.get_caller_info_s1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=1533, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1538, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=1539, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1544, add=2)
             cls_get_caller_info1s.get_caller_info_m1sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=1545, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1550, add=2)
             cls_get_caller_info1s.get_caller_info_s1sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=1551, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1556, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
@@ -1570,7 +1575,7 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 line_num=1197,
             )
             exp_stack_g.append(exp_caller_info_g)
-            update_stack(exp_stack=exp_stack_g, line_num=1577, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=1582, add=0)
             for i_g, expected_caller_info_g in enumerate(list(reversed(exp_stack_g))):
                 try:
                     frame_g = _getframe(i_g)
@@ -1580,14 +1585,14 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 assert caller_info_g == expected_caller_info_g
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_g, line_num=1584, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=1589, add=0)
             call_seq_g = get_formatted_call_sequence(depth=len(exp_stack_g))
 
             assert call_seq_g == get_exp_seq(exp_stack=exp_stack_g)
 
             # test diag_msg
             if capsys_g:  # if capsys_g, test diag_msg
-                update_stack(exp_stack=exp_stack_g, line_num=1592, add=0)
+                update_stack(exp_stack=exp_stack_g, line_num=1597, add=0)
                 before_time_g = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_g))
                 after_time_g = datetime.now()
@@ -1604,97 +1609,97 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_g, line_num=1608, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=1613, add=0)
             func_get_caller_info_1(exp_stack=exp_stack_g, capsys=capsys_g)
 
             # call method
             cls_get_caller_info1 = ClassGetCallerInfo1()
-            update_stack(exp_stack=exp_stack_g, line_num=1613, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1618, add=2)
             cls_get_caller_info1.get_caller_info_m1(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_g, line_num=1619, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1624, add=2)
             cls_get_caller_info1.get_caller_info_s1(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_g, line_num=1625, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1630, add=2)
             ClassGetCallerInfo1.get_caller_info_c1(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_g, line_num=1631, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1636, add=2)
             cls_get_caller_info1.get_caller_info_m1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_g, line_num=1637, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1642, add=2)
             cls_get_caller_info1.get_caller_info_s1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_g, line_num=1643, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1648, add=2)
             ClassGetCallerInfo1.get_caller_info_c1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass method
             cls_get_caller_info1s = ClassGetCallerInfo1S()
-            update_stack(exp_stack=exp_stack_g, line_num=1650, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1655, add=2)
             cls_get_caller_info1s.get_caller_info_m1s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=1656, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1661, add=2)
             cls_get_caller_info1s.get_caller_info_s1s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=1662, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1667, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=1668, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1673, add=2)
             cls_get_caller_info1s.get_caller_info_m1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=1674, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1679, add=2)
             cls_get_caller_info1s.get_caller_info_s1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=1680, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1685, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=1686, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1691, add=2)
             cls_get_caller_info1s.get_caller_info_m1sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=1692, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1697, add=2)
             cls_get_caller_info1s.get_caller_info_s1sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=1698, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1703, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
@@ -1719,7 +1724,7 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 line_num=1197,
             )
             exp_stack_g.append(exp_caller_info_g)
-            update_stack(exp_stack=exp_stack_g, line_num=1726, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=1731, add=0)
             for i_g, expected_caller_info_g in enumerate(list(reversed(exp_stack_g))):
                 try:
                     frame_g = _getframe(i_g)
@@ -1729,14 +1734,14 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 assert caller_info_g == expected_caller_info_g
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_g, line_num=1733, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=1738, add=0)
             call_seq_g = get_formatted_call_sequence(depth=len(exp_stack_g))
 
             assert call_seq_g == get_exp_seq(exp_stack=exp_stack_g)
 
             # test diag_msg
             if capsys_g:  # if capsys_g, test diag_msg
-                update_stack(exp_stack=exp_stack_g, line_num=1741, add=0)
+                update_stack(exp_stack=exp_stack_g, line_num=1746, add=0)
                 before_time_g = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_g))
                 after_time_g = datetime.now()
@@ -1753,97 +1758,97 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_g, line_num=1757, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=1762, add=0)
             func_get_caller_info_1(exp_stack=exp_stack_g, capsys=capsys_g)
 
             # call method
             cls_get_caller_info1 = ClassGetCallerInfo1()
-            update_stack(exp_stack=exp_stack_g, line_num=1762, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1767, add=2)
             cls_get_caller_info1.get_caller_info_m1(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_g, line_num=1768, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1773, add=2)
             cls_get_caller_info1.get_caller_info_s1(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_g, line_num=1774, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1779, add=2)
             ClassGetCallerInfo1.get_caller_info_c1(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_g, line_num=1780, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1785, add=2)
             cls_get_caller_info1.get_caller_info_m1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_g, line_num=1786, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1791, add=2)
             cls_get_caller_info1.get_caller_info_s1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_g, line_num=1792, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1797, add=2)
             ClassGetCallerInfo1.get_caller_info_c1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass method
             cls_get_caller_info1s = ClassGetCallerInfo1S()
-            update_stack(exp_stack=exp_stack_g, line_num=1799, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1804, add=2)
             cls_get_caller_info1s.get_caller_info_m1s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=1805, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1810, add=2)
             cls_get_caller_info1s.get_caller_info_s1s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=1811, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1816, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=1817, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1822, add=2)
             cls_get_caller_info1s.get_caller_info_m1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=1823, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1828, add=2)
             cls_get_caller_info1s.get_caller_info_s1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=1829, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1834, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=1835, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1840, add=2)
             cls_get_caller_info1s.get_caller_info_m1sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=1841, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1846, add=2)
             cls_get_caller_info1s.get_caller_info_s1sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=1847, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=1852, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
@@ -1873,7 +1878,7 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 line_num=1197,
             )
             exp_stack_h.append(exp_caller_info_h)
-            update_stack(exp_stack=exp_stack_h, line_num=1880, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=1885, add=0)
             for i_h, expected_caller_info_h in enumerate(list(reversed(exp_stack_h))):
                 try:
                     frame_h = _getframe(i_h)
@@ -1883,14 +1888,14 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 assert caller_info_h == expected_caller_info_h
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_h, line_num=1887, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=1892, add=0)
             call_seq_h = get_formatted_call_sequence(depth=len(exp_stack_h))
 
             assert call_seq_h == get_exp_seq(exp_stack=exp_stack_h)
 
             # test diag_msg
             if capsys_h:  # if capsys_h, test diag_msg
-                update_stack(exp_stack=exp_stack_h, line_num=1895, add=0)
+                update_stack(exp_stack=exp_stack_h, line_num=1900, add=0)
                 before_time_h = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_h))
                 after_time_h = datetime.now()
@@ -1907,97 +1912,97 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_h, line_num=1911, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=1916, add=0)
             func_get_caller_info_1(exp_stack=exp_stack_h, capsys=capsys_h)
 
             # call method
             cls_get_caller_info1 = ClassGetCallerInfo1()
-            update_stack(exp_stack=exp_stack_h, line_num=1916, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1921, add=2)
             cls_get_caller_info1.get_caller_info_m1(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_h, line_num=1922, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1927, add=2)
             cls_get_caller_info1.get_caller_info_s1(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_h, line_num=1928, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1933, add=2)
             ClassGetCallerInfo1.get_caller_info_c1(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_h, line_num=1934, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1939, add=2)
             cls_get_caller_info1.get_caller_info_m1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_h, line_num=1940, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1945, add=2)
             cls_get_caller_info1.get_caller_info_s1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_h, line_num=1946, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1951, add=2)
             ClassGetCallerInfo1.get_caller_info_c1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass method
             cls_get_caller_info1s = ClassGetCallerInfo1S()
-            update_stack(exp_stack=exp_stack_h, line_num=1953, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1958, add=2)
             cls_get_caller_info1s.get_caller_info_m1s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=1959, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1964, add=2)
             cls_get_caller_info1s.get_caller_info_s1s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=1965, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1970, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=1971, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1976, add=2)
             cls_get_caller_info1s.get_caller_info_m1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=1977, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1982, add=2)
             cls_get_caller_info1s.get_caller_info_s1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=1983, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1988, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=1989, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=1994, add=2)
             cls_get_caller_info1s.get_caller_info_m1sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=1995, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2000, add=2)
             cls_get_caller_info1s.get_caller_info_s1sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=2001, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2006, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
@@ -2020,7 +2025,7 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 line_num=1197,
             )
             exp_stack_h.append(exp_caller_info_h)
-            update_stack(exp_stack=exp_stack_h, line_num=2027, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=2032, add=0)
             for i_h, expected_caller_info_h in enumerate(list(reversed(exp_stack_h))):
                 try:
                     frame_h = _getframe(i_h)
@@ -2030,14 +2035,14 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 assert caller_info_h == expected_caller_info_h
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_h, line_num=2034, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=2039, add=0)
             call_seq_h = get_formatted_call_sequence(depth=len(exp_stack_h))
 
             assert call_seq_h == get_exp_seq(exp_stack=exp_stack_h)
 
             # test diag_msg
             if capsys_h:  # if capsys_h, test diag_msg
-                update_stack(exp_stack=exp_stack_h, line_num=2042, add=0)
+                update_stack(exp_stack=exp_stack_h, line_num=2047, add=0)
                 before_time_h = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_h))
                 after_time_h = datetime.now()
@@ -2054,97 +2059,97 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_h, line_num=2058, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=2063, add=0)
             func_get_caller_info_1(exp_stack=exp_stack_h, capsys=capsys_h)
 
             # call method
             cls_get_caller_info1 = ClassGetCallerInfo1()
-            update_stack(exp_stack=exp_stack_h, line_num=2063, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2068, add=2)
             cls_get_caller_info1.get_caller_info_m1(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_h, line_num=2069, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2074, add=2)
             cls_get_caller_info1.get_caller_info_s1(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_h, line_num=2075, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2080, add=2)
             ClassGetCallerInfo1.get_caller_info_c1(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_h, line_num=2081, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2086, add=2)
             cls_get_caller_info1.get_caller_info_m1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_h, line_num=2087, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2092, add=2)
             cls_get_caller_info1.get_caller_info_s1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_h, line_num=2093, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2098, add=2)
             ClassGetCallerInfo1.get_caller_info_c1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass method
             cls_get_caller_info1s = ClassGetCallerInfo1S()
-            update_stack(exp_stack=exp_stack_h, line_num=2100, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2105, add=2)
             cls_get_caller_info1s.get_caller_info_m1s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=2106, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2111, add=2)
             cls_get_caller_info1s.get_caller_info_s1s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=2112, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2117, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=2118, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2123, add=2)
             cls_get_caller_info1s.get_caller_info_m1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=2124, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2129, add=2)
             cls_get_caller_info1s.get_caller_info_s1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=2130, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2135, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=2136, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2141, add=2)
             cls_get_caller_info1s.get_caller_info_m1sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=2142, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2147, add=2)
             cls_get_caller_info1s.get_caller_info_s1sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=2148, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2153, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
@@ -2169,7 +2174,7 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 line_num=1197,
             )
             exp_stack_h.append(exp_caller_info_h)
-            update_stack(exp_stack=exp_stack_h, line_num=2176, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=2181, add=0)
             for i_h, expected_caller_info_h in enumerate(list(reversed(exp_stack_h))):
                 try:
                     frame_h = _getframe(i_h)
@@ -2179,14 +2184,14 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 assert caller_info_h == expected_caller_info_h
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_h, line_num=2183, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=2188, add=0)
             call_seq_h = get_formatted_call_sequence(depth=len(exp_stack_h))
 
             assert call_seq_h == get_exp_seq(exp_stack=exp_stack_h)
 
             # test diag_msg
             if capsys_h:  # if capsys_h, test diag_msg
-                update_stack(exp_stack=exp_stack_h, line_num=2191, add=0)
+                update_stack(exp_stack=exp_stack_h, line_num=2196, add=0)
                 before_time_h = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_h))
                 after_time_h = datetime.now()
@@ -2203,97 +2208,97 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_h, line_num=2207, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=2212, add=0)
             func_get_caller_info_1(exp_stack=exp_stack_h, capsys=capsys_h)
 
             # call method
             cls_get_caller_info1 = ClassGetCallerInfo1()
-            update_stack(exp_stack=exp_stack_h, line_num=2212, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2217, add=2)
             cls_get_caller_info1.get_caller_info_m1(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_h, line_num=2218, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2223, add=2)
             cls_get_caller_info1.get_caller_info_s1(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_h, line_num=2224, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2229, add=2)
             ClassGetCallerInfo1.get_caller_info_c1(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_h, line_num=2230, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2235, add=2)
             cls_get_caller_info1.get_caller_info_m1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_h, line_num=2236, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2241, add=2)
             cls_get_caller_info1.get_caller_info_s1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_h, line_num=2242, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2247, add=2)
             ClassGetCallerInfo1.get_caller_info_c1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass method
             cls_get_caller_info1s = ClassGetCallerInfo1S()
-            update_stack(exp_stack=exp_stack_h, line_num=2249, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2254, add=2)
             cls_get_caller_info1s.get_caller_info_m1s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=2255, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2260, add=2)
             cls_get_caller_info1s.get_caller_info_s1s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=2261, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2266, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=2267, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2272, add=2)
             cls_get_caller_info1s.get_caller_info_m1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=2273, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2278, add=2)
             cls_get_caller_info1s.get_caller_info_s1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=2279, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2284, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=2285, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2290, add=2)
             cls_get_caller_info1s.get_caller_info_m1sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=2291, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2296, add=2)
             cls_get_caller_info1s.get_caller_info_s1sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=2297, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2302, add=2)
             ClassGetCallerInfo1S.get_caller_info_c1sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
@@ -2302,24 +2307,24 @@ def test_func_get_caller_info_0(capsys: pytest.CaptureFixture[str]) -> None:
 
     a_inner = Inner()
     # call Inner method
-    update_stack(exp_stack=exp_stack, line_num=2306, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2311, add=0)
     a_inner.g1(exp_stack_g=exp_stack, capsys_g=capsys)
 
-    update_stack(exp_stack=exp_stack, line_num=2309, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2314, add=0)
     a_inner.g2_static(exp_stack_g=exp_stack, capsys_g=capsys)
 
-    update_stack(exp_stack=exp_stack, line_num=2312, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2317, add=0)
     a_inner.g3_class(exp_stack_g=exp_stack, capsys_g=capsys)
 
     a_inherit = Inherit()
 
-    update_stack(exp_stack=exp_stack, line_num=2317, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2322, add=0)
     a_inherit.h1(exp_stack_h=exp_stack, capsys_h=capsys)
 
-    update_stack(exp_stack=exp_stack, line_num=2320, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2325, add=0)
     a_inherit.h2_static(exp_stack_h=exp_stack, capsys_h=capsys)
 
-    update_stack(exp_stack=exp_stack, line_num=2323, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2328, add=0)
     a_inherit.h3_class(exp_stack_h=exp_stack, capsys_h=capsys)
 
     exp_stack.pop()
@@ -2343,7 +2348,7 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
         line_num=1197,
     )
     exp_stack.append(exp_caller_info)
-    update_stack(exp_stack=exp_stack, line_num=2350, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2355, add=0)
     for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
         try:
             frame = _getframe(i)
@@ -2353,14 +2358,14 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
         assert caller_info == expected_caller_info
 
     # test call sequence
-    update_stack(exp_stack=exp_stack, line_num=2357, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2362, add=0)
     call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
     assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
     # test diag_msg
     if capsys:  # if capsys, test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=2365, add=0)
+        update_stack(exp_stack=exp_stack, line_num=2370, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=len(exp_stack))
         after_time = datetime.now()
@@ -2377,69 +2382,69 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
         )
 
     # call module level function
-    update_stack(exp_stack=exp_stack, line_num=2381, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2386, add=0)
     func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
     # call method
     cls_get_caller_info2 = ClassGetCallerInfo2()
-    update_stack(exp_stack=exp_stack, line_num=2386, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2391, add=0)
     cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
     # call static method
-    update_stack(exp_stack=exp_stack, line_num=2390, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2395, add=0)
     cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
     # call class method
-    update_stack(exp_stack=exp_stack, line_num=2394, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2399, add=0)
     ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded base class method
-    update_stack(exp_stack=exp_stack, line_num=2398, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2403, add=0)
     cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded base class static method
-    update_stack(exp_stack=exp_stack, line_num=2402, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2407, add=0)
     cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded base class class method
-    update_stack(exp_stack=exp_stack, line_num=2406, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2411, add=0)
     ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
     # call subclass method
     cls_get_caller_info2s = ClassGetCallerInfo2S()
-    update_stack(exp_stack=exp_stack, line_num=2411, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2416, add=0)
     cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
     # call subclass static method
-    update_stack(exp_stack=exp_stack, line_num=2415, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2420, add=0)
     cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
     # call subclass class method
-    update_stack(exp_stack=exp_stack, line_num=2419, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2424, add=0)
     ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded subclass method
-    update_stack(exp_stack=exp_stack, line_num=2423, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2428, add=0)
     cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded subclass static method
-    update_stack(exp_stack=exp_stack, line_num=2427, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2432, add=0)
     cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded subclass class method
-    update_stack(exp_stack=exp_stack, line_num=2431, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2436, add=0)
     ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
     # call base method from subclass method
-    update_stack(exp_stack=exp_stack, line_num=2435, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2440, add=0)
     cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
     # call base static method from subclass static method
-    update_stack(exp_stack=exp_stack, line_num=2439, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2444, add=0)
     cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
     # call base class method from subclass class method
-    update_stack(exp_stack=exp_stack, line_num=2443, add=0)
+    update_stack(exp_stack=exp_stack, line_num=2448, add=0)
     ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
     ####################################################################
@@ -2467,7 +2472,7 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 line_num=1197,
             )
             exp_stack_g.append(exp_caller_info_g)
-            update_stack(exp_stack=exp_stack_g, line_num=2474, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=2479, add=0)
             for i_g, expected_caller_info_g in enumerate(list(reversed(exp_stack_g))):
                 try:
                     frame_g = _getframe(i_g)
@@ -2477,14 +2482,14 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 assert caller_info_g == expected_caller_info_g
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_g, line_num=2481, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=2486, add=0)
             call_seq_g = get_formatted_call_sequence(depth=len(exp_stack_g))
 
             assert call_seq_g == get_exp_seq(exp_stack=exp_stack_g)
 
             # test diag_msg
             if capsys_g:  # if capsys_g, test diag_msg
-                update_stack(exp_stack=exp_stack_g, line_num=2489, add=0)
+                update_stack(exp_stack=exp_stack_g, line_num=2494, add=0)
                 before_time_g = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_g))
                 after_time_g = datetime.now()
@@ -2501,97 +2506,97 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_g, line_num=2505, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=2510, add=0)
             func_get_caller_info_2(exp_stack=exp_stack_g, capsys=capsys_g)
 
             # call method
             cls_get_caller_info2 = ClassGetCallerInfo2()
-            update_stack(exp_stack=exp_stack_g, line_num=2510, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2515, add=2)
             cls_get_caller_info2.get_caller_info_m2(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_g, line_num=2516, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2521, add=2)
             cls_get_caller_info2.get_caller_info_s2(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_g, line_num=2522, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2527, add=2)
             ClassGetCallerInfo2.get_caller_info_c2(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_g, line_num=2528, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2533, add=2)
             cls_get_caller_info2.get_caller_info_m2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_g, line_num=2534, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2539, add=2)
             cls_get_caller_info2.get_caller_info_s2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_g, line_num=2540, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2545, add=2)
             ClassGetCallerInfo2.get_caller_info_c2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass method
             cls_get_caller_info2s = ClassGetCallerInfo2S()
-            update_stack(exp_stack=exp_stack_g, line_num=2547, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2552, add=2)
             cls_get_caller_info2s.get_caller_info_m2s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=2553, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2558, add=2)
             cls_get_caller_info2s.get_caller_info_s2s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=2559, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2564, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=2565, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2570, add=2)
             cls_get_caller_info2s.get_caller_info_m2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=2571, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2576, add=2)
             cls_get_caller_info2s.get_caller_info_s2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=2577, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2582, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=2583, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2588, add=2)
             cls_get_caller_info2s.get_caller_info_m2sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=2589, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2594, add=2)
             cls_get_caller_info2s.get_caller_info_s2sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=2595, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2600, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
@@ -2614,7 +2619,7 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 line_num=2297,
             )
             exp_stack_g.append(exp_caller_info_g)
-            update_stack(exp_stack=exp_stack_g, line_num=2621, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=2626, add=0)
             for i_g, expected_caller_info_g in enumerate(list(reversed(exp_stack_g))):
                 try:
                     frame_g = _getframe(i_g)
@@ -2624,14 +2629,14 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 assert caller_info_g == expected_caller_info_g
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_g, line_num=2628, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=2633, add=0)
             call_seq_g = get_formatted_call_sequence(depth=len(exp_stack_g))
 
             assert call_seq_g == get_exp_seq(exp_stack=exp_stack_g)
 
             # test diag_msg
             if capsys_g:  # if capsys_g, test diag_msg
-                update_stack(exp_stack=exp_stack_g, line_num=2636, add=0)
+                update_stack(exp_stack=exp_stack_g, line_num=2641, add=0)
                 before_time_g = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_g))
                 after_time_g = datetime.now()
@@ -2648,97 +2653,97 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_g, line_num=2652, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=2657, add=0)
             func_get_caller_info_2(exp_stack=exp_stack_g, capsys=capsys_g)
 
             # call method
             cls_get_caller_info2 = ClassGetCallerInfo2()
-            update_stack(exp_stack=exp_stack_g, line_num=2657, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2662, add=2)
             cls_get_caller_info2.get_caller_info_m2(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_g, line_num=2663, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2668, add=2)
             cls_get_caller_info2.get_caller_info_s2(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_g, line_num=2669, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2674, add=2)
             ClassGetCallerInfo2.get_caller_info_c2(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_g, line_num=2675, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2680, add=2)
             cls_get_caller_info2.get_caller_info_m2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_g, line_num=2681, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2686, add=2)
             cls_get_caller_info2.get_caller_info_s2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_g, line_num=2687, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2692, add=2)
             ClassGetCallerInfo2.get_caller_info_c2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass method
             cls_get_caller_info2s = ClassGetCallerInfo2S()
-            update_stack(exp_stack=exp_stack_g, line_num=2694, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2699, add=2)
             cls_get_caller_info2s.get_caller_info_m2s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=2700, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2705, add=2)
             cls_get_caller_info2s.get_caller_info_s2s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=2706, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2711, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=2712, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2717, add=2)
             cls_get_caller_info2s.get_caller_info_m2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=2718, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2723, add=2)
             cls_get_caller_info2s.get_caller_info_s2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=2724, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2729, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=2730, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2735, add=2)
             cls_get_caller_info2s.get_caller_info_m2sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=2736, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2741, add=2)
             cls_get_caller_info2s.get_caller_info_s2sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=2742, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2747, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
@@ -2763,7 +2768,7 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 line_num=2197,
             )
             exp_stack_g.append(exp_caller_info_g)
-            update_stack(exp_stack=exp_stack_g, line_num=2770, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=2775, add=0)
             for i_g, expected_caller_info_g in enumerate(list(reversed(exp_stack_g))):
                 try:
                     frame_g = _getframe(i_g)
@@ -2773,14 +2778,14 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 assert caller_info_g == expected_caller_info_g
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_g, line_num=2777, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=2782, add=0)
             call_seq_g = get_formatted_call_sequence(depth=len(exp_stack_g))
 
             assert call_seq_g == get_exp_seq(exp_stack=exp_stack_g)
 
             # test diag_msg
             if capsys_g:  # if capsys_g, test diag_msg
-                update_stack(exp_stack=exp_stack_g, line_num=2785, add=0)
+                update_stack(exp_stack=exp_stack_g, line_num=2790, add=0)
                 before_time_g = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_g))
                 after_time_g = datetime.now()
@@ -2797,97 +2802,97 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_g, line_num=2801, add=0)
+            update_stack(exp_stack=exp_stack_g, line_num=2806, add=0)
             func_get_caller_info_2(exp_stack=exp_stack_g, capsys=capsys_g)
 
             # call method
             cls_get_caller_info2 = ClassGetCallerInfo2()
-            update_stack(exp_stack=exp_stack_g, line_num=2806, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2811, add=2)
             cls_get_caller_info2.get_caller_info_m2(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_g, line_num=2812, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2817, add=2)
             cls_get_caller_info2.get_caller_info_s2(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_g, line_num=2818, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2823, add=2)
             ClassGetCallerInfo2.get_caller_info_c2(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_g, line_num=2824, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2829, add=2)
             cls_get_caller_info2.get_caller_info_m2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_g, line_num=2830, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2835, add=2)
             cls_get_caller_info2.get_caller_info_s2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_g, line_num=2836, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2841, add=2)
             ClassGetCallerInfo2.get_caller_info_c2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass method
             cls_get_caller_info2s = ClassGetCallerInfo2S()
-            update_stack(exp_stack=exp_stack_g, line_num=2843, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2848, add=2)
             cls_get_caller_info2s.get_caller_info_m2s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=2849, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2854, add=2)
             cls_get_caller_info2s.get_caller_info_s2s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=2855, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2860, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2s(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=2861, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2866, add=2)
             cls_get_caller_info2s.get_caller_info_m2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=2867, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2872, add=2)
             cls_get_caller_info2s.get_caller_info_s2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=2873, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2878, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2bo(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_g, line_num=2879, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2884, add=2)
             cls_get_caller_info2s.get_caller_info_m2sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_g, line_num=2885, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2890, add=2)
             cls_get_caller_info2s.get_caller_info_s2sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_g, line_num=2891, add=2)
+            update_stack(exp_stack=exp_stack_g, line_num=2896, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2sb(
                 exp_stack=exp_stack_g, capsys=capsys_g
             )
@@ -2917,7 +2922,7 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 line_num=1197,
             )
             exp_stack_h.append(exp_caller_info_h)
-            update_stack(exp_stack=exp_stack_h, line_num=2924, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=2929, add=0)
             for i_h, expected_caller_info_h in enumerate(list(reversed(exp_stack_h))):
                 try:
                     frame_h = _getframe(i_h)
@@ -2927,14 +2932,14 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 assert caller_info_h == expected_caller_info_h
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_h, line_num=2931, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=2936, add=0)
             call_seq_h = get_formatted_call_sequence(depth=len(exp_stack_h))
 
             assert call_seq_h == get_exp_seq(exp_stack=exp_stack_h)
 
             # test diag_msg
             if capsys_h:  # if capsys_h, test diag_msg
-                update_stack(exp_stack=exp_stack_h, line_num=2939, add=0)
+                update_stack(exp_stack=exp_stack_h, line_num=2944, add=0)
                 before_time_h = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_h))
                 after_time_h = datetime.now()
@@ -2951,97 +2956,97 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_h, line_num=2955, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=2960, add=0)
             func_get_caller_info_2(exp_stack=exp_stack_h, capsys=capsys_h)
 
             # call method
             cls_get_caller_info2 = ClassGetCallerInfo2()
-            update_stack(exp_stack=exp_stack_h, line_num=2960, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2965, add=2)
             cls_get_caller_info2.get_caller_info_m2(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_h, line_num=2966, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2971, add=2)
             cls_get_caller_info2.get_caller_info_s2(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_h, line_num=2972, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2977, add=2)
             ClassGetCallerInfo2.get_caller_info_c2(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_h, line_num=2978, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2983, add=2)
             cls_get_caller_info2.get_caller_info_m2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_h, line_num=2984, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2989, add=2)
             cls_get_caller_info2.get_caller_info_s2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_h, line_num=2990, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=2995, add=2)
             ClassGetCallerInfo2.get_caller_info_c2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass method
             cls_get_caller_info2s = ClassGetCallerInfo2S()
-            update_stack(exp_stack=exp_stack_h, line_num=2997, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3002, add=2)
             cls_get_caller_info2s.get_caller_info_m2s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=3003, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3008, add=2)
             cls_get_caller_info2s.get_caller_info_s2s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=3009, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3014, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=3015, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3020, add=2)
             cls_get_caller_info2s.get_caller_info_m2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=3021, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3026, add=2)
             cls_get_caller_info2s.get_caller_info_s2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=3027, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3032, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=3033, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3038, add=2)
             cls_get_caller_info2s.get_caller_info_m2sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=3039, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3044, add=2)
             cls_get_caller_info2s.get_caller_info_s2sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=3045, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3050, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
@@ -3064,7 +3069,7 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 line_num=1197,
             )
             exp_stack_h.append(exp_caller_info_h)
-            update_stack(exp_stack=exp_stack_h, line_num=3071, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=3076, add=0)
             for i_h, expected_caller_info_h in enumerate(list(reversed(exp_stack_h))):
                 try:
                     frame_h = _getframe(i_h)
@@ -3074,14 +3079,14 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 assert caller_info_h == expected_caller_info_h
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_h, line_num=3078, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=3083, add=0)
             call_seq_h = get_formatted_call_sequence(depth=len(exp_stack_h))
 
             assert call_seq_h == get_exp_seq(exp_stack=exp_stack_h)
 
             # test diag_msg
             if capsys_h:  # if capsys_h, test diag_msg
-                update_stack(exp_stack=exp_stack_h, line_num=3086, add=0)
+                update_stack(exp_stack=exp_stack_h, line_num=3091, add=0)
                 before_time_h = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_h))
                 after_time_h = datetime.now()
@@ -3098,97 +3103,97 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_h, line_num=3102, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=3107, add=0)
             func_get_caller_info_2(exp_stack=exp_stack_h, capsys=capsys_h)
 
             # call method
             cls_get_caller_info2 = ClassGetCallerInfo2()
-            update_stack(exp_stack=exp_stack_h, line_num=3107, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3112, add=2)
             cls_get_caller_info2.get_caller_info_m2(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_h, line_num=3113, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3118, add=2)
             cls_get_caller_info2.get_caller_info_s2(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_h, line_num=3119, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3124, add=2)
             ClassGetCallerInfo2.get_caller_info_c2(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_h, line_num=3125, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3130, add=2)
             cls_get_caller_info2.get_caller_info_m2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_h, line_num=3131, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3136, add=2)
             cls_get_caller_info2.get_caller_info_s2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_h, line_num=3137, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3142, add=2)
             ClassGetCallerInfo2.get_caller_info_c2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass method
             cls_get_caller_info2s = ClassGetCallerInfo2S()
-            update_stack(exp_stack=exp_stack_h, line_num=3144, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3149, add=2)
             cls_get_caller_info2s.get_caller_info_m2s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=3150, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3155, add=2)
             cls_get_caller_info2s.get_caller_info_s2s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=3156, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3161, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=3162, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3167, add=2)
             cls_get_caller_info2s.get_caller_info_m2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=3168, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3173, add=2)
             cls_get_caller_info2s.get_caller_info_s2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=3174, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3179, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=3180, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3185, add=2)
             cls_get_caller_info2s.get_caller_info_m2sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=3186, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3191, add=2)
             cls_get_caller_info2s.get_caller_info_s2sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=3192, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3197, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
@@ -3213,7 +3218,7 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 line_num=1197,
             )
             exp_stack_h.append(exp_caller_info_h)
-            update_stack(exp_stack=exp_stack_h, line_num=3220, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=3225, add=0)
             for i_h, expected_caller_info_h in enumerate(list(reversed(exp_stack_h))):
                 try:
                     frame_h = _getframe(i_h)
@@ -3223,14 +3228,14 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 assert caller_info_h == expected_caller_info_h
 
             # test call sequence
-            update_stack(exp_stack=exp_stack_h, line_num=3227, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=3232, add=0)
             call_seq_h = get_formatted_call_sequence(depth=len(exp_stack_h))
 
             assert call_seq_h == get_exp_seq(exp_stack=exp_stack_h)
 
             # test diag_msg
             if capsys_h:  # if capsys_h, test diag_msg
-                update_stack(exp_stack=exp_stack_h, line_num=3235, add=0)
+                update_stack(exp_stack=exp_stack_h, line_num=3240, add=0)
                 before_time_h = datetime.now()
                 diag_msg("message 1", 1, depth=len(exp_stack_h))
                 after_time_h = datetime.now()
@@ -3247,97 +3252,97 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
                 )
 
             # call module level function
-            update_stack(exp_stack=exp_stack_h, line_num=3251, add=0)
+            update_stack(exp_stack=exp_stack_h, line_num=3256, add=0)
             func_get_caller_info_2(exp_stack=exp_stack_h, capsys=capsys_h)
 
             # call method
             cls_get_caller_info2 = ClassGetCallerInfo2()
-            update_stack(exp_stack=exp_stack_h, line_num=3256, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3261, add=2)
             cls_get_caller_info2.get_caller_info_m2(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call static method
-            update_stack(exp_stack=exp_stack_h, line_num=3262, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3267, add=2)
             cls_get_caller_info2.get_caller_info_s2(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call class method
-            update_stack(exp_stack=exp_stack_h, line_num=3268, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3273, add=2)
             ClassGetCallerInfo2.get_caller_info_c2(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class method
-            update_stack(exp_stack=exp_stack_h, line_num=3274, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3279, add=2)
             cls_get_caller_info2.get_caller_info_m2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class static method
-            update_stack(exp_stack=exp_stack_h, line_num=3280, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3285, add=2)
             cls_get_caller_info2.get_caller_info_s2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded base class class method
-            update_stack(exp_stack=exp_stack_h, line_num=3286, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3291, add=2)
             ClassGetCallerInfo2.get_caller_info_c2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass method
             cls_get_caller_info2s = ClassGetCallerInfo2S()
-            update_stack(exp_stack=exp_stack_h, line_num=3293, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3298, add=2)
             cls_get_caller_info2s.get_caller_info_m2s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=3299, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3304, add=2)
             cls_get_caller_info2s.get_caller_info_s2s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=3305, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3310, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2s(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=3311, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3316, add=2)
             cls_get_caller_info2s.get_caller_info_m2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=3317, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3322, add=2)
             cls_get_caller_info2s.get_caller_info_s2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call overloaded subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=3323, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3328, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2bo(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base method from subclass method
-            update_stack(exp_stack=exp_stack_h, line_num=3329, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3334, add=2)
             cls_get_caller_info2s.get_caller_info_m2sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base static method from subclass static method
-            update_stack(exp_stack=exp_stack_h, line_num=3335, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3340, add=2)
             cls_get_caller_info2s.get_caller_info_s2sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
 
             # call base class method from subclass class method
-            update_stack(exp_stack=exp_stack_h, line_num=3341, add=2)
+            update_stack(exp_stack=exp_stack_h, line_num=3346, add=2)
             ClassGetCallerInfo2S.get_caller_info_c2sb(
                 exp_stack=exp_stack_h, capsys=capsys_h
             )
@@ -3346,24 +3351,24 @@ def func_get_caller_info_1(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
 
     a_inner = Inner()
     # call Inner method
-    update_stack(exp_stack=exp_stack, line_num=3350, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3355, add=0)
     a_inner.g1(exp_stack_g=exp_stack, capsys_g=capsys)
 
-    update_stack(exp_stack=exp_stack, line_num=3353, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3358, add=0)
     a_inner.g2_static(exp_stack_g=exp_stack, capsys_g=capsys)
 
-    update_stack(exp_stack=exp_stack, line_num=3356, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3361, add=0)
     a_inner.g3_class(exp_stack_g=exp_stack, capsys_g=capsys)
 
     a_inherit = Inherit()
 
-    update_stack(exp_stack=exp_stack, line_num=3361, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3366, add=0)
     a_inherit.h1(exp_stack_h=exp_stack, capsys_h=capsys)
 
-    update_stack(exp_stack=exp_stack, line_num=3364, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3369, add=0)
     a_inherit.h2_static(exp_stack_h=exp_stack, capsys_h=capsys)
 
-    update_stack(exp_stack=exp_stack, line_num=3367, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3372, add=0)
     a_inherit.h3_class(exp_stack_h=exp_stack, capsys_h=capsys)
 
     exp_stack.pop()
@@ -3387,7 +3392,7 @@ def func_get_caller_info_2(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
         line_num=1324,
     )
     exp_stack.append(exp_caller_info)
-    update_stack(exp_stack=exp_stack, line_num=3394, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3399, add=0)
     for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
         try:
             frame = _getframe(i)
@@ -3397,14 +3402,14 @@ def func_get_caller_info_2(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
         assert caller_info == expected_caller_info
 
     # test call sequence
-    update_stack(exp_stack=exp_stack, line_num=3401, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3406, add=0)
     call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
     assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
     # test diag_msg
     if capsys:  # if capsys, test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=3409, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3414, add=0)
         before_time = datetime.now()
         diag_msg("message 2", 2, depth=len(exp_stack))
         after_time = datetime.now()
@@ -3421,69 +3426,69 @@ def func_get_caller_info_2(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
         )
 
     # call module level function
-    update_stack(exp_stack=exp_stack, line_num=3425, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3430, add=0)
     func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
     # call method
     cls_get_caller_info3 = ClassGetCallerInfo3()
-    update_stack(exp_stack=exp_stack, line_num=3430, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3435, add=0)
     cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
     # call static method
-    update_stack(exp_stack=exp_stack, line_num=3434, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3439, add=0)
     cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
     # call class method
-    update_stack(exp_stack=exp_stack, line_num=3438, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3443, add=0)
     ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded base class method
-    update_stack(exp_stack=exp_stack, line_num=3442, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3447, add=0)
     cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded base class static method
-    update_stack(exp_stack=exp_stack, line_num=3446, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3451, add=0)
     cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded base class class method
-    update_stack(exp_stack=exp_stack, line_num=3450, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3455, add=0)
     ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
     # call subclass method
     cls_get_caller_info3s = ClassGetCallerInfo3S()
-    update_stack(exp_stack=exp_stack, line_num=3455, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3460, add=0)
     cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
     # call subclass static method
-    update_stack(exp_stack=exp_stack, line_num=3459, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3464, add=0)
     cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
     # call subclass class method
-    update_stack(exp_stack=exp_stack, line_num=3463, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3468, add=0)
     ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded subclass method
-    update_stack(exp_stack=exp_stack, line_num=3467, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3472, add=0)
     cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded subclass static method
-    update_stack(exp_stack=exp_stack, line_num=3471, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3476, add=0)
     cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
     # call overloaded subclass class method
-    update_stack(exp_stack=exp_stack, line_num=3475, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3480, add=0)
     ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
     # call base method from subclass method
-    update_stack(exp_stack=exp_stack, line_num=3479, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3484, add=0)
     cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
     # call base static method from subclass static method
-    update_stack(exp_stack=exp_stack, line_num=3483, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3488, add=0)
     cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
     # call base class method from subclass class method
-    update_stack(exp_stack=exp_stack, line_num=3487, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3492, add=0)
     ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
     exp_stack.pop()
@@ -3507,7 +3512,7 @@ def func_get_caller_info_3(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
         line_num=1451,
     )
     exp_stack.append(exp_caller_info)
-    update_stack(exp_stack=exp_stack, line_num=3514, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3519, add=0)
     for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
         try:
             frame = _getframe(i)
@@ -3517,14 +3522,14 @@ def func_get_caller_info_3(exp_stack: Deque[CallerInfo], capsys: Optional[Any]) 
         assert caller_info == expected_caller_info
 
     # test call sequence
-    update_stack(exp_stack=exp_stack, line_num=3521, add=0)
+    update_stack(exp_stack=exp_stack, line_num=3526, add=0)
     call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
     assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
     # test diag_msg
     if capsys:  # if capsys, test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=3529, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3534, add=0)
         before_time = datetime.now()
         diag_msg("message 2", 2, depth=len(exp_stack))
         after_time = datetime.now()
@@ -3570,7 +3575,7 @@ class TestClassGetCallerInfo0:
             line_num=1509,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=3577, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3582, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -3580,13 +3585,13 @@ class TestClassGetCallerInfo0:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=3584, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3589, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=3591, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3596, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -3603,69 +3608,69 @@ class TestClassGetCallerInfo0:
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=3607, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3612, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=3612, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3617, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=3616, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3621, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=3620, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3625, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=3624, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3629, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=3628, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3633, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=3632, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3637, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=3637, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3642, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=3641, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3646, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=3645, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3650, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=3649, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3654, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=3653, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3658, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=3657, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3662, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=3661, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3666, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=3665, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3670, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=3669, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3674, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -3688,14 +3693,14 @@ class TestClassGetCallerInfo0:
             line_num=1635,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=3692, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3697, add=0)
         self.get_caller_info_s0(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=3694, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3699, add=0)
         TestClassGetCallerInfo0.get_caller_info_s0(exp_stack=exp_stack, capsys=capsys)
 
-        update_stack(exp_stack=exp_stack, line_num=3697, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3702, add=0)
         self.get_caller_info_s0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=3699, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3704, add=0)
         TestClassGetCallerInfo0.get_caller_info_s0bt(exp_stack=exp_stack, capsys=capsys)
 
     @staticmethod
@@ -3716,7 +3721,7 @@ class TestClassGetCallerInfo0:
             line_num=1664,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=3723, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3728, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -3726,13 +3731,13 @@ class TestClassGetCallerInfo0:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=3730, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3735, add=0)
         call_seq = get_formatted_call_sequence(depth=2)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=3737, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3742, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=2)
         after_time = datetime.now()
@@ -3749,69 +3754,69 @@ class TestClassGetCallerInfo0:
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=3753, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3758, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=3758, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3763, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=3762, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3767, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=3766, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3771, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=3770, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3775, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=3774, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3779, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=3778, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3783, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=3783, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3788, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=3787, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3792, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=3791, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3796, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=3795, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3800, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=3799, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3804, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=3803, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3808, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=3807, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3812, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=3811, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3816, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=3815, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3820, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -3834,7 +3839,7 @@ class TestClassGetCallerInfo0:
             line_num=1792,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=3841, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3846, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -3844,13 +3849,13 @@ class TestClassGetCallerInfo0:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=3848, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3853, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=3855, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3860, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -3867,69 +3872,69 @@ class TestClassGetCallerInfo0:
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=3871, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3876, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=3876, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3881, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=3880, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3885, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=3884, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3889, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=3888, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3893, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=3892, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3897, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=3896, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3901, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=3901, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3906, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=3905, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3910, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=3909, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3914, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=3913, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3918, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=3917, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3922, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=3921, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3926, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=3925, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3930, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=3929, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3934, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=3933, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3938, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -3952,7 +3957,7 @@ class TestClassGetCallerInfo0:
             line_num=1920,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=3959, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3964, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -3962,13 +3967,13 @@ class TestClassGetCallerInfo0:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=3966, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3971, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=3973, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3978, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -3985,69 +3990,69 @@ class TestClassGetCallerInfo0:
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=3989, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3994, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=3994, add=0)
+        update_stack(exp_stack=exp_stack, line_num=3999, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=3998, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4003, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=4002, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4007, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=4006, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4011, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=4010, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4015, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=4014, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4019, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=4019, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4024, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4023, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4028, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4027, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4032, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=4031, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4036, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4035, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4040, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4039, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4044, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=4043, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4048, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4047, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4052, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4051, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4056, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -4071,7 +4076,7 @@ class TestClassGetCallerInfo0:
             line_num=2048,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=4078, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4083, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -4081,13 +4086,13 @@ class TestClassGetCallerInfo0:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=4085, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4090, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=4092, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4097, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -4104,69 +4109,69 @@ class TestClassGetCallerInfo0:
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=4108, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4113, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=4113, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4118, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=4117, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4122, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=4121, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4126, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=4125, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4130, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=4129, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4134, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=4133, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4138, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=4138, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4143, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4142, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4147, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4146, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4151, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=4150, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4155, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4154, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4159, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4158, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4163, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=4162, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4167, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4166, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4171, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4170, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4175, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -4190,7 +4195,7 @@ class TestClassGetCallerInfo0:
             line_num=2177,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=4197, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4202, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -4200,13 +4205,13 @@ class TestClassGetCallerInfo0:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=4204, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4209, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=4211, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4216, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -4223,69 +4228,69 @@ class TestClassGetCallerInfo0:
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=4227, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4232, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=4232, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4237, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=4236, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4241, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=4240, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4245, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=4244, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4249, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=4248, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4253, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=4252, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4257, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=4257, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4262, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4261, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4266, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4265, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4270, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=4269, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4274, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4273, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4278, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4277, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4282, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=4281, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4286, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4285, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4290, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4289, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4294, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -4308,7 +4313,7 @@ class TestClassGetCallerInfo0:
             line_num=2305,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=4315, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4320, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -4318,13 +4323,13 @@ class TestClassGetCallerInfo0:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=4322, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4327, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=4329, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4334, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=len(exp_stack))
         after_time = datetime.now()
@@ -4341,69 +4346,69 @@ class TestClassGetCallerInfo0:
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=4345, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4350, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=4350, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4355, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=4354, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4359, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=4358, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4363, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=4362, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4367, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=4366, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4371, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=4370, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4375, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=4375, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4380, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4379, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4384, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4383, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4388, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=4387, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4392, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4391, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4396, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4395, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4400, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=4399, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4404, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4403, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4408, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4407, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4412, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -4429,7 +4434,7 @@ class TestClassGetCallerInfo0:
             line_num=2434,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=4436, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4441, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -4439,13 +4444,13 @@ class TestClassGetCallerInfo0:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=4443, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4448, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=4450, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4455, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=len(exp_stack))
         after_time = datetime.now()
@@ -4462,69 +4467,69 @@ class TestClassGetCallerInfo0:
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=4466, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4471, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=4471, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4476, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=4475, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4480, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=4479, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4484, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=4483, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4488, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=4487, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4492, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=4491, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4496, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=4496, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4501, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4500, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4505, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4504, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4509, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=4508, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4513, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4512, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4517, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4516, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4521, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=4520, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4525, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4524, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4529, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4528, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4533, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -4548,7 +4553,7 @@ class TestClassGetCallerInfo0:
             line_num=2567,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=4555, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4560, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -4558,13 +4563,13 @@ class TestClassGetCallerInfo0:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=4562, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4567, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=4569, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4574, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=len(exp_stack))
         after_time = datetime.now()
@@ -4581,69 +4586,69 @@ class TestClassGetCallerInfo0:
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=4585, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4590, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=4590, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4595, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=4594, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4599, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=4598, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4603, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=4602, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4607, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=4606, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4611, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=4610, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4615, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=4615, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4620, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4619, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4624, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4623, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4628, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=4627, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4632, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4631, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4636, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4635, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4640, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=4639, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4644, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4643, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4648, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4647, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4652, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -4671,7 +4676,7 @@ class TestClassGetCallerInfo0:
             line_num=2567,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=4678, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4683, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -4681,13 +4686,13 @@ class TestClassGetCallerInfo0:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=4685, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4690, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=4692, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4697, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=len(exp_stack))
         after_time = datetime.now()
@@ -4704,69 +4709,69 @@ class TestClassGetCallerInfo0:
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=4708, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4713, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=4713, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4718, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=4717, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4722, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=4721, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4726, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=4725, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4730, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=4729, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4734, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=4733, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4738, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=4738, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4743, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4742, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4747, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4746, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4751, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=4750, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4755, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4754, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4759, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4758, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4763, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=4762, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4767, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4766, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4771, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4770, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4775, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -4795,7 +4800,7 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             line_num=2701,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=4802, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4807, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -4805,13 +4810,13 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=4809, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4814, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=4816, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4821, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -4828,69 +4833,69 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=4832, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4837, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=4837, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4842, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=4841, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4846, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=4845, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4850, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=4849, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4854, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=4853, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4858, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=4857, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4862, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=4862, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4867, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4866, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4871, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4870, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4875, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=4874, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4879, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4878, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4883, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4882, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4887, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=4886, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4891, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4890, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4895, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4894, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4899, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -4914,7 +4919,7 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             line_num=2829,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=4921, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4926, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -4924,13 +4929,13 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=4928, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4933, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=4935, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4940, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -4947,69 +4952,69 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=4951, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4956, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=4956, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4961, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=4960, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4965, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=4964, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4969, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=4968, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4973, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=4972, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4977, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=4976, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4981, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=4981, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4986, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4985, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4990, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=4989, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4994, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=4993, add=0)
+        update_stack(exp_stack=exp_stack, line_num=4998, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=4997, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5002, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5001, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5006, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=5005, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5010, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5009, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5014, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5013, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5018, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -5033,7 +5038,7 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             line_num=2958,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=5040, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5045, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -5043,13 +5048,13 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=5047, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5052, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=5054, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5059, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -5066,69 +5071,69 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=5070, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5075, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=5075, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5080, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=5079, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5084, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=5083, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5088, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=5087, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5092, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=5091, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5096, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=5095, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5100, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=5100, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5105, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5104, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5109, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5108, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5113, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=5112, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5117, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5116, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5121, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5120, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5125, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=5124, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5129, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5128, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5133, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5132, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5137, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -5151,7 +5156,7 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             line_num=3086,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=5158, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5163, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -5161,13 +5166,13 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=5165, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5170, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=5172, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5177, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -5184,69 +5189,69 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=5188, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5193, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=5193, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5198, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=5197, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5202, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=5201, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5206, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=5205, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5210, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=5209, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5214, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=5213, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5218, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=5218, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5223, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5222, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5227, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5226, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5231, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=5230, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5235, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5234, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5239, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5238, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5243, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=5242, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5247, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5246, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5251, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5250, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5255, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -5270,7 +5275,7 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             line_num=3214,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=5277, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5282, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -5280,13 +5285,13 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=5284, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5289, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=5291, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5296, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -5303,69 +5308,69 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=5307, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5312, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=5312, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5317, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=5316, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5321, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=5320, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5325, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=5324, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5329, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=5328, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5333, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=5332, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5337, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=5337, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5342, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5341, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5346, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5345, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5350, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=5349, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5354, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5353, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5358, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5357, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5362, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=5361, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5366, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5365, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5370, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5369, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5374, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -5389,7 +5394,7 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             line_num=3343,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=5396, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5401, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -5399,13 +5404,13 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=5403, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5408, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=5410, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5415, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -5422,69 +5427,69 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=5426, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5431, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=5431, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5436, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=5435, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5440, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=5439, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5444, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=5443, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5448, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=5447, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5452, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=5451, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5456, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=5456, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5461, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5460, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5465, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5464, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5469, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=5468, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5473, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5472, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5477, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5476, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5481, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=5480, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5485, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5484, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5489, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5488, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5493, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -5507,7 +5512,7 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             line_num=3471,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=5514, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5519, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -5517,13 +5522,13 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=5521, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5526, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=5528, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5533, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -5540,101 +5545,101 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
         )
 
         # call base class normal method target
-        update_stack(exp_stack=exp_stack, line_num=5544, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5549, add=0)
         self.test_get_caller_info_m0bt(capsys=capsys)
         tst_cls_get_caller_info0 = TestClassGetCallerInfo0()
-        update_stack(exp_stack=exp_stack, line_num=5547, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5552, add=0)
         tst_cls_get_caller_info0.test_get_caller_info_m0bt(capsys=capsys)
         tst_cls_get_caller_info0s = TestClassGetCallerInfo0S()
-        update_stack(exp_stack=exp_stack, line_num=5550, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5555, add=0)
         tst_cls_get_caller_info0s.test_get_caller_info_m0bt(capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=5554, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5559, add=0)
         self.get_caller_info_s0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=5556, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5561, add=0)
         super().get_caller_info_s0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=5558, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5563, add=0)
         TestClassGetCallerInfo0.get_caller_info_s0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=5560, add=2)
+        update_stack(exp_stack=exp_stack, line_num=5565, add=2)
         TestClassGetCallerInfo0S.get_caller_info_s0bt(
             exp_stack=exp_stack, capsys=capsys
         )
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=5566, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5571, add=0)
         super().get_caller_info_c0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=5568, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5573, add=0)
         TestClassGetCallerInfo0.get_caller_info_c0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=5570, add=2)
+        update_stack(exp_stack=exp_stack, line_num=5575, add=2)
         TestClassGetCallerInfo0S.get_caller_info_c0bt(
             exp_stack=exp_stack, capsys=capsys
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=5576, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5581, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=5581, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5586, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=5585, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5590, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=5589, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5594, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=5593, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5598, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=5597, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5602, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=5601, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5606, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=5606, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5611, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5610, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5615, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5614, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5619, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=5618, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5623, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5622, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5627, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5626, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5631, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=5630, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5635, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5634, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5639, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5638, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5643, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -5658,7 +5663,7 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             line_num=3631,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=5665, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5670, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -5668,13 +5673,13 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=5672, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5677, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=5679, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5684, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -5692,92 +5697,92 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
 
         # call base class normal method target
         tst_cls_get_caller_info0 = TestClassGetCallerInfo0()
-        update_stack(exp_stack=exp_stack, line_num=5696, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5701, add=0)
         tst_cls_get_caller_info0.test_get_caller_info_m0bt(capsys=capsys)
         tst_cls_get_caller_info0s = TestClassGetCallerInfo0S()
-        update_stack(exp_stack=exp_stack, line_num=5699, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5704, add=0)
         tst_cls_get_caller_info0s.test_get_caller_info_m0bt(capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=5703, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5708, add=0)
         TestClassGetCallerInfo0.get_caller_info_s0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=5705, add=2)
+        update_stack(exp_stack=exp_stack, line_num=5710, add=2)
         TestClassGetCallerInfo0S.get_caller_info_s0bt(
             exp_stack=exp_stack, capsys=capsys
         )
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=5711, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5716, add=0)
         TestClassGetCallerInfo0.get_caller_info_c0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=5713, add=2)
+        update_stack(exp_stack=exp_stack, line_num=5718, add=2)
         TestClassGetCallerInfo0S.get_caller_info_c0bt(
             exp_stack=exp_stack, capsys=capsys
         )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=5719, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5724, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=5724, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5729, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=5728, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5733, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=5732, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5737, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=5736, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5741, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=5740, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5745, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=5744, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5749, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=5749, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5754, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5753, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5758, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5757, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5762, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=5761, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5766, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5765, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5770, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5769, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5774, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=5773, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5778, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5777, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5782, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5781, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5786, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -5801,7 +5806,7 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             line_num=3784,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=5808, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5813, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -5811,13 +5816,13 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=5815, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5820, add=0)
         call_seq = get_formatted_call_sequence(depth=1)
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         # test diag_msg
-        update_stack(exp_stack=exp_stack, line_num=5822, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5827, add=0)
         before_time = datetime.now()
         diag_msg("message 1", 1, depth=1)
         after_time = datetime.now()
@@ -5835,87 +5840,87 @@ class TestClassGetCallerInfo0S(TestClassGetCallerInfo0):
 
         # call base class normal method target
         tst_cls_get_caller_info0 = TestClassGetCallerInfo0()
-        update_stack(exp_stack=exp_stack, line_num=5839, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5844, add=0)
         tst_cls_get_caller_info0.test_get_caller_info_m0bt(capsys=capsys)
         tst_cls_get_caller_info0s = TestClassGetCallerInfo0S()
-        update_stack(exp_stack=exp_stack, line_num=5842, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5847, add=0)
         tst_cls_get_caller_info0s.test_get_caller_info_m0bt(capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=5846, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5851, add=0)
         cls.get_caller_info_s0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=5848, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5853, add=0)
         super().get_caller_info_s0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=5850, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5855, add=0)
         TestClassGetCallerInfo0.get_caller_info_s0bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=5852, add=2)
+        update_stack(exp_stack=exp_stack, line_num=5857, add=2)
         TestClassGetCallerInfo0S.get_caller_info_s0bt(
             exp_stack=exp_stack, capsys=capsys
         )
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=5857, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5862, add=0)
         func_get_caller_info_1(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=5862, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5867, add=0)
         cls_get_caller_info1.get_caller_info_m1(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=5866, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5871, add=0)
         cls_get_caller_info1.get_caller_info_s1(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=5870, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5875, add=0)
         ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=5874, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5879, add=0)
         cls_get_caller_info1.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=5878, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5883, add=0)
         cls_get_caller_info1.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=5882, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5887, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=5887, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5892, add=0)
         cls_get_caller_info1s.get_caller_info_m1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5891, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5896, add=0)
         cls_get_caller_info1s.get_caller_info_s1s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5895, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5900, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=5899, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5904, add=0)
         cls_get_caller_info1s.get_caller_info_m1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5903, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5908, add=0)
         cls_get_caller_info1s.get_caller_info_s1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5907, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5912, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=5911, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5916, add=0)
         cls_get_caller_info1s.get_caller_info_m1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=5915, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5920, add=0)
         cls_get_caller_info1s.get_caller_info_s1sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=5919, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5924, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -5952,7 +5957,7 @@ class ClassGetCallerInfo1:
             line_num=3945,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=5959, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5964, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -5962,13 +5967,13 @@ class ClassGetCallerInfo1:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=5966, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5971, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=5973, add=0)
+            update_stack(exp_stack=exp_stack, line_num=5978, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -5986,69 +5991,69 @@ class ClassGetCallerInfo1:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=5990, add=0)
+        update_stack(exp_stack=exp_stack, line_num=5995, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=5995, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6000, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=5999, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6004, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=6003, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6008, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=6007, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6012, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=6011, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6016, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=6015, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6020, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=6020, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6025, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6024, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6029, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6028, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6033, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=6032, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6037, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6036, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6041, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6040, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6045, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=6044, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6049, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6048, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6053, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6052, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6057, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -6072,7 +6077,7 @@ class ClassGetCallerInfo1:
             line_num=4076,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=6079, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6084, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -6082,13 +6087,13 @@ class ClassGetCallerInfo1:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=6086, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6091, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=6093, add=0)
+            update_stack(exp_stack=exp_stack, line_num=6098, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -6106,69 +6111,69 @@ class ClassGetCallerInfo1:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=6110, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6115, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=6115, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6120, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=6119, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6124, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=6123, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6128, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=6127, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6132, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=6131, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6136, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=6135, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6140, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=6140, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6145, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6144, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6149, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6148, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6153, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=6152, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6157, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6156, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6161, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6160, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6165, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=6164, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6169, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6168, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6173, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6172, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6177, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -6193,7 +6198,7 @@ class ClassGetCallerInfo1:
             line_num=4207,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=6200, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6205, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -6203,13 +6208,13 @@ class ClassGetCallerInfo1:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=6207, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6212, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=6214, add=0)
+            update_stack(exp_stack=exp_stack, line_num=6219, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -6227,69 +6232,69 @@ class ClassGetCallerInfo1:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=6231, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6236, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=6236, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6241, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=6240, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6245, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=6244, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6249, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=6248, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6253, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=6252, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6257, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=6256, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6261, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=6261, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6266, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6265, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6270, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6269, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6274, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=6273, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6278, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6277, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6282, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6281, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6286, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=6285, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6290, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6289, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6294, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6293, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6298, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -6314,7 +6319,7 @@ class ClassGetCallerInfo1:
             line_num=4338,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=6321, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6326, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -6324,13 +6329,13 @@ class ClassGetCallerInfo1:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=6328, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6333, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=6335, add=0)
+            update_stack(exp_stack=exp_stack, line_num=6340, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -6348,69 +6353,69 @@ class ClassGetCallerInfo1:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=6352, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6357, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=6357, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6362, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=6361, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6366, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=6365, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6370, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=6369, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6374, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=6373, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6378, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=6377, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6382, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=6382, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6387, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6386, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6391, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6390, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6395, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=6394, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6399, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6398, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6403, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6402, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6407, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=6406, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6411, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6410, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6415, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6414, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6419, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -6436,7 +6441,7 @@ class ClassGetCallerInfo1:
             line_num=4469,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=6443, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6448, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -6446,13 +6451,13 @@ class ClassGetCallerInfo1:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=6450, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6455, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=6457, add=0)
+            update_stack(exp_stack=exp_stack, line_num=6462, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -6470,69 +6475,69 @@ class ClassGetCallerInfo1:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=6474, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6479, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=6479, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6484, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=6483, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6488, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=6487, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6492, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=6491, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6496, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=6495, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6500, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=6499, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6504, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=6504, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6509, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6508, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6513, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6512, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6517, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=6516, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6521, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6520, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6525, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6524, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6529, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=6528, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6533, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6532, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6537, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6536, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6541, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -6558,7 +6563,7 @@ class ClassGetCallerInfo1:
             line_num=4601,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=6565, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6570, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -6568,13 +6573,13 @@ class ClassGetCallerInfo1:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=6572, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6577, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=6579, add=0)
+            update_stack(exp_stack=exp_stack, line_num=6584, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -6592,69 +6597,69 @@ class ClassGetCallerInfo1:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=6596, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6601, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=6601, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6606, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=6605, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6610, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=6609, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6614, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=6613, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6618, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=6617, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6622, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=6621, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6626, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=6626, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6631, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6630, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6635, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6634, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6639, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=6638, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6643, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6642, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6647, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6646, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6651, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=6650, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6655, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6654, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6659, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6658, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6663, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -6680,7 +6685,7 @@ class ClassGetCallerInfo1:
             line_num=4733,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=6687, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6692, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -6690,13 +6695,13 @@ class ClassGetCallerInfo1:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=6694, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6699, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=6701, add=0)
+            update_stack(exp_stack=exp_stack, line_num=6706, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -6714,69 +6719,69 @@ class ClassGetCallerInfo1:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=6718, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6723, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=6723, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6728, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=6727, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6732, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=6731, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6736, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=6735, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6740, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=6739, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6744, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=6743, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6748, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=6748, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6753, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6752, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6757, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6756, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6761, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=6760, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6765, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6764, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6769, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6768, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6773, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=6772, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6777, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6776, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6781, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6780, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6785, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -6802,7 +6807,7 @@ class ClassGetCallerInfo1:
             line_num=4864,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=6809, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6814, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -6812,13 +6817,13 @@ class ClassGetCallerInfo1:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=6816, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6821, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=6823, add=0)
+            update_stack(exp_stack=exp_stack, line_num=6828, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -6836,69 +6841,69 @@ class ClassGetCallerInfo1:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=6840, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6845, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=6845, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6850, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=6849, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6854, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=6853, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6858, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=6857, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6862, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=6861, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6866, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=6865, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6870, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=6870, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6875, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6874, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6879, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6878, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6883, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=6882, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6887, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6886, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6891, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6890, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6895, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=6894, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6899, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6898, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6903, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=6902, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6907, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -6924,7 +6929,7 @@ class ClassGetCallerInfo1:
             line_num=4996,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=6931, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6936, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -6934,13 +6939,13 @@ class ClassGetCallerInfo1:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=6938, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6943, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=6945, add=0)
+            update_stack(exp_stack=exp_stack, line_num=6950, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -6958,69 +6963,69 @@ class ClassGetCallerInfo1:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=6962, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6967, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=6967, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6972, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=6971, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6976, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=6975, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6980, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=6979, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6984, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=6983, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6988, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=6987, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6992, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=6992, add=0)
+        update_stack(exp_stack=exp_stack, line_num=6997, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=6996, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7001, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7000, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7005, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=7004, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7009, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7008, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7013, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7012, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7017, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=7016, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7021, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7020, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7025, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7024, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7029, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -7057,7 +7062,7 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             line_num=5139,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=7064, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7069, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -7067,13 +7072,13 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=7071, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7076, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=7078, add=0)
+            update_stack(exp_stack=exp_stack, line_num=7083, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -7091,69 +7096,69 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=7095, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7100, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=7100, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7105, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=7104, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7109, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=7108, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7113, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=7112, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7117, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=7116, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7121, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=7120, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7125, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=7125, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7130, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7129, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7134, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7133, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7138, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=7137, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7142, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7141, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7146, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7145, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7150, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=7149, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7154, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7153, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7158, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7157, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7162, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -7179,7 +7184,7 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             line_num=5270,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=7186, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7191, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -7189,13 +7194,13 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=7193, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7198, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=7200, add=0)
+            update_stack(exp_stack=exp_stack, line_num=7205, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -7213,69 +7218,69 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=7217, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7222, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=7222, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7227, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=7226, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7231, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=7230, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7235, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=7234, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7239, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=7238, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7243, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=7242, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7247, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=7247, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7252, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7251, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7256, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7255, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7260, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=7259, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7264, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7263, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7268, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7267, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7272, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=7271, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7276, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7275, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7280, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7279, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7284, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -7301,7 +7306,7 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             line_num=5402,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=7308, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7313, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -7311,13 +7316,13 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=7315, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7320, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=7322, add=0)
+            update_stack(exp_stack=exp_stack, line_num=7327, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -7335,69 +7340,69 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=7339, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7344, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=7344, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7349, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=7348, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7353, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=7352, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7357, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=7356, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7361, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=7360, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7365, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=7364, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7369, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=7369, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7374, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7373, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7378, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7377, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7382, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=7381, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7386, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7385, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7390, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7389, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7394, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=7393, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7398, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7397, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7402, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7401, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7406, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -7422,7 +7427,7 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             line_num=5533,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=7429, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7434, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -7432,13 +7437,13 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=7436, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7441, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=7443, add=0)
+            update_stack(exp_stack=exp_stack, line_num=7448, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -7456,69 +7461,69 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=7460, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7465, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=7465, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7470, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=7469, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7474, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=7473, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7478, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=7477, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7482, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=7481, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7486, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=7485, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7490, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=7490, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7495, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7494, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7499, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7498, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7503, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=7502, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7507, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7506, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7511, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7510, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7515, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=7514, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7519, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7518, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7523, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7522, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7527, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -7544,7 +7549,7 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             line_num=5664,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=7551, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7556, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -7554,13 +7559,13 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=7558, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7563, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=7565, add=0)
+            update_stack(exp_stack=exp_stack, line_num=7570, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -7578,69 +7583,69 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=7582, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7587, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=7587, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7592, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=7591, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7596, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=7595, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7600, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=7599, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7604, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=7603, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7608, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=7607, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7612, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=7612, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7617, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7616, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7621, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7620, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7625, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=7624, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7629, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7628, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7633, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7632, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7637, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=7636, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7641, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7640, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7645, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7644, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7649, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -7666,7 +7671,7 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             line_num=5796,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=7673, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7678, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -7676,13 +7681,13 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=7680, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7685, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=7687, add=0)
+            update_stack(exp_stack=exp_stack, line_num=7692, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -7700,69 +7705,69 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=7704, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7709, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=7709, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7714, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=7713, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7718, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=7717, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7722, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=7721, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7726, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=7725, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7730, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=7729, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7734, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=7734, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7739, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7738, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7743, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7742, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7747, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=7746, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7751, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7750, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7755, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7754, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7759, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=7758, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7763, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7762, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7767, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7766, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7771, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -7787,7 +7792,7 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             line_num=5927,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=7794, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7799, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -7797,13 +7802,13 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=7801, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7806, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=7808, add=0)
+            update_stack(exp_stack=exp_stack, line_num=7813, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -7821,97 +7826,97 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             )
 
         # call base class normal method target
-        update_stack(exp_stack=exp_stack, line_num=7825, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7830, add=0)
         self.get_caller_info_m1bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=7828, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7833, add=0)
         cls_get_caller_info1.get_caller_info_m1bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=7831, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7836, add=0)
         cls_get_caller_info1s.get_caller_info_m1bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=7835, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7840, add=0)
         self.get_caller_info_s1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=7837, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7842, add=0)
         super().get_caller_info_s1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=7839, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7844, add=0)
         ClassGetCallerInfo1.get_caller_info_s1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=7841, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7846, add=0)
         ClassGetCallerInfo1S.get_caller_info_s1bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=7845, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7850, add=0)
         super().get_caller_info_c1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=7847, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7852, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=7849, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7854, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bt(exp_stack=exp_stack, capsys=capsys)
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=7853, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7858, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=7858, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7863, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=7862, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7867, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=7866, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7871, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=7870, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7875, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=7874, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7879, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=7878, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7883, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=7883, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7888, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7887, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7892, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7891, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7896, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=7895, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7900, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7899, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7904, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7903, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7908, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=7907, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7912, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=7911, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7916, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=7915, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7920, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -7937,7 +7942,7 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             line_num=6092,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=7944, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7949, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -7947,13 +7952,13 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=7951, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7956, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=7958, add=0)
+            update_stack(exp_stack=exp_stack, line_num=7963, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -7972,88 +7977,88 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
 
         # call base class normal method target
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=7976, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7981, add=0)
         cls_get_caller_info1.get_caller_info_m1bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=7979, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7984, add=0)
         cls_get_caller_info1s.get_caller_info_m1bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=7983, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7988, add=0)
         ClassGetCallerInfo1.get_caller_info_s1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=7985, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7990, add=0)
         ClassGetCallerInfo1S.get_caller_info_s1bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=7989, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7994, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=7991, add=0)
+        update_stack(exp_stack=exp_stack, line_num=7996, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bt(exp_stack=exp_stack, capsys=capsys)
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=7995, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8000, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=8000, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8005, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=8004, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8009, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=8008, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8013, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=8012, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8017, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=8016, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8021, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=8020, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8025, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=8025, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8030, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8029, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8034, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8033, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8038, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=8037, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8042, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8041, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8046, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8045, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8050, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=8049, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8054, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8053, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8058, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8057, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8062, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -8079,7 +8084,7 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             line_num=6250,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=8086, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8091, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -8089,13 +8094,13 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=8093, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8098, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=8100, add=0)
+            update_stack(exp_stack=exp_stack, line_num=8105, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -8114,96 +8119,96 @@ class ClassGetCallerInfo1S(ClassGetCallerInfo1):
 
         # call base class normal method target
         cls_get_caller_info1 = ClassGetCallerInfo1()
-        update_stack(exp_stack=exp_stack, line_num=8118, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8123, add=0)
         cls_get_caller_info1.get_caller_info_m1bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info1s = ClassGetCallerInfo1S()
-        update_stack(exp_stack=exp_stack, line_num=8121, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8126, add=0)
         cls_get_caller_info1s.get_caller_info_m1bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=8125, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8130, add=0)
         cls.get_caller_info_s1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=8127, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8132, add=0)
         super().get_caller_info_s1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=8129, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8134, add=0)
         ClassGetCallerInfo1.get_caller_info_s1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=8131, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8136, add=0)
         ClassGetCallerInfo1S.get_caller_info_s1bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=8135, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8140, add=0)
         cls.get_caller_info_c1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=8137, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8142, add=0)
         super().get_caller_info_c1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=8139, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8144, add=0)
         ClassGetCallerInfo1.get_caller_info_c1bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=8141, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8146, add=0)
         ClassGetCallerInfo1S.get_caller_info_c1bt(exp_stack=exp_stack, capsys=capsys)
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=8145, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8150, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=8150, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8155, add=0)
         cls_get_caller_info2.get_caller_info_m2(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=8154, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8159, add=0)
         cls_get_caller_info2.get_caller_info_s2(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=8158, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8163, add=0)
         ClassGetCallerInfo2.get_caller_info_c2(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=8162, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8167, add=0)
         cls_get_caller_info2.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=8166, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8171, add=0)
         cls_get_caller_info2.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=8170, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8175, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=8175, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8180, add=0)
         cls_get_caller_info2s.get_caller_info_m2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8179, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8184, add=0)
         cls_get_caller_info2s.get_caller_info_s2s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8183, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8188, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=8187, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8192, add=0)
         cls_get_caller_info2s.get_caller_info_m2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8191, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8196, add=0)
         cls_get_caller_info2s.get_caller_info_s2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8195, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8200, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=8199, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8204, add=0)
         cls_get_caller_info2s.get_caller_info_m2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8203, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8208, add=0)
         cls_get_caller_info2s.get_caller_info_s2sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8207, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8212, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -8240,7 +8245,7 @@ class ClassGetCallerInfo2:
             line_num=6428,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=8247, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8252, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -8250,13 +8255,13 @@ class ClassGetCallerInfo2:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=8254, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8259, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=8261, add=0)
+            update_stack(exp_stack=exp_stack, line_num=8266, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -8274,69 +8279,69 @@ class ClassGetCallerInfo2:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=8278, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8283, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=8283, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8288, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=8287, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8292, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=8291, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8296, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=8295, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8300, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=8299, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8304, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=8303, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8308, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=8308, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8313, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8312, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8317, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8316, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8321, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=8320, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8325, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8324, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8329, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8328, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8333, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=8332, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8337, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8336, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8341, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8340, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8345, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -8360,7 +8365,7 @@ class ClassGetCallerInfo2:
             line_num=6559,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=8367, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8372, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -8370,13 +8375,13 @@ class ClassGetCallerInfo2:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=8374, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8379, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=8381, add=0)
+            update_stack(exp_stack=exp_stack, line_num=8386, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -8394,69 +8399,69 @@ class ClassGetCallerInfo2:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=8398, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8403, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=8403, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8408, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=8407, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8412, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=8411, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8416, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=8415, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8420, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=8419, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8424, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=8423, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8428, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=8428, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8433, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8432, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8437, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8436, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8441, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=8440, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8445, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8444, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8449, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8448, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8453, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=8452, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8457, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8456, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8461, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8460, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8465, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -8481,7 +8486,7 @@ class ClassGetCallerInfo2:
             line_num=6690,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=8488, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8493, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -8491,13 +8496,13 @@ class ClassGetCallerInfo2:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=8495, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8500, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=8502, add=0)
+            update_stack(exp_stack=exp_stack, line_num=8507, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -8515,69 +8520,69 @@ class ClassGetCallerInfo2:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=8519, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8524, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=8524, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8529, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=8528, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8533, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=8532, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8537, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=8536, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8541, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=8540, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8545, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=8544, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8549, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=8549, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8554, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8553, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8558, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8557, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8562, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=8561, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8566, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8565, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8570, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8569, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8574, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=8573, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8578, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8577, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8582, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8581, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8586, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -8602,7 +8607,7 @@ class ClassGetCallerInfo2:
             line_num=6821,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=8609, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8614, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -8612,13 +8617,13 @@ class ClassGetCallerInfo2:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=8616, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8621, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=8623, add=0)
+            update_stack(exp_stack=exp_stack, line_num=8628, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -8636,69 +8641,69 @@ class ClassGetCallerInfo2:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=8640, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8645, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=8645, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8650, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=8649, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8654, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=8653, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8658, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=8657, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8662, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=8661, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8666, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=8665, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8670, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=8670, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8675, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8674, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8679, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8678, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8683, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=8682, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8687, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8686, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8691, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8690, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8695, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=8694, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8699, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8698, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8703, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8702, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8707, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -8724,7 +8729,7 @@ class ClassGetCallerInfo2:
             line_num=6952,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=8731, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8736, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -8734,13 +8739,13 @@ class ClassGetCallerInfo2:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=8738, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8743, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=8745, add=0)
+            update_stack(exp_stack=exp_stack, line_num=8750, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -8758,69 +8763,69 @@ class ClassGetCallerInfo2:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=8762, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8767, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=8767, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8772, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=8771, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8776, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=8775, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8780, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=8779, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8784, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=8783, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8788, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=8787, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8792, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=8792, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8797, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8796, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8801, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8800, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8805, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=8804, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8809, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8808, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8813, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8812, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8817, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=8816, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8821, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8820, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8825, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8824, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8829, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -8846,7 +8851,7 @@ class ClassGetCallerInfo2:
             line_num=7084,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=8853, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8858, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -8856,13 +8861,13 @@ class ClassGetCallerInfo2:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=8860, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8865, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=8867, add=0)
+            update_stack(exp_stack=exp_stack, line_num=8872, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -8880,69 +8885,69 @@ class ClassGetCallerInfo2:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=8884, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8889, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=8889, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8894, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=8893, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8898, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=8897, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8902, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=8901, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8906, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=8905, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8910, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=8909, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8914, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=8914, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8919, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8918, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8923, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8922, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8927, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=8926, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8931, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8930, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8935, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8934, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8939, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=8938, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8943, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=8942, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8947, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=8946, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8951, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -8968,7 +8973,7 @@ class ClassGetCallerInfo2:
             line_num=7216,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=8975, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8980, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -8978,13 +8983,13 @@ class ClassGetCallerInfo2:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=8982, add=0)
+        update_stack(exp_stack=exp_stack, line_num=8987, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=8989, add=0)
+            update_stack(exp_stack=exp_stack, line_num=8994, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -9002,69 +9007,69 @@ class ClassGetCallerInfo2:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=9006, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9011, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=9011, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9016, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=9015, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9020, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=9019, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9024, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=9023, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9028, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=9027, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9032, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=9031, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9036, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=9036, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9041, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9040, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9045, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9044, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9049, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=9048, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9053, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9052, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9057, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9056, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9061, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=9060, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9065, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9064, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9069, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9068, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9073, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -9090,7 +9095,7 @@ class ClassGetCallerInfo2:
             line_num=7347,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=9097, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9102, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -9100,13 +9105,13 @@ class ClassGetCallerInfo2:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=9104, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9109, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=9111, add=0)
+            update_stack(exp_stack=exp_stack, line_num=9116, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -9124,69 +9129,69 @@ class ClassGetCallerInfo2:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=9128, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9133, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=9133, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9138, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=9137, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9142, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=9141, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9146, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=9145, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9150, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=9149, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9154, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=9153, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9158, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=9158, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9163, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9162, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9167, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9166, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9171, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=9170, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9175, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9174, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9179, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9178, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9183, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=9182, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9187, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9186, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9191, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9190, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9195, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -9212,7 +9217,7 @@ class ClassGetCallerInfo2:
             line_num=7479,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=9219, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9224, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -9222,13 +9227,13 @@ class ClassGetCallerInfo2:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=9226, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9231, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=9233, add=0)
+            update_stack(exp_stack=exp_stack, line_num=9238, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -9246,69 +9251,69 @@ class ClassGetCallerInfo2:
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=9250, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9255, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=9255, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9260, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=9259, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9264, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=9263, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9268, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=9267, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9272, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=9271, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9276, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=9275, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9280, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=9280, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9285, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9284, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9289, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9288, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9293, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=9292, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9297, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9296, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9301, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9300, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9305, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=9304, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9309, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9308, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9313, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9312, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9317, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -9345,7 +9350,7 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             line_num=7622,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=9352, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9357, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -9355,13 +9360,13 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=9359, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9364, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=9366, add=0)
+            update_stack(exp_stack=exp_stack, line_num=9371, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -9379,69 +9384,69 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=9383, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9388, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=9388, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9393, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=9392, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9397, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=9396, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9401, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=9400, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9405, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=9404, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9409, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=9408, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9413, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=9413, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9418, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9417, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9422, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9421, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9426, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=9425, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9430, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9429, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9434, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9433, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9438, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=9437, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9442, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9441, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9446, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9445, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9450, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -9467,7 +9472,7 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             line_num=7753,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=9474, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9479, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -9477,13 +9482,13 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=9481, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9486, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=9488, add=0)
+            update_stack(exp_stack=exp_stack, line_num=9493, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -9501,69 +9506,69 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=9505, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9510, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=9510, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9515, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=9514, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9519, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=9518, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9523, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=9522, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9527, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=9526, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9531, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=9530, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9535, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=9535, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9540, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9539, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9544, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9543, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9548, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=9547, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9552, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9551, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9556, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9555, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9560, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=9559, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9564, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9563, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9568, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9567, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9572, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -9589,7 +9594,7 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             line_num=7885,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=9596, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9601, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -9599,13 +9604,13 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=9603, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9608, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=9610, add=0)
+            update_stack(exp_stack=exp_stack, line_num=9615, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -9623,69 +9628,69 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=9627, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9632, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=9632, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9637, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=9636, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9641, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=9640, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9645, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=9644, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9649, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=9648, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9653, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=9652, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9657, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=9657, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9662, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9661, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9666, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9665, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9670, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=9669, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9674, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9673, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9678, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9677, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9682, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=9681, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9686, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9685, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9690, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9689, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9694, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -9710,7 +9715,7 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             line_num=8016,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=9717, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9722, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -9720,13 +9725,13 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=9724, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9729, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=9731, add=0)
+            update_stack(exp_stack=exp_stack, line_num=9736, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -9744,69 +9749,69 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=9748, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9753, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=9753, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9758, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=9757, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9762, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=9761, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9766, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=9765, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9770, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=9769, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9774, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=9773, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9778, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=9778, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9783, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9782, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9787, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9786, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9791, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=9790, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9795, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9794, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9799, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9798, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9803, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=9802, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9807, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9806, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9811, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9810, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9815, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -9832,7 +9837,7 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             line_num=8147,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=9839, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9844, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -9842,13 +9847,13 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=9846, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9851, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=9853, add=0)
+            update_stack(exp_stack=exp_stack, line_num=9858, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -9866,69 +9871,69 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=9870, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9875, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=9875, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9880, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=9879, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9884, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=9883, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9888, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=9887, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9892, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=9891, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9896, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=9895, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9900, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=9900, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9905, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9904, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9909, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9908, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9913, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=9912, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9917, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9916, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9921, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9920, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9925, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=9924, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9929, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=9928, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9933, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=9932, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9937, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -9954,7 +9959,7 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             line_num=8279,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=9961, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9966, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -9964,13 +9969,13 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=9968, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9973, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=9975, add=0)
+            update_stack(exp_stack=exp_stack, line_num=9980, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -9988,69 +9993,69 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             )
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=9992, add=0)
+        update_stack(exp_stack=exp_stack, line_num=9997, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=9997, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10002, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=10001, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10006, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=10005, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10010, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=10009, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10014, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=10013, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10018, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=10017, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10022, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=10022, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10027, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10026, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10031, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10030, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10035, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=10034, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10039, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10038, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10043, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10042, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10047, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=10046, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10051, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10050, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10055, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10054, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10059, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -10075,7 +10080,7 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             line_num=8410,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10082, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10087, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10085,13 +10090,13 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10089, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10094, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10096, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10101, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10109,97 +10114,97 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             )
 
         # call base class normal method target
-        update_stack(exp_stack=exp_stack, line_num=10113, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10118, add=0)
         self.get_caller_info_m2bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=10116, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10121, add=0)
         cls_get_caller_info2.get_caller_info_m2bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=10119, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10124, add=0)
         cls_get_caller_info2s.get_caller_info_m2bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=10123, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10128, add=0)
         self.get_caller_info_s2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10125, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10130, add=0)
         super().get_caller_info_s2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10127, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10132, add=0)
         ClassGetCallerInfo2.get_caller_info_s2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10129, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10134, add=0)
         ClassGetCallerInfo2S.get_caller_info_s2bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=10133, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10138, add=0)
         super().get_caller_info_c2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10135, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10140, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10137, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10142, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bt(exp_stack=exp_stack, capsys=capsys)
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=10141, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10146, add=0)
         func_get_caller_info_2(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=10146, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10151, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=10150, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10155, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=10154, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10159, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=10158, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10163, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=10162, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10167, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=10166, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10171, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=10171, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10176, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10175, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10180, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10179, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10184, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=10183, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10188, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10187, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10192, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10191, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10196, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=10195, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10200, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10199, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10204, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10203, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10208, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -10225,7 +10230,7 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             line_num=8575,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10232, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10237, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10235,13 +10240,13 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10239, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10244, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10246, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10251, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10260,88 +10265,88 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
 
         # call base class normal method target
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=10264, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10269, add=0)
         cls_get_caller_info2.get_caller_info_m2bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=10267, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10272, add=0)
         cls_get_caller_info2s.get_caller_info_m2bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=10271, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10276, add=0)
         ClassGetCallerInfo2.get_caller_info_s2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10273, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10278, add=0)
         ClassGetCallerInfo2S.get_caller_info_s2bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=10277, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10282, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10279, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10284, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bt(exp_stack=exp_stack, capsys=capsys)
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=10283, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10288, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=10288, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10293, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=10292, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10297, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=10296, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10301, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=10300, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10305, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=10304, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10309, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=10308, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10313, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=10313, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10318, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10317, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10322, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10321, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10326, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=10325, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10330, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10329, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10334, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10333, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10338, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=10337, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10342, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10341, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10346, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10345, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10350, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -10367,7 +10372,7 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             line_num=8733,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10374, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10379, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10377,13 +10382,13 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10381, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10386, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10388, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10393, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10402,96 +10407,96 @@ class ClassGetCallerInfo2S(ClassGetCallerInfo2):
 
         # call base class normal method target
         cls_get_caller_info2 = ClassGetCallerInfo2()
-        update_stack(exp_stack=exp_stack, line_num=10406, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10411, add=0)
         cls_get_caller_info2.get_caller_info_m2bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info2s = ClassGetCallerInfo2S()
-        update_stack(exp_stack=exp_stack, line_num=10409, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10414, add=0)
         cls_get_caller_info2s.get_caller_info_m2bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=10413, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10418, add=0)
         cls.get_caller_info_s2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10415, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10420, add=0)
         super().get_caller_info_s2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10417, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10422, add=0)
         ClassGetCallerInfo2.get_caller_info_s2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10419, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10424, add=0)
         ClassGetCallerInfo2S.get_caller_info_s2bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=10423, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10428, add=0)
         cls.get_caller_info_c2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10425, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10430, add=0)
         super().get_caller_info_c2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10427, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10432, add=0)
         ClassGetCallerInfo2.get_caller_info_c2bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=10429, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10434, add=0)
         ClassGetCallerInfo2S.get_caller_info_c2bt(exp_stack=exp_stack, capsys=capsys)
 
         # call module level function
-        update_stack(exp_stack=exp_stack, line_num=10433, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10438, add=0)
         func_get_caller_info_3(exp_stack=exp_stack, capsys=capsys)
 
         # call method
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=10438, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10443, add=0)
         cls_get_caller_info3.get_caller_info_m3(exp_stack=exp_stack, capsys=capsys)
 
         # call static method
-        update_stack(exp_stack=exp_stack, line_num=10442, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10447, add=0)
         cls_get_caller_info3.get_caller_info_s3(exp_stack=exp_stack, capsys=capsys)
 
         # call class method
-        update_stack(exp_stack=exp_stack, line_num=10446, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10451, add=0)
         ClassGetCallerInfo3.get_caller_info_c3(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class method
-        update_stack(exp_stack=exp_stack, line_num=10450, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10455, add=0)
         cls_get_caller_info3.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class static method
-        update_stack(exp_stack=exp_stack, line_num=10454, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10459, add=0)
         cls_get_caller_info3.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded base class class method
-        update_stack(exp_stack=exp_stack, line_num=10458, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10463, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass method
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=10463, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10468, add=0)
         cls_get_caller_info3s.get_caller_info_m3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10467, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10472, add=0)
         cls_get_caller_info3s.get_caller_info_s3s(exp_stack=exp_stack, capsys=capsys)
 
         # call subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10471, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10476, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3s(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass method
-        update_stack(exp_stack=exp_stack, line_num=10475, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10480, add=0)
         cls_get_caller_info3s.get_caller_info_m3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10479, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10484, add=0)
         cls_get_caller_info3s.get_caller_info_s3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call overloaded subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10483, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10488, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bo(exp_stack=exp_stack, capsys=capsys)
 
         # call base method from subclass method
-        update_stack(exp_stack=exp_stack, line_num=10487, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10492, add=0)
         cls_get_caller_info3s.get_caller_info_m3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base static method from subclass static method
-        update_stack(exp_stack=exp_stack, line_num=10491, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10496, add=0)
         cls_get_caller_info3s.get_caller_info_s3sb(exp_stack=exp_stack, capsys=capsys)
 
         # call base class method from subclass class method
-        update_stack(exp_stack=exp_stack, line_num=10495, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10500, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3sb(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -10528,7 +10533,7 @@ class ClassGetCallerInfo3:
             line_num=8911,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10535, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10540, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10538,13 +10543,13 @@ class ClassGetCallerInfo3:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10542, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10547, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10549, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10554, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10582,7 +10587,7 @@ class ClassGetCallerInfo3:
             line_num=8961,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10589, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10594, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10592,13 +10597,13 @@ class ClassGetCallerInfo3:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10596, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10601, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10603, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10608, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10637,7 +10642,7 @@ class ClassGetCallerInfo3:
             line_num=9011,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10644, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10649, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10647,13 +10652,13 @@ class ClassGetCallerInfo3:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10651, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10656, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10658, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10663, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10692,7 +10697,7 @@ class ClassGetCallerInfo3:
             line_num=9061,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10699, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10704, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10702,13 +10707,13 @@ class ClassGetCallerInfo3:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10706, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10711, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10713, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10718, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10748,7 +10753,7 @@ class ClassGetCallerInfo3:
             line_num=9111,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10755, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10760, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10758,13 +10763,13 @@ class ClassGetCallerInfo3:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10762, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10767, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10769, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10774, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10804,7 +10809,7 @@ class ClassGetCallerInfo3:
             line_num=9162,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10811, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10816, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10814,13 +10819,13 @@ class ClassGetCallerInfo3:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10818, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10823, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10825, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10830, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10860,7 +10865,7 @@ class ClassGetCallerInfo3:
             line_num=9213,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10867, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10872, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10870,13 +10875,13 @@ class ClassGetCallerInfo3:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10874, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10879, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10881, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10886, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10916,7 +10921,7 @@ class ClassGetCallerInfo3:
             line_num=9263,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10923, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10928, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10926,13 +10931,13 @@ class ClassGetCallerInfo3:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10930, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10935, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10937, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10942, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -10972,7 +10977,7 @@ class ClassGetCallerInfo3:
             line_num=9314,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=10979, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10984, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -10982,13 +10987,13 @@ class ClassGetCallerInfo3:
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=10986, add=0)
+        update_stack(exp_stack=exp_stack, line_num=10991, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=10993, add=0)
+            update_stack(exp_stack=exp_stack, line_num=10998, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -11039,7 +11044,7 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             line_num=9376,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=11046, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11051, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -11049,13 +11054,13 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=11053, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11058, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=11060, add=0)
+            update_stack(exp_stack=exp_stack, line_num=11065, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -11095,7 +11100,7 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             line_num=9426,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=11102, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11107, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -11105,13 +11110,13 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=11109, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11114, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=11116, add=0)
+            update_stack(exp_stack=exp_stack, line_num=11121, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -11151,7 +11156,7 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             line_num=9477,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=11158, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11163, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -11161,13 +11166,13 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=11165, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11170, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=11172, add=0)
+            update_stack(exp_stack=exp_stack, line_num=11177, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -11206,7 +11211,7 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             line_num=9527,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=11213, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11218, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -11216,13 +11221,13 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=11220, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11225, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=11227, add=0)
+            update_stack(exp_stack=exp_stack, line_num=11232, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -11262,7 +11267,7 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             line_num=9577,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=11269, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11274, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -11272,13 +11277,13 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=11276, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11281, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=11283, add=0)
+            update_stack(exp_stack=exp_stack, line_num=11288, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -11318,7 +11323,7 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             line_num=9628,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=11325, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11330, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -11328,13 +11333,13 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=11332, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11337, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=11339, add=0)
+            update_stack(exp_stack=exp_stack, line_num=11344, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -11373,7 +11378,7 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             line_num=9678,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=11380, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11385, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -11383,13 +11388,13 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=11387, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11392, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=11394, add=0)
+            update_stack(exp_stack=exp_stack, line_num=11399, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -11407,31 +11412,31 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             )
 
         # call base class normal method target
-        update_stack(exp_stack=exp_stack, line_num=11411, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11416, add=0)
         self.get_caller_info_m3bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=11414, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11419, add=0)
         cls_get_caller_info3.get_caller_info_m3bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=11417, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11422, add=0)
         cls_get_caller_info3s.get_caller_info_m3bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=11421, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11426, add=0)
         self.get_caller_info_s3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11423, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11428, add=0)
         super().get_caller_info_s3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11425, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11430, add=0)
         ClassGetCallerInfo3.get_caller_info_s3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11427, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11432, add=0)
         ClassGetCallerInfo3S.get_caller_info_s3bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=11431, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11436, add=0)
         super().get_caller_info_c3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11433, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11438, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11435, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11440, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bt(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -11457,7 +11462,7 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             line_num=9762,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=11464, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11469, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -11467,13 +11472,13 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=11471, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11476, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=11478, add=0)
+            update_stack(exp_stack=exp_stack, line_num=11483, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -11492,22 +11497,22 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
 
         # call base class normal method target
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=11496, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11501, add=0)
         cls_get_caller_info3.get_caller_info_m3bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=11499, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11504, add=0)
         cls_get_caller_info3s.get_caller_info_m3bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=11503, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11508, add=0)
         ClassGetCallerInfo3.get_caller_info_s3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11505, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11510, add=0)
         ClassGetCallerInfo3S.get_caller_info_s3bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=11509, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11514, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11511, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11516, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bt(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -11533,7 +11538,7 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             line_num=9839,
         )
         exp_stack.append(exp_caller_info)
-        update_stack(exp_stack=exp_stack, line_num=11540, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11545, add=0)
         for i, expected_caller_info in enumerate(list(reversed(exp_stack))):
             try:
                 frame = _getframe(i)
@@ -11543,13 +11548,13 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
             assert caller_info == expected_caller_info
 
         # test call sequence
-        update_stack(exp_stack=exp_stack, line_num=11547, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11552, add=0)
         call_seq = get_formatted_call_sequence(depth=len(exp_stack))
 
         assert call_seq == get_exp_seq(exp_stack=exp_stack)
 
         if capsys:  # if capsys, test diag_msg
-            update_stack(exp_stack=exp_stack, line_num=11554, add=0)
+            update_stack(exp_stack=exp_stack, line_num=11559, add=0)
             before_time = datetime.now()
             diag_msg("message 1", 1, depth=len(exp_stack))
             after_time = datetime.now()
@@ -11568,30 +11573,30 @@ class ClassGetCallerInfo3S(ClassGetCallerInfo3):
 
         # call base class normal method target
         cls_get_caller_info3 = ClassGetCallerInfo3()
-        update_stack(exp_stack=exp_stack, line_num=11572, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11577, add=0)
         cls_get_caller_info3.get_caller_info_m3bt(exp_stack=exp_stack, capsys=capsys)
         cls_get_caller_info3s = ClassGetCallerInfo3S()
-        update_stack(exp_stack=exp_stack, line_num=11575, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11580, add=0)
         cls_get_caller_info3s.get_caller_info_m3bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class static method target
-        update_stack(exp_stack=exp_stack, line_num=11579, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11584, add=0)
         cls.get_caller_info_s3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11581, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11586, add=0)
         super().get_caller_info_s3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11583, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11588, add=0)
         ClassGetCallerInfo3.get_caller_info_s3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11585, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11590, add=0)
         ClassGetCallerInfo3S.get_caller_info_s3bt(exp_stack=exp_stack, capsys=capsys)
 
         # call base class class method target
-        update_stack(exp_stack=exp_stack, line_num=11589, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11594, add=0)
         cls.get_caller_info_c3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11591, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11596, add=0)
         super().get_caller_info_c3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11593, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11598, add=0)
         ClassGetCallerInfo3.get_caller_info_c3bt(exp_stack=exp_stack, capsys=capsys)
-        update_stack(exp_stack=exp_stack, line_num=11595, add=0)
+        update_stack(exp_stack=exp_stack, line_num=11600, add=0)
         ClassGetCallerInfo3S.get_caller_info_c3bt(exp_stack=exp_stack, capsys=capsys)
 
         exp_stack.pop()
@@ -11610,7 +11615,7 @@ exp_caller_info0 = CallerInfo(
 )
 
 exp_stack0.append(exp_caller_info0)
-update_stack(exp_stack=exp_stack0, line_num=11617, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11622, add=0)
 for i0, expected_caller_info0 in enumerate(list(reversed(exp_stack0))):
     try:
         frame0 = _getframe(i0)
@@ -11622,7 +11627,7 @@ for i0, expected_caller_info0 in enumerate(list(reversed(exp_stack0))):
 ########################################################################
 # test get_formatted_call_sequence from module (script) level
 ########################################################################
-update_stack(exp_stack=exp_stack0, line_num=11626, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11631, add=0)
 call_seq0 = get_formatted_call_sequence(depth=1)
 
 assert call_seq0 == get_exp_seq(exp_stack=exp_stack0)
@@ -11639,67 +11644,67 @@ diag_msg(depth=4, end="\n\n")
 diag_msg("hello3", depth=5, end="\n\n")
 
 # call module level function
-update_stack(exp_stack=exp_stack0, line_num=11643, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11648, add=0)
 func_get_caller_info_1(exp_stack=exp_stack0, capsys=None)
 
 # call method
 cls_get_caller_info01 = ClassGetCallerInfo1()
-update_stack(exp_stack=exp_stack0, line_num=11648, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11653, add=0)
 cls_get_caller_info01.get_caller_info_m1(exp_stack=exp_stack0, capsys=None)
 
 # call static method
-update_stack(exp_stack=exp_stack0, line_num=11652, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11657, add=0)
 cls_get_caller_info01.get_caller_info_s1(exp_stack=exp_stack0, capsys=None)
 
 # call class method
-update_stack(exp_stack=exp_stack0, line_num=11656, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11661, add=0)
 ClassGetCallerInfo1.get_caller_info_c1(exp_stack=exp_stack0, capsys=None)
 
 # call overloaded base class method
-update_stack(exp_stack=exp_stack0, line_num=11660, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11665, add=0)
 cls_get_caller_info01.get_caller_info_m1bo(exp_stack=exp_stack0, capsys=None)
 
 # call overloaded base class static method
-update_stack(exp_stack=exp_stack0, line_num=11664, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11669, add=0)
 cls_get_caller_info01.get_caller_info_s1bo(exp_stack=exp_stack0, capsys=None)
 
 # call overloaded base class class method
-update_stack(exp_stack=exp_stack0, line_num=11668, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11673, add=0)
 ClassGetCallerInfo1.get_caller_info_c1bo(exp_stack=exp_stack0, capsys=None)
 
 # call subclass method
 cls_get_caller_info01S = ClassGetCallerInfo1S()
-update_stack(exp_stack=exp_stack0, line_num=11673, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11678, add=0)
 cls_get_caller_info01S.get_caller_info_m1s(exp_stack=exp_stack0, capsys=None)
 
 # call subclass static method
-update_stack(exp_stack=exp_stack0, line_num=11677, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11682, add=0)
 cls_get_caller_info01S.get_caller_info_s1s(exp_stack=exp_stack0, capsys=None)
 
 # call subclass class method
-update_stack(exp_stack=exp_stack0, line_num=11681, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11686, add=0)
 ClassGetCallerInfo1S.get_caller_info_c1s(exp_stack=exp_stack0, capsys=None)
 
 # call overloaded subclass method
-update_stack(exp_stack=exp_stack0, line_num=11685, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11690, add=0)
 cls_get_caller_info01S.get_caller_info_m1bo(exp_stack=exp_stack0, capsys=None)
 
 # call overloaded subclass static method
-update_stack(exp_stack=exp_stack0, line_num=11689, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11694, add=0)
 cls_get_caller_info01S.get_caller_info_s1bo(exp_stack=exp_stack0, capsys=None)
 
 # call overloaded subclass class method
-update_stack(exp_stack=exp_stack0, line_num=11693, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11698, add=0)
 ClassGetCallerInfo1S.get_caller_info_c1bo(exp_stack=exp_stack0, capsys=None)
 
 # call base method from subclass method
-update_stack(exp_stack=exp_stack0, line_num=11697, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11702, add=0)
 cls_get_caller_info01S.get_caller_info_m1sb(exp_stack=exp_stack0, capsys=None)
 
 # call base static method from subclass static method
-update_stack(exp_stack=exp_stack0, line_num=11701, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11706, add=0)
 cls_get_caller_info01S.get_caller_info_s1sb(exp_stack=exp_stack0, capsys=None)
 
 # call base class method from subclass class method
-update_stack(exp_stack=exp_stack0, line_num=11705, add=0)
+update_stack(exp_stack=exp_stack0, line_num=11710, add=0)
 ClassGetCallerInfo1S.get_caller_info_c1sb(exp_stack=exp_stack0, capsys=None)

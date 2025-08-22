@@ -376,12 +376,6 @@ class TestSrcVerifierBasic:
                 obj_to_check="LocalDefClass", str_to_check="a string"
             )
 
-        log_ver.add_pattern(
-            exp_log_pattern,
-            log_name="scottbrian_utils.src_verifier",
-            fullmatch=True,
-        )
-
         # assert re.fullmatch(exp_src_path, actual_src_path)
 
         log_ver.test_msg("mainline exit")
