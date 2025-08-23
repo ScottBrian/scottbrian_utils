@@ -7,14 +7,13 @@ import string
 ########################################################################
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+import datetime
 from enum import Enum, auto
 import itertools as it
-import more_itertools as mi
 import logging
-
-import datetime
+import more_itertools as mi
+import os
 import re
-
 import threading
 import time
 from typing import Any, Callable, cast, Optional, Union
@@ -40,6 +39,7 @@ from scottbrian_utils.log_verifier import (
     UnmatchedPatterns,
     UnmatchedLogMessages,
 )
+from scottbrian_utils.src_verifier import verify_source
 from scottbrian_utils.time_hdr import (
     get_datetime_match_string,
     timedelta_match_string,
@@ -863,6 +863,21 @@ class LogVerifier:
                     match_array[idx] = is_matched()
                 match_array[-1] = pidx
                 self.matches_array.append(match_array)
+
+
+########################################################################
+# TestLogVerCorrectSource
+########################################################################
+class TestLogVerCorrectSource:
+    """Verify that we are testing with correctly built code."""
+
+    ####################################################################
+    # test_log_verifier_correct_source
+    ####################################################################
+    def test_log_verifier_correct_source(self) -> None:
+        """Test log_verifier correct source."""
+        if "TOX_ENV_NAME" in os.environ:
+            verify_source(obj_to_check=LogVer)
 
 
 ########################################################################

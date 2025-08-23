@@ -1,19 +1,19 @@
 """test_file_catalog.py module."""
 
 ########################################################################
-# Standard Library Imports
+# Standard Library
 ########################################################################
 import os
 from pathlib import Path
 from typing import Any, cast, Dict
 
 ########################################################################
-# Third Party Imports
+# Third Party
 ########################################################################
 import pytest
 
 ########################################################################
-# Local Imports
+# Local
 ########################################################################
 import scottbrian_utils.file_catalog as cat
 from scottbrian_utils.src_verifier import verify_source

@@ -1,19 +1,19 @@
 """test_flower_box.py module."""
 
 ########################################################################
-# Standard Library Imports
+# Standard Library
 ########################################################################
 import os
 import sys
 from typing import Any, cast, List
 
 ########################################################################
-# Third Party Imports
+# Third Party
 ########################################################################
 import pytest
 
 ########################################################################
-# Local Imports
+# Local
 ########################################################################
 from scottbrian_utils.flower_box import print_flower_box_msg  #  as print_flower_box_msg
 from scottbrian_utils.src_verifier import verify_source

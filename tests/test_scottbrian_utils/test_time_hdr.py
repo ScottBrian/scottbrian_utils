@@ -5,6 +5,7 @@
 ########################################################################
 import inspect
 import logging
+import os
 import sys
 import threading
 import time
@@ -19,6 +20,7 @@ import pytest
 # Local
 ########################################################################
 from scottbrian_utils.timer import Timer
+from scottbrian_utils.src_verifier import verify_source
 from scottbrian_utils.stop_watch import StopWatch
 
 logger = logging.getLogger(__name__)

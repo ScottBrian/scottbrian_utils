@@ -5,6 +5,7 @@
 ########################################################################
 import inspect
 import logging
+import os
 import sys
 from typing import Any
 
@@ -16,6 +17,7 @@ from typing import Any
 ########################################################################
 # Local
 ########################################################################
+from scottbrian_utils.src_verifier import verify_source
 from scottbrian_utils.unique_ts import UniqueTS, UniqueTStamp
 
 
@@ -36,6 +38,21 @@ class ErrorTstUniqueTS(Exception):
     """Base class for exception in this module."""
 
     pass
+
+
+########################################################################
+# TestUniqueTStampCorrectSource
+########################################################################
+class TestUniqueTStampCorrectSource:
+    """Verify that we are testing with correctly built code."""
+
+    ####################################################################
+    # test_unique_ts_correct_source
+    ####################################################################
+    def test_unique_ts_correct_source(self) -> None:
+        """Test unique_ts correct source."""
+        if "TOX_ENV_NAME" in os.environ:
+            verify_source(obj_to_check=UniqueTStamp)
 
 
 ########################################################################

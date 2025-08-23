@@ -4,6 +4,7 @@
 # Standard Library
 ########################################################################
 import logging
+import os
 import re
 import threading
 from typing import Any, cast, Optional, Union
@@ -16,9 +17,11 @@ import pytest
 ########################################################################
 # Local
 ########################################################################
-from scottbrian_utils.msgs import Msgs, GetMsgTimedOut
-from scottbrian_utils.stop_watch import StopWatch
 from scottbrian_utils.log_verifier import LogVer
+from scottbrian_utils.msgs import Msgs, GetMsgTimedOut
+from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.stop_watch import StopWatch
+
 
 ########################################################################
 # type aliases
@@ -97,6 +100,21 @@ def start_arg(request: Any) -> str:
         The params values are returned one at a time
     """
     return cast(str, request.param)
+
+
+########################################################################
+# TestMsgsCorrectSource
+########################################################################
+class TestMsgsCorrectSource:
+    """Verify that we are testing with correctly built code."""
+
+    ####################################################################
+    # test_msgs_correct_source
+    ####################################################################
+    def test_msgs_correct_source(self) -> None:
+        """Test msgs correct source."""
+        if "TOX_ENV_NAME" in os.environ:
+            verify_source(obj_to_check=Msgs)
 
 
 ########################################################################

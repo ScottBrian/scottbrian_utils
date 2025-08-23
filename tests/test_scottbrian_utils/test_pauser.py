@@ -5,6 +5,7 @@
 ########################################################################
 import itertools
 import logging
+import os
 import re
 import sys
 import time
@@ -18,9 +19,11 @@ import pytest
 ########################################################################
 # Local
 ########################################################################
+from scottbrian_utils.diag_msg import get_formatted_call_sequence as cseq
 from scottbrian_utils.pauser import Pauser
 from scottbrian_utils.pauser import IncorrectInput
-from scottbrian_utils.diag_msg import get_formatted_call_sequence as cseq
+from scottbrian_utils.src_verifier import verify_source
+
 
 ########################################################################
 # type aliases
@@ -156,6 +159,21 @@ def iterations_arg(request: Any) -> int:
         The params values are returned one at a time
     """
     return cast(int, request.param)
+
+
+########################################################################
+# TestPauserCorrectSource
+########################################################################
+class TestPauserCorrectSource:
+    """Verify that we are testing with correctly built code."""
+
+    ####################################################################
+    # test_pauser_correct_source
+    ####################################################################
+    def test_pauser_correct_source(self) -> None:
+        """Test pauser correct source."""
+        if "TOX_ENV_NAME" in os.environ:
+            verify_source(obj_to_check=Pauser)
 
 
 ########################################################################

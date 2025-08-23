@@ -5,6 +5,7 @@
 ########################################################################
 import inspect
 import logging
+import os
 import sys
 import threading
 import time
@@ -19,6 +20,7 @@ import pytest
 # Local
 ########################################################################
 from scottbrian_utils.timer import Timer
+from scottbrian_utils.src_verifier import verify_source
 from scottbrian_utils.stop_watch import StopWatch
 
 logger = logging.getLogger(__name__)
@@ -125,6 +127,21 @@ def greater_than_zero_default_timeout_arg(request: Any) -> IntFloat:
         The params values are returned one at a time
     """
     return cast(IntFloat, request.param)
+
+
+########################################################################
+# TestTimerCorrectSource
+########################################################################
+class TestTimerCorrectSource:
+    """Verify that we are testing with correctly built code."""
+
+    ####################################################################
+    # test_timer_correct_source
+    ####################################################################
+    def test_timer_correct_source(self) -> None:
+        """Test timer correct source."""
+        if "TOX_ENV_NAME" in os.environ:
+            verify_source(obj_to_check=Timer)
 
 
 ########################################################################
@@ -572,30 +589,6 @@ class TestTimerExamples:
 ########################################################################
 class TestTimerBasic:
     """Test basic functions of Timer."""
-
-    ####################################################################
-    # test_timer_correct_source
-    ####################################################################
-    def test_timer_correct_source(self) -> None:
-        """Test timer correct source."""
-
-        # set the following four lines
-        library = "C:\\Users\\Tiger\\PycharmProjects\\"
-        project = "scottbrian_utils"
-        py_file = "timer.py"
-        class_to_use = Timer
-
-        file_prefix = (
-            f"{library}{project}\\.tox"
-            f"\\py{sys.version_info.major}{sys.version_info.minor}-"
-        )
-        file_suffix = f"\\Lib\\site-packages\\{project}\\{py_file}"
-
-        pytest_run = f"{file_prefix}pytest{file_suffix}"
-        coverage_run = f"{file_prefix}coverage{file_suffix}"
-
-        actual = inspect.getsourcefile(class_to_use)
-        assert (actual == pytest_run) or (actual == coverage_run)
 
     ####################################################################
     # test_timer_case1a
