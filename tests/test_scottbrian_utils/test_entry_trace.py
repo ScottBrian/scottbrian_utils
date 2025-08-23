@@ -52,7 +52,7 @@ class ErrorTstEntryTrace(Exception):
 
 
 ########################################################################
-# TestDiagMsgCorrectSource
+# TestETraceCorrectSource
 ########################################################################
 class TestETraceCorrectSource:
     """Verify that we are testing with correctly built code."""

@@ -1,14 +1,22 @@
 """test_file_catalog.py module."""
 
-# standard library imports
+########################################################################
+# Standard Library Imports
+########################################################################
+import os
 from pathlib import Path
-import pytest
 from typing import Any, cast, Dict
 
-# third party imports
+########################################################################
+# Third Party Imports
+########################################################################
+import pytest
 
-# local imports
+########################################################################
+# Local Imports
+########################################################################
 import scottbrian_utils.file_catalog as cat
+from scottbrian_utils.src_verifier import verify_source
 
 # build case list for tests
 # first tuple item is the file name and second tuple item is the
@@ -48,6 +56,21 @@ def file_specs(request: Any) -> Dict[str, Path]:
         The params values are returned one at a time
     """
     return cast(Dict[str, Path], request.param)
+
+
+########################################################################
+# TestFileCatalogCorrectSource
+########################################################################
+class TestFileCatalogCorrectSource:
+    """Verify that we are testing with correctly built code."""
+
+    ####################################################################
+    # test_file_catalog_correct_source
+    ####################################################################
+    def test_file_catalog_correct_source(self) -> None:
+        """Test file_catalog correct source."""
+        if "TOX_ENV_NAME" in os.environ:
+            verify_source(obj_to_check=cat.FileCatalog)
 
 
 class TestFileCatalog:
@@ -94,13 +117,13 @@ class TestFileCatalog:
             _ = cat.FileCatalog(["file1"])  # type: ignore
 
         with pytest.raises(cat.FileSpecIncorrect):
-            _ = cat.FileCatalog([("file1")])  # type: ignore
+            _ = cat.FileCatalog(["file1"])  # type: ignore
 
         with pytest.raises(cat.FileSpecIncorrect):
             _ = cat.FileCatalog([("file1",)])  # type: ignore
 
         with pytest.raises(cat.FileSpecIncorrect):
-            _ = cat.FileCatalog([(42)])  # type: ignore
+            _ = cat.FileCatalog([42])  # type: ignore
 
         with pytest.raises(cat.FileSpecIncorrect):
             _ = cat.FileCatalog([(42, 24)])  # type: ignore
