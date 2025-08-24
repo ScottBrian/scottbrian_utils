@@ -602,7 +602,7 @@ class TestExcHookBasic:
 
         log_ver.test_msg("mainline entry")
 
-        threading.excepthook = "this is a bad hook"
+        threading.excepthook = lambda x: "this is a bad hook"
 
         log_ver.test_msg("mainline exit")
 

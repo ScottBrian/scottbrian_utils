@@ -1,15 +1,16 @@
-"""test_timer.py module."""
+"""test_time_hdr.py module."""
 
 ########################################################################
 # Standard Library
 ########################################################################
-import inspect
+from datetime import datetime, timedelta, timezone
 import logging
 import os
+import re
 import sys
-import threading
-import time
-from typing import Any, cast, Optional, Union
+
+from typing import Any, Callable, cast, Tuple, Union
+from typing_extensions import Final
 
 ########################################################################
 # Third Party
@@ -19,58 +20,49 @@ import pytest
 ########################################################################
 # Local
 ########################################################################
-from scottbrian_utils.timer import Timer
 from scottbrian_utils.src_verifier import verify_source
-from scottbrian_utils.stop_watch import StopWatch
+from scottbrian_utils.time_hdr import StartStopHeader as StartStopHeader
+from scottbrian_utils.time_hdr import time_box as time_box
+from scottbrian_utils.time_hdr import DT_Format as DT_Format
+from scottbrian_utils.time_hdr import (
+    get_datetime_match_string,
+    timedelta_match_string,
+)
 
 logger = logging.getLogger(__name__)
 
-########################################################################
-# type aliases
-########################################################################
-IntFloat = Union[int, float]
-OptIntFloat = Optional[IntFloat]
 
-
-########################################################################
-# Timer test exceptions
-########################################################################
-class ErrorTstTimer(Exception):
+class ErrorTstTimeHdr(Exception):
     """Base class for exception in this module."""
 
     pass
 
 
-########################################################################
-# timeout arg fixtures
-# greater_than_zero_timeout_arg fixture
-########################################################################
-zero_or_less_timeout_arg_list = [-1.1, -1, 0, 0.0]
-greater_than_zero_timeout_arg_list = [0.3, 0.5, 1, 1.5, 2, 4]
+class InvalidRouteNum(ErrorTstTimeHdr):
+    """InvalidRouteNum exception class."""
+
+    pass
 
 
-########################################################################
-# timeout_arg fixture
-########################################################################
-@pytest.fixture(params=greater_than_zero_timeout_arg_list)
-def timeout_arg(request: Any) -> IntFloat:
-    """Using different seconds for timeout.
+dt_format_arg_list = [
+    "0",
+    "%H:%M",
+    "%H:%M:%S",
+    "%m/%d %H:%M:%S",
+    "%b %d %H:%M:%S",
+    "%m/%d/%y %H:%M:%S",
+    "%m/%d/%Y %H:%M:%S",
+    "%b %d %Y %H:%M:%S",
+    "%a %b %d %Y %H:%M:%S",
+    "%a %b %d %H:%M:%S.%f",
+    "%A %b %d %H:%M:%S.%f",
+    "%A %B %d %H:%M:%S.%f",
+]
 
-    Args:
-        request: special fixture that returns the fixture params
 
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(IntFloat, request.param)
-
-
-########################################################################
-# zero_or_less_timeout_arg fixture
-########################################################################
-@pytest.fixture(params=zero_or_less_timeout_arg_list)
-def zero_or_less_timeout_arg(request: Any) -> IntFloat:
-    """Using different seconds for timeout.
+@pytest.fixture(params=dt_format_arg_list)
+def dt_format_arg(request: Any) -> str:
+    """Using different time formats.
 
     Args:
         request: special fixture that returns the fixture params
@@ -78,47 +70,43 @@ def zero_or_less_timeout_arg(request: Any) -> IntFloat:
     Returns:
         The params values are returned one at a time
     """
-    return cast(IntFloat, request.param)
+    return cast(str, request.param)
 
 
-########################################################################
-# greater_than_zero_timeout_arg fixture
-########################################################################
-@pytest.fixture(params=greater_than_zero_timeout_arg_list)
-def greater_than_zero_timeout_arg(request: Any) -> IntFloat:
-    """Using different seconds for timeout.
+dt_format_char_arg_list = [
+    "",
+    "%a",
+    "%A",
+    "%w",
+    "%d",
+    "%b",
+    "%B",
+    "%m",
+    "%y",
+    "%Y",
+    "%H",
+    "%I",
+    "%p",
+    "%M",
+    "%S",
+    "%f",
+    "%z",
+    "%Z" "%j",
+    "%U",
+    "%W",
+    "%c",
+    "%x",
+    "%X",
+    "%%",
+    "%G",
+    "%u",
+    "%V",
+]
 
-    Args:
-        request: special fixture that returns the fixture params
 
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(IntFloat, request.param)
-
-
-########################################################################
-# zero_or_less_default_timeout_arg fixture
-########################################################################
-@pytest.fixture(params=zero_or_less_timeout_arg_list)
-def zero_or_less_default_timeout_arg(request: Any) -> IntFloat:
-    """Using different seconds for timeout_default.
-
-    Args:
-        request: special fixture that returns the fixture params
-
-    Returns:
-        The params values are returned one at a time
-    """
-    return cast(IntFloat, request.param)
-
-
-########################################################################
-# greater_than_zero_default_timeout_arg fixture
-########################################################################
-@pytest.fixture(params=greater_than_zero_timeout_arg_list)
-def greater_than_zero_default_timeout_arg(request: Any) -> IntFloat:
-    """Using different seconds for timeout_default.
+@pytest.fixture(params=dt_format_char_arg_list)
+def dt_format_char_arg(request: Any) -> str:
+    """Using different time formats.
 
     Args:
         request: special fixture that returns the fixture params
@@ -126,873 +114,2229 @@ def greater_than_zero_default_timeout_arg(request: Any) -> IntFloat:
     Returns:
         The params values are returned one at a time
     """
-    return cast(IntFloat, request.param)
+    return cast(str, request.param)
+
+
+dt_datetime_arg_list = [
+    datetime(1999, 1, 1, 0, 0, 0, 0, tzinfo=timezone.utc),
+    datetime(2000, 2, 2, 1, 1, 1, 1, tzinfo=timezone.utc),
+    datetime(
+        2001, 3, 9, 9, 9, 9, 9, tzinfo=timezone(timedelta(hours=-23, minutes=-59))
+    ),
+    datetime(2002, 4, 10, 10, 10, 10, 10, tzinfo=timezone(timedelta(hours=-23))),
+    datetime(2009, 5, 11, 11, 11, 11, 11, tzinfo=timezone(timedelta(hours=-5))),
+    datetime(
+        2010,
+        6,
+        19,
+        19,
+        19,
+        19,
+        19,
+        tzinfo=timezone(timedelta(hours=-5)),
+    ),
+    datetime(2011, 7, 20, 20, 20, 20, 20, tzinfo=timezone(timedelta(hours=0))),
+    datetime(2019, 9, 21, 21, 21, 21, 21, tzinfo=timezone(timedelta(minutes=1))),
+    datetime(2020, 10, 29, 22, 29, 29, 29, tzinfo=timezone(timedelta(hours=1))),
+    datetime(
+        2021, 11, 30, 23, 30, 30, 30, tzinfo=timezone(timedelta(hours=23, minutes=59))
+    ),
+    datetime(
+        2022,
+        12,
+        31,
+        23,
+        59,
+        59,
+        999999,
+        tzinfo=timezone(timedelta(hours=23, minutes=59)),
+    ),
+]
+
+
+@pytest.fixture(params=dt_datetime_arg_list)
+def dt_datetime_arg(request: Any) -> datetime:
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(datetime, request.param)
+
+
+dt_datetime_month_arg_list = [1, 5, 9, 10, 11, 12]
+
+
+@pytest.fixture(params=dt_datetime_month_arg_list)
+def dt_datetime_month_arg(request: Any) -> int:
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+dt_datetime_day_arg_list = [1, 2, 9, 10, 11, 19, 20, 21, 29, 30, 31]
+
+
+@pytest.fixture(params=dt_datetime_day_arg_list)
+def dt_datetime_day_arg(request: Any) -> int:
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+dt_format_date_arg_list = [
+    "",
+    "weekday: %w, %m/%y",
+    "(weekday): %w, %m/%Y",
+    "%m/%d/%y",
+    "%m/%d/%Y",
+    "%a %b %Y",
+    "%a %B %Y",
+    "%A %b %Y",
+    "%A %B %Y",
+    "%d %b %Y",
+]
+
+dt_format_time_arg_list = [
+    "",
+    "hour: %H",
+    "[hour/min]: %H:%M",
+    "%H:%M",
+    "%H:%M:%S",
+    "%I:%M %p",
+    "%I:%M:%S %p",
+    "%H:%M:%S.%f",
+    "%H:%M:%S.%f%z",
+    "%H:%M:%S.%f %Z",
+]
+
+
+@pytest.fixture(params=dt_format_date_arg_list)
+def dt_format_date_arg(request: Any) -> str:
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(str, request.param)
+
+
+@pytest.fixture(params=dt_format_time_arg_list)
+def dt_format_time_arg(request: Any) -> str:
+    """Using different time formats.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(str, request.param)
+
+
+style_num_list = [1, 2, 3]
+
+
+@pytest.fixture(params=style_num_list)
+def style_num(request: Any) -> int:
+    """Using different time_box styles.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(int, request.param)
+
+
+end_arg_list = ["0", "\n", "\n\n"]
+
+
+@pytest.fixture(params=end_arg_list)
+def end_arg(request: Any) -> str:
+    """Choose single or double space.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(str, request.param)
+
+
+file_arg_list = ["0", "None", "sys.stdout", "sys.stderr"]
+
+
+@pytest.fixture(params=file_arg_list)
+def file_arg(request: Any) -> str:
+    """Using different file arg.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(str, request.param)
+
+
+flush_arg_list = ["0", "True", "False"]
+
+
+@pytest.fixture(params=flush_arg_list)
+def flush_arg(request: Any) -> str:
+    """False: do not flush print stream, True: flush print stream.
+
+     Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(str, request.param)
+
+
+enabled_arg_list = ["0", "static_true", "static_false", "dynamic_true", "dynamic_false"]
+
+
+@pytest.fixture(params=enabled_arg_list)
+def enabled_arg(request: Any) -> str:
+    """Determines how to specify time_box_enabled.
+
+    Args:
+        request: special fixture that returns the fixture params
+
+    Returns:
+        The params values are returned one at a time
+    """
+    return cast(str, request.param)
 
 
 ########################################################################
-# TestTimerExamples class
+# TestTimeHdrCorrectSource
 ########################################################################
-class TestTimerExamples:
-    """Test examples of Timer."""
+class TestTimeHdrCorrectSource:
+    """Verify that we are testing with correctly built code."""
 
     ####################################################################
-    # test_timer_example1
+    # test_time_hdr_correct_source
     ####################################################################
-    def test_timer_example1(self, capsys: Any) -> None:
-        """Test timer example1.
+    def test_time_hdr_correct_source(self) -> None:
+        """Test time_hdr correct source."""
+        if "TOX_ENV_NAME" in os.environ:
+            verify_source(obj_to_check=StartStopHeader)
 
-        Args:
-            capsys: pytest fixture to capture print output
 
-        """
-        print("mainline entered")
-        timer = Timer(timeout=3)
-        for idx in range(10):
-            print(f"idx = {idx}")
-            time.sleep(1)
-            if timer.is_expired():
-                print("timer has expired")
-                break
-        print("mainline exiting")
-
-        expected_result = "mainline entered\n"
-        expected_result += "idx = 0\n"
-        expected_result += "idx = 1\n"
-        expected_result += "idx = 2\n"
-        expected_result += "timer has expired\n"
-        expected_result += "mainline exiting\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
+class TestGetMatchStr:
+    """Test formatted re strings."""
 
     ####################################################################
-    # test_timer_example2
+    # test_get_datetime_match_string_mid
     ####################################################################
-    def test_timer_example2(self, capsys: Any) -> None:
-        """Test timer example2.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-
-        class A:
-            def __init__(self) -> None:
-                self.a = 1
-
-            def m1(self, sleep_time: float) -> bool:
-                timer = Timer(timeout=1)
-                time.sleep(sleep_time)
-                if timer.is_expired():
-                    return False
-                return True
-
-        print("mainline entered")
-        my_a = A()
-        print(my_a.m1(0.5))
-        print(my_a.m1(1.5))
-        print("mainline exiting")
-
-        expected_result = "mainline entered\n"
-        expected_result += "True\n"
-        expected_result += "False\n"
-        expected_result += "mainline exiting\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ####################################################################
-    # test_timer_example3
-    ####################################################################
-    def test_timer_example3(self, capsys: Any) -> None:
-        """Test timer example3.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-
-        class A:
-            def __init__(self) -> None:
-                self.a = 1
-
-            def m1(self, sleep_time: float, timeout: float) -> bool:
-                timer = Timer(timeout=timeout)
-                time.sleep(sleep_time)
-                if timer.is_expired():
-                    return False
-                return True
-
-        print("mainline entered")
-        my_a = A()
-        print(my_a.m1(sleep_time=0.5, timeout=0.7))
-        print(my_a.m1(sleep_time=1.5, timeout=1.2))
-        print(my_a.m1(sleep_time=1.5, timeout=1.8))
-        print("mainline exiting")
-
-        expected_result = "mainline entered\n"
-        expected_result += "True\n"
-        expected_result += "False\n"
-        expected_result += "True\n"
-        expected_result += "mainline exiting\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ####################################################################
-    # test_timer_example4
-    ####################################################################
-    def test_timer_example4(self, capsys: Any) -> None:
-        """Test timer example4.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-
-        class A:
-            def __init__(self, default_timeout: float):
-                self.a = 1
-                self.default_timeout = default_timeout
-
-            def m1(self, sleep_time: float, timeout: Optional[float] = None) -> bool:
-                timer = Timer(timeout=timeout, default_timeout=self.default_timeout)
-                time.sleep(sleep_time)
-                if timer.is_expired():
-                    return False
-                return True
-
-        print("mainline entered")
-        my_a = A(default_timeout=1.2)
-        print(my_a.m1(sleep_time=0.5))
-        print(my_a.m1(sleep_time=1.5))
-        print(my_a.m1(sleep_time=0.5, timeout=0.3))
-        print(my_a.m1(sleep_time=1.5, timeout=1.8))
-        print(my_a.m1(sleep_time=1.5, timeout=0))
-        print("mainline exiting")
-
-        expected_result = "mainline entered\n"
-        expected_result += "True\n"
-        expected_result += "False\n"
-        expected_result += "False\n"
-        expected_result += "True\n"
-        expected_result += "True\n"
-        expected_result += "mainline exiting\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ####################################################################
-    # test_timer_example5
-    ####################################################################
-    def test_timer_example5(self, capsys: Any) -> None:
-        """Test timer example5.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-
-        def f1() -> None:
-            print("f1 entered")
-            time.sleep(1)
-            f1_event.set()
-            time.sleep(1)
-            f1_event.set()
-            time.sleep(1)
-            f1_event.set()
-            print("f1 exiting")
-
-        print("mainline entered")
-        timer = Timer(timeout=2.5)
-        f1_thread = threading.Thread(target=f1)
-        f1_event = threading.Event()
-        f1_thread.start()
-        wait_result = f1_event.wait(timeout=timer.remaining_time())
-        print(f"wait1 result = {wait_result}")
-        f1_event.clear()
-        print(f"remaining time = {timer.remaining_time():0.1f}")
-        print(f"timer expired = {timer.is_expired()}")
-        wait_result = f1_event.wait(timeout=timer.remaining_time())
-        print(f"wait2 result = {wait_result}")
-        f1_event.clear()
-        print(f"remaining time = {timer.remaining_time():0.1f}")
-        print(f"timer expired = {timer.is_expired()}")
-        wait_result = f1_event.wait(timeout=timer.remaining_time())
-        print(f"wait3 result = {wait_result}")
-        f1_event.clear()
-        print(f"remaining time = {timer.remaining_time():0.4f}")
-        print(f"timer expired = {timer.is_expired()}")
-        f1_thread.join()
-        print("mainline exiting")
-
-        expected_result = "mainline entered\n"
-        expected_result += "f1 entered\n"
-        expected_result += "wait1 result = True\n"
-        expected_result += "remaining time = 1.5\n"
-        expected_result += "timer expired = False\n"
-        expected_result += "wait2 result = True\n"
-        expected_result += "remaining time = 0.5\n"
-        expected_result += "timer expired = False\n"
-        expected_result += "wait3 result = False\n"
-        expected_result += "remaining time = 0.0001\n"
-        expected_result += "timer expired = True\n"
-        expected_result += "f1 exiting\n"
-        expected_result += "mainline exiting\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ####################################################################
-    # test_timer_example6
-    ####################################################################
-    def test_timer_example6(self, capsys: Any) -> None:
-        """Test timer example6.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        print("mainline entered")
-        timer = Timer(timeout=2.5)
-        time.sleep(1)
-        print(f"timer expired = {timer.is_expired()}")
-        time.sleep(1)
-        print(f"timer expired = {timer.is_expired()}")
-        time.sleep(1)
-        print(f"timer expired = {timer.is_expired()}")
-        print("mainline exiting")
-
-        expected_result = "mainline entered\n"
-        expected_result += "timer expired = False\n"
-        expected_result += "timer expired = False\n"
-        expected_result += "timer expired = True\n"
-        expected_result += "mainline exiting\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ####################################################################
-    # test_timer_example6
-    ####################################################################
-    def test_timer_example7(self, capsys: Any) -> None:
-        """Test timer example7.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        print("example7 entered")
-        timer_a = Timer()
-        print(f"timer_a specified = {timer_a.is_specified()}")
-        timer_b = Timer(timeout=None)
-        print(f"timer_b specified = {timer_b.is_specified()}")
-        timer_c = Timer(timeout=-1)
-        print(f"timer_c specified = {timer_c.is_specified()}")
-        timer_d = Timer(timeout=0)
-        print(f"timer_d specified = {timer_d.is_specified()}")
-        timer_e = Timer(timeout=1)
-        print(f"timer_e specified = {timer_e.is_specified()}")
-        timer_f = Timer(default_timeout=None)
-        print(f"timer_f specified = {timer_f.is_specified()}")
-        timer_g = Timer(default_timeout=-1)
-        print(f"timer_g specified = {timer_g.is_specified()}")
-        timer_h = Timer(default_timeout=0)
-        print(f"timer_h specified = {timer_h.is_specified()}")
-        timer_i = Timer(default_timeout=1)
-        print(f"timer_i specified = {timer_i.is_specified()}")
-        timer_j = Timer(timeout=None, default_timeout=None)
-        print(f"timer_j specified = {timer_j.is_specified()}")
-        timer_k = Timer(timeout=None, default_timeout=-1)
-        print(f"timer_k specified = {timer_k.is_specified()}")
-        timer_l = Timer(timeout=None, default_timeout=0)
-        print(f"timer_l specified = {timer_l.is_specified()}")
-        timer_m = Timer(timeout=None, default_timeout=1)
-        print(f"timer_m specified = {timer_m.is_specified()}")
-        timer_n = Timer(timeout=-1, default_timeout=None)
-        print(f"timer_n specified = {timer_n.is_specified()}")
-        timer_o = Timer(timeout=-1, default_timeout=-1)
-        print(f"timer_o specified = {timer_o.is_specified()}")
-        timer_p = Timer(timeout=-1, default_timeout=0)
-        print(f"timer_p specified = {timer_p.is_specified()}")
-        timer_q = Timer(timeout=-1, default_timeout=1)
-        print(f"timer_q specified = {timer_q.is_specified()}")
-        timer_r = Timer(timeout=0, default_timeout=None)
-        print(f"timer_r specified = {timer_r.is_specified()}")
-        timer_s = Timer(timeout=0, default_timeout=-1)
-        print(f"timer_s specified = {timer_s.is_specified()}")
-        timer_t = Timer(timeout=0, default_timeout=0)
-        print(f"timer_t specified = {timer_t.is_specified()}")
-        timer_u = Timer(timeout=0, default_timeout=1)
-        print(f"timer_u specified = {timer_u.is_specified()}")
-        timer_v = Timer(timeout=1, default_timeout=None)
-        print(f"timer_v specified = {timer_v.is_specified()}")
-        timer_w = Timer(timeout=1, default_timeout=-1)
-        print(f"timer_w specified = {timer_w.is_specified()}")
-        timer_x = Timer(timeout=1, default_timeout=0)
-        print(f"timer_x specified = {timer_x.is_specified()}")
-        timer_y = Timer(timeout=1, default_timeout=1)
-        print(f"timer_y specified = {timer_y.is_specified()}")
-        print("example7 exiting")
-
-        expected_result = "example7 entered\n"
-        expected_result += "timer_a specified = False\n"
-        expected_result += "timer_b specified = False\n"
-        expected_result += "timer_c specified = False\n"
-        expected_result += "timer_d specified = False\n"
-        expected_result += "timer_e specified = True\n"
-        expected_result += "timer_f specified = False\n"
-        expected_result += "timer_g specified = False\n"
-        expected_result += "timer_h specified = False\n"
-        expected_result += "timer_i specified = True\n"
-        expected_result += "timer_j specified = False\n"
-        expected_result += "timer_k specified = False\n"
-        expected_result += "timer_l specified = False\n"
-        expected_result += "timer_m specified = True\n"
-        expected_result += "timer_n specified = False\n"
-        expected_result += "timer_o specified = False\n"
-        expected_result += "timer_p specified = False\n"
-        expected_result += "timer_q specified = False\n"
-        expected_result += "timer_r specified = False\n"
-        expected_result += "timer_s specified = False\n"
-        expected_result += "timer_t specified = False\n"
-        expected_result += "timer_u specified = False\n"
-        expected_result += "timer_v specified = True\n"
-        expected_result += "timer_w specified = True\n"
-        expected_result += "timer_x specified = True\n"
-        expected_result += "timer_y specified = True\n"
-        expected_result += "example7 exiting\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-    ####################################################################
-    # test_timer_example6
-    ####################################################################
-    def test_timer_example8(self, capsys: Any) -> None:
-        """Test timer example8.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        print("example8 entered")
-        timer_a = Timer()
-        print(f"timer_a timeout = {timer_a.timeout_value()}")
-        timer_b = Timer(timeout=None)
-        print(f"timer_b timeout = {timer_b.timeout_value()}")
-        timer_c = Timer(timeout=-1)
-        print(f"timer_c timeout = {timer_c.timeout_value()}")
-        timer_d = Timer(timeout=0)
-        print(f"timer_d timeout = {timer_d.timeout_value()}")
-        timer_e = Timer(timeout=1)
-        print(f"timer_e timeout = {timer_e.timeout_value()}")
-        timer_f = Timer(default_timeout=None)
-        print(f"timer_f timeout = {timer_f.timeout_value()}")
-        timer_g = Timer(default_timeout=-1)
-        print(f"timer_g timeout = {timer_g.timeout_value()}")
-        timer_h = Timer(default_timeout=0)
-        print(f"timer_h timeout = {timer_h.timeout_value()}")
-        timer_i = Timer(default_timeout=2.2)
-        print(f"timer_i timeout = {timer_i.timeout_value()}")
-        timer_j = Timer(timeout=None, default_timeout=None)
-        print(f"timer_j timeout = {timer_j.timeout_value()}")
-        timer_k = Timer(timeout=None, default_timeout=-1)
-        print(f"timer_k timeout = {timer_k.timeout_value()}")
-        timer_l = Timer(timeout=None, default_timeout=0)
-        print(f"timer_l timeout = {timer_l.timeout_value()}")
-        timer_m = Timer(timeout=None, default_timeout=2.2)
-        print(f"timer_m timeout = {timer_m.timeout_value()}")
-        timer_n = Timer(timeout=-1, default_timeout=None)
-        print(f"timer_n timeout = {timer_n.timeout_value()}")
-        timer_o = Timer(timeout=-1, default_timeout=-1)
-        print(f"timer_o timeout = {timer_o.timeout_value()}")
-        timer_p = Timer(timeout=-1, default_timeout=0)
-        print(f"timer_p timeout = {timer_p.timeout_value()}")
-        timer_q = Timer(timeout=-1, default_timeout=2.2)
-        print(f"timer_q timeout = {timer_q.timeout_value()}")
-        timer_r = Timer(timeout=0, default_timeout=None)
-        print(f"timer_r timeout = {timer_r.timeout_value()}")
-        timer_s = Timer(timeout=0, default_timeout=-1)
-        print(f"timer_s timeout = {timer_s.timeout_value()}")
-        timer_t = Timer(timeout=0, default_timeout=0)
-        print(f"timer_t timeout = {timer_t.timeout_value()}")
-        timer_u = Timer(timeout=0, default_timeout=2.2)
-        print(f"timer_u timeout = {timer_u.timeout_value()}")
-        timer_v = Timer(timeout=1, default_timeout=None)
-        print(f"timer_v timeout = {timer_v.timeout_value()}")
-        timer_w = Timer(timeout=1, default_timeout=-1)
-        print(f"timer_w timeout = {timer_w.timeout_value()}")
-        timer_x = Timer(timeout=1, default_timeout=0)
-        print(f"timer_x timeout = {timer_x.timeout_value()}")
-        timer_y = Timer(timeout=1, default_timeout=2.2)
-        print(f"timer_y timeout = {timer_y.timeout_value()}")
-        print("example8 exiting")
-
-        expected_result = "example8 entered\n"
-        expected_result += "timer_a timeout = None\n"
-        expected_result += "timer_b timeout = None\n"
-        expected_result += "timer_c timeout = None\n"
-        expected_result += "timer_d timeout = None\n"
-        expected_result += "timer_e timeout = 1\n"
-        expected_result += "timer_f timeout = None\n"
-        expected_result += "timer_g timeout = None\n"
-        expected_result += "timer_h timeout = None\n"
-        expected_result += "timer_i timeout = 2.2\n"
-        expected_result += "timer_j timeout = None\n"
-        expected_result += "timer_k timeout = None\n"
-        expected_result += "timer_l timeout = None\n"
-        expected_result += "timer_m timeout = 2.2\n"
-        expected_result += "timer_n timeout = None\n"
-        expected_result += "timer_o timeout = None\n"
-        expected_result += "timer_p timeout = None\n"
-        expected_result += "timer_q timeout = None\n"
-        expected_result += "timer_r timeout = None\n"
-        expected_result += "timer_s timeout = None\n"
-        expected_result += "timer_t timeout = None\n"
-        expected_result += "timer_u timeout = None\n"
-        expected_result += "timer_v timeout = 1\n"
-        expected_result += "timer_w timeout = 1\n"
-        expected_result += "timer_x timeout = 1\n"
-        expected_result += "timer_y timeout = 1\n"
-        expected_result += "example8 exiting\n"
-
-        captured = capsys.readouterr().out
-
-        assert captured == expected_result
-
-
-########################################################################
-# TestTimerBasic class
-########################################################################
-class TestTimerBasic:
-    """Test basic functions of Timer."""
-
-    ####################################################################
-    # test_timer_correct_source
-    ####################################################################
-    def test_timer_correct_source(self) -> None:
-        """Test timer correct source."""
-
-        # set the following four lines
-        library = "C:\\Users\\Tiger\\PycharmProjects\\"
-        project = "scottbrian_utils"
-        py_file = "timer.py"
-        class_to_use = Timer
-
-        file_prefix = (
-            f"{library}{project}\\.tox"
-            f"\\py{sys.version_info.major}{sys.version_info.minor}-"
-        )
-        file_suffix = f"\\Lib\\site-packages\\{project}\\{py_file}"
-
-        pytest_run = f"{file_prefix}pytest{file_suffix}"
-        coverage_run = f"{file_prefix}coverage{file_suffix}"
-
-        actual = inspect.getsourcefile(class_to_use)
-        assert (actual == pytest_run) or (actual == coverage_run)
-
-    ####################################################################
-    # test_timer_case1a
-    ####################################################################
-    def test_timer_case1a(self) -> None:
-        """Test timer case1a."""
-        print("mainline entered")
-        timer = Timer()
-        time.sleep(1)
-        assert not timer.is_expired()
-        time.sleep(1)
-        assert not timer.is_expired()
-        print("mainline exiting")
-
-    ####################################################################
-    # test_timer_case1b
-    ####################################################################
-    def test_timer_case1b(self) -> None:
-        """Test timer case1b."""
-        print("mainline entered")
-        timer = Timer(default_timeout=None)
-        time.sleep(1)
-        assert not timer.is_expired()
-        time.sleep(1)
-        assert not timer.is_expired()
-        print("mainline exiting")
-
-    ####################################################################
-    # test_timer_case1c
-    ####################################################################
-    def test_timer_case1c(self) -> None:
-        """Test timer case1c."""
-        print("mainline entered")
-        timer = Timer(timeout=None)
-        time.sleep(1)
-        assert not timer.is_expired()
-        time.sleep(1)
-        assert not timer.is_expired()
-        print("mainline exiting")
-
-    ####################################################################
-    # test_timer_case1d
-    ####################################################################
-    def test_timer_case1d(self) -> None:
-        """Test timer case1d."""
-        print("mainline entered")
-        timer = Timer(timeout=None, default_timeout=None)
-        time.sleep(1)
-        assert not timer.is_expired()
-        time.sleep(1)
-        assert not timer.is_expired()
-        print("mainline exiting")
-
-    ####################################################################
-    # test_timer_case2a
-    ####################################################################
-    def test_timer_case2a(self, zero_or_less_default_timeout_arg: IntFloat) -> None:
-        """Test timer case2a.
-
-        Args:
-            zero_or_less_default_timeout_arg: pytest fixture for timeout
-                                                seconds
-
-        """
-        print("mainline entered")
-        timer = Timer(default_timeout=zero_or_less_default_timeout_arg)
-        time.sleep(abs(zero_or_less_default_timeout_arg * 0.9))
-        assert not timer.is_expired()
-        time.sleep(abs(zero_or_less_default_timeout_arg))
-        assert not timer.is_expired()
-        print("mainline exiting")
-
-    ####################################################################
-    # test_timer_case2b
-    ####################################################################
-
-    def test_timer_case2b(self, zero_or_less_default_timeout_arg: IntFloat) -> None:
-        """Test timer case2b.
-
-        Args:
-            zero_or_less_default_timeout_arg: pytest fixture for timeout
-                                                seconds
-
-        """
-        print("mainline entered")
-        timer = Timer(timeout=None, default_timeout=zero_or_less_default_timeout_arg)
-        time.sleep(abs(zero_or_less_default_timeout_arg * 0.9))
-        assert not timer.is_expired()
-        time.sleep(abs(zero_or_less_default_timeout_arg))
-        assert not timer.is_expired()
-        print("mainline exiting")
-
-    ####################################################################
-    # test_timer_case3a
-    ####################################################################
-    def test_timer_case3a(
-        self, greater_than_zero_default_timeout_arg: IntFloat
+    def test_get_datetime_char_match(
+        self, dt_format_char_arg: str, dt_datetime_arg: datetime
     ) -> None:
-        """Test timer case3a.
+        """Test the datetime match string for one char.
 
         Args:
-            greater_than_zero_default_timeout_arg: pytest fixture for
-                                                     timeout seconds
+            dt_format_char_arg: pytest fixture for char arg
+            dt_datetime_arg: pytest fixture for datetime arg
 
         """
-        print("mainline entered")
-        timer = Timer(default_timeout=greater_than_zero_default_timeout_arg)
-        time.sleep(greater_than_zero_default_timeout_arg * 0.9)
-        assert not timer.is_expired()
-        time.sleep(greater_than_zero_default_timeout_arg)
-        assert timer.is_expired()
-        print("mainline exiting")
+        print(f"\n{dt_format_char_arg=}")
 
-    ####################################################################
-    # test_timer_case3b
-    ####################################################################
-    def test_timer_case3b(
-        self, greater_than_zero_default_timeout_arg: IntFloat
-    ) -> None:
-        """Test timer case3b.
+        old_datetime = dt_datetime_arg.strftime(dt_format_char_arg)
 
-        Args:
-            greater_than_zero_default_timeout_arg: pytest fixture for
-                                                     timeout seconds
-
-        """
-        print("mainline entered")
-        timer = Timer(
-            timeout=None, default_timeout=greater_than_zero_default_timeout_arg
+        new_datetime = datetime.now(timezone(timedelta(hours=1))).strftime(
+            dt_format_char_arg
         )
-        time.sleep(greater_than_zero_default_timeout_arg * 0.9)
-        assert not timer.is_expired()
-        time.sleep(greater_than_zero_default_timeout_arg)
-        assert timer.is_expired()
-        print("mainline exiting")
+
+        formatted_old_dt = f"{old_datetime} was a good time."
+        print(f"{formatted_old_dt=}")
+
+        formatted_new_dt = f"{new_datetime} was a good time."
+        print(f"{formatted_new_dt=}")
+
+        match_str = get_datetime_match_string(dt_format_char_arg)
+        print(f"{match_str=}")
+
+        adjusted_old_dt = re.sub(match_str, new_datetime, formatted_old_dt)
+        print(f"{adjusted_old_dt=}")
+
+        assert formatted_new_dt == adjusted_old_dt
 
     ####################################################################
-    # test_timer_case4a
+    # test_get_datetime_match_string_mid
     ####################################################################
-    def test_timer_case4a(self, zero_or_less_timeout_arg: IntFloat) -> None:
-        """Test timer case4a.
-
-        Args:
-            zero_or_less_timeout_arg: pytest fixture for timeout seconds
-
-        """
-        print("mainline entered")
-        timer = Timer(timeout=zero_or_less_timeout_arg)
-        time.sleep(abs(zero_or_less_timeout_arg * 0.9))
-        assert not timer.is_expired()
-        time.sleep(abs(zero_or_less_timeout_arg))
-        assert not timer.is_expired()
-        print("mainline exiting")
-
-    ####################################################################
-    # test_timer_case4b
-    ####################################################################
-    def test_timer_case4b(self, zero_or_less_timeout_arg: IntFloat) -> None:
-        """Test timer case4b.
-
-        Args:
-            zero_or_less_timeout_arg: pytest fixture for timeout seconds
-
-        """
-        print("mainline entered")
-        timer = Timer(timeout=zero_or_less_timeout_arg, default_timeout=None)
-        time.sleep(abs(zero_or_less_timeout_arg * 0.9))
-        assert not timer.is_expired()
-        time.sleep(abs(zero_or_less_timeout_arg))
-        assert not timer.is_expired()
-        print("mainline exiting")
-
-    ####################################################################
-    # test_timer_case5
-    ####################################################################
-    def test_timer_case5(
+    def test_get_datetime_match_string_start(
         self,
-        zero_or_less_timeout_arg: IntFloat,
-        zero_or_less_default_timeout_arg: IntFloat,
+        dt_format_date_arg: str,
+        dt_format_time_arg: str,
+        dt_datetime_arg: datetime,
     ) -> None:
-        """Test timer case5.
+        """Test the datetime match string at start of text.
 
         Args:
-            zero_or_less_timeout_arg: pytest fixture for timeout seconds
-            zero_or_less_default_timeout_arg: pytest fixture for timeout
-                                                seconds
+            dt_format_date_arg: pytest fixture for date arg
+            dt_format_time_arg: pytest fixture for time arg
+            dt_datetime_arg: pytest fixture for datetime arg
 
         """
-        print("mainline entered")
-        timer = Timer(
-            timeout=zero_or_less_timeout_arg,
-            default_timeout=zero_or_less_default_timeout_arg,
-        )
-        time.sleep(abs(zero_or_less_timeout_arg * 0.9))
-        assert not timer.is_expired()
-        time.sleep(abs(zero_or_less_timeout_arg))
-        assert not timer.is_expired()
-        print("mainline exiting")
+        if dt_format_date_arg == "":
+            dt_format = f"{dt_format_time_arg}"
+        else:
+            dt_format = f"{dt_format_date_arg} {dt_format_time_arg}"
+
+        print(f"\n{dt_format=}")
+
+        old_datetime = dt_datetime_arg.strftime(dt_format)
+
+        new_datetime = datetime.now(timezone(timedelta(hours=1))).strftime(dt_format)
+
+        formatted_old_dt = f"{old_datetime} was a good time."
+        print(f"{formatted_old_dt=}")
+
+        formatted_new_dt = f"{new_datetime} was a good time."
+        print(f"{formatted_new_dt=}")
+
+        match_str = get_datetime_match_string(dt_format)
+        print(f"{match_str=}")
+
+        adjusted_old_dt = re.sub(match_str, new_datetime, formatted_old_dt)
+        print(f"{adjusted_old_dt=}")
+
+        assert formatted_new_dt == adjusted_old_dt
 
     ####################################################################
-    # test_timer_case6
+    # test_get_datetime_match_string_mid
     ####################################################################
-    def test_timer_case6(
+    def test_get_datetime_match_string_mid(
         self,
-        zero_or_less_timeout_arg: IntFloat,
-        greater_than_zero_default_timeout_arg: IntFloat,
+        dt_format_date_arg: str,
+        dt_format_time_arg: str,
+        dt_datetime_arg: datetime,
     ) -> None:
-        """Test timer case6.
+        """Test the datetime match string.
 
         Args:
-            zero_or_less_timeout_arg: pytest fixture for timeout seconds
-            greater_than_zero_default_timeout_arg: pytest fixture for
-                                                     timeout seconds
+            dt_format_date_arg: pytest fixture for date arg
+            dt_format_time_arg: pytest fixture for time arg
+            dt_datetime_arg: pytest fixture for datetime arg
 
         """
-        print("mainline entered")
-        timer = Timer(
-            timeout=zero_or_less_timeout_arg,
-            default_timeout=greater_than_zero_default_timeout_arg,
+        if dt_format_date_arg == "":
+            dt_format = f"{dt_format_time_arg}"
+        else:
+            dt_format = f"{dt_format_date_arg} {dt_format_time_arg}"
+
+        print(f"\n{dt_format=}")
+
+        old_datetime = dt_datetime_arg.strftime(dt_format)
+
+        new_datetime = datetime.now(timezone(timedelta(hours=1))).strftime(dt_format)
+
+        formatted_old_dt = (
+            f"Here it is: {old_datetime} with " f"the formatting we want."
         )
-        time.sleep(abs(zero_or_less_timeout_arg * 0.9))
-        assert not timer.is_expired()
-        time.sleep(abs(zero_or_less_timeout_arg))
-        assert not timer.is_expired()
-        print("mainline exiting")
+        print(f"{formatted_old_dt=}")
+
+        formatted_new_dt = (
+            f"Here it is: {new_datetime} with " f"the formatting we want."
+        )
+        print(f"{formatted_new_dt=}")
+
+        match_str = get_datetime_match_string(dt_format)
+        print(f"{match_str=}")
+
+        adjusted_old_dt = re.sub(match_str, new_datetime, formatted_old_dt)
+        print(f"{adjusted_old_dt=}")
+
+        assert formatted_new_dt == adjusted_old_dt
 
     ####################################################################
-    # test_timer_case7a
+    # test_get_datetime_match_string_end
     ####################################################################
-    def test_timer_case7a(self, greater_than_zero_timeout_arg: IntFloat) -> None:
-        """Test timer case7a.
-
-        Args:
-            greater_than_zero_timeout_arg: pytest fixture for timeout
-                                             seconds
-
-        """
-        print("mainline entered")
-        timer = Timer(timeout=greater_than_zero_timeout_arg)
-        time.sleep(greater_than_zero_timeout_arg * 0.9)
-        assert not timer.is_expired()
-        time.sleep(greater_than_zero_timeout_arg)
-        assert timer.is_expired()
-        print("mainline exiting")
-
-    ####################################################################
-    # test_timer_case7b
-    ####################################################################
-    def test_timer_case7b(self, greater_than_zero_timeout_arg: IntFloat) -> None:
-        """Test timer case7b.
-
-        Args:
-            greater_than_zero_timeout_arg: pytest fixture for timeout
-                                             seconds
-
-        """
-        print("mainline entered")
-        timer = Timer(timeout=greater_than_zero_timeout_arg, default_timeout=None)
-        time.sleep(greater_than_zero_timeout_arg * 0.9)
-        assert not timer.is_expired()
-        time.sleep(greater_than_zero_timeout_arg)
-        assert timer.is_expired()
-        print("mainline exiting")
-
-    ####################################################################
-    # test_timer_case8
-    ####################################################################
-    def test_timer_case8(
+    def test_get_datetime_match_string_end(
         self,
-        greater_than_zero_timeout_arg: IntFloat,
-        zero_or_less_default_timeout_arg: IntFloat,
+        dt_format_date_arg: str,
+        dt_format_time_arg: str,
+        dt_datetime_arg: datetime,
     ) -> None:
-        """Test timer case8.
+        """Test the datetime match string at end of test.
 
         Args:
-            greater_than_zero_timeout_arg: pytest fixture for timeout
-                                             seconds
-            zero_or_less_default_timeout_arg: pytest fixture for timeout
-                                                seconds
+            dt_format_date_arg: pytest fixture for date arg
+            dt_format_time_arg: pytest fixture for time arg
+            dt_datetime_arg: pytest fixture for datetime arg
 
         """
-        print("mainline entered")
-        timer = Timer(
-            timeout=greater_than_zero_timeout_arg,
-            default_timeout=zero_or_less_default_timeout_arg,
-        )
-        time.sleep(greater_than_zero_timeout_arg * 0.9)
-        assert not timer.is_expired()
-        time.sleep(greater_than_zero_timeout_arg)
-        assert timer.is_expired()
-        print("mainline exiting")
+        if dt_format_date_arg == "":
+            dt_format = f"{dt_format_time_arg}"
+        else:
+            dt_format = f"{dt_format_date_arg} {dt_format_time_arg}"
+
+        print(f"\n{dt_format=}")
+
+        old_datetime = dt_datetime_arg.strftime(dt_format)
+
+        new_datetime = datetime.now(timezone(timedelta(hours=1))).strftime(dt_format)
+
+        formatted_old_dt = f"Time is on your side:" f" {old_datetime}"
+        print(f"{formatted_old_dt=}")
+
+        formatted_new_dt = f"Time is on your side:" f" {new_datetime}"
+        print(f"{formatted_new_dt=}")
+
+        match_str = get_datetime_match_string(dt_format)
+        print(f"{match_str=}")
+
+        adjusted_old_dt = re.sub(match_str, new_datetime, formatted_old_dt)
+        print(f"{adjusted_old_dt=}")
+
+        assert formatted_new_dt == adjusted_old_dt
+
+
+class TestTimedeltaMatchStr:
+    """Test formatted re string for timedelta."""
 
     ####################################################################
-    # test_timer_case9
+    # test_timedelta_match_str
     ####################################################################
-    def test_timer_case9(
+    @pytest.mark.parametrize("num_days_arg", (-999999999, -1, 0, 1, 999999999))
+    @pytest.mark.parametrize(
+        "num_hours_arg",
+        (
+            0,
+            1,
+            2,
+            11,
+            20,
+            21,
+            23,
+        ),
+    )
+    @pytest.mark.parametrize("num_mins_arg", (0, 1, 2, 9, 10, 58, 59))
+    @pytest.mark.parametrize("num_secs_arg", (0, 1, 2, 9, 11, 58, 59))
+    @pytest.mark.parametrize("num_usecs_arg", (0, 1, 2, 9, 10, 11, 100000, 999999))
+    def test_timedelta_match_str(
         self,
-        greater_than_zero_timeout_arg: IntFloat,
-        greater_than_zero_default_timeout_arg: IntFloat,
+        num_days_arg: int,
+        num_hours_arg: int,
+        num_mins_arg: int,
+        num_secs_arg: int,
+        num_usecs_arg: int,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test timer case9.
+        """Test the timedelta match string.
 
         Args:
-            greater_than_zero_timeout_arg: pytest fixture for timeout
-                                             seconds
-            greater_than_zero_default_timeout_arg: pytest fixture for
-                                                     timeout seconds
+            num_days_arg: number days
+            num_hours_arg: number hours
+            num_mins_arg: number minutes
+            num_secs_arg: number seconds
+            num_usecs_arg: number micro seconds
+
         """
-        print("mainline entered")
-        timer = Timer(
-            timeout=greater_than_zero_timeout_arg,
-            default_timeout=greater_than_zero_default_timeout_arg,
+        time_delta = timedelta(
+            days=num_days_arg,
+            hours=num_hours_arg,
+            minutes=num_mins_arg,
+            seconds=num_secs_arg,
+            microseconds=num_usecs_arg,
         )
-        time.sleep(greater_than_zero_timeout_arg * 0.9)
-        assert not timer.is_expired()
-        time.sleep(greater_than_zero_timeout_arg)
-        assert timer.is_expired()
-        print("mainline exiting")
+        logger.debug(f"time_delta: {time_delta}")
+        elapsed_time_pattern_regex = re.compile(f"time_delta: {timedelta_match_string}")
+        print(f"time_delta: {time_delta}")
 
+        captured = capsys.readouterr().out
+        captured_lines = captured.split("\n")
 
-########################################################################
-# TestTimerBasic class
-########################################################################
-class TestTimerRemainingTime:
-    """Test remaining_time method of Timer."""
+        assert elapsed_time_pattern_regex.match(captured_lines[0])
+        assert elapsed_time_pattern_regex.fullmatch(captured_lines[0])
 
     ####################################################################
-    # test_timer_remaining_time1
+    # test_timedelta_fail_match_str
     ####################################################################
-    def test_timer_remaining_time1(self, timeout_arg: IntFloat) -> None:
-        """Test timer remaining time1.
+    @pytest.mark.parametrize(
+        "num_days_arg",
+        (
+            "skip",
+            "1 day, ",
+            "1 days, ",
+            "-9999999999 days, ",
+            "=2 days, ",
+            "9999999999 days, ",
+        ),
+    )
+    @pytest.mark.parametrize("num_hours_arg", ("22:", "01", "111:", "24:", "hh:"))
+    @pytest.mark.parametrize("num_mins_arg", ("59:", "33", "55:55:", "63", "mm:"))
+    @pytest.mark.parametrize("num_secs_arg", ("42", "333", "11:11", "99", "ss"))
+    @pytest.mark.parametrize(
+        "num_usecs_arg",
+        ("skip", ".424242", ".3", "11:11", ".9999999", ",123456", "usecs"),
+    )
+    def test_timedelta_fail_match_str(
+        self,
+        num_days_arg: str,
+        num_hours_arg: str,
+        num_mins_arg: str,
+        num_secs_arg: str,
+        num_usecs_arg: str,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test the timedelta match string.
 
         Args:
-            timeout_arg: number of seconds to use for timer timeout arg
+            num_days_arg: number days
+            num_hours_arg: number hours
+            num_mins_arg: number minutes
+            num_secs_arg: number seconds
+            num_usecs_arg: number micro seconds
 
         """
-        tolerance_factor = 0.80
-        logger.debug("mainline entered")
-        stop_watch = StopWatch()
-        sleep_time = timeout_arg / 3
-        exp_remaining_time1: float = timeout_arg - sleep_time
-        exp_remaining_time2: float = timeout_arg - sleep_time * 2
-        exp_remaining_time3 = 0.0001
+        good_time = False
+        if (
+            num_days_arg in ("skip", "1 day, ")
+            and num_hours_arg == "22:"
+            and num_mins_arg == "59:"
+            and num_secs_arg == "42"
+            and num_usecs_arg in ("skip", ".424242")
+        ):
+            good_time = True
 
-        timer = Timer(timeout=timeout_arg)
-        stop_watch.start_clock(clock_iter=1)
-        stop_watch.pause(sleep_time, clock_iter=1)
+        elapsed_time_pattern_regex = re.compile(f"time_delta: {timedelta_match_string}")
+        time_delta = "time_delta: "
+        if num_days_arg != "skip":
+            time_delta = f"{time_delta}{num_days_arg}"
 
-        rem_time = timer.remaining_time()
-        assert (
-            (exp_remaining_time1 * tolerance_factor)
-            <= cast(float, rem_time)
-            <= exp_remaining_time1
+        time_delta = f"{time_delta}{num_hours_arg}{num_mins_arg}{num_secs_arg}"
+
+        if num_usecs_arg != "skip":
+            time_delta = f"{time_delta}{num_usecs_arg}"
+
+        logger.debug(f"{good_time=}, {time_delta}")
+
+        print(f"{time_delta}")
+
+        captured = capsys.readouterr().out
+        captured_lines = captured.split("\n")
+
+        if good_time:
+            assert elapsed_time_pattern_regex.match(captured_lines[0])
+            assert elapsed_time_pattern_regex.fullmatch(captured_lines[0])
+        else:
+            assert not elapsed_time_pattern_regex.fullmatch(captured_lines[0])
+
+
+class TestStartStopHeader:
+    """TestStartStopHeader class."""
+
+    @pytest.fixture(scope="class")
+    def hdr(self) -> "StartStopHeader":
+        """Method hdr.
+
+        Returns:
+            StartStopHeader instance
+        """
+        return StartStopHeader("TestName")
+
+    def test_print_start_msg(
+        self,
+        hdr: "StartStopHeader",
+        capsys: Any,
+        dt_format_arg: DT_Format,
+        end_arg: str,
+        file_arg: str,
+        flush_arg: str,
+    ) -> None:
+        """test_print_start_msg method.
+
+        Args:
+            hdr: instance of StartStopHeader
+            capsys: instance of the capture sys fixture
+            dt_format_arg: specifies dt_format_arg fixture
+            end_arg: specifies end_arg fixture
+            file_arg: specifies file_arg fixture
+            flush_arg: specifies the flush_arg fixture
+        """
+        # print(f"{sys.version_info.major=}")
+        # print(f"{sys.version_info.minor=}")
+        logger.debug(
+            f"mainline entered: {dt_format_arg=}, {end_arg=},"
+            f"{file_arg=}, {flush_arg=}"
         )
-        assert not timer.is_expired()
-        logger.debug(f"after third 1: " f"{exp_remaining_time1=}, {rem_time=}")
-
-        stop_watch.pause(sleep_time * 2, clock_iter=1)
-
-        rem_time = timer.remaining_time()
-        assert (
-            (exp_remaining_time2 * tolerance_factor)
-            <= cast(float, rem_time)
-            <= exp_remaining_time2
+        (
+            route_num,
+            expected_dt_format,
+            end,
+            file,
+            flush,
+            enabled_tf,
+        ) = TestTimeBox.get_arg_flags(
+            dt_format=dt_format_arg,
+            end=end_arg,
+            file=file_arg,
+            flush=flush_arg,
+            enabled="0",
         )
-        assert not timer.is_expired()
-        logger.debug(f"after third 2: " f"{exp_remaining_time2=}, {rem_time=}")
+        logger.debug(
+            f"arg flags: {route_num=:05b}, {expected_dt_format=},"
+            f"{end=}, {file=}, {flush=}, {enabled_tf=}"
+        )
+        if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
+            hdr.print_start_msg()
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB0:
+            hdr.print_start_msg(flush=flush)
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB0:
+            hdr.print_start_msg(file=eval(file_arg))
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB0:
+            hdr.print_start_msg(file=eval(file_arg), flush=flush)
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB0:
+            hdr.print_start_msg(end=end_arg)
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB0:
+            hdr.print_start_msg(end=end_arg, flush=flush)
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB0:
+            hdr.print_start_msg(end=end_arg, file=eval(file_arg))
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB0:
+            hdr.print_start_msg(end=end_arg, file=eval(file_arg), flush=flush)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB0:
+            hdr.print_start_msg(dt_format=dt_format_arg)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB0:
+            hdr.print_start_msg(dt_format=dt_format_arg, flush=flush)
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB0:
+            hdr.print_start_msg(dt_format=dt_format_arg, file=eval(file_arg))
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB0:
+            hdr.print_start_msg(
+                dt_format=dt_format_arg, file=eval(file_arg), flush=flush
+            )
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB0:
+            hdr.print_start_msg(dt_format=dt_format_arg, end=end_arg)
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB0:
+            hdr.print_start_msg(dt_format=dt_format_arg, end=end_arg, flush=flush)
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB0:
+            hdr.print_start_msg(
+                dt_format=dt_format_arg, end=end_arg, file=eval(file_arg)
+            )
+        else:  # route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB0:
+            hdr.print_start_msg(
+                dt_format=dt_format_arg, end=end_arg, file=eval(file_arg), flush=flush
+            )
 
-        time.sleep(sleep_time + 0.1)
+        logger.debug("back from router")
 
-        rem_time = timer.remaining_time()
-        assert exp_remaining_time3 == cast(float, rem_time)
-        assert timer.is_expired()
+        if file == "sys.stdout":
+            captured = capsys.readouterr().out
+        else:
+            captured = capsys.readouterr().err
 
-        logger.debug(f"after third 3: " f"{exp_remaining_time3=}, {rem_time=}")
+        start_dt = hdr.start_DT
+        formatted_dt = start_dt.strftime(expected_dt_format)
+        msg = "* Starting TestName on " + formatted_dt + " *"
+        flowers = "*" * len(msg)
+        expected = "\n" + flowers + end + msg + end + flowers + end
+        assert captured == expected
 
-        logger.debug(f"{stop_watch.start_time=} " f"{timer.start_time=}")
+        logger.debug(
+            f"mainline exiting, {sys.version_info.major=}, {sys.version_info.minor=}"
+        )
 
-        logger.debug("mainline exiting")
+    def test_print_end_msg(
+        self,
+        hdr: "StartStopHeader",
+        capsys: Any,
+        dt_format_arg: DT_Format,
+        end_arg: str,
+        file_arg: str,
+        flush_arg: str,
+    ) -> None:
+        """Method test_print_end_msg.
 
-    ####################################################################
-    # test_timer_remaining_time_none
-    ####################################################################
-    def test_timer_remaining_time_none(self) -> None:
-        """Test timer remaining time none2."""
-        logger.debug("mainline entered")
+        Args:
+            hdr: instance of StartStopHeader
+            capsys: instance of the capture sys fixture
+            dt_format_arg: specifies dt_format_arg fixture
+            end_arg: specifies end_arg fixture
+            file_arg: specifies file_arg fixture
+            flush_arg: specifies the flush_arg fixture
+        """
+        (
+            route_num,
+            expected_dt_format,
+            end,
+            file,
+            flush,
+            enabled_tf,
+        ) = TestTimeBox.get_arg_flags(
+            dt_format=dt_format_arg,
+            end=end_arg,
+            file=file_arg,
+            flush=flush_arg,
+            enabled="0",
+        )
 
-        timer = Timer(timeout=None)
-        time.sleep(1)
-        assert timer.remaining_time() is None
-        assert not timer.is_expired()
+        if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
+            hdr.print_end_msg()
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB0:
+            hdr.print_end_msg(flush=flush)
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB0:
+            hdr.print_end_msg(file=eval(file_arg))
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB0:
+            hdr.print_end_msg(file=eval(file_arg), flush=flush)
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB0:
+            hdr.print_end_msg(end=end_arg)
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB0:
+            hdr.print_end_msg(end=end_arg, flush=flush)
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB0:
+            hdr.print_end_msg(end=end_arg, file=eval(file_arg))
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB0:
+            hdr.print_end_msg(end=end_arg, file=eval(file_arg), flush=flush)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB0:
+            hdr.print_end_msg(dt_format=dt_format_arg)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB0:
+            hdr.print_end_msg(dt_format=dt_format_arg, flush=flush)
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB0:
+            hdr.print_end_msg(dt_format=dt_format_arg, file=eval(file_arg))
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB0:
+            hdr.print_end_msg(dt_format=dt_format_arg, file=eval(file_arg), flush=flush)
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB0:
+            hdr.print_end_msg(dt_format=dt_format_arg, end=end_arg)
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB0:
+            hdr.print_end_msg(dt_format=dt_format_arg, end=end_arg, flush=flush)
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB0:
+            hdr.print_end_msg(dt_format=dt_format_arg, end=end_arg, file=eval(file_arg))
+        else:  # route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB0:
+            hdr.print_end_msg(
+                dt_format=dt_format_arg, end=end_arg, file=eval(file_arg), flush=flush
+            )
 
-        time.sleep(1)
+        if file == "sys.stdout":
+            captured = capsys.readouterr().out
+        else:
+            captured = capsys.readouterr().err
 
-        assert timer.remaining_time() is None
-        assert not timer.is_expired()
+        start_dt = hdr.start_DT
+        end_dt = hdr.end_DT
+        formatted_delta = str(end_dt - start_dt)
+        formatted_dt = end_dt.strftime(expected_dt_format)
+        msg1: str = "* Ending TestName on " + formatted_dt
+        msg2: str = "* Elapsed time: " + formatted_delta
 
-        logger.debug("mainline exiting")
+        assert captured == TestStartStopHeader.get_flower_box(msg1, msg2, end)
+
+    @staticmethod
+    def get_flower_box(msg1: str, msg2: str, end: str) -> str:
+        """Method get_flower_box.
+
+        Args:
+            msg1: first message to issue
+            msg2: second message to issue
+            end: specifies the end arg to use on the print statement
+
+        Returns:
+            The flower box with the messages inside
+        """
+        flower_len: int = max(len(msg1), len(msg2)) + 2
+        flowers: str = "*" * flower_len
+        msg1 += " " * (flower_len - len(msg1) - 1) + "*"
+        msg2 += " " * (flower_len - len(msg2) - 1) + "*"
+        expected: str = "\n" + flowers + end + msg1 + end + msg2 + end + flowers + end
+        return expected
+
+
+class TestTimeBox:
+    """Class TestTimeBox."""
+
+    DT1: Final = 0b00010000
+    END1: Final = 0b00001000
+    FILE1: Final = 0b00000100
+    FLUSH1: Final = 0b00000010
+    ENAB1: Final = 0b00000001
+
+    DT0_END0_FILE0_FLUSH0_ENAB0: Final = 0b00000000
+    DT0_END0_FILE0_FLUSH0_ENAB1: Final = 0b00000001
+    DT0_END0_FILE0_FLUSH1_ENAB0: Final = 0b00000010
+    DT0_END0_FILE0_FLUSH1_ENAB1: Final = 0b00000011
+    DT0_END0_FILE1_FLUSH0_ENAB0: Final = 0b00000100
+    DT0_END0_FILE1_FLUSH0_ENAB1: Final = 0b00000101
+    DT0_END0_FILE1_FLUSH1_ENAB0: Final = 0b00000110
+    DT0_END0_FILE1_FLUSH1_ENAB1: Final = 0b00000111
+    DT0_END1_FILE0_FLUSH0_ENAB0: Final = 0b00001000
+    DT0_END1_FILE0_FLUSH0_ENAB1: Final = 0b00001001
+    DT0_END1_FILE0_FLUSH1_ENAB0: Final = 0b00001010
+    DT0_END1_FILE0_FLUSH1_ENAB1: Final = 0b00001011
+    DT0_END1_FILE1_FLUSH0_ENAB0: Final = 0b00001100
+    DT0_END1_FILE1_FLUSH0_ENAB1: Final = 0b00001101
+    DT0_END1_FILE1_FLUSH1_ENAB0: Final = 0b00001110
+    DT0_END1_FILE1_FLUSH1_ENAB1: Final = 0b00001111
+    DT1_END0_FILE0_FLUSH0_ENAB0: Final = 0b00010000
+    DT1_END0_FILE0_FLUSH0_ENAB1: Final = 0b00010001
+    DT1_END0_FILE0_FLUSH1_ENAB0: Final = 0b00010010
+    DT1_END0_FILE0_FLUSH1_ENAB1: Final = 0b00010011
+    DT1_END0_FILE1_FLUSH0_ENAB0: Final = 0b00010100
+    DT1_END0_FILE1_FLUSH0_ENAB1: Final = 0b00010101
+    DT1_END0_FILE1_FLUSH1_ENAB0: Final = 0b00010110
+    DT1_END0_FILE1_FLUSH1_ENAB1: Final = 0b00010111
+    DT1_END1_FILE0_FLUSH0_ENAB0: Final = 0b00011000
+    DT1_END1_FILE0_FLUSH0_ENAB1: Final = 0b00011001
+    DT1_END1_FILE0_FLUSH1_ENAB0: Final = 0b00011010
+    DT1_END1_FILE0_FLUSH1_ENAB1: Final = 0b00011011
+    DT1_END1_FILE1_FLUSH0_ENAB0: Final = 0b00011100
+    DT1_END1_FILE1_FLUSH0_ENAB1: Final = 0b00011101
+    DT1_END1_FILE1_FLUSH1_ENAB0: Final = 0b00011110
+    DT1_END1_FILE1_FLUSH1_ENAB1: Final = 0b00011111
+
+    @staticmethod
+    def get_arg_flags(
+        *, dt_format: str, end: str, file: str, flush: str, enabled: str
+    ) -> Tuple[int, DT_Format, str, str, bool, bool]:
+        """Static method get_arg_flags.
+
+        Args:
+            dt_format: 0 or the dt_format arg to use
+            end: 0 or the end arg to use
+            file: 0 or the file arg to use (stdout or stderr)
+            flush: 0 or the flush arg to use
+            enabled: 0 or the enabled arg to use
+
+        Returns:
+              the expected results based on the args
+        """
+        route_num = TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0
+
+        expected_dt_format = DT_Format(StartStopHeader.default_dt_format)
+        if dt_format != "0":
+            route_num = route_num | TestTimeBox.DT1
+            expected_dt_format = DT_Format(dt_format)
+
+        expected_end = "\n"
+        if end != "0":
+            route_num = route_num | TestTimeBox.END1
+            expected_end = end
+
+        expected_file = "sys.stdout"
+        if file != "0":
+            route_num = route_num | TestTimeBox.FILE1
+            if file != "None":
+                expected_file = file
+
+        # Note: we can specify flush, but we can't verify that it works
+        expected_flush = False
+        if flush != "0":
+            route_num = route_num | TestTimeBox.FLUSH1
+            if flush == "True":
+                expected_flush = True
+
+        expected_enabled_tf = True
+        if enabled != "0":
+            route_num = route_num | TestTimeBox.ENAB1
+            if (enabled == "static_false") or (enabled == "dynamic_false"):
+                expected_enabled_tf = False
+
+        return (
+            route_num,
+            expected_dt_format,
+            expected_end,
+            expected_file,
+            expected_flush,
+            expected_enabled_tf,
+        )
+
+    @staticmethod
+    def get_expected_msg(
+        *,
+        expected_func_msg: str,
+        actual: str,
+        expected_dt_format: DT_Format = DT_Format("%a %b %d %Y %H:%M:%S"),
+        # StartStopHeader.default_dt_format,
+        expected_end: str = "\n",
+        expected_enabled_tf: bool = True,
+    ) -> str:
+        """Static method get_expected_msg.
+
+        Helper function to build the expected message to compare
+        with the actual message captured with capsys.
+
+        Args:
+            expected_func_msg: message issued by wrapped function
+            actual: the message captured by capsys
+            expected_dt_format: dt_format to use to build expected
+                                  message
+            expected_end: end arg to use to build expected message
+            expected_enabled_tf: expected enabled arg to use to build
+                                   expected message
+
+        Returns:
+            the expected message that is built based on the input args
+        """
+        if expected_enabled_tf is False:
+            if expected_func_msg == "":
+                return ""
+            else:
+                return expected_func_msg + "\n"
+
+        match_fmt_string = get_datetime_match_string(expected_dt_format)
+
+        # get start time
+        match_re = re.compile("Starting func on " + match_fmt_string)
+        match_obj = match_re.search(actual)
+        assert match_obj
+        start_time = match_obj.group()
+
+        # get end time
+        match_re = re.compile("Ending func on " + match_fmt_string)
+        match_obj = match_re.search(actual)
+        assert match_obj
+        end_time = match_obj.group()
+
+        # get elapsed time
+        match_re = re.compile(
+            "Elapsed time: " "[0-9]:[0-9]{2}:[0-9]{2}( |.[0-9]{1,6} )"
+        )
+        match_obj = match_re.search(actual)
+        assert match_obj
+        elapsed_time = match_obj.group()[0:-1]
+
+        msg0 = "* " + start_time
+
+        flower_len = len(msg0) + len(" *")
+        flowers = "*" * flower_len
+
+        msg0 += " " * (flower_len - len(msg0) - 1) + "*"
+
+        expected0 = (
+            "\n" + flowers + expected_end + msg0 + expected_end + flowers + expected_end
+        )
+
+        # build expected1
+        msg1 = "* " + end_time
+        msg2 = "* " + elapsed_time
+
+        expected1 = TestStartStopHeader.get_flower_box(msg1, msg2, expected_end)
+
+        if expected_func_msg == "":
+            expected = expected0 + expected1
+        else:
+            expected = expected0 + expected_func_msg + "\n" + expected1
+
+        return expected
+
+    """
+    The following section tests each combination of arguments to the
+    time_box decorator for three styles of decoration (using pie,
+    calling with the function as the first parameter, and calling the
+    decorator with the function specified after the call. This test is
+    especially useful to ensure that the type hints are working
+    correctly, and that all combinations are accepted by python.
+
+    The following keywords with various values and in all combinations
+    are tested:
+        dt_format - several different datetime formats - see format_list
+        end - either '\n' for single space, and '\n\n' for double space
+        file - either sys.stdout or sys.stderr
+        flush - true/false
+        time_box_enabled - true/false
+
+    """
+
+    def test_timebox_router(
+        self,
+        capsys: Any,
+        style_num: int,
+        dt_format_arg: str,
+        end_arg: str,
+        file_arg: str,
+        flush_arg: str,
+        enabled_arg: str,
+    ) -> None:
+        """Method test_timebox_router.
+
+        Args:
+            capsys: instance of the capture sysout fixture
+            style_num: style from fixture
+            dt_format_arg: dt_format to use from fixture
+            end_arg: end arg from fixture for the print invocation
+            file_arg: file arg from fixture
+            flush_arg: flush arg from fixture to use on print statement
+            enabled_arg: specifies whether decorator is enabled
+        """
+        # func: Union[Callable[[int, str], int],
+        #              Callable[[int, str], None],
+        #              Callable[[], int],
+        #              Callable[[], None]]
+
+        a_func: Callable[..., Any]
+
+        expected_return_value: Union[int, None]
+
+        (
+            route_num,
+            expected_dt_format,
+            expected_end_arg,
+            expected_file_arg,
+            flush,
+            enabled_tf,
+        ) = TestTimeBox.get_arg_flags(
+            dt_format=dt_format_arg,
+            end=end_arg,
+            file=file_arg,
+            flush=flush_arg,
+            enabled=enabled_arg,
+        )
+
+        enabled_spec: Union[bool, Callable[..., bool]] = enabled_tf
+
+        def enabled_func() -> bool:
+            return enabled_tf
+
+        if (enabled_arg == "dynamic_true") or (enabled_arg == "dynamic_false"):
+            enabled_spec = enabled_func
+
+        if style_num == 1:
+            for func_style in range(1, 5):
+                a_func = TestTimeBox.build_style1_func(
+                    route_num,
+                    dt_format=DT_Format(dt_format_arg),
+                    end=end_arg,
+                    file=file_arg,
+                    flush=flush,
+                    enabled=enabled_spec,
+                    f_style=func_style,
+                )
+
+                if func_style == 1:
+                    func_msg = "The answer is: " + str(route_num)
+                    expected_return_value = route_num * style_num
+                    actual_return_value = a_func(route_num, func_msg)
+                elif func_style == 2:
+                    func_msg = "The answer is: " + str(route_num)
+                    expected_return_value = None
+                    actual_return_value = a_func(route_num, func_msg)
+                elif func_style == 3:
+                    func_msg = ""
+                    expected_return_value = 42
+                    actual_return_value = a_func()
+                else:  # func_style == 4:
+                    func_msg = ""
+                    expected_return_value = None
+                    actual_return_value = a_func()
+
+                TestTimeBox.check_results(
+                    capsys=capsys,
+                    func_msg=func_msg,
+                    expected_dt_format=expected_dt_format,
+                    expected_end=expected_end_arg,
+                    expected_file=expected_file_arg,
+                    expected_enabled_tf=enabled_tf,
+                    expected_return_value=expected_return_value,
+                    actual_return_value=actual_return_value,
+                )
+                if route_num > TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB1:
+                    break
+            return
+
+        elif style_num == 2:
+            a_func = TestTimeBox.build_style2_func(
+                route_num,
+                dt_format=DT_Format(dt_format_arg),
+                end=end_arg,
+                file=file_arg,
+                flush=flush,
+                enabled=enabled_spec,
+            )
+        else:  # style_num = 3
+            a_func = TestTimeBox.build_style3_func(
+                route_num,
+                dt_format=DT_Format(dt_format_arg),
+                end=end_arg,
+                file=file_arg,
+                flush=flush,
+                enabled=enabled_spec,
+            )
+
+        func_msg = "The answer is: " + str(route_num)
+        expected_return_value = route_num * style_num
+        actual_return_value = a_func(route_num, func_msg)
+        TestTimeBox.check_results(
+            capsys=capsys,
+            func_msg=func_msg,
+            expected_dt_format=expected_dt_format,
+            expected_end=expected_end_arg,
+            expected_file=expected_file_arg,
+            expected_enabled_tf=enabled_tf,
+            expected_return_value=expected_return_value,
+            actual_return_value=actual_return_value,
+        )
+
+    @staticmethod
+    def check_results(
+        capsys: Any,
+        func_msg: str,
+        expected_dt_format: DT_Format,
+        expected_end: str,
+        expected_file: str,
+        expected_enabled_tf: bool,
+        expected_return_value: Union[int, None],
+        actual_return_value: Union[int, None],
+    ) -> None:
+        """Static method check_results.
+
+        Args:
+            capsys: instance of the capture sysout fixture
+            func_msg: message issued by wrapped function
+            expected_dt_format: dt_format that is used
+            expected_end: end arg for the print invocation
+            expected_file: sys.stdout or sys.stderr
+            expected_enabled_tf: specifies whether decorator is enabled
+            expected_return_value: the expected func return value
+            actual_return_value: the actual func return value
+        """
+        if expected_file == "sys.stdout":
+            actual = capsys.readouterr().out
+        else:
+            actual = capsys.readouterr().err
+            func_msg = ""
+
+        expected = TestTimeBox.get_expected_msg(
+            expected_func_msg=func_msg,
+            actual=actual,
+            expected_dt_format=expected_dt_format,
+            expected_end=expected_end,
+            expected_enabled_tf=expected_enabled_tf,
+        )
+
+        assert actual == expected
+
+        # check that func returns the correct value
+
+        message = "Expected return value: {0}, Actual return value: {1}".format(
+            expected_return_value, actual_return_value
+        )
+        assert expected_return_value == actual_return_value, message
+
+    @staticmethod
+    def build_style1_func(
+        route_num: int,
+        dt_format: DT_Format,
+        end: str,
+        file: str,
+        flush: bool,
+        enabled: Union[bool, Callable[..., bool]],
+        f_style: int,
+    ) -> Callable[..., Any]:
+        """Static method build_style1_func.
+
+        Args:
+            route_num: specifies how to build the decorator
+            dt_format: dt format to use
+            end: end to use
+            file: specifies sys.stdout or sys.stderr for print statement
+            flush: specifies flush to use on print statement
+            enabled: specifies whether the decorator is enabled
+            f_style: type of call to build
+
+        Returns:
+              callable decorated function
+
+        Raises:
+              InvalidRouteNum: 'route_num was not recognized'
+        """
+        func: Union[
+            Callable[[int, str], int],
+            Callable[[int, str], None],
+            Callable[[], int],
+            Callable[[], None],
+        ]
+
+        if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
+            if f_style == 1:
+
+                @time_box
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
+
+            elif f_style == 2:
+
+                @time_box
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
+
+            elif f_style == 3:
+
+                @time_box
+                def func() -> int:
+                    return 42
+
+            else:  # f_style == 4:
+
+                @time_box
+                def func() -> None:
+                    pass
+
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB1:
+            if f_style == 1:
+
+                @time_box(time_box_enabled=enabled)
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
+
+            elif f_style == 2:
+
+                @time_box(time_box_enabled=enabled)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
+
+            elif f_style == 3:
+
+                @time_box(time_box_enabled=enabled)
+                def func() -> int:
+                    return 42
+
+            else:  # f_style == 4:
+
+                @time_box(time_box_enabled=enabled)
+                def func() -> None:
+                    pass
+
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB0:
+            if f_style == 1:
+
+                @time_box(flush=flush)
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
+
+            elif f_style == 2:
+
+                @time_box(flush=flush)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
+
+            elif f_style == 3:
+
+                @time_box(flush=flush)
+                def func() -> int:
+                    return 42
+
+            else:  # f_style == 4:
+
+                @time_box(flush=flush)
+                def func() -> None:
+                    pass
+
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB1:
+            if f_style == 1:
+
+                @time_box(flush=flush, time_box_enabled=enabled)
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
+
+            elif f_style == 2:
+
+                @time_box(flush=flush, time_box_enabled=enabled)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
+
+            elif f_style == 3:
+
+                @time_box(flush=flush, time_box_enabled=enabled)
+                def func() -> int:
+                    return 42
+
+            else:  # f_style == 4:
+
+                @time_box(flush=flush, time_box_enabled=enabled)
+                def func() -> None:
+                    pass
+
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB0:
+            if f_style == 1:
+
+                @time_box(file=eval(file))
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
+
+            elif f_style == 2:
+
+                @time_box(file=eval(file))
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
+
+            elif f_style == 3:
+
+                @time_box(file=eval(file))
+                def func() -> int:
+                    return 42
+
+            else:  # f_style == 4:
+
+                @time_box(file=eval(file))
+                def func() -> None:
+                    pass
+
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB1:
+            if f_style == 1:
+
+                @time_box(file=eval(file), time_box_enabled=enabled)
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
+
+            elif f_style == 2:
+
+                @time_box(file=eval(file), time_box_enabled=enabled)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
+
+            elif f_style == 3:
+
+                @time_box(file=eval(file), time_box_enabled=enabled)
+                def func() -> int:
+                    return 42
+
+            else:  # f_style == 4:
+
+                @time_box(file=eval(file), time_box_enabled=enabled)
+                def func() -> None:
+                    pass
+
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB0:
+            if f_style == 1:
+
+                @time_box(file=eval(file), flush=flush)
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
+
+            elif f_style == 2:
+
+                @time_box(file=eval(file), flush=flush)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
+
+            elif f_style == 3:
+
+                @time_box(file=eval(file), flush=flush)
+                def func() -> int:
+                    return 42
+
+            else:  # f_style == 4:
+
+                @time_box(file=eval(file), flush=flush)
+                def func() -> None:
+                    pass
+
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB1:
+            if f_style == 1:
+
+                @time_box(file=eval(file), flush=flush, time_box_enabled=enabled)
+                def func(a_int: int, a_str: str) -> int:
+                    print(a_str)
+                    return a_int * 1
+
+            elif f_style == 2:
+
+                @time_box(file=eval(file), flush=flush, time_box_enabled=enabled)
+                def func(a_int: int, a_str: str) -> None:
+                    print(a_str)
+
+            elif f_style == 3:
+
+                @time_box(file=eval(file), flush=flush, time_box_enabled=enabled)
+                def func() -> int:
+                    return 42
+
+            else:  # f_style == 4:
+
+                @time_box(file=eval(file), flush=flush, time_box_enabled=enabled)
+                def func() -> None:
+                    pass
+
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB0:
+
+            @time_box(end=end)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB1:
+
+            @time_box(end=end, time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB0:
+
+            @time_box(end=end, flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB1:
+
+            @time_box(end=end, flush=flush, time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB0:
+
+            @time_box(end=end, file=eval(file))
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB1:
+
+            @time_box(end=end, file=eval(file), time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB0:
+
+            @time_box(end=end, file=eval(file), flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB1:
+
+            @time_box(end=end, file=eval(file), flush=flush, time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB0:
+
+            @time_box(dt_format=dt_format)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB1:
+
+            @time_box(dt_format=dt_format, time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB0:
+
+            @time_box(dt_format=dt_format, flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB1:
+
+            @time_box(dt_format=dt_format, flush=flush, time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB0:
+
+            @time_box(dt_format=dt_format, file=eval(file))
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB1:
+
+            @time_box(dt_format=dt_format, file=eval(file), time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB0:
+
+            @time_box(dt_format=dt_format, file=eval(file), flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB1:
+
+            @time_box(
+                dt_format=dt_format,
+                file=eval(file),
+                flush=flush,
+                time_box_enabled=enabled,
+            )
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB0:
+
+            @time_box(dt_format=dt_format, end=end)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB1:
+
+            @time_box(dt_format=dt_format, end=end, time_box_enabled=enabled)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB0:
+
+            @time_box(dt_format=dt_format, end=end, flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB1:
+
+            @time_box(
+                dt_format=dt_format, end=end, flush=flush, time_box_enabled=enabled
+            )
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB0:
+
+            @time_box(dt_format=dt_format, end=end, file=eval(file))
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB1:
+
+            @time_box(
+                dt_format=dt_format, end=end, file=eval(file), time_box_enabled=enabled
+            )
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB0:
+
+            @time_box(dt_format=dt_format, end=end, file=eval(file), flush=flush)
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB1:
+
+            @time_box(
+                dt_format=dt_format,
+                end=end,
+                file=eval(file),
+                flush=flush,
+                time_box_enabled=enabled,
+            )
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 1
+
+        else:
+            raise InvalidRouteNum("route_num was not recognized")
+
+        return func
+
+    @staticmethod
+    def build_style2_func(
+        route_num: int,
+        dt_format: DT_Format,
+        end: str,
+        file: str,
+        flush: bool,
+        enabled: Union[bool, Callable[..., bool]],
+    ) -> Callable[[int, str], int]:
+        """Static method build_style2_func.
+
+        Args:
+            route_num: specifies how to build the decorator
+            dt_format: dt format to use
+            end: end to use
+            file: specifies sys.stdout or sys.stderr for print statement
+            flush: specifies flush to use on print statement
+            enabled: specifies whether the decorator is enabled
+
+        Returns:
+              callable decorated function
+
+        Raises:
+              InvalidRouteNum: 'route_num was not recognized'
+        """
+        if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func)
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, time_box_enabled=enabled)
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, flush=flush)
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, flush=flush, time_box_enabled=enabled)
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, file=eval(file))
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, file=eval(file), time_box_enabled=enabled)
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, file=eval(file), flush=flush)
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(
+                func, file=eval(file), flush=flush, time_box_enabled=enabled
+            )
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, end=end)
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, end=end, time_box_enabled=enabled)
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, end=end, flush=flush)
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, end=end, flush=flush, time_box_enabled=enabled)
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, end=end, file=eval(file))
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, end=end, file=eval(file), time_box_enabled=enabled)
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, end=end, file=eval(file), flush=flush)
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(
+                func, end=end, file=eval(file), flush=flush, time_box_enabled=enabled
+            )
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, dt_format=dt_format)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, dt_format=dt_format, time_box_enabled=enabled)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, dt_format=dt_format, flush=flush)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(
+                func, dt_format=dt_format, flush=flush, time_box_enabled=enabled
+            )
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, dt_format=dt_format, file=eval(file))
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(
+                func, dt_format=dt_format, file=eval(file), time_box_enabled=enabled
+            )
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, dt_format=dt_format, file=eval(file), flush=flush)
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(
+                func,
+                dt_format=dt_format,
+                file=eval(file),
+                flush=flush,
+                time_box_enabled=enabled,
+            )
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, dt_format=dt_format, end=end)
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(
+                func, dt_format=dt_format, end=end, time_box_enabled=enabled
+            )
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, dt_format=dt_format, end=end, flush=flush)
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(
+                func,
+                dt_format=dt_format,
+                end=end,
+                flush=flush,
+                time_box_enabled=enabled,
+            )
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(func, dt_format=dt_format, end=end, file=eval(file))
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(
+                func,
+                dt_format=dt_format,
+                end=end,
+                file=eval(file),
+                time_box_enabled=enabled,
+            )
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(
+                func, dt_format=dt_format, end=end, file=eval(file), flush=flush
+            )
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 2
+
+            func = time_box(
+                func,
+                dt_format=dt_format,
+                end=end,
+                file=eval(file),
+                flush=flush,
+                time_box_enabled=enabled,
+            )
+        else:
+            raise InvalidRouteNum("route_num was not recognized")
+
+        return func
+
+    @staticmethod
+    def build_style3_func(
+        route_num: int,
+        dt_format: DT_Format,
+        end: str,
+        file: str,
+        flush: bool,
+        enabled: Union[bool, Callable[..., bool]],
+    ) -> Callable[[int, str], int]:
+        """Static method build_style3_func.
+
+        Args:
+            route_num: specifies how to build the decorator
+            dt_format: dt format to use
+            end: end to use
+            file: specifies sys.stdout or sys.stderr for print statement
+            flush: specifies flush to use on print statement
+            enabled: specifies whether the decorator is enabled
+
+        Returns:
+              callable decorated function
+
+        Raises:
+              InvalidRouteNum: 'route_num was not recognized'
+        """
+        if route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box()(func)
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(time_box_enabled=enabled)(func)
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(flush=flush)(func)
+        elif route_num == TestTimeBox.DT0_END0_FILE0_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(flush=flush, time_box_enabled=enabled)(func)
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(file=eval(file))(func)
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(file=eval(file), time_box_enabled=enabled)(func)
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(file=eval(file), flush=flush)(func)
+        elif route_num == TestTimeBox.DT0_END0_FILE1_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(file=eval(file), flush=flush, time_box_enabled=enabled)(
+                func
+            )
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(end=end)(func)
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(end=end, time_box_enabled=enabled)(func)
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(end=end, flush=flush)(func)
+        elif route_num == TestTimeBox.DT0_END1_FILE0_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(end=end, flush=flush, time_box_enabled=enabled)(func)
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(end=end, file=eval(file))(func)
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(end=end, file=eval(file), time_box_enabled=enabled)(func)
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(end=end, file=eval(file), flush=flush)(func)
+        elif route_num == TestTimeBox.DT0_END1_FILE1_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(
+                end=end, file=eval(file), flush=flush, time_box_enabled=enabled
+            )(func)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format)(func)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format, time_box_enabled=enabled)(func)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format, flush=flush)(func)
+        elif route_num == TestTimeBox.DT1_END0_FILE0_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format, flush=flush, time_box_enabled=enabled)(
+                func
+            )
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format, file=eval(file))(func)
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(
+                dt_format=dt_format, file=eval(file), time_box_enabled=enabled
+            )(func)
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format, file=eval(file), flush=flush)(func)
+        elif route_num == TestTimeBox.DT1_END0_FILE1_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(
+                dt_format=dt_format,
+                file=eval(file),
+                flush=flush,
+                time_box_enabled=enabled,
+            )(func)
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format, end=end)(func)
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format, end=end, time_box_enabled=enabled)(
+                func
+            )
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format, end=end, flush=flush)(func)
+        elif route_num == TestTimeBox.DT1_END1_FILE0_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(
+                dt_format=dt_format, end=end, flush=flush, time_box_enabled=enabled
+            )(func)
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format, end=end, file=eval(file))(func)
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH0_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(
+                dt_format=dt_format, end=end, file=eval(file), time_box_enabled=enabled
+            )(func)
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB0:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(dt_format=dt_format, end=end, file=eval(file), flush=flush)(
+                func
+            )
+        elif route_num == TestTimeBox.DT1_END1_FILE1_FLUSH1_ENAB1:
+
+            def func(a_int: int, a_str: str) -> int:
+                print(a_str)
+                return a_int * 3
+
+            func = time_box(
+                dt_format=dt_format,
+                end=end,
+                file=eval(file),
+                flush=flush,
+                time_box_enabled=enabled,
+            )(func)
+        else:
+            raise InvalidRouteNum("route_num was not recognized")
+
+        return func
+
+
+class TestTimeBoxDocstrings:
+    """Class TestTimeBoxDocstrings."""
+
+    def test_timebox_with_example_1(self) -> None:
+        """Method test_timebox_with_example_1."""
+        print()
+        print("#" * 50)
+        print("Example for StartStopHeader:")
+        print()
+
+        def func1() -> None:
+            print("2 + 2 =", 2 + 2)
+
+        hdr = StartStopHeader("func1")
+        hdr.print_start_msg(file=sys.stdout)
+
+        func1()
+
+        hdr.print_end_msg(file=sys.stdout)
+
+    def test_timebox_with_example_2(self) -> None:
+        """Method test_timebox_with_example_2."""
+        print()
+        print("#" * 50)
+        print("Example for time_box decorator:")
+        print()
+
+        @time_box(file=sys.stdout)
+        def func2() -> None:
+            print("2 * 3 =", 2 * 3)
+
+        func2()
+
+    def test_timebox_with_example_3(self) -> None:
+        """Method test_timebox_with_example_3."""
+        print()
+        print("#" * 50)
+        print("Example of printing to stderr:")
+        print()
+
+        @time_box(file=sys.stderr)
+        def func3() -> None:
+            print("this text printed to stdout, not stderr")
+
+        func3()
+
+    def test_timebox_with_example_4(self) -> None:
+        """Method test_timebox_with_example_4."""
+        print()
+        print("#" * 50)
+        print("Example of statically wrapping function with time_box:")
+        print()
+
+        _tbe = False
+
+        @time_box(time_box_enabled=_tbe, file=sys.stdout)
+        def func4a() -> None:
+            print("this is sample text for _tbe = False static example")
+
+        func4a()  # func4a is not wrapped by time box
+
+        _tbe = True
+
+        @time_box(time_box_enabled=_tbe, file=sys.stdout)
+        def func4b() -> None:
+            print("this is sample text for _tbe = True static example")
+
+        func4b()  # func4b is wrapped by time box
+
+    def test_timebox_with_example_5(self) -> None:
+        """Method test_timebox_with_example_5."""
+        print()
+        print("#" * 50)
+        print("Example of dynamically wrapping function with time_box:")
+        print()
+
+        _tbe = True
+
+        def tbe() -> bool:
+            return _tbe
+
+        @time_box(time_box_enabled=tbe, file=sys.stdout)
+        def func5() -> None:
+            print("this is sample text for the tbe dynamic example")
+
+        func5()  # func5 is wrapped by time box
+
+        _tbe = False
+        func5()  # func5 is not wrapped by time_box
+
+    def test_timebox_with_example_6(self) -> None:
+        """Method test_timebox_with_example_6."""
+        print()
+        print("#" * 50)
+        print("Example of using different datetime format:")
+        print()
+
+        a_datetime_format: DT_Format = cast(DT_Format, "%m/%d/%y %H:%M:%S")
+
+        @time_box(dt_format=a_datetime_format)
+        def func6() -> None:
+            print("this is sample text for the datetime format example")
+
+        func6()

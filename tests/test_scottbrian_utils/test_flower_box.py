@@ -15,7 +15,8 @@ import pytest
 ########################################################################
 # Local
 ########################################################################
-from scottbrian_utils.flower_box import print_flower_box_msg  #  as print_flower_box_msg
+#  as print_flower_box_msg needed in next line?
+from scottbrian_utils.flower_box import print_flower_box_msg
 from scottbrian_utils.src_verifier import verify_source
 
 file_num_list = [0, 1, 2, 3]

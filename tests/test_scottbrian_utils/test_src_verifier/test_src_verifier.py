@@ -251,7 +251,7 @@ class TestSrcVerifierBasic:
             IncorrectSourceLibrary,
             match=f"Incorrect source library: {exp_path_args.exp_src_path}",
         ):
-            actual_src_path = verify_source(
+            verify_source(
                 obj_to_check=obj_to_check_arg, str_to_check=exp_path_args.str_to_check
             )
 
@@ -266,8 +266,6 @@ class TestSrcVerifierBasic:
             log_name="scottbrian_utils.src_verifier",
             fullmatch=True,
         )
-
-        # assert re.fullmatch(exp_path_args.exp_src_path, actual_src_path)
 
         log_ver.test_msg("mainline exit")
 
@@ -291,12 +289,15 @@ class TestSrcVerifierBasic:
 
         exp_src_path = (
             "C:/Users/Tiger/PycharmProjects/scottbrian_utils/"
-            f"tests/test_scottbrian_utils/test_src_verifier/test_src_verifier.py"
+            "tests/test_scottbrian_utils/test_src_verifier/test_src_verifier.py"
         )
         str_to_check = "tests/test_scottbrian_utils/test_src_verifier/test_src_verifier"
 
         if "TOX_ENV_NAME" in os.environ:
-            obj_to_check_str = "<class 'tests.test_scottbrian_utils.test_src_verifier.test_src_verifier.LocalDefClass'>"
+            obj_to_check_str = (
+                "<class 'tests.test_scottbrian_utils."
+                "test_src_verifier.test_src_verifier.LocalDefClass'>"
+            )
         else:
             obj_to_check_str = "<class 'test_src_verifier.LocalDefClass'>"
 
@@ -344,20 +345,9 @@ class TestSrcVerifierBasic:
 
         log_ver.test_msg("mainline entry")
 
-        # exp_src_path = (
-        #     "C:/Users/Tiger/PycharmProjects/scottbrian_utils/"
-        #     f"tests/test_scottbrian_utils/test_src_verifier/test_src_verifier.py"
-        # )
-        # str_to_check = "tests/test_scottbrian_utils/test_src_verifier/test_src_verifier"
-
-        # if "TOX_ENV_NAME" in os.environ:
-        #     obj_to_check_str = "<class 'tests.test_scottbrian_utils.test_src_verifier.test_src_verifier.LocalDefClass'>"
-        # else:
-        #     obj_to_check_str = "<class 'test_src_verifier.LocalDefClass'>"
-
         exp_log_pattern_args = (
-            f"verify_source entered with: obj_to_check='LocalDefClass', "
-            f"str_to_check='a string'"
+            "verify_source entered with: obj_to_check='LocalDefClass', "
+            "str_to_check='a string'"
         )
         log_ver.add_pattern(
             exp_log_pattern_args,
@@ -372,11 +362,7 @@ class TestSrcVerifierBasic:
                 "was expected, got str"
             ),
         ):
-            actual_src_path = verify_source(
-                obj_to_check="LocalDefClass", str_to_check="a string"
-            )
-
-        # assert re.fullmatch(exp_src_path, actual_src_path)
+            verify_source(obj_to_check="LocalDefClass", str_to_check="a string")
 
         log_ver.test_msg("mainline exit")
 

@@ -31,7 +31,6 @@ library.
 import inspect
 import logging
 from pathlib import Path
-import re
 from typing import Any
 
 ########################################################################
@@ -57,6 +56,12 @@ class ErrorSrcVer(Exception):
     pass
 
 
+class ObjNotFound(ErrorSrcVer):
+    """ObjNotFound exception class."""
+
+    pass
+
+
 class IncorrectSourceLibrary(ErrorSrcVer):
     """IncorrectSourceLibrary exception class."""
 
@@ -70,7 +75,11 @@ def verify_source(obj_to_check: Any, str_to_check: str = ".tox") -> str:
 
     logger.debug(f"verify_source entered with: {obj_to_check=}, {str_to_check=}")
 
-    src_path = Path(inspect.getsourcefile(obj_to_check)).as_posix()
+    src_file = inspect.getsourcefile(obj_to_check)
+    if src_file is None:
+        raise ObjNotFound(f"ObjNotFound: {obj_to_check}")
+
+    src_path = Path(src_file).as_posix()
 
     logger.debug(f"verify_source found: {src_path=}")
 
