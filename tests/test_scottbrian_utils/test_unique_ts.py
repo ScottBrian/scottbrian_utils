@@ -52,7 +52,7 @@ class TestUniqueTStampCorrectSource:
     def test_unique_ts_correct_source(self) -> None:
         """Test unique_ts correct source."""
         if "TOX_ENV_NAME" in os.environ:
-            verify_source(obj_to_check=UniqueTStamp)
+            verify_source(obj_to_check=UniqueTS)
 
 
 ########################################################################

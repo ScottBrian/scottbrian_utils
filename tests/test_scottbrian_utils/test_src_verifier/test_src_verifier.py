@@ -3,12 +3,13 @@
 ########################################################################
 # Standard Library
 ########################################################################
+import inspect
 import logging
 import os
 import pytest
 import re
 import sys
-from typing import Any, NamedTuple, Optional
+from typing import Any, Callable, cast, NamedTuple, Optional, TypeVar
 
 ########################################################################
 # Third Party
@@ -19,7 +20,11 @@ from typing import Any, NamedTuple, Optional
 # Local
 ########################################################################
 from scottbrian_utils.log_verifier import LogVer
-from scottbrian_utils.src_verifier import verify_source, IncorrectSourceLibrary
+from scottbrian_utils.src_verifier import (
+    verify_source,
+    IncorrectSourceLibrary,
+    ObjNotFound,
+)
 
 
 ########################################################################
@@ -246,14 +251,23 @@ class TestSrcVerifierBasic:
             obj_to_check=obj_to_check_arg,
             str_to_check="bad str_to_check",
         )
-
+        exp_err_msg = (
+            f"verify_source raising IncorrectSourceLibrary: "
+            f"src_path='{exp_path_args.exp_src_path}'"
+        )
         with pytest.raises(
             IncorrectSourceLibrary,
-            match=f"Incorrect source library: {exp_path_args.exp_src_path}",
+            match=exp_err_msg,
         ):
             verify_source(
                 obj_to_check=obj_to_check_arg, str_to_check=exp_path_args.str_to_check
             )
+
+        log_ver.add_pattern(
+            exp_err_msg,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
+        )
 
         log_ver.add_pattern(
             exp_path_args.exp_log_pattern_args,
@@ -293,13 +307,10 @@ class TestSrcVerifierBasic:
         )
         str_to_check = "tests/test_scottbrian_utils/test_src_verifier/test_src_verifier"
 
-        if "TOX_ENV_NAME" in os.environ:
-            obj_to_check_str = (
-                "<class 'tests.test_scottbrian_utils."
-                "test_src_verifier.test_src_verifier.LocalDefClass'>"
-            )
-        else:
-            obj_to_check_str = "<class 'test_src_verifier.LocalDefClass'>"
+        obj_to_check_str = (
+            "<class 'tests.test_scottbrian_utils."
+            "test_src_verifier.test_src_verifier.LocalDefClass'>"
+        )
 
         exp_log_pattern_args = (
             f"verify_source entered with: obj_to_check={obj_to_check_str}, "
@@ -363,6 +374,52 @@ class TestSrcVerifierBasic:
             ),
         ):
             verify_source(obj_to_check="LocalDefClass", str_to_check="a string")
+
+        log_ver.test_msg("mainline exit")
+
+        ################################################################
+        # check log results
+        ################################################################
+        match_results = log_ver.get_match_results(caplog=caplog)
+        log_ver.print_match_results(match_results, print_matched=True)
+        log_ver.verify_match_results(match_results)
+
+    ####################################################################
+    # test_src_verifier_unknown_obj_to_check
+    ####################################################################
+    def test_src_verifier_unknown_obj_to_check(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test with obj_to_check being unknown."""
+        log_ver = LogVer(log_name=__name__)
+
+        log_ver.test_msg("mainline entry")
+
+        monkeypatch.setattr(
+            inspect, "getsourcefile", lambda obj: None  # type: ignore[assignment]
+        )
+
+        exp_log_pattern_args = (
+            "verify_source entered with: obj_to_check='UnknownFunction', "
+            "str_to_check='a string'"
+        )
+        log_ver.add_pattern(
+            exp_log_pattern_args,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
+        )
+
+        exp_err_msg = (
+            "verify_source raising ObjNotFound: obj_to_check='UnknownFunction'"
+        )
+        with pytest.raises(ObjNotFound, match=exp_err_msg):
+            verify_source(obj_to_check="UnknownFunction", str_to_check="a string")
+
+        log_ver.add_pattern(
+            exp_err_msg,
+            log_name="scottbrian_utils.src_verifier",
+            fullmatch=True,
+        )
 
         log_ver.test_msg("mainline exit")
 

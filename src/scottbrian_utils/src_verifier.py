@@ -77,13 +77,17 @@ def verify_source(obj_to_check: Any, str_to_check: str = ".tox") -> str:
 
     src_file = inspect.getsourcefile(obj_to_check)
     if src_file is None:
-        raise ObjNotFound(f"ObjNotFound: {obj_to_check}")
+        err_msg = f"verify_source raising ObjNotFound: {obj_to_check=}"
+        logger.debug(f"{err_msg}")
+        raise ObjNotFound(err_msg)
 
     src_path = Path(src_file).as_posix()
 
     logger.debug(f"verify_source found: {src_path=}")
 
     if str_to_check not in src_path:
-        raise IncorrectSourceLibrary(f"Incorrect source library: {src_path}")
+        err_msg = f"verify_source raising IncorrectSourceLibrary: {src_path=}"
+        logger.debug(f"{err_msg}")
+        raise IncorrectSourceLibrary(f"{err_msg}")
 
     return src_path
