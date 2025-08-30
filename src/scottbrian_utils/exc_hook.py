@@ -1,8 +1,8 @@
 """Module test_helpers
 
-============
-test_helpers
-============
+========
+exc_hook
+========
 
 The *test_helpers* module provides classes to use during testing.
 

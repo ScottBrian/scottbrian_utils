@@ -7,8 +7,8 @@
 .. include:: ../../README.rst
 
 .. toctree::
-   :maxdepth: 2
-   :titlesonly:
+   :numbered:
+   :maxdepth: 1
    :caption: API Reference:
 
    diag_msg <diag_msg_link>
@@ -16,6 +16,8 @@
    doc_checker <doc_checker_link>
 
    entry_trace <entry_trace_link>
+
+   exc_hook <exc_hook_link>
 
    file_catalog <file_catalog_link>
 
@@ -26,6 +28,8 @@
    msgs <msgs_link>
 
    pauser <pauser_link>
+
+   src_verifier <src_verifier_link>
 
    stop_watch <stop_watch_link>
 

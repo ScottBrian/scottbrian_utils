@@ -22,6 +22,14 @@ coded in a module, however, you will see the module name instead of
 
 """
 
+# """
+# .. toctree::
+#    :maxdepth: 1
+#    :class: CallerInfo
+#    diag_msg
+#
+# """
+
 ########################################################################
 # Standard Library
 ########################################################################

@@ -9,7 +9,7 @@ import os
 import pytest
 import re
 import sys
-from typing import Any, Callable, cast, NamedTuple, Optional, TypeVar
+from typing import Any, NamedTuple, Optional
 
 ########################################################################
 # Third Party
@@ -395,9 +395,7 @@ class TestSrcVerifierBasic:
 
         log_ver.test_msg("mainline entry")
 
-        monkeypatch.setattr(
-            inspect, "getsourcefile", lambda obj: None  # type: ignore[assignment]
-        )
+        monkeypatch.setattr(inspect, "getsourcefile", lambda obj: None)
 
         exp_log_pattern_args = (
             "verify_source entered with: obj_to_check='UnknownFunction', "

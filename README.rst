@@ -7,19 +7,29 @@ Intro
 
 This is a collection of generally useful functions for use with any application.
 
-1. The diag_msg function allows you to print a message with the time and caller sequence added for you.
+1. The diag_msg function allows you to print a message with the time and caller sequence
+   added for you.
 2. The doc_checker module provides an easy way to do a doctest.
-3. The etrace decorator provide entry and exit tracing including passed args and returned values.
-4. The FileCatalog item allows you to map file names to their paths.
-5. The print_flower_box_msg function allows you to print text in a flower box (i.e., surrounded by asterisks).
-6. The log_verifier allows you to verify that expected log messages have been issued.
-7. The msgs item is a simple facility you can use in test cases to send messages between threads.
-8. The Pauser class provides a pause function similar to the python sleep function, but with improved accuracy.
-9. The stop_watch item is a simple timing function that you can use in test cases.
-10. The @time_box decorator allows you to print start, stop, and execution times.
-11. The timer item provides a way to keep track of time to determine when a function has timed out.
-12. The UniqueTS class provides a way to obtain a unique timestamp.
-13. The ExcHook class handles thread exceptions for test cases to ensure the test case fails
+3. The etrace decorator provide entry and exit tracing including passed args and
+   returned values.
+4. The ExcHook class handles thread exceptions for test cases to ensure that the test
+   case fails.
+5. The FileCatalog item allows you to map file names to their paths.
+6. The print_flower_box_msg function allows you to print text in a flower box (i.e.,
+   surrounded by asterisks).
+7. The log_verifier allows you to verify that expected log messages have been issued.
+8. The msgs item is a simple facility you can use in test cases to send messages between
+   threads.
+9. The Pauser class provides a pause function similar to the python sleep function, but
+   with improved accuracy.
+10. The verify_source function in src_verifier.py allows you to verify that you are
+    testing the built code and not the source.
+11. The stop_watch item is a simple timing function that you can use in test cases.
+12. The @time_box decorator allows you to print start, stop, and execution times.
+13. The timer item provides a way to keep track of time to determine when a function has
+    timed out.
+14. The UniqueTS class provides a way to obtain a unique timestamp.
+
 
 
 Examples:

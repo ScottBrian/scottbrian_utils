@@ -1,26 +1,33 @@
 """Module src_verifier.
 
-======
-SrcVer
-======
+=============
+verify_source
+=============
 
-The src_verifier module contains a function that checks whether the
-source under test resides in the expected test library. This ensures the
-code was properly built and is not being tested in place in the source
-library.
+The verify_source function checks whether the code under test is from
+the expected test library. For unit test, the source is normally tested
+in place in the source library. For function test, however, the desired
+method is to build the code using the project.toml and then testing the
+code from the build target library. When using tox to do the test, this
+library is placed in the .tox folder. By default, verify_source will
+check that code comes from the library in the .tox folder by simply
+searching for the string ".tox" in the file path for the library. The
+library path is obtained using ''inspect.getsourcefile()'' for an
+imported object passed in the call to verify_source. Note that the
+string to search for can also be specified in case some other test
+method is used instead of tox.
 
 :Example1: pytest test case to ensure the correct source:
 
     .. code-block:: python
 
-    from scottbrian_utils.src_verifier import verify_source
-    from scottbrian_utils.diag_msg import diag_msg
-    import logging
+        from scottbrian_utils.src_verifier import verify_source
+        from scottbrian_utils.diag_msg import diag_msg
 
-    class TestDiagMsgCorrectSource:
-        def test_diag_msg_correct_source(self) -> None:
-            if "TOX_ENV_NAME" in os.environ:
-                verify_source(obj_to_check=diag_msg)
+        class TestDiagMsgCorrectSource:
+            def test_diag_msg_correct_source(self) -> None:
+                if "TOX_ENV_NAME" in os.environ:
+                    verify_source(obj_to_check=diag_msg)
 
 
 """
