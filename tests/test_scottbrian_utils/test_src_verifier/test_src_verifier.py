@@ -307,10 +307,13 @@ class TestSrcVerifierBasic:
         )
         str_to_check = "tests/test_scottbrian_utils/test_src_verifier/test_src_verifier"
 
-        obj_to_check_str = (
-            "<class 'tests.test_scottbrian_utils."
-            "test_src_verifier.test_src_verifier.LocalDefClass'>"
-        )
+        if "TOX_ENV_NAME" in os.environ:
+            obj_to_check_str = (
+                "<class 'tests.test_scottbrian_utils."
+                "test_src_verifier.test_src_verifier.LocalDefClass'>"
+            )
+        else:
+            obj_to_check_str = "<class 'test_src_verifier.LocalDefClass'>"
 
         exp_log_pattern_args = (
             f"verify_source entered with: obj_to_check={obj_to_check_str}, "

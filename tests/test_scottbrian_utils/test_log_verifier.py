@@ -296,8 +296,8 @@ class LogVerifier:
             assert captured_lines[idx] == expected_lines[idx]
 
         assert start_pattern_regex.fullmatch(expected_lines[4])
-        print(f"{start_pattern_regex}")
-        print(f"{captured_lines[4]}")
+        # print(f"{start_pattern_regex}")
+        # print(f"{captured_lines[4]}")
         assert end_pattern_regex.fullmatch(expected_lines[5])
         assert elapsed_time_pattern_regex.fullmatch(expected_lines[6])
 
@@ -351,8 +351,8 @@ class LogVerifier:
 
         self.build_ver_record()
 
-        for line in self.captured_lines:
-            print(line)
+        # for line in self.captured_lines:
+        #     print(line)
 
         if exp_num_unmatched_patterns is not None:
             assert (
@@ -449,7 +449,7 @@ class LogVerifier:
         ):
             return True
         else:
-            print(f"returning False: {ver_result=}")
+            # print(f"returning False: {ver_result=}")
             return False
 
     def verify_lines(
@@ -517,10 +517,11 @@ class LogVerifier:
                 + " unmatched"
             )
             if log_section.hdr_line != expected_hdr_line:
-                print(
-                    f"verify_lines returning False 1: "
-                    f"\n{log_section.hdr_line=} \n{expected_hdr_line=}"
-                )
+                # print(
+                #     f"verify_lines returning False 1: "
+                #     f"\n{log_section.hdr_line=}"
+                #     "\n{expected_hdr_line=}"
+                # )
                 return False
 
             for key in log_section.line_items.keys():
@@ -546,18 +547,18 @@ class LogVerifier:
 
             for key, line_item in log_section.line_items.items():
                 if line_item.num_actual_matches != line_item.num_counted_matched:
-                    print(
-                        f"verify_lines returning False 2: "
-                        f"\n{line_item.num_actual_matches=} "
-                        f"\n{line_item.num_counted_matched=}"
-                    )
+                    # print(
+                    #     f"verify_lines returning False 2: "
+                    #     f"\n{line_item.num_actual_matches=} "
+                    #     f"\n{line_item.num_counted_matched=}"
+                    # )
                     return False
                 if line_item.num_actual_unmatches != line_item.num_counted_unmatched:
-                    print(
-                        f"verify_lines returning False 3 "
-                        f"\n{line_item.num_actual_unmatches=} "
-                        f"\n{line_item.num_counted_unmatched=}"
-                    )
+                    # print(
+                    #     f"verify_lines returning False 3 "
+                    #     f"\n{line_item.num_actual_unmatches=} "
+                    #     f"\n{line_item.num_counted_unmatched=}"
+                    # )
                     return False
         return True
 
@@ -3413,7 +3414,7 @@ class TestLogVerCombos:
             capsys: pytest fixture to capture print output
             caplog: pytest fixture to capture log output
         """
-        print(f"\n{msgs_arg=}\n{patterns_arg=}")
+        # print(f"\n{msgs_arg=}\n{patterns_arg=}")
 
         matched_msg_array: dict[str, set[str]] = {
             "msg0": {""},
