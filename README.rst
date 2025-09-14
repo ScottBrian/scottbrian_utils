@@ -22,7 +22,7 @@ This is a collection of generally useful functions for use with any application.
    threads.
 9. The Pauser class provides a pause function similar to the python sleep function, but
    with improved accuracy.
-10. The verify_source function in src_verifier.py allows you to verify that you are
+10. The verify_lib function in testlib_verifier.py allows you to verify that you are
     testing the built code and not the source.
 11. The stop_watch item is a simple timing function that you can use in test cases.
 12. The @time_box decorator allows you to print start, stop, and execution times.
@@ -183,6 +183,7 @@ Release History
 * 6.0.0
     * drop support for python 3.12
     * add ExcHook for test case use to catch thread errors
+    * add testlib_verifier to check that built code is being tested
 
 Meta
 ====

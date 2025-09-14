@@ -28,7 +28,7 @@ import pytest
 ########################################################################
 from scottbrian_utils.entry_trace import etrace
 from scottbrian_utils.log_verifier import LogVer
-from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.testlib_verifier import verify_lib
 
 logger = logging.getLogger(__name__)
 logger.debug(f"start5 of test_entry_trace.py with {__name__=}")
@@ -63,7 +63,7 @@ class TestETraceCorrectSource:
     def test_entry_trace_correct_source(self) -> None:
         """Test entry_trace correct source."""
         if "TOX_ENV_NAME" in os.environ:
-            verify_source(obj_to_check=etrace)
+            verify_lib(obj_to_check=etrace)
 
 
 ########################################################################

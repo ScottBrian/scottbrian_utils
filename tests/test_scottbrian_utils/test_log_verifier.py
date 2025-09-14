@@ -39,7 +39,7 @@ from scottbrian_utils.log_verifier import (
     UnmatchedPatterns,
     UnmatchedLogMessages,
 )
-from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.testlib_verifier import verify_lib
 from scottbrian_utils.time_hdr import (
     get_datetime_match_string,
     timedelta_match_string,
@@ -878,7 +878,7 @@ class TestLogVerCorrectSource:
     def test_log_verifier_correct_source(self) -> None:
         """Test log_verifier correct source."""
         if "TOX_ENV_NAME" in os.environ:
-            verify_source(obj_to_check=LogVer)
+            verify_lib(obj_to_check=LogVer)
 
 
 ########################################################################

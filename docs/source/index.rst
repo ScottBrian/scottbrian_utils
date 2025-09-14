@@ -29,7 +29,7 @@
 
    pauser <pauser_link>
 
-   src_verifier <src_verifier_link>
+   testlib_verifier <testlib_verifier_link>
 
    stop_watch <stop_watch_link>
 

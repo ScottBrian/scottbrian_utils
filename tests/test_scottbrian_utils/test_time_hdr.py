@@ -20,7 +20,7 @@ import pytest
 ########################################################################
 # Local
 ########################################################################
-from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.testlib_verifier import verify_lib
 from scottbrian_utils.time_hdr import StartStopHeader as StartStopHeader
 from scottbrian_utils.time_hdr import time_box as time_box
 from scottbrian_utils.time_hdr import DT_Format as DT_Format
@@ -344,7 +344,7 @@ class TestTimeHdrCorrectSource:
     def test_time_hdr_correct_source(self) -> None:
         """Test time_hdr correct source."""
         if "TOX_ENV_NAME" in os.environ:
-            verify_source(obj_to_check=StartStopHeader)
+            verify_lib(obj_to_check=StartStopHeader)
 
 
 class TestGetMatchStr:

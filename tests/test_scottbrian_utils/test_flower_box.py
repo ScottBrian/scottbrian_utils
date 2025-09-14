@@ -17,7 +17,7 @@ import pytest
 ########################################################################
 #  as print_flower_box_msg needed in next line?
 from scottbrian_utils.flower_box import print_flower_box_msg
-from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.testlib_verifier import verify_lib
 
 file_num_list = [0, 1, 2, 3]
 
@@ -47,7 +47,7 @@ class TestFlowerBoxCorrectSource:
     def test_flower_box_correct_source(self) -> None:
         """Test flower_box correct source."""
         if "TOX_ENV_NAME" in os.environ:
-            verify_source(obj_to_check=print_flower_box_msg)
+            verify_lib(obj_to_check=print_flower_box_msg)
 
 
 class TestFlowerBox:

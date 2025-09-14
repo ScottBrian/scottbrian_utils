@@ -16,7 +16,7 @@ import pytest
 # Local
 ########################################################################
 import scottbrian_utils.file_catalog as cat
-from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.testlib_verifier import verify_lib
 
 # build case list for tests
 # first tuple item is the file name and second tuple item is the
@@ -70,7 +70,7 @@ class TestFileCatalogCorrectSource:
     def test_file_catalog_correct_source(self) -> None:
         """Test file_catalog correct source."""
         if "TOX_ENV_NAME" in os.environ:
-            verify_source(obj_to_check=cat.FileCatalog)
+            verify_lib(obj_to_check=cat.FileCatalog)
 
 
 class TestFileCatalog:

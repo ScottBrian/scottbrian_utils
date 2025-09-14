@@ -18,7 +18,7 @@ import pytest
 # Local
 ########################################################################
 from scottbrian_utils.timer import Timer
-from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.testlib_verifier import verify_lib
 from scottbrian_utils.stop_watch import StopWatch
 
 logger = logging.getLogger(__name__)
@@ -139,7 +139,7 @@ class TestTimerCorrectSource:
     def test_timer_correct_source(self) -> None:
         """Test timer correct source."""
         if "TOX_ENV_NAME" in os.environ:
-            verify_source(obj_to_check=Timer)
+            verify_lib(obj_to_check=Timer)
 
 
 ########################################################################

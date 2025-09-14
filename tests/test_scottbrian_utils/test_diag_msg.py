@@ -30,7 +30,7 @@ from scottbrian_utils.diag_msg import diag_msg_datetime_fmt
 from scottbrian_utils.diag_msg import get_formatted_call_seq_depth
 from scottbrian_utils.diag_msg import diag_msg_caller_depth
 
-from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.testlib_verifier import verify_lib
 
 from scottbrian_utils.entry_trace import etrace
 
@@ -515,7 +515,7 @@ class TestDiagMsgCorrectSource:
     def test_diag_msg_correct_source(self) -> None:
         """Test diag_msg correct source."""
         if "TOX_ENV_NAME" in os.environ:
-            verify_source(obj_to_check=diag_msg)
+            verify_lib(obj_to_check=diag_msg)
 
 
 ########################################################################

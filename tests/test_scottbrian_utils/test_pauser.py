@@ -22,7 +22,7 @@ import pytest
 from scottbrian_utils.diag_msg import get_formatted_call_sequence as cseq
 from scottbrian_utils.pauser import Pauser
 from scottbrian_utils.pauser import IncorrectInput
-from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.testlib_verifier import verify_lib
 
 
 ########################################################################
@@ -173,7 +173,7 @@ class TestPauserCorrectSource:
     def test_pauser_correct_source(self) -> None:
         """Test pauser correct source."""
         if "TOX_ENV_NAME" in os.environ:
-            verify_source(obj_to_check=Pauser)
+            verify_lib(obj_to_check=Pauser)
 
 
 ########################################################################

@@ -17,7 +17,7 @@ import pytest
 ########################################################################
 # Local
 ########################################################################
-from scottbrian_utils.src_verifier import verify_source
+from scottbrian_utils.testlib_verifier import verify_lib
 from scottbrian_utils.stop_watch import StopWatch
 
 ########################################################################
@@ -97,7 +97,7 @@ class TestStopWatchCorrectSource:
     def test_stop_watch_correct_source(self) -> None:
         """Test stop_watch correct source."""
         if "TOX_ENV_NAME" in os.environ:
-            verify_source(obj_to_check=StopWatch)
+            verify_lib(obj_to_check=StopWatch)
 
 
 ########################################################################
