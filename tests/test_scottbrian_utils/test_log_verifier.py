@@ -1,27 +1,26 @@
 """test_log_verifier.py module."""
 
-import string
-
 ########################################################################
 # Standard Library
 ########################################################################
-from collections.abc import Iterable
-from dataclasses import dataclass, field
 import datetime
-from enum import Enum, auto
 import itertools as it
 import logging
-import more_itertools as mi
 import os
 import re
+import string
 import threading
 import time
-from typing import Any, Callable, cast, Optional, Union
 import warnings
+from collections.abc import Iterable
+from dataclasses import dataclass, field
+from enum import Enum, auto
+from typing import Any, Callable, cast, Optional, Union
 
 ########################################################################
 # Third Party
 ########################################################################
+import more_itertools as mi
 import numpy as np
 import pytest
 
@@ -29,8 +28,6 @@ import pytest
 # Local
 ########################################################################
 from scottbrian_utils.diag_msg import get_formatted_call_sequence
-from scottbrian_utils.log_verifier import LogVer
-from scottbrian_utils.log_verifier import MatchResults
 from scottbrian_utils.log_verifier import (
     InvalidLogNameSpecified,
     InvalidStrColWidthSpecified,
@@ -39,6 +36,8 @@ from scottbrian_utils.log_verifier import (
     UnmatchedPatterns,
     UnmatchedLogMessages,
 )
+from scottbrian_utils.log_verifier import LogVer
+from scottbrian_utils.log_verifier import MatchResults
 from scottbrian_utils.testlib_verifier import verify_lib
 from scottbrian_utils.time_hdr import (
     get_datetime_match_string,
@@ -301,6 +300,12 @@ class LogVerifier:
         assert end_pattern_regex.fullmatch(expected_lines[5])
         assert elapsed_time_pattern_regex.fullmatch(expected_lines[6])
 
+        # AI suggest the above code should have used captured instead
+        # of expected
+        assert start_pattern_regex.fullmatch(captured_lines[4])
+        assert end_pattern_regex.fullmatch(captured_lines[5])
+        assert elapsed_time_pattern_regex.fullmatch(captured_lines[6])
+
         for idx in range(7, len(captured_lines)):
             assert captured_lines[idx] == expected_lines[idx]
 
@@ -316,11 +321,11 @@ class LogVerifier:
         """Verify the log records.
 
         Args:
-            print_only: specifies to printy the results without
+            print_only: specifies to print the results without
                 performing verification
             print_matched: specifies whether to print the matched
                 records. If no, the matched records output will be
-                supressed.
+                suppressed.
             exp_num_unmatched_patterns: number of unmatched patterns
                 that are expected
             exp_unmatched_patterns: list of patterns that are expected
@@ -1377,6 +1382,16 @@ class TestLogVerErrors:
 ########################################################################
 # TestLogVerBasic class
 ########################################################################
+msgs1 = ["fedcb6", "gfedcb7", "hgfedcb8"]
+test_msgs = ["tmsg1", "t2_msg2", "test3_msg3", "tst4_msg_four"]
+
+msgs2 = ["fedcb6", "gfedcb7", "hgfedcb8", "ihgfedcb9", "jihgfedcb0"]
+
+msgs3 = ["fedcb6", "gfedcb7", "hgfedcb8", "ihgfedcb9", "jihgfedcb0"]
+
+msgs4 = ["fedcb6", "gfedcb7", "hgfedcb8", "ihgfedcb9", "jihgfedcb0"]
+
+
 @pytest.mark.cover
 class TestLogVerBasic:
     """Test basic functions of LogVer."""
@@ -1409,22 +1424,24 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_test_msg
     ####################################################################
-    test_msgs = ["tmsg1", "t2_msg2", "test3_msg3", "tst4_msg_four"]
-
-    test_msg_combos = mi.collapse(
-        map(lambda n: it.combinations(TestLogVerBasic.test_msgs, n), range(5)),
-        base_type=tuple,
+    test_msg_combos1 = list(
+        mi.collapse(
+            map(lambda n: it.combinations(test_msgs, n), range(5)),
+            base_type=tuple,
+        )
     )
-    msgs = ["fedcb6", "gfedcb7", "hgfedcb8"]
-
-    msg_combos = mi.collapse(
-        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(3)),
-        base_type=tuple,
+    msg_combos1 = list(
+        mi.collapse(
+            map(lambda n: it.combinations(msgs1, n), range(3)),
+            base_type=tuple,
+        )
     )
 
-    pattern_combos = mi.collapse(
-        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(3)),
-        base_type=tuple,
+    pattern_combos = list(
+        mi.collapse(
+            map(lambda n: it.combinations(msgs1, n), range(3)),
+            base_type=tuple,
+        )
     )
 
     @staticmethod
@@ -1435,11 +1452,11 @@ class TestLogVerBasic:
     def enable_false() -> bool:
         return False
 
-    @pytest.mark.parametrize("test_msgs_arg", test_msg_combos)
+    @pytest.mark.parametrize("test_msgs_arg", test_msg_combos1)
     @pytest.mark.parametrize(
         "test_msgs_enabled_arg", [None, True, False, enable_true, enable_false]
     )
-    @pytest.mark.parametrize("msgs_arg", msg_combos)
+    @pytest.mark.parametrize("msgs_arg", msg_combos1)
     @pytest.mark.parametrize("patterns_arg", pattern_combos)
     @pytest.mark.parametrize(
         "log_name_arg",
@@ -1458,7 +1475,7 @@ class TestLogVerBasic:
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test log_verifier example5 for add_pattern.
+        """Test log_verifier test messages.
 
         Args:
             test_msgs_arg: test messages to issue
@@ -1499,7 +1516,7 @@ class TestLogVerBasic:
             else:
                 exp_num_unmatched_log_msgs += 1
 
-        for idx, pattern in enumerate(patterns_arg):
+        for pattern in patterns_arg:
             if pattern not in msgs_arg:
                 exp_num_unmatched_patterns += 1
             test_log_ver.add_pattern(pattern=pattern, fullmatch=True)
@@ -1519,20 +1536,22 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_alignment
     ####################################################################
-    msgs = ["fedcb6", "gfedcb7", "hgfedcb8", "ihgfedcb9", "jihgfedcb0"]
-
-    msg_combos = mi.collapse(
-        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(8)),
-        base_type=tuple,
+    msg_combos2 = list(
+        mi.collapse(
+            map(lambda n: it.combinations(msgs2, n), range(8)),
+            base_type=tuple,
+        )
     )
 
-    pattern_combos = mi.collapse(
-        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(8)),
-        base_type=tuple,
+    pattern_combos2 = list(
+        mi.collapse(
+            map(lambda n: it.combinations(msgs2, n), range(8)),
+            base_type=tuple,
+        )
     )
 
-    @pytest.mark.parametrize("msgs_arg", msg_combos)
-    @pytest.mark.parametrize("patterns_arg", pattern_combos)
+    @pytest.mark.parametrize("msgs_arg", msg_combos2)
+    @pytest.mark.parametrize("patterns_arg", pattern_combos2)
     @pytest.mark.parametrize("fullmatch_arg", [0, 1, 2])
     @pytest.mark.parametrize(
         "log_name_arg",
@@ -1547,7 +1566,7 @@ class TestLogVerBasic:
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test log_verifier example5 for add_pattern.
+        """Test log_verifier alignment.
 
         Args:
             msgs_arg: msgs to issue to log
@@ -1603,10 +1622,8 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_alignment2
     ####################################################################
-    msgs = ["fedcb6", "gfedcb7", "hgfedcb8", "ihgfedcb9", "jihgfedcb0"]
-
-    @pytest.mark.parametrize("msg_arg", msgs)
-    @pytest.mark.parametrize("pattern_arg", msgs)
+    @pytest.mark.parametrize("msg_arg", msgs3)
+    @pytest.mark.parametrize("pattern_arg", msgs3)
     @pytest.mark.parametrize("fullmatch_arg", [True, False])
     @pytest.mark.parametrize(
         "log_name_arg",
@@ -1621,7 +1638,7 @@ class TestLogVerBasic:
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test log_verifier example5 for add_pattern.
+        """Test log_verifier alignment.
 
         Args:
             msg_arg: msgs to issue to log
@@ -1729,20 +1746,22 @@ class TestLogVerBasic:
     ####################################################################
     # test_log_verifier_alignment
     ####################################################################
-    msgs = ["fedcb6", "gfedcb7", "hgfedcb8", "ihgfedcb9", "jihgfedcb0"]
-
-    msg_combos = mi.collapse(
-        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(8)),
-        base_type=tuple,
+    msg_combos3 = list(
+        mi.collapse(
+            map(lambda n: it.combinations(msgs4, n), range(8)),
+            base_type=tuple,
+        )
     )
 
-    pattern_combos = mi.collapse(
-        map(lambda n: it.combinations(TestLogVerBasic.msgs, n), range(8)),
-        base_type=tuple,
+    pattern_combos3 = list(
+        mi.collapse(
+            map(lambda n: it.combinations(msgs4, n), range(8)),
+            base_type=tuple,
+        )
     )
 
-    @pytest.mark.parametrize("msgs_arg", msg_combos)
-    @pytest.mark.parametrize("patterns_arg", pattern_combos)
+    @pytest.mark.parametrize("msgs_arg", msg_combos3)
+    @pytest.mark.parametrize("patterns_arg", pattern_combos3)
     @pytest.mark.parametrize("fullmatch_arg", [0, 1, 2])
     def test_log_verifier_alignment3(
         self,
@@ -1752,7 +1771,7 @@ class TestLogVerBasic:
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test log_verifier example5 for add_pattern.
+        """Test log_verifier allignment.
 
         Args:
             msgs_arg: msgs to issue to log
@@ -1836,7 +1855,7 @@ class TestLogVerBasic:
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test log_verifier example5 for add_pattern.
+        """Test log_verifier width.
 
         Args:
             msg_len_arg: length of msg
@@ -1977,7 +1996,7 @@ class TestLogVerBasic:
         capsys: pytest.CaptureFixture[str],
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test log_verifier example5 for add_pattern.
+        """Test log_verifier width.
 
         Args:
             msg_len_arg: length of msg
@@ -3360,15 +3379,15 @@ class TestLogVerCombos:
     ####################################################################
     # test_log_verifier_contention
     ####################################################################
-    msgs = ["msg1", "msg2", "msg3"]
-    msg_perms = it.permutations(msgs, 3)
-    msg_combos = mi.collapse(
+    msgs5 = ["msg1", "msg2", "msg3"]
+    msg_perms = it.permutations(msgs5, 3)
+    msg_combos0 = mi.collapse(
         map(
             lambda mp: map(lambda n: it.product(mp[0:n], repeat=n), range(4)), msg_perms
         ),
         base_type=tuple,
     )
-    msg_combos_list = sorted(set(msg_combos), key=lambda x: (len(x), x))
+    msg_combos_list = sorted(set(msg_combos0), key=lambda x: (len(x), x))
 
     patterns = (
         "msg0",

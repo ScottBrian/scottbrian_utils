@@ -26,8 +26,8 @@ True
 ########################################################################
 # Standard Library
 ########################################################################
-from threading import Lock
 import time
+from threading import Lock
 from typing import cast, ClassVar, NewType
 
 ########################################################################

@@ -17,9 +17,9 @@ import pytest
 ########################################################################
 # Local
 ########################################################################
-from scottbrian_utils.timer import Timer
-from scottbrian_utils.testlib_verifier import verify_lib
 from scottbrian_utils.stop_watch import StopWatch
+from scottbrian_utils.testlib_verifier import verify_lib
+from scottbrian_utils.timer import Timer
 
 logger = logging.getLogger(__name__)
 

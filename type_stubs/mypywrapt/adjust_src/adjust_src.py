@@ -5,8 +5,8 @@ Copy source file time_hdr to temporary file and remove the type: ignore
 comments to allow full type checking with wrapt
 
 """
-import sys
 import os
+import sys
 
 
 def remove_file(path_to_file_to_remove):

@@ -19,9 +19,8 @@ import pytest
 ########################################################################
 from scottbrian_utils.log_verifier import LogVer
 from scottbrian_utils.msgs import Msgs, GetMsgTimedOut
-from scottbrian_utils.testlib_verifier import verify_lib
 from scottbrian_utils.stop_watch import StopWatch
-
+from scottbrian_utils.testlib_verifier import verify_lib
 
 ########################################################################
 # type aliases

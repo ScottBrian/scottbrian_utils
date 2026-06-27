@@ -5,21 +5,20 @@
 ########################################################################
 import logging
 import threading
-
-import pytest
 from typing import Any
 
-########################################################################
-# Third Party
-########################################################################
+import pytest
 
-
+from scottbrian_utils.exc_hook import ExcHook
 ########################################################################
 # Local
 ########################################################################
 from scottbrian_utils.log_verifier import LogVer
-from scottbrian_utils.exc_hook import ExcHook
 from .conftest import LogMsgPattern, MarkerArgs, ThreadItem
+
+########################################################################
+# Third Party
+########################################################################
 
 
 ########################################################################

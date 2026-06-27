@@ -240,22 +240,18 @@ The log_verifier module contains:
 ########################################################################
 # Standard Library
 ########################################################################
+import logging
+import re
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
-
-import logging
-
-import pandas as pd  # type: ignore
-import pytest
-
-import re
-
 from typing import Callable, Literal, Optional, Type, TYPE_CHECKING, Union
-import warnings
 
 ########################################################################
 # Third Party
 ########################################################################
+import pandas as pd  # type: ignore
+import pytest
 
 ########################################################################
 # Local
@@ -270,7 +266,7 @@ pd.set_option("mode.chained_assignment", "raise")
 pd.set_option("display.max_columns", 30)
 pd.set_option("max_colwidth", 120)
 pd.set_option("display.width", 300)
-pd.options.mode.copy_on_write = True
+# pd.options.mode.copy_on_write = True deprecated
 
 ########################################################################
 # type aliases

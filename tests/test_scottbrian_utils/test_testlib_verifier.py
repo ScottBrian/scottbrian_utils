@@ -6,7 +6,6 @@
 import inspect
 import logging
 import os
-import pytest
 import re
 import sys
 from typing import Any, NamedTuple, Optional
@@ -14,7 +13,7 @@ from typing import Any, NamedTuple, Optional
 ########################################################################
 # Third Party
 ########################################################################
-
+import pytest
 
 ########################################################################
 # Local
@@ -25,7 +24,6 @@ from scottbrian_utils.testlib_verifier import (
     IncorrectSourceLibrary,
     ObjNotFound,
 )
-
 
 ########################################################################
 # logger

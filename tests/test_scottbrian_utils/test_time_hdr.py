@@ -1,33 +1,33 @@
 """test_time_hdr.py module."""
 
-########################################################################
-# Standard Library
-########################################################################
-from datetime import datetime, timedelta, timezone
 import logging
 import os
 import re
 import sys
 
+########################################################################
+# Standard Library
+########################################################################
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, cast, Tuple, Union
-from typing_extensions import Final
 
 ########################################################################
 # Third Party
 ########################################################################
 import pytest
+from typing_extensions import Final
 
 ########################################################################
 # Local
 ########################################################################
 from scottbrian_utils.testlib_verifier import verify_lib
-from scottbrian_utils.time_hdr import StartStopHeader as StartStopHeader
-from scottbrian_utils.time_hdr import time_box as time_box
 from scottbrian_utils.time_hdr import DT_Format as DT_Format
+from scottbrian_utils.time_hdr import StartStopHeader as StartStopHeader
 from scottbrian_utils.time_hdr import (
     get_datetime_match_string,
     timedelta_match_string,
 )
+from scottbrian_utils.time_hdr import time_box as time_box
 
 logger = logging.getLogger(__name__)
 
@@ -652,6 +652,7 @@ class TestStartStopHeader:
     """TestStartStopHeader class."""
 
     @pytest.fixture(scope="class")
+    @classmethod
     def hdr(self) -> "StartStopHeader":
         """Method hdr.
 

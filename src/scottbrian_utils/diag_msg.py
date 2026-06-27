@@ -33,21 +33,17 @@ coded in a module, however, you will see the module name instead of
 ########################################################################
 # Standard Library
 ########################################################################
+import sys
+import types
 from datetime import datetime
 from os import fspath
 from pathlib import Path
-
-# noinspection PyProtectedMember
-# from sys import _getframe
-import sys
-import types
 from types import FrameType
 from typing import Any, NamedTuple
 
 ########################################################################
 # Third Party
 ########################################################################
-
 ########################################################################
 # Local
 ########################################################################
@@ -188,7 +184,7 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
                             func_name=func_name,
                             line_num=frame.f_lineno,
                         )
-            except (AttributeError, KeyError):
+            except AttributeError, KeyError:
                 pass
 
         # if here, not found yet - try looking at locals in the previous
@@ -237,7 +233,7 @@ def func_in_class(func_name: str, class_obj: type, code: Any) -> bool:
         ):
             return True
 
-    except (AttributeError, KeyError):
+    except AttributeError, KeyError:
         pass  # class name not found
 
     return False

@@ -44,10 +44,9 @@ time_box imports functools, sys, datetime, wrapt, and types from typing
 # Standard Library
 ########################################################################
 import functools
-from datetime import datetime
 import re
+from datetime import datetime
 from typing import Any, Callable, cast, NewType, Optional, TypeVar, Union
-
 from typing import overload
 
 ########################################################################

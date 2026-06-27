@@ -92,12 +92,11 @@ from typing import Any, Final, Optional, Union
 ########################################################################
 # Third Party
 ########################################################################
-from scottbrian_utils.diag_msg import get_formatted_call_sequence
-from scottbrian_utils.timer import Timer
-
 ########################################################################
 # Local
 ########################################################################
+from scottbrian_utils.diag_msg import get_formatted_call_sequence
+from scottbrian_utils.timer import Timer
 
 ########################################################################
 # type aliases
@@ -111,11 +110,13 @@ OptIntFloat = Optional[IntFloat]
 ########################################################################
 class MsgsError(Exception):
     """Base class for exception in this module."""
+
     pass
 
 
 class GetMsgTimedOut(MsgsError):
     """Msgs get_msg timed out waiting for msg."""
+
     pass
 
 
@@ -133,6 +134,7 @@ class Msgs:
     communications.
 
     """
+
     GET_CMD_TIMEOUT: Final[float] = 3.0
     CMD_Q_MAX_SIZE: Final[int] = 10
 
@@ -150,7 +152,7 @@ class Msgs:
     ####################################################################
     # queue_msg
     ####################################################################
-    def queue_msg(self, target: str, msg: Optional[Any] = 'go') -> None:
+    def queue_msg(self, target: str, msg: Optional[Any] = "go") -> None:
         """Place a msg on the msg queue for the specified target.
 
         Args:
@@ -162,19 +164,14 @@ class Msgs:
         """
         with self.msg_lock:
             if target not in self.msg_array:
-                self.msg_array[target] = queue.Queue(
-                    maxsize=Msgs.CMD_Q_MAX_SIZE)
+                self.msg_array[target] = queue.Queue(maxsize=Msgs.CMD_Q_MAX_SIZE)
 
-        self.msg_array[target].put(msg,
-                                   block=True,
-                                   timeout=0.5)
+        self.msg_array[target].put(msg, block=True, timeout=0.5)
 
     ####################################################################
     # get_msg
     ####################################################################
-    def get_msg(self,
-                recipient: str,
-                timeout: OptIntFloat = GET_CMD_TIMEOUT) -> Any:
+    def get_msg(self, recipient: str, timeout: OptIntFloat = GET_CMD_TIMEOUT) -> Any:
         """Get the next message in the queue.
 
         Args:
@@ -202,8 +199,7 @@ class Msgs:
             if recipient not in self.msg_array:
                 # we need to add the message target if this is the first
                 # time the recipient is calling get_msg
-                self.msg_array[recipient] = queue.Queue(
-                    maxsize=Msgs.CMD_Q_MAX_SIZE)
+                self.msg_array[recipient] = queue.Queue(maxsize=Msgs.CMD_Q_MAX_SIZE)
 
         while True:
             try:
@@ -214,8 +210,10 @@ class Msgs:
 
             if timer.is_expired():
                 caller_info = get_formatted_call_sequence(latest=1, depth=1)
-                err_msg = (f'Thread {threading.current_thread()} '
-                           f'timed out on get_msg for recipient: {recipient} '
-                           f'{caller_info}')
+                err_msg = (
+                    f"Thread {threading.current_thread()} "
+                    f"timed out on get_msg for recipient: {recipient} "
+                    f"{caller_info}"
+                )
                 self.logger.debug(err_msg)
                 raise GetMsgTimedOut(err_msg)

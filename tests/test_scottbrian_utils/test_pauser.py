@@ -20,10 +20,9 @@ import pytest
 # Local
 ########################################################################
 from scottbrian_utils.diag_msg import get_formatted_call_sequence as cseq
-from scottbrian_utils.pauser import Pauser
 from scottbrian_utils.pauser import IncorrectInput
+from scottbrian_utils.pauser import Pauser
 from scottbrian_utils.testlib_verifier import verify_lib
-
 
 ########################################################################
 # type aliases
@@ -989,7 +988,8 @@ class TestPauserGetMetrics:
     ####################################################################
     # test_pauser_get_metrics
     ####################################################################
-    def test_pauser_get_metrics(self) -> None:
+    @pytest.mark.parametrize("num_iterations_arg", (1, 2, 3))
+    def test_pauser_get_metrics(self, num_iterations_arg: int) -> None:
         """Test pauser calibration method."""
         logger.debug("mainline entered")
         pauser = Pauser(min_interval_secs=0.25, part_time_factor=0.3)
@@ -1006,20 +1006,24 @@ class TestPauserGetMetrics:
             )
 
             metric_results = pauser.get_metrics(
-                min_interval_msecs=1, max_interval_msecs=250, iterations=1
+                min_interval_msecs=1,
+                max_interval_msecs=250,
+                iterations=num_iterations_arg,
             )
 
             pause_ratios.append(metric_results.pause_ratio)
             sleep_ratios.append(metric_results.sleep_ratio)
             logger.debug(
                 f"metrics results: "
-                f"{metric_results.pause_ratio=:.4f}, "
-                f"{metric_results.sleep_ratio=:.4f}"
+                f"{metric_results.pause_ratio=:.8f}, "
+                f"{metric_results.sleep_ratio=:.8f}"
             )
+
+        assert 1.0 < pause_ratios[0]
 
         assert 1.0 < pause_ratios[1]
 
-        assert pause_ratios[1] < pause_ratios[0]
+        assert abs(pause_ratios[1] - pause_ratios[0]) < 0.01
 
         assert sleep_ratios[1] == 0.0
 

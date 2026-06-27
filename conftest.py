@@ -1,15 +1,14 @@
-from doctest import ELLIPSIS
-from doctest import OutputChecker as BaseOutputChecker
+"""conftest.py module."""
 
 import re
+from doctest import ELLIPSIS
+from typing import Any
 
 from sybil import Sybil
 from sybil.parsers.rest import PythonCodeBlockParser
 
-from scottbrian_utils.time_hdr import get_datetime_match_string
 from scottbrian_utils.doc_checker import DocCheckerTestParser, DocCheckerOutputChecker
-
-from typing import Any
+from scottbrian_utils.time_hdr import get_datetime_match_string
 
 
 class SbtDocCheckerOutputChecker(DocCheckerOutputChecker):
@@ -81,7 +80,7 @@ class SbtDocCheckerOutputChecker(DocCheckerOutputChecker):
             if found_item:
                 want = re.sub(match_str, found_item.group(), want)
 
-            match_str = "metrics.pause_ratio=1.0, " "metrics.sleep_ratio=0.[0-9]+"
+            match_str = "metrics.pause_ratio=1.0, metrics.sleep_ratio=0.[0-9]+"
 
             found_item = re.match(match_str, got)
             if found_item:
@@ -96,6 +95,17 @@ class SbtDocCheckerOutputChecker(DocCheckerOutputChecker):
                 diff_value = abs(expected_value - actual_value)
                 denominator = max(expected_value, actual_value)
                 if (diff_value / denominator) < 0.10:
+                    want = re.sub(match_str, found_item.group(), want)
+
+            match_str = "paused for 0.2[5-9] seconds"
+
+            found_item = re.match(match_str, got)
+            if found_item:
+                expected_value = float(want[11:15])
+                actual_value = float(got[11:15])
+                diff_value = abs(expected_value - actual_value)
+                denominator = max(expected_value, actual_value)
+                if (diff_value / denominator) < 0.15:
                     want = re.sub(match_str, found_item.group(), want)
 
         self.msgs.append([old_want, want, old_got, got])

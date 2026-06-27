@@ -11,8 +11,8 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 
-from os import fspath
 import sys
+from os import fspath
 from pathlib import Path
 
 proj_dir = Path.cwd().resolve().parents[1]  # back two directories
@@ -24,11 +24,11 @@ sys.path.insert(0, fspath(proj_dir / "src/scottbrian_utils"))
 # -- Project information -----------------------------------------------------
 
 project = "scottbrian_utils"
-copyright = "2020, 2025, Scott Tuttle"
+copyright = "2020, 2026, Scott Tuttle"
 author = "Scott Tuttle"
 
 # The full version, including alpha/beta/rc tags
-release = "6.0.0"
+release = "7.0.0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -45,6 +45,10 @@ extensions = [
 
 autoclass_content = "both"
 autodoc_member_order = "groupwise"
+
+autodoc_typehints = "description"
+
+napoleon_use_rtype = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

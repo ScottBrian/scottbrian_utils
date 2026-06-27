@@ -11,15 +11,16 @@ The *test_helpers* module provides classes to use during testing.
 ########################################################################
 # Standard Library
 ########################################################################
+
+import functools
+import logging
 import threading
 import traceback
 from typing import Any, Callable, Optional
-import logging
 
 ########################################################################
 # Third Party
 ########################################################################
-import functools
 import pytest
 
 ########################################################################

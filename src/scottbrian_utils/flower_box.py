@@ -18,11 +18,20 @@ meaning a box of asterisks.
 
 """
 
+########################################################################
+# Standard Library
+########################################################################
 from typing import Any, List, Union
 
+########################################################################
+# Third Party
+########################################################################
+########################################################################
+# Local
+########################################################################
 
-def print_flower_box_msg(msgs: Union[str, List[str]],
-                         **kwargs: Any) -> None:
+
+def print_flower_box_msg(msgs: Union[str, List[str]], **kwargs: Any) -> None:
     """Print a single or multi-line message inside a flower box.
 
     Args:
@@ -50,8 +59,8 @@ def print_flower_box_msg(msgs: Union[str, List[str]],
     max_msg_len: int = len(max(msgs, key=len)) + 4  # 4 for front/end asterisks
 
     # start with a new line so that our flower box is properly aligned
-    print('\n' + '*' * max_msg_len, **kwargs)
+    print("\n" + "*" * max_msg_len, **kwargs)
     for msg in msgs:
-        msg = '* ' + msg + ' ' * (max_msg_len - len(msg) - 4) + ' *'
+        msg = "* " + msg + " " * (max_msg_len - len(msg) - 4) + " *"
         print(msg, **kwargs)
-    print('*' * max_msg_len, **kwargs)
+    print("*" * max_msg_len, **kwargs)

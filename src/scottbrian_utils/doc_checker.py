@@ -106,15 +106,25 @@ statement.
 
 """
 
+########################################################################
+# Standard Library
+########################################################################
 from doctest import OutputChecker as BaseOutputChecker
-
-from sybil.document import Document
-from sybil.example import Example
-from sybil.evaluators.doctest import DocTestEvaluator, DocTest
-from sybil.parsers.abstract import DocTestStringParser
-from sybil.region import Region
-
 from typing import Iterable
+
+import sybil as sybil_lib
+from sybil.document import Document
+from sybil.evaluators.doctest import DocTestEvaluator, DocTest
+from sybil.example import Example
+from sybil.parsers.abstract import DocTestStringParser
+
+########################################################################
+# Third Party
+########################################################################
+
+########################################################################
+# Local
+########################################################################
 
 
 class DocCheckerOutputChecker(BaseOutputChecker):
@@ -216,7 +226,7 @@ class DocCheckerTestParser:
             DocCheckerTestEvaluator(doc_checker_output_checker, optionflags)
         )
 
-    def __call__(self, document: Document) -> Iterable[Region]:
+    def __call__(self, document: Document) -> Iterable[sybil_lib.region.Region]:
         """Call method.
 
         Args:

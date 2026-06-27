@@ -11,14 +11,14 @@ while checking the elapsed time using ``time.perf_counter_ns()``.
 
 :Example: pause execution for 1.5 seconds
 
->>> from scottbrian_utils.pauser import Pauser
->>> import time
->>> pauser = Pauser()
->>> start_time = time.time()
->>> pauser.pause(1.5)
->>> stop_time = time.time()
->>> print(f'paused for {stop_time - start_time:.1f} seconds')
-paused for 1.5 seconds
+    >>> from scottbrian_utils.pauser import Pauser
+    >>> import time
+    >>> pauser = Pauser()
+    >>> start_time = time.time()
+    >>> pauser.pause(1.5)
+    >>> stop_time = time.time()
+    >>> print(f'paused for {stop_time - start_time:.1f} seconds')
+    paused for 1.5 seconds
 
 While ``time.sleep()`` is useful for a rough delay, at very small
 intervals it can delay for more time than requested. For example,
@@ -27,7 +27,7 @@ intervals it can delay for more time than requested. For example,
 ``Pauser.pause()`` provides accuracy at the expense of looping for some
 portion of the delay, perhaps the entire delay when a small interval is
 requested. ``time.sleep()`` should be preferred for applications that do
-not require acccracy since it will give up the processor and allow
+not require accuracy since it will give up the processor and allow
 other work to make progress.
 
 
@@ -133,16 +133,17 @@ class Pauser:
 
         Raises:
             IncorrectInput: The *min_interval_secs* argument is not
-                valid - it must be a  positive non-zero float.
+                valid - it must be a positive non-zero float.
             IncorrectInput: The *part_time_factor* argument is not
                 valid - it must be a non-zero float no greater than 1.0.
 
-        Example: create an instance of Pauser with defaults
+        :Example: create an instance of Pauser with defaults. The output
+            will be a Pauser object.
 
-        >>> from scottbrian_utils.pauser import Pauser
-        >>> pauser = Pauser()
-        >>> pauser
-        Pauser(min_interval_secs=0.03, part_time_factor=0.4)
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> pauser = Pauser()
+            >>> pauser
+            Pauser(min_interval_secs=0.03, part_time_factor=0.4)
 
         """
         if min_interval_secs <= 0:
@@ -173,11 +174,11 @@ class Pauser:
 
         :Example: instantiate a Pauser and call repr
 
-        >>> from scottbrian_utils.pauser import Pauser
-        >>> pauser = Pauser(min_interval_secs=0.02,
-        ...                 part_time_factor=0.3)
-        >>> repr(pauser)
-        'Pauser(min_interval_secs=0.02, part_time_factor=0.3)'
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> pauser = Pauser(min_interval_secs=0.02,
+            ...                 part_time_factor=0.3)
+            >>> repr(pauser)
+            'Pauser(min_interval_secs=0.02, part_time_factor=0.3)'
 
         """
         if TYPE_CHECKING:
@@ -218,7 +219,7 @@ class Pauser:
             min_interval_msecs: starting interval of span to calibrate
             max_interval_msecs: ending interval of span to calibrate
             increment: number of milliseconds to skip for the next
-                         interval
+                interval
             part_time_factor: factor of sleep time to try
             max_sleep_late_ratio: allowed error threshold
             iterations: number of iteration per interval
@@ -240,15 +241,17 @@ class Pauser:
             IncorrectInput: The *iterations* argument is not valid - it
                 must be a positive non-zero integer.
 
-        Example: calibrate the Pauser for a specific range of intervals
+        :Example: calibrate the Pauser for a specific range of
+            intervals. The output will show the min_interval_secs at
+            0.0015.
 
-        >>> from scottbrian_utils.pauser import Pauser
-        >>> pauser = Pauser(min_interval_secs=1.0)
-        >>> pauser.calibrate(min_interval_msecs=5,
-        ...                  max_interval_msecs=100,
-        ...                  increment=5)
-        >>> print(f'{pauser.min_interval_secs=}')
-        pauser.min_interval_secs=0.015
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> pauser = Pauser(min_interval_secs=1.0)
+            >>> pauser.calibrate(min_interval_msecs=5,
+            ...                  max_interval_msecs=100,
+            ...                  increment=5)
+            >>> print(f'{pauser.min_interval_secs=}')
+            pauser.min_interval_secs=0.015
 
         """
         if (not isinstance(min_interval_msecs, int)) or (min_interval_msecs <= 0):
@@ -346,7 +349,7 @@ class Pauser:
             IncorrectInput: The *iterations* argument is not valid - it
                 must be a positive non-zero integer.
 
-        Example: get the metrics for a pause of 0.1 seconds.
+        :Example: get the metrics for a pause of 0.1 seconds.
                  Note that the accuracy is very good at 1.0 and the
                  portion of the delay provided by ``time.sleep()`` is
                  about 60%.
@@ -360,7 +363,7 @@ class Pauser:
             ...       f'{metrics.sleep_ratio=:.1f}')
             metrics.pause_ratio=1.0, metrics.sleep_ratio=0.6
 
-        Example: get the metrics for a pause range of 0.98 to 1.0
+        :Example: get the metrics for a pause range of 0.98 to 1.0
                  seconds. Note that the accuracy is very good at 1.0
                  but the portion of the delay provided by
                  ``time.sleep()`` is zero. This is so because the Pauser
@@ -484,3 +487,12 @@ class Pauser:
                 self.total_sleep_time += part_time  # metrics
                 time.sleep(part_time)
             now_time = time.perf_counter_ns()
+
+
+# >>> from scottbrian_utils.pauser import Pauser
+#                    >>> pauser = Pauser(min_interval_secs=1.0)
+#                    >>> pauser.calibrate(min_interval_msecs=5,
+#                    ...                  max_interval_msecs=100,
+#                    ...                  increment=5)
+#                    >>> print(f'{pauser.min_interval_secs=}')
+#                    pauser.min_interval_secs=0.015

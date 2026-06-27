@@ -3,25 +3,23 @@
 ########################################################################
 # Standard Library
 ########################################################################
-from collections.abc import Iterable
-from dataclasses import dataclass, field
-from enum import Enum, auto
 import functools as ft
-
 import inspect
 import itertools as it
 import logging
-import more_itertools as mi
 import os
 import re
-
+from collections.abc import Iterable
+from dataclasses import dataclass, field
+from enum import Enum, auto
 from typing import Any, Callable, Iterator, Optional, Union
-from typing_extensions import Protocol
 
 ########################################################################
 # Third Party
 ########################################################################
+import more_itertools as mi
 import pytest
+from typing_extensions import Protocol
 
 ########################################################################
 # Local
@@ -4906,8 +4904,10 @@ class TestEntryTraceCombos:
     ####################################################################
     # test_etrace_combo_parms
     ####################################################################
-    args_to_use = map(lambda n: args_list[0:n], range(len(args_list) + 1))
-    kwargs_to_use = map(lambda n: dict(kwargs_list[0:n]), range(len(kwargs_list) + 1))
+    args_to_use = list(map(lambda n: args_list[0:n], range(len(args_list) + 1)))
+    kwargs_to_use = list(
+        map(lambda n: dict(kwargs_list[0:n]), range(len(kwargs_list) + 1))
+    )
 
     @pytest.mark.parametrize("caller_type_arg", FunctionTypeList)
     @pytest.mark.parametrize("target_type_arg", FunctionTypeList)
@@ -5079,13 +5079,17 @@ class TestEntryTraceCombos:
     ####################################################################
     # test_etrace_combo_omits
     ####################################################################
-    args_to_use = map(lambda n: args_list[0:n], range(len(args_list) + 1))
-    kwargs_to_use = map(lambda n: dict(kwargs_list[0:n]), range(len(kwargs_list) + 1))
+    args_to_use = list(map(lambda n: args_list[0:n], range(len(args_list) + 1)))
+    kwargs_to_use = list(
+        map(lambda n: dict(kwargs_list[0:n]), range(len(kwargs_list) + 1))
+    )
 
-    kwargs_and_omits = it.chain.from_iterable(
-        map(
-            lambda kwdict: it.product([kwdict], mi.powerset(kwdict.keys())),
-            kwargs_to_use,
+    kwargs_and_omits = list(
+        it.chain.from_iterable(
+            map(
+                lambda kwdict: it.product([kwdict], mi.powerset(kwdict.keys())),
+                kwargs_to_use,
+            )
         )
     )
 
@@ -5310,19 +5314,25 @@ class TestEntryTraceCombos:
     # test_etrace_combo_omits
     ####################################################################
     p_args_to_use = map(lambda n: dict(p_args_list[0:n]), range(len(p_args_list) + 1))
-    kwargs_to_use = map(lambda n: dict(kwargs_list[0:n]), range(len(kwargs_list) + 1))
+    kwargs_to_use = list(
+        map(lambda n: dict(kwargs_list[0:n]), range(len(kwargs_list) + 1))
+    )
 
-    p_args_and_omits = it.chain.from_iterable(
-        map(
-            lambda kwdict: it.product([kwdict], mi.powerset(kwdict.keys())),
-            p_args_to_use,
+    p_args_and_omits = list(
+        it.chain.from_iterable(
+            map(
+                lambda kwdict: it.product([kwdict], mi.powerset(kwdict.keys())),
+                p_args_to_use,
+            )
         )
     )
 
-    kwargs_and_omits = it.chain.from_iterable(
-        map(
-            lambda kwdict: it.product([kwdict], mi.powerset(kwdict.keys())),
-            kwargs_to_use,
+    kwargs_and_omits = list(
+        it.chain.from_iterable(
+            map(
+                lambda kwdict: it.product([kwdict], mi.powerset(kwdict.keys())),
+                kwargs_to_use,
+            )
         )
     )
 

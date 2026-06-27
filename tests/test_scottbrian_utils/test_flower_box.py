@@ -15,7 +15,6 @@ import pytest
 ########################################################################
 # Local
 ########################################################################
-#  as print_flower_box_msg needed in next line?
 from scottbrian_utils.flower_box import print_flower_box_msg
 from scottbrian_utils.testlib_verifier import verify_lib
 

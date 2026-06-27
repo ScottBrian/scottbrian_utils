@@ -185,6 +185,11 @@ Release History
     * add ExcHook for test case use to catch thread errors
     * add testlib_verifier to check that built code is being tested
 
+* 7.0.0
+    * drop support for python 3.13
+    * support python 3.14
+    * update requirement for wrapt from 1.17 to 2.2.1
+
 Meta
 ====
 

@@ -149,21 +149,24 @@ Expected trace output for Example 6::
 ########################################################################
 # Standard Library
 ########################################################################
-from collections.abc import Iterable
-from enum import Enum, auto
 import functools
 import inspect
 import logging
 import sys
+from collections.abc import Iterable
+from enum import Enum, auto
 from typing import Any, Callable, cast, Optional, overload, TypeVar, Union
 
 ########################################################################
 # Third Party
 ########################################################################
-from scottbrian_utils.diag_msg import get_formatted_call_sequence
-from scottbrian_utils.log_verifier import LogVer  # noqa F401
 import wrapt
 
+########################################################################
+# Local
+########################################################################
+from scottbrian_utils.diag_msg import get_formatted_call_sequence
+from scottbrian_utils.log_verifier import LogVer  # noqa F401
 
 ####################################################################
 # etrace decorator
@@ -297,8 +300,8 @@ def etrace(
         )
 
     try:
-        logger = logging.getLogger(sys._getframemodulename(1))  # type: ignore
-    except (NameError, AttributeError):
+        logger = logging.getLogger(sys._getframemodulename(1))
+    except NameError, AttributeError:
         logger = logging.getLogger(__name__)
 
     class LogVerSpec(Enum):
