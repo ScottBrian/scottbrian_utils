@@ -135,7 +135,8 @@ class Pauser:
             IncorrectInput: The *min_interval_secs* argument is not
                 valid - it must be a positive non-zero float.
             IncorrectInput: The *part_time_factor* argument is not
-                valid - it must be a non-zero float no greater than 1.0.
+                valid - it must be a positive non-zero float no greater
+                than 1.0.
 
         :Example: create an instance of Pauser with defaults. The output
             will be a Pauser object.
@@ -160,6 +161,7 @@ class Pauser:
             )
 
         self.min_interval_secs = min_interval_secs
+        self.min_interval_ns = min_interval_secs * Pauser.SECS_2_NS
         self.part_time_factor = part_time_factor
         self.total_sleep_time = 0.0
 
@@ -334,11 +336,11 @@ class Pauser:
 
         Returns:
             The pause interval ratio (actual/requested) is returned in
-            Metrics.pause_ratio and is an indication of the accuarcy of
-            the requested delay with the value 1 being perfect.
+            Metrics.pause_ratio and indicates the accuracy of the
+            requested delay with the value 1 being perfect.
             The sleep ratio (sleep/requested) is returned in
             Metrics.sleep_ratio and is the portion of the delay
-            accomplished using ``time.sleep()``.
+            achieved using ``time.sleep()``.
 
         Raises:
             IncorrectInput: The *min_interval_msecs* argument is not
@@ -488,11 +490,63 @@ class Pauser:
                 time.sleep(part_time)
             now_time = time.perf_counter_ns()
 
+    ####################################################################
+    # pause_ns
+    ####################################################################
+    def pause_ns(self, interval_ns: IntFloat) -> None:
+        """Pause for the specified number of nanoseconds.
 
-# >>> from scottbrian_utils.pauser import Pauser
-#                    >>> pauser = Pauser(min_interval_secs=1.0)
-#                    >>> pauser.calibrate(min_interval_msecs=5,
-#                    ...                  max_interval_msecs=100,
-#                    ...                  increment=5)
-#                    >>> print(f'{pauser.min_interval_secs=}')
-#                    pauser.min_interval_secs=0.015
+        Args:
+            interval_ns: number of nanoseconds to pause
+
+        Raises:
+            IncorrectInput: The interval_ns arg is not valid - please
+                provide a non-negative value.
+
+        Example: pause for 100 nanoseconds
+
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> pauser = Pauser()
+            >>> pauser.pause_ns(100)
+
+        Example: pause for 1 half second and verify using time.time
+
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> import time
+            >>> pauser = Pauser()
+            >>> start_time = time.time()
+            >>> pauser.pause_ns(500000000)
+            >>> stop_time = time.time()
+            >>> interval = stop_time - start_time
+            >>> print(f'paused for {interval:.1f} seconds')
+            paused for 0.5 seconds
+
+        Example: pause for 1 quarter second and verify using
+                 time.perf_counter_ns
+
+            >>> from scottbrian_utils.pauser import Pauser
+            >>> import time
+            >>> pauser = Pauser()
+            >>> start_time = time.perf_counter_ns()
+            >>> pauser.pause_ns(250000000)
+            >>> stop_time = time.perf_counter_ns()
+            >>> interval = (stop_time - start_time) * Pauser.NS_2_SECS
+            >>> print(f'paused for {interval:.2f} seconds')
+            paused for 0.25 seconds
+
+        """
+        now_time = time.perf_counter_ns()  # start the timing
+        if interval_ns < 0:
+            raise IncorrectInput(
+                f"The interval_ns arg of {interval_ns} is not valid - "
+                f"please provide a non-negative value."
+            )
+
+        stop_time = now_time + interval_ns
+        while now_time < stop_time:
+            remaining_time_ns = stop_time - now_time
+            if self.min_interval_ns < remaining_time_ns:
+                part_time = remaining_time_ns * Pauser.NS_2_SECS * self.part_time_factor
+                self.total_sleep_time += part_time  # metrics
+                time.sleep(part_time)
+            now_time = time.perf_counter_ns()

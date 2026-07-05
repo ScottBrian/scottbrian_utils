@@ -1,13 +1,13 @@
 [project]
 name = "scottbrian_utils"
-version = "7.0.0"
+version = "7.1.0"
 description = "Miscellaneous utilities"
 readme = "README.rst"
 requires-python = "~=3.14"
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
 keywords = ["utilities"]
-authors = [{name = "Scott Tuttle", email = "sbtuttle@outlook.com"}]
+authors = [{ name = "Scott Tuttle", email = "sbtuttle@outlook.com" }]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -28,7 +28,7 @@ dependencies = [
 
 [tool.setuptools]
 packages = ["scottbrian_utils"]
-package-dir = {"" = "src"}
+package-dir = { "" = "src" }
 
 [project.urls]
 Documentation = "https://scottbrian-utils.readthedocs.io/en/latest/"

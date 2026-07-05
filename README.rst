@@ -190,6 +190,9 @@ Release History
     * support python 3.14
     * update requirement for wrapt from 1.17 to 2.2.1
 
+* 7.1.0
+    * enhance pauser to accept nanoseconds
+
 Meta
 ====
 

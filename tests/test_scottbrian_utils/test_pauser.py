@@ -224,6 +224,17 @@ class TestPauserErrors:
         logger.debug("mainline exiting")
 
     ####################################################################
+    # test_pause_ns_negative_interval
+    ####################################################################
+    def test_pause_ns_negative_interval(self) -> None:
+        """Test negative pause time raises error."""
+        logger.debug("mainline entered")
+        with pytest.raises(IncorrectInput):
+            Pauser().pause_ns(-1)
+
+        logger.debug("mainline exiting")
+
+    ####################################################################
     # test_calibrate_bad_min_interval_msecs
     ####################################################################
     def test_calibrate_bad_min_interval_msecs(self) -> None:
@@ -660,6 +671,96 @@ class TestPauserExamples:
 
         assert captured == expected_result
 
+    ####################################################################
+    # test_pauser_example10
+    ####################################################################
+    def test_pauser_example10(self, capsys: Any) -> None:
+        """Test pauser example10.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print("mainline entered")
+
+        from scottbrian_utils.pauser import Pauser
+
+        pauser = Pauser()
+        pauser.pause_ns(100)
+
+        print("mainline exiting")
+
+        expected_result = "mainline entered\n"
+        expected_result += "mainline exiting\n"
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_pauser_example11
+    ####################################################################
+    def test_pauser_example11(self, capsys: Any) -> None:
+        """Test pauser example11.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print("mainline entered")
+
+        from scottbrian_utils.pauser import Pauser
+        import time
+
+        pauser = Pauser()
+        start_time = time.perf_counter_ns()
+        pauser.pause_ns(500000000)
+        stop_time = time.perf_counter_ns()
+        interval = (stop_time - start_time) * Pauser.NS_2_SECS
+        print(f"paused for {interval:.1f} seconds")
+
+        print("mainline exiting")
+
+        expected_result = "mainline entered\n"
+        expected_result += "paused for 0.5 seconds\n"
+        expected_result += "mainline exiting\n"
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
+    ####################################################################
+    # test_pauser_example12
+    ####################################################################
+    def test_pauser_example12(self, capsys: Any) -> None:
+        """Test pauser example12.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print("mainline entered")
+
+        from scottbrian_utils.pauser import Pauser
+        import time
+
+        pauser = Pauser()
+        start_time = time.perf_counter_ns()
+        pauser.pause_ns(250000000)
+        stop_time = time.perf_counter_ns()
+        interval = (stop_time - start_time) * Pauser.NS_2_SECS
+        print(f"paused for {interval:.2f} seconds")
+
+        print("mainline exiting")
+
+        expected_result = "mainline entered\n"
+        expected_result += "paused for 0.25 seconds\n"
+        expected_result += "mainline exiting\n"
+
+        captured = capsys.readouterr().out
+
+        assert captured == expected_result
+
 
 ########################################################################
 # TestPauserPause class
@@ -687,6 +788,49 @@ class TestPauserPause:
 
         start_time = time.perf_counter_ns()
         pauser.pause(interval_arg)
+        stop_time = time.perf_counter_ns()
+
+        actual_interval = (stop_time - start_time) * Pauser.NS_2_SECS
+        sleep_time = pauser.total_sleep_time
+        if 0 < interval_arg:
+            actual_interval_pct = (actual_interval / interval_arg) * 100
+            sleep_pct = (sleep_time / interval_arg) * 100
+        else:
+            sleep_pct = 0.0
+            actual_interval_pct = 0.0
+
+        logger.debug(
+            f"{interval_arg=}, "
+            f"{actual_interval=:.4f}, "
+            f"{actual_interval_pct=:.4f}%"
+        )
+        logger.debug(f"{sleep_time=:.4f}, {sleep_pct=:.2f}%")
+
+        if 0 < interval_arg:
+            assert 99.0 <= actual_interval_pct <= 101.0
+
+        logger.debug("mainline exiting")
+
+    ####################################################################
+    # test_pauser_pause_ns
+    ####################################################################
+    def test_pauser_pause_ns(self, interval_arg: IntFloat) -> None:
+        """Test pauser pause_ns method.
+
+        Args:
+            interval_arg: number of seconds to pause
+
+        """
+        logger.debug("mainline entered")
+        pauser = Pauser()
+
+        logger.debug(f"{pauser.min_interval_secs=}")
+        logger.debug(f"{pauser.part_time_factor=}")
+
+        pauser.total_sleep_time = 0.0
+
+        start_time = time.perf_counter_ns()
+        pauser.pause_ns(interval_arg * Pauser.SECS_2_NS)
         stop_time = time.perf_counter_ns()
 
         actual_interval = (stop_time - start_time) * Pauser.NS_2_SECS
