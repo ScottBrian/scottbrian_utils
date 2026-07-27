@@ -36,6 +36,6 @@ Source = "https://github.com/ScottBrian/scottbrian_utils.git"
 
 [build-system]
 requires = [
-    "setuptools ~=80.9",
+    "setuptools ~=83.0",
 ]
 build-backend = 'setuptools.build_meta'

@@ -550,3 +550,13 @@ class Pauser:
                 self.total_sleep_time += part_time  # metrics
                 time.sleep(part_time)
             now_time = time.perf_counter_ns()
+
+        # while now_time < stop_time:
+        #     remaining_time_ns = stop_time - now_time
+        #     # if self.min_interval_ns < remaining_time_ns:
+        #     if 20_000_000 < remaining_time_ns:
+        #         # part_time = remaining_time_ns * Pauser.NS_2_SECS * self.part_time_factor
+        #         part_time = (remaining_time_ns - 20_000_000) * Pauser.NS_2_SECS
+        #         self.total_sleep_time += part_time  # metrics
+        #         time.sleep(part_time)
+        #     now_time = time.perf_counter_ns()
