@@ -30,7 +30,7 @@ start time and end time messages like this:
 
 The time_hdr module contains two items:
 
-    1) StartStopHeader class with two functions that will repectively
+    1) StartStopHeader class with two functions that will respectively
        print a starting time and ending time messages in a flower box
        (see flower_box module in scottbrian_utils package).
     2) a time_box decorator that wraps a function and uses the

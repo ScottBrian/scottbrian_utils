@@ -388,7 +388,7 @@ def etrace(
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
     ) -> Any:
-        """Setup the trace."""
+        """Set up the trace."""
         target_sig_array_copy = target_sig_array.copy()
 
         # for VAR_POSITIONAL, we can have a signature of f(*args), or
