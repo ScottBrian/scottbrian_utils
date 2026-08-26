@@ -54,10 +54,114 @@ class TestValidatorCorrectSource:
 
 
 ########################################################################
-# TestUniqueTSExamples class
+# TestValidator
+########################################################################
+class TestValidator:
+    """Test validator."""
+
+    ####################################################################
+    # test_validator_NumValue
+    ####################################################################
+    def test_validator_numvalue_type_only(self) -> None:
+        """Test validator NumValue type only.
+
+        Test NumValue with only the type argument.
+
+        """
+
+        ################################################################
+        # type=int
+        ################################################################
+        class MyClass:
+            val1 = NumValue(type_spec=int)
+
+            def __init__(self, val1: int):
+                self.val1 = val1
+
+        MyClass(val1=-999)  # OK
+        MyClass(val1=-1)  # OK
+        MyClass(val1=0)  # OK
+        MyClass(val1=1)  # OK
+        MyClass(val1=999)  # OK
+
+        expected_error_msg = "Expected value='1' to be of type <class 'int'>"
+        with pytest.raises(TypeError, match=expected_error_msg):
+            MyClass(val1="1")  # typedef: ignore
+
+        expected_error_msg = "Expected value=1.2 to be of type <class 'int'>"
+        with pytest.raises(TypeError, match=expected_error_msg):
+            MyClass(val1=1.2)  # typedef: ignore
+
+        ################################################################
+        # type=float
+        ################################################################
+        class MyClass:
+            val1 = NumValue(type_spec=float)
+
+            def __init__(self, val1: float):
+                self.val1 = val1
+
+        MyClass(val1=-999.9)  # OK
+        MyClass(val1=-1.1)  # OK
+        MyClass(val1=-0.1)  # OK
+        MyClass(val1=0.0)  # OK
+        MyClass(val1=0.1)  # OK
+        MyClass(val1=1.1)  # OK
+        MyClass(val1=999.9)  # OK
+
+        expected_error_msg = "Expected value=-999 to be of type <class 'float'>"
+        with pytest.raises(TypeError, match=expected_error_msg):
+            MyClass(val1=-999)  # typedef: ignore
+
+        expected_error_msg = "Expected value='1' to be of type <class 'float'>"
+        with pytest.raises(TypeError, match=expected_error_msg):
+            MyClass(val1="1")  # typedef: ignore
+
+        ################################################################
+        # type=float
+        ################################################################
+
+        class MyClass:
+            val1 = NumValue(type_spec=int | float)
+
+            def __init__(self, val1: float):
+                self.val1 = val1
+
+        MyClass(val1=-999)  # OK
+        MyClass(val1=-999.9)  # OK
+        MyClass(val1=-1.1)  # OK
+        MyClass(val1=-1)  # OK
+        MyClass(val1=-0.1)  # OK
+        MyClass(val1=0)  # OK
+        MyClass(val1=0.0)  # OK
+        MyClass(val1=0.1)  # OK
+        MyClass(val1=1)  # OK
+        MyClass(val1=1.1)  # OK
+        MyClass(val1=999)  # OK
+        MyClass(val1=999.9)  # OK
+
+        expected_error_msg = "Expected value='1' to be of type int | float"
+        with pytest.raises(TypeError, match=expected_error_msg):
+            MyClass(val1="1")  # typedef: ignore
+
+        ################################################################
+        # type=str
+        ################################################################
+        expected_error_msg = f"Invalid type specification: str. Only int, float, or int | float are allowed."
+        with pytest.raises(TypeError, match=expected_error_msg):
+
+            class MyClass:
+                val1 = NumValue(type_spec=str)
+
+                def __init__(self, val1: float):
+                    self.val1 = val1
+
+
+########################################################################
+# TestValidatorExamples
 ########################################################################
 class TestValidatorExamples:
-    """Test examples of UniqueTS."""
+    """Test examples of Validator."""
 
     ####################################################################
     # test_validator_example1
@@ -76,28 +180,28 @@ class TestValidatorExamples:
         from scottbrian_utils.validator import NumValue
 
         class MyClass:
-            val1 = NumValue(type=int, minvalue=1, maxvalue=5)
+            val1 = NumValue(type_spec=int, gte=1, lte=5)
 
             def __init__(self, val1: int):
                 self.val1 = val1
 
         my_class_a = MyClass(val1=1)  # OK
 
-        expected_error_msg = "Expected value=0 to be no less than 1"
+        expected_error_msg = "Expected value=0 to be >= 1"
         with pytest.raises(ValueError, match=expected_error_msg):
             my_class_b = MyClass(val1=0)  # ValueError
 
-        expected_error_msg = "Expected value=6 to be no greater than 5"
+        expected_error_msg = "Expected value=6 to be <= 5"
         with pytest.raises(ValueError, match=expected_error_msg):
             my_class_c = MyClass(val1=6)  # ValueError
 
         expected_error_msg = "Expected value='1' to be of type <class 'int'>"
         with pytest.raises(TypeError, match=expected_error_msg):
-            my_class_d = MyClass(val1="1")  # typedef: ignore TypeError
+            my_class_d = MyClass(val1="1")  # typedef: ignore
 
         expected_error_msg = "Expected value=1.2 to be of type <class 'int'>"
         with pytest.raises(TypeError, match=expected_error_msg):
-            my_class_e = MyClass(val1=1.2)  # typedef: ignore TypeError
+            my_class_e = MyClass(val1=1.2)  # typedef: ignore
 
     ####################################################################
     # test_validator_example2
@@ -116,7 +220,7 @@ class TestValidatorExamples:
         from scottbrian_utils.validator import ChoseOne
 
         class MyClass:
-            val1 = ChoseOne(type=str, choices=("Good", "Bad", "Ugly"))
+            val1 = ChoseOne(type_spec=str, choices=("Good", "Bad", "Ugly"))
 
             def __init__(self, val1: str):
                 self.val1 = val1
@@ -131,7 +235,7 @@ class TestValidatorExamples:
 
         expected_error_msg = f"Expected value=1 to be of type <class 'str'>"
         with pytest.raises(TypeError, match=expected_error_msg):
-            my_class_d = MyClass(val1=1)  # typedef: ignore TypeError
+            my_class_c = MyClass(val1=1)  # typedef: ignore TypeError
 
     ####################################################################
     # test_validator_example3
@@ -162,4 +266,10 @@ class TestValidatorExamples:
             "Expected type(value)=<class 'str'> to be of type <class 'bool'>"
         )
         with pytest.raises(TypeError, match=expected_error_msg):
-            my_class_d = MyClass(val1="True")  # typedef: ignore TypeError
+            my_class_b = MyClass(val1="True")  # typedef: ignore TypeError
+
+        expected_error_msg = re.escape(
+            "Expected type(value)=<class 'int'> to be of type <class 'bool'>"
+        )
+        with pytest.raises(TypeError, match=expected_error_msg):
+            my_class_b = MyClass(val1=1)  # typedef: ignore TypeError
