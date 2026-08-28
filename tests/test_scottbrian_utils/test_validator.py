@@ -8,11 +8,12 @@ import os
 import re
 from typing import Any, TypeAlias, Union
 
-import pytest
-
 ########################################################################
 # Third Party
 ########################################################################
+import numpy as np
+import pytest
+
 ########################################################################
 # Local
 ########################################################################
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 # type aliases
 ########################################################################
 IntFloat: TypeAlias = Union[int, float]
+
 
 ########################################################################
 # UniqueTS test exceptions
@@ -189,9 +191,6 @@ class TestValidator:
     ####################################################################
     restriction_vals = (
         None,
-        -3.0,
-        -3,
-        -2.5,
         -2.0,
         -2,
         -1.5,
@@ -206,20 +205,18 @@ class TestValidator:
         1.5,
         2.0,
         2,
-        2.5,
-        3.0,
-        3,
     )
 
     @pytest.mark.parametrize("type_spec_arg", (int, float, int | float, IntFloat))
-    @pytest.mark.parametrize("gt_gte_arg", ('gt', 'gte'))
-    @pytest.mark.parametrize("lt_lte_arg", ('lt', 'lte'))
+    @pytest.mark.parametrize("gt_gte_arg", ("gt", "gte"))
+    @pytest.mark.parametrize("lt_lte_arg", ("lt", "lte"))
     @pytest.mark.parametrize("min_arg", restriction_vals)
     @pytest.mark.parametrize("max_arg", restriction_vals)
     def test_validator_numvalue_int_gt(
         self,
-        type_spec_arg: type,
+        type_spec_arg: type[int] | type[float] | type[int | float] | type[IntFloat],
         gt_gte_arg: str,
+        lt_lte_arg: str,
         min_arg: int | float,
         max_arg: int | float,
     ) -> None:
@@ -228,26 +225,94 @@ class TestValidator:
         Test NumValue with int values.
 
         """
-        def check_compatability(type_spec, gt_gte_spec, lt_lte_spec, min_spec, max_spec):
-            if isinstance(type_spec_arg, :
-            if min_arg is not None and isinstance(min_arg, float):
-                exp_error = 'ValueError'
-                exp_error_msg = f"Expected {value=} to be of type {self._type_spec}, got {type(value).__name__}"
+        if gt_gte_arg == "gt":
+            gt_spec = min_arg
+            gte_spec = None
+        else:
+            gt_spec = None
+            gte_spec = min_arg
+        if lt_lte_arg == "lt":
+            lt_spec = max_arg
+            lte_spec = None
+        else:
+            lt_spec = None
+            lte_spec = max_arg
+
+        expected_error_msg = None
+        error_type = ValueError
+        if min_arg is not None and max_arg is not None:
+            if gt_gte_arg == "gte" and lt_lte_arg == "lte" and max_arg < min_arg:
+                expected_error_msg = (
+                    f"Expected {gt_gte_arg}={min_arg} to be <= {lt_lte_arg}={max_arg}"
+                )
+            elif max_arg <= min_arg:
+                expected_error_msg = (
+                    f"Expected {gt_gte_arg}={min_arg} to be < {lt_lte_arg}={max_arg}"
+                )
+
+        if (type_spec_arg is int) or (type_spec_arg is float):
+            if max_arg is not None and not isinstance(max_arg, type_spec_arg):
+                expected_error_msg = f"Expected {lt_lte_arg}={max_arg} to be of type {type_spec_arg}, got {type(max_arg).__name__}"
+                error_type = TypeError
+            if min_arg is not None and not isinstance(min_arg, type_spec_arg):
+                expected_error_msg = f"Expected {gt_gte_arg}={min_arg} to be of type {type_spec_arg}, got {type(min_arg).__name__}"
+                error_type = TypeError
+
+        if expected_error_msg is not None:
+            with pytest.raises(error_type, match=expected_error_msg):
+
+                class MyClass:
+                    val1 = NumValue(
+                        type_spec=type_spec_arg,
+                        gte=gte_spec,
+                        gt=gt_spec,
+                        lt=lt_spec,
+                        lte=lte_spec,
+                    )
+
+                    def __init__(self, val1: int):
+                        self.val1 = val1
+
+            return
 
         ################################################################
-        # type=int
+        #
         ################################################################
         class MyClass:
             val1 = NumValue(
-                type_spec=int, gte=gte_arg, gt=gt_arg, lt=lt_arg, lte=lte_arg
+                type_spec=type_spec_arg,
+                gte=gte_spec,
+                gt=gt_spec,
+                lt=lt_spec,
+                lte=lte_spec,
             )
 
-            def __init__(self, val1: int):
+            def __init__(self, val1):
                 self.val1 = val1
 
-        for val in range(-4, 5):
-            if val <= gt_arg:
-                expected_error_msg = f"Expected value={val} to be > {gt_arg}"
+        if type_spec_arg is int:
+            val_array = range(-4, 5)
+        else:
+            val_array = np.arange(-4, 5, 0.25)
+            val_array = val_array.astype(float)
+        for val in val_array:
+            expected_error_msg = None
+            if max_arg is not None:
+                if lt_lte_arg == "lt":
+                    if max_arg <= val:
+                        expected_error_msg = f"Expected value={val} to be < {max_arg}"
+                else:
+                    if max_arg < val:
+                        expected_error_msg = f"Expected value={val} to be <= {max_arg}"
+            if min_arg is not None:
+                if gt_gte_arg == "gt":
+                    if val <= min_arg:
+                        expected_error_msg = f"Expected value={val} to be > {min_arg}"
+                else:
+                    if val < min_arg:
+                        expected_error_msg = f"Expected value={val} to be >= {min_arg}"
+
+            if expected_error_msg is not None:
                 with pytest.raises(ValueError, match=expected_error_msg):
                     MyClass(val1=val)
             else:

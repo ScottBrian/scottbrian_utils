@@ -116,6 +116,11 @@ class NumValue(Validator):
         if lt is not None and lte is not None:
             raise ValueError("Cannot set both 'lt' and 'lte' limits.")
 
+        if gt is not None and not isinstance(gt, type_spec):
+            raise TypeError(
+                f"Expected {gt=} to be of type {type_spec}, got {type(gt).__name__}"
+            )
+
         self._gte = gte
         self._gt = gt
         self._lt = lt
