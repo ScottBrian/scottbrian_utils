@@ -11,7 +11,6 @@ from typing import Any, TypeAlias, Union
 ########################################################################
 # Third Party
 ########################################################################
-import numpy as np
 import pytest
 
 ########################################################################
@@ -159,6 +158,40 @@ class TestValidator:
                     self.val1 = val1
 
     ####################################################################
+    # test_validator_both_gt_gte_lt_lte
+    ####################################################################
+    def test_validator_both_gt_gte_lt_lte(self) -> None:
+        """Test validator both gt and gte or both lt and lte.
+
+        Test NumValue with int values.
+
+        """
+
+        ################################################################
+        # both gt and gte
+        ################################################################
+        expected_error_msg = f"Cannot set both 'gt' and 'gte' limits."
+        with pytest.raises(ValueError, match=expected_error_msg):
+
+            class MyClass1:
+                val1 = NumValue(type_spec=int, gte=3, gt=5, lt=1)
+
+                def __init__(self, val1: int):
+                    self.val1 = val1
+
+        ################################################################
+        # both gt and gte
+        ################################################################
+        expected_error_msg = f"Cannot set both 'lt' and 'lte' limits."
+        with pytest.raises(ValueError, match=expected_error_msg):
+
+            class MyClass2:
+                val1 = NumValue(type_spec=int, lte=3, lt=5, gt=9)
+
+                def __init__(self, val1: int):
+                    self.val1 = val1
+
+    ####################################################################
     # test_validator_numvalue_int_gte
     ####################################################################
     @pytest.mark.parametrize("gte_arg", (-3, -2, -1, 0, 1, 2, 3))
@@ -241,14 +274,12 @@ class TestValidator:
         expected_error_msg = None
         error_type = ValueError
         if min_arg is not None and max_arg is not None:
-            if gt_gte_arg == "gte" and lt_lte_arg == "lte" and max_arg < min_arg:
-                expected_error_msg = (
-                    f"Expected {gt_gte_arg}={min_arg} to be <= {lt_lte_arg}={max_arg}"
-                )
-            elif max_arg <= min_arg:
-                expected_error_msg = (
-                    f"Expected {gt_gte_arg}={min_arg} to be < {lt_lte_arg}={max_arg}"
-                )
+            if gt_gte_arg == "gte" and lt_lte_arg == "lte":
+                if max_arg < min_arg:
+                    expected_error_msg = f"Expected {gt_gte_arg}={min_arg} to be <= {lt_lte_arg}={max_arg}"
+            else:
+                if max_arg <= min_arg:
+                    expected_error_msg = f"Expected {gt_gte_arg}={min_arg} to be < {lt_lte_arg}={max_arg}"
 
         if (type_spec_arg is int) or (type_spec_arg is float):
             if max_arg is not None and not isinstance(max_arg, type_spec_arg):
@@ -293,8 +324,7 @@ class TestValidator:
         if type_spec_arg is int:
             val_array = range(-4, 5)
         else:
-            val_array = np.arange(-4, 5, 0.25)
-            val_array = val_array.astype(float)
+            val_array = [i * 0.25 for i in range(-4, 20)]
         for val in val_array:
             expected_error_msg = None
             if max_arg is not None:

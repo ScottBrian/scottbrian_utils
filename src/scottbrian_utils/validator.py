@@ -120,6 +120,36 @@ class NumValue(Validator):
             raise TypeError(
                 f"Expected {gt=} to be of type {type_spec}, got {type(gt).__name__}"
             )
+        if gte is not None and not isinstance(gte, type_spec):
+            raise TypeError(
+                f"Expected {gte=} to be of type {type_spec}, got {type(gte).__name__}"
+            )
+        if lt is not None and not isinstance(lt, type_spec):
+            raise TypeError(
+                f"Expected {lt=} to be of type {type_spec}, got {type(lt).__name__}"
+            )
+        if lte is not None and not isinstance(lte, type_spec):
+            raise TypeError(
+                f"Expected {lte=} to be of type {type_spec}, got {type(lte).__name__}"
+            )
+        if ((gt is not None) or (gte is not None)) and (
+            (lt is not None) or (lte is not None)
+        ):
+            if gt is not None:
+                if lt is not None:
+                    if lt <= gt:
+                        raise ValueError(f"Expected {gt=} to be < {lt=}")
+                else:
+                    if lte <= gt:
+                        raise ValueError(f"Expected {gt=} to be < {lte=}")
+
+            else:  # gte is not None
+                if lt is not None:
+                    if lt <= gte:
+                        raise ValueError(f"Expected {gte=} to be < {lt=}")
+                else:
+                    if lte < gte:
+                        raise ValueError(f"Expected {gte=} to be <= {lte=}")
 
         self._gte = gte
         self._gt = gt
@@ -161,9 +191,18 @@ class ChoseOne(Validator):
         self._type_spec = type_spec
         self._choices = set(choices)
 
+        # make sure type of choices agree with type_spec
+        for choice in choices:
+            if not isinstance(choice, type_spec):
+                raise TypeError(
+                    f"Expected {choice=} to be of type {type_spec}, got {type(choice).__name__}"
+                )
+
     def validate(self, value):
         if not isinstance(value, self._type_spec):
-            raise TypeError(f"Expected {value=} to be of type {self._type_spec}")
+            raise TypeError(
+                f"Expected {value=} to be of type {self._type_spec}, got {type(value).__name__}"
+            )
         if value not in self._choices:
             raise ValueError(f"Expected {value=} to be one of {self._choices}")
 
