@@ -17,7 +17,7 @@ import pytest
 # Local
 ########################################################################
 from scottbrian_utils.testlib_verifier import verify_lib
-from scottbrian_utils.validator import NumValue
+from scottbrian_utils.validator import NumValue, ChoseOne
 
 ########################################################################
 # logger
@@ -57,8 +57,8 @@ class TestValidatorCorrectSource:
 ########################################################################
 # TestValidator
 ########################################################################
-class TestValidator:
-    """Test validator."""
+class TestValidatorNumValue:
+    """Test validator NumValue."""
 
     ####################################################################
     # test_validator_numvalue_type_only
@@ -85,11 +85,15 @@ class TestValidator:
         MyClass(val1=1)  # OK
         MyClass(val1=999)  # OK
 
-        expected_error_msg = "Expected value='1' to be of type <class 'int'>"
+        expected_error_msg = re.escape(
+            "Expected value='1' to be of type <class 'int'>, got str."
+        )
         with pytest.raises(TypeError, match=expected_error_msg):
             MyClass(val1="1")  # typedef: ignore
 
-        expected_error_msg = "Expected value=1.2 to be of type <class 'int'>"
+        expected_error_msg = re.escape(
+            "Expected value=1.2 to be of type <class 'int'>, got float."
+        )
         with pytest.raises(TypeError, match=expected_error_msg):
             MyClass(val1=1.2)  # typedef: ignore
 
@@ -110,11 +114,15 @@ class TestValidator:
         MyClass(val1=1.1)  # OK
         MyClass(val1=999.9)  # OK
 
-        expected_error_msg = "Expected value=-999 to be of type <class 'float'>"
+        expected_error_msg = re.escape(
+            "Expected value=-999 to be of type <class 'float'>, got int."
+        )
         with pytest.raises(TypeError, match=expected_error_msg):
             MyClass(val1=-999)  # typedef: ignore
 
-        expected_error_msg = "Expected value='1' to be of type <class 'float'>"
+        expected_error_msg = re.escape(
+            "Expected value='1' to be of type <class 'float'>, got str."
+        )
         with pytest.raises(TypeError, match=expected_error_msg):
             MyClass(val1="1")  # typedef: ignore
 
@@ -141,18 +149,36 @@ class TestValidator:
         MyClass(val1=999)  # OK
         MyClass(val1=999.9)  # OK
 
-        expected_error_msg = "Expected value='1' to be of type int | float"
+        expected_error_msg = re.escape(
+            "Expected value='1' to be of type int | float, got str."
+        )
         with pytest.raises(TypeError, match=expected_error_msg):
             MyClass(val1="1")  # typedef: ignore
 
         ################################################################
         # type=str
         ################################################################
-        expected_error_msg = f"Invalid type specification: str. Only int, float, or int | float are allowed."
+        expected_error_msg = re.escape(
+            f"Invalid type specification: <class 'str'>. Only int, float, or int | float are allowed."
+        )
         with pytest.raises(TypeError, match=expected_error_msg):
 
             class MyClass:
                 val1 = NumValue(type_spec=str)
+
+                def __init__(self, val1: float):
+                    self.val1 = val1
+
+        ################################################################
+        # type=bool
+        ################################################################
+        expected_error_msg = re.escape(
+            f"Invalid type specification: <class 'bool'>. Only int, float, or int | float are allowed."
+        )
+        with pytest.raises(TypeError, match=expected_error_msg):
+
+            class MyClass:
+                val1 = NumValue(type_spec=bool)
 
                 def __init__(self, val1: float):
                     self.val1 = val1
@@ -170,7 +196,7 @@ class TestValidator:
         ################################################################
         # both gt and gte
         ################################################################
-        expected_error_msg = f"Cannot set both 'gt' and 'gte' limits."
+        expected_error_msg = re.escape(f"Cannot set both 'gt' and 'gte' limits.")
         with pytest.raises(ValueError, match=expected_error_msg):
 
             class MyClass1:
@@ -182,7 +208,7 @@ class TestValidator:
         ################################################################
         # both gt and gte
         ################################################################
-        expected_error_msg = f"Cannot set both 'lt' and 'lte' limits."
+        expected_error_msg = re.escape(f"Cannot set both 'lt' and 'lte' limits.")
         with pytest.raises(ValueError, match=expected_error_msg):
 
             class MyClass2:
@@ -213,7 +239,9 @@ class TestValidator:
 
         for val in range(-4, 5):
             if val < gte_arg:
-                expected_error_msg = f"Expected value={val} to be >= {gte_arg}"
+                expected_error_msg = re.escape(
+                    f"Expected value={val} to be >= {gte_arg}"
+                )
                 with pytest.raises(ValueError, match=expected_error_msg):
                     MyClass(val1=val)
             else:
@@ -276,17 +304,25 @@ class TestValidator:
         if min_arg is not None and max_arg is not None:
             if gt_gte_arg == "gte" and lt_lte_arg == "lte":
                 if max_arg < min_arg:
-                    expected_error_msg = f"Expected {gt_gte_arg}={min_arg} to be <= {lt_lte_arg}={max_arg}"
+                    expected_error_msg = re.escape(
+                        f"Expected {gt_gte_arg}={min_arg} to be <= {lt_lte_arg}={max_arg}."
+                    )
             else:
                 if max_arg <= min_arg:
-                    expected_error_msg = f"Expected {gt_gte_arg}={min_arg} to be < {lt_lte_arg}={max_arg}"
+                    expected_error_msg = re.escape(
+                        f"Expected {gt_gte_arg}={min_arg} to be < {lt_lte_arg}={max_arg}."
+                    )
 
         if (type_spec_arg is int) or (type_spec_arg is float):
             if max_arg is not None and not isinstance(max_arg, type_spec_arg):
-                expected_error_msg = f"Expected {lt_lte_arg}={max_arg} to be of type {type_spec_arg}, got {type(max_arg).__name__}"
+                expected_error_msg = re.escape(
+                    f"Expected {lt_lte_arg}={max_arg} to be of type {type_spec_arg}, got {type(max_arg).__name__}."
+                )
                 error_type = TypeError
             if min_arg is not None and not isinstance(min_arg, type_spec_arg):
-                expected_error_msg = f"Expected {gt_gte_arg}={min_arg} to be of type {type_spec_arg}, got {type(min_arg).__name__}"
+                expected_error_msg = re.escape(
+                    f"Expected {gt_gte_arg}={min_arg} to be of type {type_spec_arg}, got {type(min_arg).__name__}."
+                )
                 error_type = TypeError
 
         if expected_error_msg is not None:
@@ -330,17 +366,25 @@ class TestValidator:
             if max_arg is not None:
                 if lt_lte_arg == "lt":
                     if max_arg <= val:
-                        expected_error_msg = f"Expected value={val} to be < {max_arg}"
+                        expected_error_msg = re.escape(
+                            f"Expected value={val} to be < {max_arg}."
+                        )
                 else:
                     if max_arg < val:
-                        expected_error_msg = f"Expected value={val} to be <= {max_arg}"
+                        expected_error_msg = re.escape(
+                            f"Expected value={val} to be <= {max_arg}."
+                        )
             if min_arg is not None:
                 if gt_gte_arg == "gt":
                     if val <= min_arg:
-                        expected_error_msg = f"Expected value={val} to be > {min_arg}"
+                        expected_error_msg = re.escape(
+                            f"Expected value={val} to be > {min_arg}."
+                        )
                 else:
                     if val < min_arg:
-                        expected_error_msg = f"Expected value={val} to be >= {min_arg}"
+                        expected_error_msg = re.escape(
+                            f"Expected value={val} to be >= {min_arg}."
+                        )
 
             if expected_error_msg is not None:
                 with pytest.raises(ValueError, match=expected_error_msg):
@@ -379,19 +423,23 @@ class TestValidatorExamples:
 
         my_class_a = MyClass(val1=1)  # OK
 
-        expected_error_msg = "Expected value=0 to be >= 1"
+        expected_error_msg = re.escape("Expected value=0 to be >= 1.")
         with pytest.raises(ValueError, match=expected_error_msg):
             my_class_b = MyClass(val1=0)  # ValueError
 
-        expected_error_msg = "Expected value=6 to be <= 5"
+        expected_error_msg = re.escape("Expected value=6 to be <= 5.")
         with pytest.raises(ValueError, match=expected_error_msg):
             my_class_c = MyClass(val1=6)  # ValueError
 
-        expected_error_msg = "Expected value='1' to be of type <class 'int'>"
+        expected_error_msg = re.escape(
+            "Expected value='1' to be of type <class 'int'>."
+        )
         with pytest.raises(TypeError, match=expected_error_msg):
             my_class_d = MyClass(val1="1")  # typedef: ignore
 
-        expected_error_msg = "Expected value=1.2 to be of type <class 'int'>"
+        expected_error_msg = re.escape(
+            "Expected value=1.2 to be of type <class 'int'>."
+        )
         with pytest.raises(TypeError, match=expected_error_msg):
             my_class_e = MyClass(val1=1.2)  # typedef: ignore
 
@@ -420,12 +468,12 @@ class TestValidatorExamples:
         my_class_a = MyClass(val1="Good")  # OK
 
         expected_error_msg = (
-            r"Expected value='Best' to be one of {['Good', 'Bad', 'Ugly']+}"
+            "Expected value='Best' to be one of {['Good', 'Bad', 'Ugly']+}."
         )
         with pytest.raises(ValueError, match=expected_error_msg):
             my_class_b = MyClass(val1="Best")  # ValueError
 
-        expected_error_msg = f"Expected value=1 to be of type <class 'str'>"
+        expected_error_msg = re.escape(f"Expected value=1 to be of type <class 'str'>.")
         with pytest.raises(TypeError, match=expected_error_msg):
             my_class_c = MyClass(val1=1)  # typedef: ignore TypeError
 
@@ -443,7 +491,6 @@ class TestValidatorExamples:
 
         """
         print("mainline entered")
-        from scottbrian_utils.validator import True_False
 
         class MyClass:
             val1 = True_False()
@@ -455,13 +502,78 @@ class TestValidatorExamples:
         my_class_a2 = MyClass(val1=False)  # OK
 
         expected_error_msg = re.escape(
-            "Expected type(value)=<class 'str'> to be of type <class 'bool'>"
+            "Expected type(value)=<class 'str'> to be of type <class 'bool'>."
         )
         with pytest.raises(TypeError, match=expected_error_msg):
             my_class_b = MyClass(val1="True")  # typedef: ignore TypeError
 
         expected_error_msg = re.escape(
-            "Expected type(value)=<class 'int'> to be of type <class 'bool'>"
+            "Expected type(value)=<class 'int'> to be of type <class 'bool'>."
         )
         with pytest.raises(TypeError, match=expected_error_msg):
             my_class_b = MyClass(val1=1)  # typedef: ignore TypeError
+
+
+########################################################################
+# TestValidatorChoseOne
+########################################################################
+class TestValidatorChoseOne:
+    """Test validator ChoseOne."""
+
+    ####################################################################
+    # test_validator_chose_one
+    ####################################################################
+    @pytest.mark.parametrize(
+        "type_set_vals_arg",
+        (
+            (int, (-1, 3, 6, 0), (-2, -1, 0, 1, 2, 3, 4, 5, 6, 7)),
+            (
+                float,
+                (-1.22, 0.0, 6.7, 3.4),
+                (
+                    -3.4,
+                    -1.22,
+                    -1.0,
+                    0.0,
+                    3.4,
+                    3.5,
+                ),
+            ),
+            (str, ("hi", "low", "big", "small"), ("hi", "hello", "big", "little")),
+            (bool, (True, False), (True, False)),
+        ),
+    )
+    def test_validator_chose_one(
+        self, type_set_vals_arg: tuple[tuple[Any], tuple[Any], tuple[Any]]
+    ) -> None:
+        """Test validator chose one."""
+
+        ################################################################
+        # type=int
+        ################################################################
+        quote = "'" if type_set_vals_arg[0] is str else ""
+        error_msg_insert = "{["
+        for choice in type_set_vals_arg[1]:
+            error_msg_insert += f"{quote}{str(choice)}{quote}, "
+        error_msg_insert += "]+}."
+
+        quote = "'" if type_set_vals_arg[0] is str else ""
+
+        class MyClass:
+            val1 = ChoseOne(
+                type_spec=type_set_vals_arg[0], choices=type_set_vals_arg[1]
+            )
+
+            def __init__(self, val1: int):
+                self.val1 = val1
+
+        for choice in type_set_vals_arg[2]:
+            if choice in type_set_vals_arg[1]:
+                MyClass(val1=choice)  # OK
+            else:
+                expected_error_msg = (
+                    re.escape(f"Expected value={quote}{choice}{quote} to be one of ")
+                    + error_msg_insert
+                )
+                with pytest.raises(ValueError, match=expected_error_msg):
+                    MyClass(val1=choice)  # typedef: ignore
