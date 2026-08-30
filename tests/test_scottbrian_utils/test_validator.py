@@ -17,7 +17,7 @@ import pytest
 # Local
 ########################################################################
 from scottbrian_utils.testlib_verifier import verify_lib
-from scottbrian_utils.validator import NumValue, ChoseOne
+from scottbrian_utils.validator import NumValue, ChooseOne, TrueFalse
 
 ########################################################################
 # logger
@@ -79,11 +79,12 @@ class TestValidatorNumValue:
             def __init__(self, val1: int):
                 self.val1 = val1
 
-        MyClass(val1=-999)  # OK
-        MyClass(val1=-1)  # OK
-        MyClass(val1=0)  # OK
-        MyClass(val1=1)  # OK
-        MyClass(val1=999)  # OK
+        assert MyClass(val1=-999).val1 == -999  # OK
+
+        assert MyClass(val1=-1).val1 == -1  # OK
+        assert MyClass(val1=0).val1 == 0  # OK
+        assert MyClass(val1=1).val1 == 1  # OK
+        assert MyClass(val1=999).val1 == 999  # OK
 
         expected_error_msg = re.escape(
             "Expected value='1' to be of type <class 'int'>, got str."
@@ -106,13 +107,13 @@ class TestValidatorNumValue:
             def __init__(self, val1: float):
                 self.val1 = val1
 
-        MyClass(val1=-999.9)  # OK
-        MyClass(val1=-1.1)  # OK
-        MyClass(val1=-0.1)  # OK
-        MyClass(val1=0.0)  # OK
-        MyClass(val1=0.1)  # OK
-        MyClass(val1=1.1)  # OK
-        MyClass(val1=999.9)  # OK
+        assert MyClass(val1=-999.9).val1 == -999.9  # OK
+        assert MyClass(val1=-1.1).val1 == -1.1  # OK
+        assert MyClass(val1=-0.1).val1 == -0.1  # OK
+        assert MyClass(val1=0.0).val1 == 0.0  # OK
+        assert MyClass(val1=0.1).val1 == 0.1  # OK
+        assert MyClass(val1=1.1).val1 == 1.1  # OK
+        assert MyClass(val1=999.9).val1 == 999.9  # OK
 
         expected_error_msg = re.escape(
             "Expected value=-999 to be of type <class 'float'>, got int."
@@ -127,7 +128,7 @@ class TestValidatorNumValue:
             MyClass(val1="1")  # typedef: ignore
 
         ################################################################
-        # type=float
+        # type=float | int
         ################################################################
 
         class MyClass:
@@ -136,18 +137,18 @@ class TestValidatorNumValue:
             def __init__(self, val1: float):
                 self.val1 = val1
 
-        MyClass(val1=-999)  # OK
-        MyClass(val1=-999.9)  # OK
-        MyClass(val1=-1.1)  # OK
-        MyClass(val1=-1)  # OK
-        MyClass(val1=-0.1)  # OK
-        MyClass(val1=0)  # OK
-        MyClass(val1=0.0)  # OK
-        MyClass(val1=0.1)  # OK
-        MyClass(val1=1)  # OK
-        MyClass(val1=1.1)  # OK
-        MyClass(val1=999)  # OK
-        MyClass(val1=999.9)  # OK
+        assert MyClass(val1=-999).val1 == -999  # OK
+        assert MyClass(val1=-999.9).val1 == -999.9  # OK
+        assert MyClass(val1=-1.1).val1 == -1.1  # OK
+        assert MyClass(val1=-1).val1 == -1  # OK
+        assert MyClass(val1=-0.1).val1 == -0.1  # OK
+        assert MyClass(val1=0).val1 == 0  # OK
+        assert MyClass(val1=0.0).val1 == 0.0  # OK
+        assert MyClass(val1=0.1).val1 == 0.1  # OK
+        assert MyClass(val1=1).val1 == 1  # OK
+        assert MyClass(val1=1.1).val1 == 1.1  # OK
+        assert MyClass(val1=999).val1 == 999  # OK
+        assert MyClass(val1=999.9).val1 == 999.9  # OK
 
         expected_error_msg = re.escape(
             "Expected value='1' to be of type int | float, got str."
@@ -394,131 +395,62 @@ class TestValidatorNumValue:
 
 
 ########################################################################
-# TestValidatorExamples
+# TestValidatorChooseOne
 ########################################################################
-class TestValidatorExamples:
-    """Test examples of Validator."""
+class TestValidatorChooseOne:
+    """Test validator ChooseOne."""
 
     ####################################################################
-    # test_validator_example1
+    # test_validator_chose_one_type_error
     ####################################################################
-    def test_validator_example1(self, capsys: Any) -> None:
-        """Test validator example1.
-
-        This example shows that instantiating class with good values
-        will pass and bad values will be caught.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        print("mainline entered")
-        from scottbrian_utils.validator import NumValue
-
-        class MyClass:
-            val1 = NumValue(type_spec=int, gte=1, lte=5)
-
-            def __init__(self, val1: int):
-                self.val1 = val1
-
-        my_class_a = MyClass(val1=1)  # OK
-
-        expected_error_msg = re.escape("Expected value=0 to be >= 1.")
-        with pytest.raises(ValueError, match=expected_error_msg):
-            my_class_b = MyClass(val1=0)  # ValueError
-
-        expected_error_msg = re.escape("Expected value=6 to be <= 5.")
-        with pytest.raises(ValueError, match=expected_error_msg):
-            my_class_c = MyClass(val1=6)  # ValueError
-
-        expected_error_msg = re.escape(
-            "Expected value='1' to be of type <class 'int'>."
-        )
-        with pytest.raises(TypeError, match=expected_error_msg):
-            my_class_d = MyClass(val1="1")  # typedef: ignore
-
-        expected_error_msg = re.escape(
-            "Expected value=1.2 to be of type <class 'int'>."
-        )
-        with pytest.raises(TypeError, match=expected_error_msg):
-            my_class_e = MyClass(val1=1.2)  # typedef: ignore
-
-    ####################################################################
-    # test_validator_example2
-    ####################################################################
-    def test_validator_example2(self, capsys: Any) -> None:
-        """Test validator example2.
-
-        This example shows that instantiating class with good values
-        will pass and bad values will be caught.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        print("mainline entered")
-        from scottbrian_utils.validator import ChoseOne
-
-        class MyClass:
-            val1 = ChoseOne(type_spec=str, choices=("Good", "Bad", "Ugly"))
-
-            def __init__(self, val1: str):
-                self.val1 = val1
-
-        my_class_a = MyClass(val1="Good")  # OK
-
-        expected_error_msg = (
-            "Expected value='Best' to be one of {['Good', 'Bad', 'Ugly']+}."
-        )
-        with pytest.raises(ValueError, match=expected_error_msg):
-            my_class_b = MyClass(val1="Best")  # ValueError
-
-        expected_error_msg = re.escape(f"Expected value=1 to be of type <class 'str'>.")
-        with pytest.raises(TypeError, match=expected_error_msg):
-            my_class_c = MyClass(val1=1)  # typedef: ignore TypeError
-
-    ####################################################################
-    # test_validator_example3
-    ####################################################################
-    def test_validator_example3(self, capsys: Any) -> None:
-        """Test validator example3.
-
-        This example shows that instantiating class with good values
-        will pass and bad values will be caught.
-
-        Args:
-            capsys: pytest fixture to capture print output
-
-        """
-        print("mainline entered")
-
-        class MyClass:
-            val1 = True_False()
-
-            def __init__(self, val1: bool):
-                self.val1 = val1
-
-        my_class_a1 = MyClass(val1=True)  # OK
-        my_class_a2 = MyClass(val1=False)  # OK
-
-        expected_error_msg = re.escape(
-            "Expected type(value)=<class 'str'> to be of type <class 'bool'>."
-        )
-        with pytest.raises(TypeError, match=expected_error_msg):
-            my_class_b = MyClass(val1="True")  # typedef: ignore TypeError
-
-        expected_error_msg = re.escape(
-            "Expected type(value)=<class 'int'> to be of type <class 'bool'>."
-        )
-        with pytest.raises(TypeError, match=expected_error_msg):
-            my_class_b = MyClass(val1=1)  # typedef: ignore TypeError
-
-
-########################################################################
-# TestValidatorChoseOne
-########################################################################
-class TestValidatorChoseOne:
-    """Test validator ChoseOne."""
+    # def test_validator_chose_one_type_error(self) -> None:
+    #     """Test validator chose one type error."""
+    #
+    #     expected_error_msg = re.escape(
+    #         "Expected choice=3 to be of type <class 'str'>, got int."
+    #     )
+    #     with pytest.raises(TypeError, match=expected_error_msg):
+    #
+    #         class MyClass1:
+    #             val1 = ChooseOne(type_spec=str, choices=("1", "2", 3, "4"))
+    #
+    #             def __init__(self, val1: str):
+    #                 self.val1 = val1
+    #
+    #     expected_error_msg = re.escape(
+    #         "Expected choice='1' to be of type <class 'int'>, got str."
+    #     )
+    #     with pytest.raises(TypeError, match=expected_error_msg):
+    #
+    #         class MyClass2:
+    #             val1 = ChooseOne(type_spec=int, choices=("1", "2", 3, "4"))
+    #
+    #             def __init__(self, val1: int):
+    #                 self.val1 = val1
+    #
+    #     class MyClass3:
+    #         val1 = ChooseOne(type_spec=str, choices=("1", "2", "3", "4"))
+    #
+    #         def __init__(self, val1: str):
+    #             self.val1 = val1
+    #
+    #     expected_error_msg = re.escape(
+    #         f"Expected value=3 to be of type <class 'str'>, got int."
+    #     )
+    #     with pytest.raises(TypeError, match=expected_error_msg):
+    #         MyClass3(val1=3)
+    #
+    #     class MyClass4:
+    #         val1 = ChooseOne(type_spec=int, choices=(1, 2, 3, 4))
+    #
+    #         def __init__(self, val1: int):
+    #             self.val1 = val1
+    #
+    #     expected_error_msg = re.escape(
+    #         f"Expected value='3' to be of type <class 'int'>, got str."
+    #     )
+    #     with pytest.raises(TypeError, match=expected_error_msg):
+    #         MyClass4(val1="3")
 
     ####################################################################
     # test_validator_chose_one
@@ -560,9 +492,7 @@ class TestValidatorChoseOne:
         quote = "'" if type_set_vals_arg[0] is str else ""
 
         class MyClass:
-            val1 = ChoseOne(
-                type_spec=type_set_vals_arg[0], choices=type_set_vals_arg[1]
-            )
+            val1 = ChooseOne(choices=type_set_vals_arg[1])
 
             def __init__(self, val1: int):
                 self.val1 = val1
@@ -577,3 +507,159 @@ class TestValidatorChoseOne:
                 )
                 with pytest.raises(ValueError, match=expected_error_msg):
                     MyClass(val1=choice)  # typedef: ignore
+
+
+########################################################################
+# TestValidatorTrueFalse
+########################################################################
+class TestValidatorTrueFalse:
+    """Test validator TrueFalse."""
+
+    ####################################################################
+    # test_validator_chose_one_type_error
+    ####################################################################
+    def test_validator_true_false_type_error(self) -> None:
+        """Test validator chose one type error."""
+
+        class MyClass1:
+            val1 = TrueFalse()
+
+            def __init__(self, val1: bool):
+                self.val1 = val1
+
+        MyClass1(val1=True)  # OK
+        MyClass1(val1=False)  # OK
+
+        expected_error_msg = re.escape("Expected value=1 to be of type bool, got int.")
+        with pytest.raises(TypeError, match=expected_error_msg):
+            MyClass1(val1=1)  # typedef: ignore
+
+
+########################################################################
+# TestValidatorExamples
+########################################################################
+class TestValidatorExamples:
+    """Test examples of Validator."""
+
+    ####################################################################
+    # test_validator_example1
+    ####################################################################
+    def test_validator_example1(self, capsys: Any) -> None:
+        """Test validator example1.
+
+        This example shows that instantiating class with good values
+        will pass and bad values will be caught.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print("mainline entered")
+        from scottbrian_utils.validator import NumValue
+
+        class MyClass:
+            val1 = NumValue(type_spec=int, gte=1, lte=5)
+
+            def __init__(self, val1: int):
+                self.val1 = val1
+
+        my_class_a = MyClass(val1=1)  # OK
+
+        expected_error_msg = re.escape("Expected value=0 to be >= 1.")
+        with pytest.raises(ValueError, match=expected_error_msg):
+            my_class_b = MyClass(val1=0)  # ValueError
+
+        expected_error_msg = re.escape("Expected value=6 to be <= 5.")
+        with pytest.raises(ValueError, match=expected_error_msg):
+            my_class_c = MyClass(val1=6)  # ValueError
+
+        expected_error_msg = re.escape(
+            "Expected value='1' to be of type <class 'int'>, got str."
+        )
+        with pytest.raises(TypeError, match=expected_error_msg):
+            my_class_d = MyClass(val1="1")  # typedef: ignore
+
+        expected_error_msg = re.escape(
+            "Expected value=1.2 to be of type <class 'int'>, got float."
+        )
+        with pytest.raises(TypeError, match=expected_error_msg):
+            my_class_e = MyClass(val1=1.2)  # typedef: ignore
+
+    ####################################################################
+    # test_validator_example2
+    ####################################################################
+    def test_validator_example2(self, capsys: Any) -> None:
+        """Test validator example2.
+
+        This example shows that instantiating class with good values
+        will pass and bad values will be caught.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print("mainline entered")
+        from scottbrian_utils.validator import ChooseOne
+
+        class MyClass:
+            val1 = ChooseOne(choices=("Good", "Bad", "Ugly"))
+
+            def __init__(self, val1: str):
+                self.val1 = val1
+
+        my_class_a = MyClass(val1="Good")  # OK
+
+        expected_error_msg = (
+            "Expected value='Best' to be one of {['Good', 'Bad', 'Ugly']+}."
+        )
+        with pytest.raises(ValueError, match=expected_error_msg):
+            my_class_b = MyClass(val1="Best")  # ValueError
+
+        expected_error_msg = "Expected value=1 to be one of {['Good', 'Bad', 'Ugly']+}."
+        with pytest.raises(ValueError, match=expected_error_msg):
+            my_class_c = MyClass(val1=1)  # typedef: ignore TypeError
+
+    ####################################################################
+    # test_validator_example3
+    ####################################################################
+    def test_validator_example3(self, capsys: Any) -> None:
+        """Test validator example3.
+
+        This example shows that instantiating class with good values
+        will pass and bad values will be caught.
+
+        Args:
+            capsys: pytest fixture to capture print output
+
+        """
+        print("mainline entered")
+
+        class MyClass:
+            val1 = TrueFalse()
+
+            def __init__(self, val1: bool):
+                self.val1 = val1
+
+        my_class_a1 = MyClass(val1=True)  # OK
+        my_class_a2 = MyClass(val1=False)  # OK
+
+        expected_error_msg = re.escape(
+            "Expected value='True' to be of type bool, got str."
+        )
+        with pytest.raises(TypeError, match=expected_error_msg):
+            my_class_b = MyClass(val1="True")  # typedef: ignore TypeError
+
+        expected_error_msg = re.escape("Expected value=1 to be of type bool, got int.")
+        with pytest.raises(TypeError, match=expected_error_msg):
+            my_class_b = MyClass(val1=1)  # typedef: ignore TypeError
+
+        class SystemConfig:
+            # Explicitly type hint the fields so Mypy knows instance usage types
+            status: bool = TrueFalse()
+            priority: int = NumValue(type_spec=int, gte=1, lte=5)
+            environment: str = ChooseOne(choices=["dev", "staging", "prod"])
+
+            def __init__(self, status: bool, priority: int, environment: str) -> None:
+                self.status = status
+                self.priority = priority
+                self.environment = environment

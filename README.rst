@@ -29,6 +29,7 @@ This is a collection of generally useful functions for use with any application.
 13. The timer item provides a way to keep track of time to determine when a function has
     timed out.
 14. The UniqueTS class provides a way to obtain a unique timestamp.
+15. The validator module provides descriptor validation classes
 
 
 
@@ -88,6 +89,24 @@ With **Pauser**, you can pause execution for a specified number of seconds like 
    from scottbrian_utils.pauser import Pauser
    pauser = Pauser()
    pauser.pause(1.5)  # pause for 1.5 seconds
+
+
+With **NumValue** from the validator module, you can add a validation descriptor to
+your class:
+
+.. code-block:: python
+
+   from scottbrian_utils.validator import NumValue
+
+    class MyClass():
+        val1 = NumValue(num_type=int, gte=1, lte=5)
+
+        def __init__(self, val1: int):
+            self.val1 = val1
+
+    my_class_a = MyClass(val1=1)  # OK
+    my_class_b = MyClass(val1=0)  # ValueError
+    my_class_c = MyClass(val1=1.2)  # TypeError
 
 
 .. image:: https://img.shields.io/badge/security-bandit-yellow.svg
@@ -192,6 +211,9 @@ Release History
 
 * 7.1.0
     * enhance pauser to accept nanoseconds
+
+* 7.2.0
+    * add validator
 
 Meta
 ====
