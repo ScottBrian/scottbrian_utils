@@ -7,7 +7,7 @@ verify_lib
 The verify_lib function checks whether the code under test is from
 the expected test library. For unit test, the source is normally tested
 in place in the source library. For function test, however, the desired
-method is to build the code using the project.toml and then test the
+method is to build the code using the pyproject.toml and then test the
 code from the build target library. When using tox to do the test, this
 library is placed in the .tox folder. By default, verify_lib will
 check that code comes from the library in the .tox folder by simply

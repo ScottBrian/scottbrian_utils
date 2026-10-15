@@ -12,14 +12,13 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Callable, Iterator, Optional, Union
+from typing import Any, Callable, Iterator, Optional, Protocol, Union
 
 ########################################################################
 # Third Party
 ########################################################################
 import more_itertools as mi
 import pytest
-from typing_extensions import Protocol
 
 ########################################################################
 # Local
@@ -29,7 +28,7 @@ from scottbrian_utils.log_verifier import LogVer
 from scottbrian_utils.testlib_verifier import verify_lib
 
 logger = logging.getLogger(__name__)
-logger.debug(f"start5 of test_entry_trace.py with {__name__=}")
+logger.debug(f"start of test_entry_trace.py with {__name__=}")
 
 ########################################################################
 # type aliases

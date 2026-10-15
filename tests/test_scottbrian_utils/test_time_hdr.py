@@ -4,18 +4,16 @@ import logging
 import os
 import re
 import sys
-
 ########################################################################
 # Standard Library
 ########################################################################
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, cast, Tuple, Union
+from typing import Any, Callable, cast, Final, Tuple, Union
 
 ########################################################################
 # Third Party
 ########################################################################
 import pytest
-from typing_extensions import Final
 
 ########################################################################
 # Local

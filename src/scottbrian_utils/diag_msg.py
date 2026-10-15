@@ -209,7 +209,7 @@ def get_caller_info(frame: FrameType) -> CallerInfo:
 
 
 ########################################################################
-# get_formatted_call_sequence
+# func_in_class
 ########################################################################
 def func_in_class(func_name: str, class_obj: type, code: Any) -> bool:
     """Determine whether function is in class.
